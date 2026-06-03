@@ -14,7 +14,7 @@ from homeassistant.components.vacuum import (
     STATE_IDLE,
     STATE_PAUSED,
     STATE_RETURNING,
-    VacuumEntity,
+    StateVacuumEntity,
     VacuumEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -63,7 +63,7 @@ async def async_setup_entry(
         _LOGGER.info("已添加 %s 个 vacuum 实体", len(vacuums))
 
 
-class YeelightProVacuum(CoordinatorEntity, VacuumEntity):
+class YeelightProVacuum(CoordinatorEntity, StateVacuumEntity):
     """Yeelight Pro 扫地机器人实体."""
 
     _attr_has_entity_name = True
