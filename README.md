@@ -1,97 +1,101 @@
-# Ha Yeelight Pro
+# Yeelight Pro
 
-Yeelight Pro 集成支持将 Yeelight Pro 设备接入 Home Assistant。
+[English](README.md) | [中文](README_zh.md)
 
-## 功能特性
+Yeelight Pro integration for Home Assistant. Supports both cloud and private deployment modes.
 
-- ✅ 支持云端和私有部署两种模式
-- ✅ 自动设备发现和状态同步
-- ✅ 实时事件推送（SSE）
-- ✅ 支持 14 种实体平台
-- ✅ 完整的设备控制能力
+## Features
 
-## 安装
+- ✅ Cloud and private deployment support
+- ✅ Automatic device discovery and state synchronization
+- ✅ Real-time event updates via SSE
+- ✅ 14 entity platforms supported
+- ✅ Complete device control capabilities
 
-### HACS 安装（推荐）
+## Installation
 
-1. 打开 HACS
-2. 搜索 "Yeelight Pro"
-3. 点击安装
-4. 重启 Home Assistant
+### HACS Installation (Recommended)
 
-### 手动安装
+1. Open HACS
+2. Search for "Yeelight Pro"
+3. Click Install
+4. Restart Home Assistant
 
-1. 下载最新版本
-2. 解压到 `custom_components/yeelight_pro/`
-3. 重启 Home Assistant
+### Manual Installation
 
-## 配置
+1. Download the latest release
+2. Extract to `custom_components/yeelight_pro/`
+3. Restart Home Assistant
 
-### 云端模式
+## Configuration
 
-1. 进入 设置 → 设备与服务 → 添加集成
-2. 搜索 "Yeelight Pro"
-3. 选择 "Yeelight Pro 云端"
-4. 输入 Access Token
-5. 选择家庭
-6. 完成配置
+### Cloud Mode
 
-### 私有部署模式
+1. Go to Settings → Devices & Services → Add Integration
+2. Search for "Yeelight Pro"
+3. Select "Yeelight Pro Cloud"
+4. Enter Access Token
+5. Select House
+6. Complete configuration
 
-1. 进入 设置 → 设备与服务 → 添加集成
-2. 搜索 "Yeelight Pro"
-3. 选择 "私有部署（Lucore）"
-4. 输入服务器地址（如 `192.168.1.100:8080`）
-5. 输入 Access Token
-6. 输入家庭 ID
-7. 完成配置
+### Private Deployment Mode
 
-## 支持的设备类型
+1. Go to Settings → Devices & Services → Add Integration
+2. Search for "Yeelight Pro"
+3. Select "Private Deployment (Lucore)"
+4. Enter server address (e.g., `192.168.1.100:8080`)
+5. Enter Access Token
+6. Enter House ID
+7. Complete configuration
 
-| 设备类型 | 实体平台 | 功能 |
-|---------|---------|------|
-| 灯泡 | light | 亮度、色温、RGB 控制 |
-| 开关 | switch | 开关控制 |
-| 插座 | switch | 开关控制 |
-| 风扇 | fan | 风速、摆头控制 |
-| 窗帘 | cover | 位置控制 |
-| 空调 | climate | 温度、模式控制 |
-| 门锁 | lock | 锁定/解锁 |
-| 传感器 | sensor | 温度、湿度、光照 |
-| 人体传感器 | binary_sensor | 移动检测 |
-| 门窗传感器 | binary_sensor | 门窗状态 |
-| 遥控器 | event | 按钮事件 |
-| 按钮 | button | 按钮操作 |
-| 数字 | number | 数值设置 |
-| 选择 | select | 选项选择 |
-| 文本 | text | 文本输入 |
+## Supported Device Types
 
-## 服务
+| Device Type | Entity Platform | Features |
+| --- | --- | --- |
+| Light | light | Brightness, color temperature, RGB control |
+| Switch | switch | On/Off control |
+| Socket | switch | On/Off control |
+| Fan | fan | Speed, oscillation control |
+| Curtain | cover | Position control |
+| Air Conditioner | climate | Temperature, mode control |
+| Door Lock | lock | Lock/Unlock |
+| Sensor | sensor | Temperature, humidity, illuminance |
+| Motion Sensor | binary_sensor | Motion detection |
+| Door/Window Sensor | binary_sensor | Contact status |
+| Remote Control | event | Button events |
+| Button | button | Button operations |
+| Number | number | Number settings |
+| Select | select | Option selection |
+| Text | text | Text input |
+
+## Services
 
 ### yeelight_pro.assign_areas
 
-批量为设备分配区域。
+Batch assign areas to devices.
 
-**参数**：
-- `devices`：设备 ID 列表
-- `area_id`：区域 ID
+**Parameters**:
+
+- `devices`: List of device IDs
+- `area_id`: Area ID
 
 ### yeelight_pro.set_scene
 
-激活场景。
+Activate a scene.
 
-**参数**：
-- `scene_id`：场景 ID
+**Parameters**:
 
-## 高级配置
+- `scene_id`: Scene ID
 
-### 自定义扫描间隔
+## Advanced Configuration
 
-默认扫描间隔为 30 秒。可以在配置选项中修改。
+### Custom Scan Interval
 
-### 调试日志
+Default scan interval is 30 seconds. Can be modified in configuration options.
 
-在 `configuration.yaml` 中添加：
+### Debug Logging
+
+Add to `configuration.yaml`:
 
 ```yaml
 logger:
@@ -100,31 +104,31 @@ logger:
     custom_components.yeelight_pro: debug
 ```
 
-## 故障排除
+## Troubleshooting
 
-### 无法连接
+### Cannot Connect
 
-1. 检查网络连接
-2. 验证服务器地址和端口
-3. 检查 Access Token 是否有效
+1. Check network connection
+2. Verify server address and port
+3. Check if Access Token is valid
 
-### 设备不显示
+### Devices Not Showing
 
-1. 检查设备是否在线
-2. 检查设备是否在选定的家庭中
-3. 查看日志获取详细错误信息
+1. Check if devices are online
+2. Check if devices are in the selected house
+3. Check logs for detailed error information
 
-### 控制失败
+### Control Failed
 
-1. 检查设备是否在线
-2. 检查是否有权限控制该设备
-3. 查看日志获取详细错误信息
+1. Check if devices are online
+2. Check if you have permission to control the device
+3. Check logs for detailed error information
 
-## 支持
+## Support
 
-- [GitHub Issues](https://github.com/yeelight/ha_yeelight_pro/issues)
-- [文档](https://github.com/yeelight/ha_yeelight_pro/blob/main/README.md)
+- [GitHub Issues](https://github.com/Yeelight/ha_yeelight_pro/issues)
+- [Documentation](https://github.com/Yeelight/ha_yeelight_pro)
 
-## 许可证
+## License
 
 MIT License
