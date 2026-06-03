@@ -19,14 +19,47 @@ assign_areas:
       selector:
         area:
 
-set_scene:
-  name: 激活场景
-  description: 激活指定的场景
+auto_assign_areas:
+  name: 自动分配区域
+  description: 根据设备名称中的房间关键词自动分配区域
   fields:
-    scene_id:
-      name: 场景 ID
-      description: 要激活的场景 ID
-      required: true
-      example: "scene_movie_mode"
+    gateway_id:
+      name: 网关 ID
+      description: 限定指定网关下的设备（可选，不填则处理所有 Yeelight Pro 设备）
+      required: false
+      example: "gateway_01"
       selector:
         text:
+
+debug_emit_event:
+  name: 调试事件发射
+  description: 向 Home Assistant 事件总线发射调试 Yeelight Pro 设备事件（仅用于开发调试）
+  fields:
+    source_device_id:
+      name: 源设备 ID
+      description: 发射事件的源设备标识
+      required: true
+      example: 12345
+      selector:
+        text:
+    component_id:
+      name: 组件 ID
+      description: 事件关联的组件标识
+      required: true
+      example: "light"
+      selector:
+        text:
+    event_type:
+      name: 事件类型
+      description: 自定义事件类型名称
+      required: true
+      example: "button_pressed"
+      selector:
+        text:
+    event_attributes:
+      name: 事件属性
+      description: 附加事件属性（可选 JSON 对象）
+      required: false
+      example: '{"key": "value"}'
+      selector:
+        object:

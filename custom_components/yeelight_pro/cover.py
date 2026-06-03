@@ -5,11 +5,13 @@ from typing import Any
 from homeassistant.components.cover import CoverEntity, CoverEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
+from .core.exceptions import YeelightProError
 from .projector.cover import HACoverProjection, project_cover
 
 _LOGGER = logging.getLogger(__name__)
@@ -131,22 +133,31 @@ class YeelightProCover(CoordinatorEntity, CoverEntity):
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
-        success = await self.coordinator.async_control_device(self._device_id, {"tp": 100})
-        if not success:
-            _LOGGER.error("Failed to open cover %s", self._device_id)
+        try:
+            await self.coordinator.async_control_device(self._device_id, {"tp": 100})
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"打开窗帘失败: 设备 {self._device_id}: {err}"
+            ) from err
 
     async def async_close_cover(self, **kwargs: Any) -> None:
         """Close the cover."""
-        success = await self.coordinator.async_control_device(self._device_id, {"tp": 0})
-        if not success:
-            _LOGGER.error("Failed to close cover %s", self._device_id)
+        try:
+            await self.coordinator.async_control_device(self._device_id, {"tp": 0})
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"关闭窗帘失败: 设备 {self._device_id}: {err}"
+            ) from err
 
     async def async_set_cover_position(self, **kwargs: Any) -> None:
         """Move the cover to a specific position."""
         position = kwargs.get("position", 0)
-        success = await self.coordinator.async_control_device(
-            self._device_id,
-            {"tp": max(0, min(100, int(position)))},
-        )
-        if not success:
-            _LOGGER.error("Failed to set cover %s position to %s", self._device_id, position)
+        try:
+            await self.coordinator.async_control_device(
+                self._device_id,
+                {"tp": max(0, min(100, int(position)))},
+            )
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"设置窗帘位置失败: 设备 {self._device_id}, 位置 {position}: {err}"
+            ) from err

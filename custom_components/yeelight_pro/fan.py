@@ -11,12 +11,14 @@ from homeassistant.components.fan import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util.percentage import percentage_to_ranged_value
 
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
+from .core.exceptions import YeelightProError
 from .projector.fan import HAFanProjection, NumericRange, project_fans
 
 _LOGGER = logging.getLogger(__name__)
@@ -181,8 +183,9 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
         """开启风扇。"""
         projection = self._projection
         if projection is None:
-            _LOGGER.error("Failed to resolve fan projection for %s", self._component_id)
-            return
+            raise HomeAssistantError(
+                f"无法解析风扇投影: {self._component_id}"
+            )
 
         params: dict[str, Any] = {}
         if projection.power_key is not None:
@@ -202,16 +205,20 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
         if not params:
             return
 
-        success = await self.coordinator.async_control_device(self._device_id, params)
-        if not success:
-            _LOGGER.error("Failed to turn on fan %s", self._component_id)
+        try:
+            await self.coordinator.async_control_device(self._device_id, params)
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"开启风扇失败: {self._component_id}: {err}"
+            ) from err
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """关闭风扇。"""
         projection = self._projection
         if projection is None:
-            _LOGGER.error("Failed to resolve fan projection for %s", self._component_id)
-            return
+            raise HomeAssistantError(
+                f"无法解析风扇投影: {self._component_id}"
+            )
 
         params: dict[str, Any] = {}
         if projection.power_key is not None:
@@ -222,16 +229,20 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
         if not params:
             return
 
-        success = await self.coordinator.async_control_device(self._device_id, params)
-        if not success:
-            _LOGGER.error("Failed to turn off fan %s", self._component_id)
+        try:
+            await self.coordinator.async_control_device(self._device_id, params)
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"关闭风扇失败: {self._component_id}: {err}"
+            ) from err
 
     async def async_set_percentage(self, percentage: int) -> None:
         """设置风扇转速百分比。"""
         projection = self._projection
         if projection is None or projection.speed_key is None:
-            _LOGGER.error("Failed to resolve fan speed projection for %s", self._component_id)
-            return
+            raise HomeAssistantError(
+                f"无法解析风扇转速投影: {self._component_id}"
+            )
 
         params: dict[str, Any]
         if percentage <= 0:
@@ -250,31 +261,39 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
             if projection.power_key is not None:
                 params[projection.power_key] = True
 
-        success = await self.coordinator.async_control_device(self._device_id, params)
-        if not success:
-            _LOGGER.error("Failed to set fan %s percentage", self._component_id)
+        try:
+            await self.coordinator.async_control_device(self._device_id, params)
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"设置风扇转速失败: {self._component_id}: {err}"
+            ) from err
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """设置风扇预设模式。"""
         projection = self._projection
         if projection is None or projection.mode_key is None:
-            _LOGGER.error("Failed to resolve fan mode projection for %s", self._component_id)
-            return
+            raise HomeAssistantError(
+                f"无法解析风扇模式投影: {self._component_id}"
+            )
 
         params: dict[str, Any] = {projection.mode_key: preset_mode}
         if projection.power_key is not None:
             params[projection.power_key] = True
 
-        success = await self.coordinator.async_control_device(self._device_id, params)
-        if not success:
-            _LOGGER.error("Failed to set fan %s preset mode", self._component_id)
+        try:
+            await self.coordinator.async_control_device(self._device_id, params)
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"设置风扇模式失败: {self._component_id}: {err}"
+            ) from err
 
     async def async_set_direction(self, direction: str) -> None:
         """设置风扇方向。"""
         projection = self._projection
         if projection is None or projection.direction_key is None:
-            _LOGGER.error("Failed to resolve fan direction projection for %s", self._component_id)
-            return
+            raise HomeAssistantError(
+                f"无法解析风扇方向投影: {self._component_id}"
+            )
 
         raw_direction = projection.direction_values.get(direction)
         if raw_direction is None:
@@ -284,12 +303,15 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
                 else DIRECTION_REVERSE
             )
 
-        success = await self.coordinator.async_control_device(
-            self._device_id,
-            {projection.direction_key: raw_direction},
-        )
-        if not success:
-            _LOGGER.error("Failed to set fan %s direction", self._component_id)
+        try:
+            await self.coordinator.async_control_device(
+                self._device_id,
+                {projection.direction_key: raw_direction},
+            )
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"设置风扇方向失败: {self._component_id}: {err}"
+            ) from err
 
     def _percentage_to_source(
         self,

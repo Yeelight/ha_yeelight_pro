@@ -10,11 +10,13 @@ from typing import Any
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
+from .core.exceptions import YeelightProError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,32 +37,11 @@ async def async_setup_entry(
     """设置 Yeelight Pro 选择器平台."""
     coordinator: YeelightProCoordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
 
-    entities: list[SelectEntity] = []
-
-    # 获取房间列表
-    try:
-        rooms = await coordinator.client.get_rooms(coordinator.house_id)
-    except Exception as err:
-        _LOGGER.warning("获取房间列表失败: %s", err)
-        rooms = []
-
-    # 获取灯组列表
-    try:
-        groups = await coordinator.client.get_groups(coordinator.house_id)
-    except Exception as err:
-        _LOGGER.warning("获取灯组列表失败: %s", err)
-        groups = []
-
-    # 获取场景列表
-    try:
-        scenes = await coordinator.client.get_scenes(coordinator.house_id)
-    except Exception as err:
-        _LOGGER.warning("获取场景列表失败: %s", err)
-        scenes = []
-
-    entities.append(YeelightProRoomSelect(coordinator, rooms))
-    entities.append(YeelightProGroupSelect(coordinator, groups))
-    entities.append(YeelightProSceneSelect(coordinator, scenes))
+    entities: list[SelectEntity] = [
+        YeelightProRoomSelect(coordinator, coordinator.rooms),
+        YeelightProGroupSelect(coordinator, coordinator.groups),
+        YeelightProSceneSelect(coordinator, coordinator.scenes),
+    ]
 
     async_add_entities(entities)
     _LOGGER.info("已添加 %s 个 select 实体", len(entities))
@@ -244,13 +225,14 @@ class YeelightProSceneSelect(CoordinatorEntity, SelectEntity):
             return
         scene_id = self._name_to_id.get(option)
         if scene_id is None:
-            _LOGGER.error("未知场景选项: %s", option)
-            return
+            raise HomeAssistantError(f"未知场景选项: {option}")
 
-        success = await self.coordinator.async_execute_scene(scene_id)
-        if success:
+        try:
+            await self.coordinator.async_execute_scene(scene_id)
             self._last_executed = option
             self.async_write_ha_state()
             _LOGGER.debug("已执行场景: %s (ID: %s)", option, scene_id)
-        else:
-            _LOGGER.error("执行场景失败: %s (ID: %s)", option, scene_id)
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"执行场景失败: {option} (ID: {scene_id}): {err}"
+            ) from err

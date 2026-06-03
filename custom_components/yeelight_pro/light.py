@@ -12,11 +12,13 @@ from homeassistant.components.light import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
+from .core.exceptions import YeelightProError
 from .projector.light import (
     HALightProjection,
     LIGHT_COLOR_MODE_HINT_KEY,
@@ -199,17 +201,23 @@ class YeelightProLight(CoordinatorEntity, LightEntity):
             color = (r << 16) | (g << 8) | b
             params["c"] = color
 
-        success = await self.coordinator.async_control_device(self._device_id, params)
-        if not success:
-            _LOGGER.error("Failed to turn on light %s", self._device_id)
+        try:
+            await self.coordinator.async_control_device(self._device_id, params)
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"开启灯光失败: 设备 {self._device_id}: {err}"
+            ) from err
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """关闭灯光。"""
-        success = await self.coordinator.async_control_device(
-            self._device_id, {"p": False}
-        )
-        if not success:
-            _LOGGER.error("Failed to turn off light %s", self._device_id)
+        try:
+            await self.coordinator.async_control_device(
+                self._device_id, {"p": False}
+            )
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"关闭灯光失败: 设备 {self._device_id}: {err}"
+            ) from err
 
     def _brightness_from_ha(
         self, brightness: int, brightness_range: NumericRange | None

@@ -14,7 +14,7 @@ CONF_ACCESS_TOKEN = "access_token"
 CONF_HOUSE_ID = "house_id"
 
 # 默认域名
-DEFAULT_CLOUD_DOMAIN = "api.yeelight.com"
+DEFAULT_CLOUD_DOMAIN = "https://api.yeelight.com/apis/iot"
 DEFAULT_PRIVATE_DOMAIN = "192.168.1.100:8080"
 
 # 默认配置
@@ -23,7 +23,7 @@ DEFAULT_REQUEST_TIMEOUT = 10  # 秒
 DEFAULT_THING_MANAGE_PAGE_SIZE = 200
 DEFAULT_PRODUCT_SCHEMA_BATCH_SIZE = 50
 
-# 支持的平台
+# 支持的平台（text 不包含：API 不支持写入，实体仅作只读展示时按需从其他平台挂载）
 PLATFORMS = [
     "binary_sensor",
     "button",
@@ -38,7 +38,6 @@ PLATFORMS = [
     "select",
     "sensor",
     "switch",
-    "text",
     "vacuum",
 ]
 

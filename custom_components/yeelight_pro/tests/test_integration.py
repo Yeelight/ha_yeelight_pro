@@ -36,7 +36,8 @@ def mock_config_entry():
 def mock_client():
     """创建模拟的客户端."""
     client = AsyncMock(spec=YeelightProClient)
-    client.validate_connection.return_value = True
+    client.check_health.return_value = True
+    client.validate_auth.return_value = True
     client.get_houses.return_value = [
         {"id": 12345, "name": "测试家庭"},
     ]
@@ -60,17 +61,27 @@ def mock_coordinator(hass: HomeAssistant, mock_client):
     coordinator.hass = hass
     coordinator.client = mock_client
     coordinator.data = {}
+    coordinator.scenes = []
+    coordinator.automations = []
+    coordinator.rooms = []
+    coordinator.groups = []
+    coordinator.house_id = 12345
     coordinator.async_config_entry_first_refresh = AsyncMock()
-    coordinator.async_execute_scene = AsyncMock(return_value=True)
-    coordinator.async_trigger_automation = AsyncMock(return_value=True)
-    coordinator.async_control_device = AsyncMock(return_value=True)
-    coordinator.async_toggle_device = AsyncMock(return_value=True)
+    coordinator.async_execute_scene = AsyncMock()
+    coordinator.async_trigger_automation = AsyncMock()
+    coordinator.async_control_device = AsyncMock()
+    coordinator.async_toggle_device = AsyncMock()
     return coordinator
 
 
 @pytest.mark.asyncio
 async def test_setup_entry(hass: HomeAssistant, mock_config_entry, mock_client):
     """测试集成设置."""
+    # 确保 hass.data[DOMAIN] 已初始化（async_setup 的职责）
+    hass.data.setdefault(DOMAIN, {})
+    # 模拟 config_entry 的 domain（平台转发需要）
+    mock_config_entry.domain = DOMAIN
+
     # 模拟客户端创建
     with patch(
         "custom_components.yeelight_pro.YeelightProClient",
@@ -80,24 +91,34 @@ async def test_setup_entry(hass: HomeAssistant, mock_config_entry, mock_client):
         with patch(
             "custom_components.yeelight_pro.YeelightProCoordinator",
         ) as mock_coordinator_class:
-            mock_coordinator = AsyncMock()
+            mock_coordinator = MagicMock()
             mock_coordinator.async_config_entry_first_refresh = AsyncMock()
+            mock_coordinator.data = {}
+            mock_coordinator.get_gateway_devices = MagicMock(return_value={})
+            mock_coordinator.topology_generation = 0
+            mock_coordinator.async_add_listener = MagicMock()
             mock_coordinator_class.return_value = mock_coordinator
 
-            # 测试设置
-            from custom_components.yeelight_pro import async_setup_entry
+            # 模拟平台转发（避免真实加载平台模块）
+            with patch(
+                "homeassistant.config_entries.ConfigEntries.async_forward_entry_setups",
+                new_callable=AsyncMock,
+            ):
+                from custom_components.yeelight_pro import async_setup_entry
 
-            result = await async_setup_entry(hass, mock_config_entry)
-            assert result is True
+                result = await async_setup_entry(hass, mock_config_entry)
+                assert result is True
 
 
 @pytest.mark.asyncio
 async def test_unload_entry(hass: HomeAssistant, mock_config_entry, mock_coordinator):
     """测试集成卸载."""
     # 模拟 hass.data
+    client_mock = AsyncMock()
+    client_mock.disconnect = AsyncMock()
     hass.data[DOMAIN] = {
         mock_config_entry.entry_id: {
-            "client": mock_coordinator.client,
+            "client": client_mock,
             "coordinator": mock_coordinator,
         }
     }
@@ -106,7 +127,7 @@ async def test_unload_entry(hass: HomeAssistant, mock_config_entry, mock_coordin
     from custom_components.yeelight_pro import async_unload_entry
 
     with patch(
-        "custom_components.yeelight_pro.hass.config_entries.async_unload_platforms",
+        "homeassistant.config_entries.ConfigEntries.async_unload_platforms",
         return_value=True,
     ):
         result = await async_unload_entry(hass, mock_config_entry)
@@ -160,17 +181,20 @@ async def test_client_api(hass: HomeAssistant, mock_client):
 @pytest.mark.asyncio
 async def test_coordinator_services(hass: HomeAssistant, mock_coordinator):
     """测试协调器服务."""
-    # 测试场景执行
-    result = await mock_coordinator.async_execute_scene(scene_id="scene_1")
-    assert result is True
+    # 测试场景执行（现在返回 None，不检查返回值）
+    await mock_coordinator.async_execute_scene(scene_id="scene_1")
+    mock_coordinator.async_execute_scene.assert_called_once_with(scene_id="scene_1")
 
     # 测试自动化触发
-    result = await mock_coordinator.async_trigger_automation(automation_id="auto_1")
-    assert result is True
+    await mock_coordinator.async_trigger_automation(automation_id="auto_1")
+    mock_coordinator.async_trigger_automation.assert_called_once_with(automation_id="auto_1")
 
     # 测试设备控制
-    result = await mock_coordinator.async_control_device(
+    await mock_coordinator.async_control_device(
         device_id=12345,
         params={"power": "on"},
     )
-    assert result is True
+    mock_coordinator.async_control_device.assert_called_once_with(
+        device_id=12345,
+        params={"power": "on"},
+    )

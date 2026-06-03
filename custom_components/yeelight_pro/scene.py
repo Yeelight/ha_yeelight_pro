@@ -7,10 +7,12 @@ from typing import Any
 from homeassistant.components.scene import Scene
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
+from .core.exceptions import YeelightProError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,12 +28,7 @@ async def async_setup_entry(
     """设置 Yeelight Pro 场景平台."""
     coordinator: YeelightProCoordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
 
-    try:
-        scenes = await coordinator.client.get_scenes(coordinator.house_id)
-    except Exception as err:
-        _LOGGER.warning("获取场景列表失败: %s", err)
-        return
-
+    scenes = coordinator.scenes
     if not scenes:
         _LOGGER.debug("家庭 %s 下无场景数据", coordinator.house_id)
         return
@@ -83,6 +80,9 @@ class YeelightProScene(Scene):
 
     async def async_activate(self, **kwargs: Any) -> None:
         """激活场景."""
-        success = await self._coordinator.async_execute_scene(self._scene_id)
-        if not success:
-            _LOGGER.error("激活场景失败: %s (%s)", self._attr_name, self._scene_id)
+        try:
+            await self._coordinator.async_execute_scene(self._scene_id)
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"激活场景失败: {self._attr_name} ({self._scene_id}): {err}"
+            ) from err

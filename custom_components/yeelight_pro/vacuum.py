@@ -8,40 +8,36 @@ import logging
 from typing import Any
 
 from homeassistant.components.vacuum import (
-    STATE_CLEANING,
-    STATE_DOCKED,
-    STATE_ERROR,
-    STATE_IDLE,
-    STATE_PAUSED,
-    STATE_RETURNING,
     StateVacuumEntity,
     VacuumEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
+from .core.exceptions import YeelightProError
 from .projector.vacuum import HAVacuumProjection, project_vacuum
 
 _LOGGER = logging.getLogger(__name__)
 
 # HA 状态字符串 → 内部状态映射
 _STATE_MAP: dict[str, str] = {
-    "cleaning": STATE_CLEANING,
-    "charging": STATE_DOCKED,
-    "charged": STATE_DOCKED,
-    "docked": STATE_DOCKED,
-    "idle": STATE_IDLE,
-    "standby": STATE_IDLE,
-    "returning": STATE_RETURNING,
-    "paused": STATE_PAUSED,
-    "error": STATE_ERROR,
-    "fault": STATE_ERROR,
-    "manual": STATE_IDLE,
-    "sleeping": STATE_IDLE,
+    "cleaning": "cleaning",
+    "charging": "docked",
+    "charged": "docked",
+    "docked": "docked",
+    "idle": "idle",
+    "standby": "idle",
+    "returning": "returning",
+    "paused": "paused",
+    "error": "error",
+    "fault": "error",
+    "manual": "idle",
+    "sleeping": "idle",
 }
 
 
@@ -145,7 +141,7 @@ class YeelightProVacuum(CoordinatorEntity, StateVacuumEntity):
         if projection is None:
             return None
         raw_status = projection.status
-        return _STATE_MAP.get(raw_status, STATE_IDLE)
+        return _STATE_MAP.get(raw_status, "idle")
 
     @property
     def fan_speed(self) -> str | None:
@@ -167,47 +163,63 @@ class YeelightProVacuum(CoordinatorEntity, StateVacuumEntity):
 
     async def async_start(self) -> None:
         """开始清扫."""
-        success = await self.coordinator.async_control_device(
-            self._device_id, {"action": "start"}
-        )
-        if not success:
-            _LOGGER.error("启动清扫失败: 设备 %s", self._device_id)
+        try:
+            await self.coordinator.async_control_device(
+                self._device_id, {"action": "start"}
+            )
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"启动清扫失败: 设备 {self._device_id}: {err}"
+            ) from err
 
     async def async_pause(self) -> None:
         """暂停清扫."""
-        success = await self.coordinator.async_control_device(
-            self._device_id, {"action": "pause"}
-        )
-        if not success:
-            _LOGGER.error("暂停清扫失败: 设备 %s", self._device_id)
+        try:
+            await self.coordinator.async_control_device(
+                self._device_id, {"action": "pause"}
+            )
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"暂停清扫失败: 设备 {self._device_id}: {err}"
+            ) from err
 
     async def async_stop(self, **kwargs: Any) -> None:
         """停止清扫."""
-        success = await self.coordinator.async_control_device(
-            self._device_id, {"action": "stop"}
-        )
-        if not success:
-            _LOGGER.error("停止清扫失败: 设备 %s", self._device_id)
+        try:
+            await self.coordinator.async_control_device(
+                self._device_id, {"action": "stop"}
+            )
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"停止清扫失败: 设备 {self._device_id}: {err}"
+            ) from err
 
     async def async_return_to_base(self, **kwargs: Any) -> None:
         """返回充电座."""
-        success = await self.coordinator.async_control_device(
-            self._device_id, {"action": "return_to_base"}
-        )
-        if not success:
-            _LOGGER.error("返回充电座失败: 设备 %s", self._device_id)
+        try:
+            await self.coordinator.async_control_device(
+                self._device_id, {"action": "return_to_base"}
+            )
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"返回充电座失败: 设备 {self._device_id}: {err}"
+            ) from err
 
     async def async_set_fan_speed(self, fan_speed: str, **kwargs: Any) -> None:
         """设置吸力档位."""
         if fan_speed not in self.fan_speed_list:
-            _LOGGER.error("无效的吸力档位: %s，可选项: %s", fan_speed, self.fan_speed_list)
-            return
+            raise HomeAssistantError(
+                f"无效的吸力档位: {fan_speed}，可选项: {self.fan_speed_list}"
+            )
         speed_index = self.fan_speed_list.index(fan_speed)
-        success = await self.coordinator.async_control_device(
-            self._device_id, {"fan_speed": speed_index}
-        )
-        if not success:
-            _LOGGER.error("设置吸力档位失败: 设备 %s", self._device_id)
+        try:
+            await self.coordinator.async_control_device(
+                self._device_id, {"fan_speed": speed_index}
+            )
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"设置吸力档位失败: 设备 {self._device_id}: {err}"
+            ) from err
 
     @staticmethod
     def _default_features() -> int:

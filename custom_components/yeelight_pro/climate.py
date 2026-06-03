@@ -8,11 +8,13 @@ from homeassistant.components.climate import ClimateEntity, HVACMode
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
+from .core.exceptions import YeelightProError
 from .projector.climate import HAClimateProjection, project_climate
 
 _LOGGER = logging.getLogger(__name__)
@@ -133,18 +135,24 @@ class YeelightProClimate(CoordinatorEntity, ClimateEntity):
         temperature = kwargs.get("temperature")
         if temperature is None:
             return
-        success = await self.coordinator.async_control_device(
-            self._device_id,
-            {"actt": float(temperature)},
-        )
-        if not success:
-            _LOGGER.error("Failed to set climate %s target temperature", self._device_id)
+        try:
+            await self.coordinator.async_control_device(
+                self._device_id,
+                {"actt": float(temperature)},
+            )
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"设置空调温度失败: 设备 {self._device_id}: {err}"
+            ) from err
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """设置 HVAC 模式。"""
-        success = await self.coordinator.async_control_device(
-            self._device_id,
-            {"aco": hvac_mode != HVACMode.OFF},
-        )
-        if not success:
-            _LOGGER.error("Failed to set climate %s hvac_mode", self._device_id)
+        try:
+            await self.coordinator.async_control_device(
+                self._device_id,
+                {"aco": hvac_mode != HVACMode.OFF},
+            )
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"设置空调模式失败: 设备 {self._device_id}: {err}"
+            ) from err

@@ -10,10 +10,12 @@ from typing import Any
 from homeassistant.components.number import NumberEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
+from .core.exceptions import YeelightProError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,15 +38,8 @@ async def async_setup_entry(
     coordinator: YeelightProCoordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
     entities: list[NumberEntity] = []
 
-    # 获取灯组列表
-    try:
-        groups = await coordinator.client.get_groups(coordinator.house_id)
-    except Exception as err:
-        groups = []
-        _LOGGER.warning("获取灯组列表失败: %s", err)
-
-    # 为每个灯组创建亮度和色温控制
-    for group in groups:
+    # 从 coordinator 缓存数据创建灯组控制实体
+    for group in coordinator.groups:
         group_id = group.get("id")
         if not group_id:
             continue
@@ -97,16 +92,18 @@ class YeelightProGroupBrightness(NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         """设置灯组亮度."""
         brightness = int(value)
-        success = await self._coordinator.client.control_group(
-            self._group_id,
-            {"brightness": brightness},
-        )
-        if success:
+        try:
+            await self._coordinator.async_control_group(
+                self._group_id,
+                {"brightness": brightness},
+            )
             self._attr_native_value = value
             self.async_write_ha_state()
             _LOGGER.debug("灯组 %s 亮度已设置为 %s%%", self._group_id, brightness)
-        else:
-            _LOGGER.error("设置灯组 %s 亮度失败: %s", self._group_id, brightness)
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"设置灯组 {self._group_id} 亮度失败: {brightness}%: {err}"
+            ) from err
 
 
 class YeelightProGroupColorTemp(NumberEntity):
@@ -145,17 +142,17 @@ class YeelightProGroupColorTemp(NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         """设置灯组色温."""
         color_temp = int(value)
-        success = await self._coordinator.client.control_group(
-            self._group_id,
-            {"color_temperature": color_temp},
-        )
-        if success:
+        try:
+            await self._coordinator.async_control_group(
+                self._group_id,
+                {"color_temperature": color_temp},
+            )
             self._attr_native_value = value
             self.async_write_ha_state()
             _LOGGER.debug(
                 "灯组 %s 色温已设置为 %sK", self._group_id, color_temp
             )
-        else:
-            _LOGGER.error(
-                "设置灯组 %s 色温失败: %sK", self._group_id, color_temp
-            )
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"设置灯组 {self._group_id} 色温失败: {color_temp}K: {err}"
+            ) from err

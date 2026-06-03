@@ -6,11 +6,10 @@ Yeelight Pro integration for Home Assistant. Supports both cloud and private dep
 
 ## Features
 
-- ✅ Cloud and private deployment support
-- ✅ Automatic device discovery and state synchronization
-- ✅ Real-time event updates via SSE
-- ✅ 14 entity platforms supported
-- ✅ Complete device control capabilities
+- Cloud and private deployment support
+- Automatic device discovery and state synchronization (30s polling)
+- 14 entity platforms supported
+- Complete device control capabilities
 
 ## Installation
 
@@ -66,7 +65,6 @@ Yeelight Pro integration for Home Assistant. Supports both cloud and private dep
 | Button | button | Button operations |
 | Number | number | Number settings |
 | Select | select | Option selection |
-| Text | text | Text input |
 
 ## Services
 
@@ -79,13 +77,24 @@ Batch assign areas to devices.
 - `devices`: List of device IDs
 - `area_id`: Area ID
 
-### yeelight_pro.set_scene
+### yeelight_pro.auto_assign_areas
 
-Activate a scene.
+Automatically assign areas to devices based on room keywords in device names.
 
 **Parameters**:
 
-- `scene_id`: Scene ID
+- `gateway_id` (optional): Limit to devices under a specific gateway
+
+### yeelight_pro.debug_emit_event
+
+Emit a debug Yeelight Pro device event to the Home Assistant event bus (development only).
+
+**Parameters**:
+
+- `source_device_id`: Source device identifier
+- `component_id`: Component identifier
+- `event_type`: Custom event type name
+- `event_attributes` (optional): Additional event attributes
 
 ## Advanced Configuration
 

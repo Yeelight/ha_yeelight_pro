@@ -23,6 +23,14 @@ from .projector.switch import project_switches
 
 _LOGGER = logging.getLogger(__name__)
 
+# 非设备实体的 unique_id 前缀，这些实体不基于 coordinator.data 中的设备
+_NON_DEVICE_PREFIXES = (
+    "yeelight_pro_scene_",
+    "yeelight_pro_automation_",
+    "yeelight_pro_group_",
+    "yeelight_pro_",
+)
+
 
 def _iter_projected_unique_ids(device_payload: Mapping[str, Any]) -> set[str]:
     """Return all projected entity unique IDs for a single runtime device payload."""
@@ -67,8 +75,36 @@ def collect_active_entity_unique_ids(
 ) -> set[str]:
     """Collect the active projected entity unique IDs for the current topology."""
     unique_ids: set[str] = set()
+
+    # 设备实体（基于 coordinator.data）
     for device_payload in coordinator.data.values():
         unique_ids.update(_iter_projected_unique_ids(device_payload))
+
+    # 非设备实体：scene、automation、group 等
+    # 这些实体的 unique_id 以特定前缀开头，不应被当作 stale 删除
+    for scene in coordinator.scenes:
+        scene_id = scene.get("id") or scene.get("sceneId")
+        if scene_id:
+            unique_ids.add(f"yeelight_pro_scene_{scene_id}")
+
+    for automation in coordinator.automations:
+        auto_id = automation.get("id") or automation.get("automationId")
+        if auto_id:
+            unique_ids.add(f"yeelight_pro_automation_{auto_id}")
+
+    for group in coordinator.groups:
+        group_id = group.get("id") or group.get("groupId")
+        if group_id:
+            unique_ids.add(f"yeelight_pro_group_{group_id}_brightness")
+            unique_ids.add(f"yeelight_pro_group_{group_id}_color_temp")
+
+    # select 实体（基于 house_id）
+    house_id = coordinator.house_id
+    if house_id:
+        unique_ids.add(f"yeelight_pro_{house_id}_select_room")
+        unique_ids.add(f"yeelight_pro_{house_id}_select_group")
+        unique_ids.add(f"yeelight_pro_{house_id}_select_scene")
+
     return unique_ids
 
 

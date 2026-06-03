@@ -7,11 +7,13 @@ from typing import Any
 from homeassistant.components.lock import LockEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
+from .core.exceptions import YeelightProError
 from .projector.lock import HALockProjection, project_lock
 
 _LOGGER = logging.getLogger(__name__)
@@ -98,20 +100,26 @@ class YeelightProLock(CoordinatorEntity, LockEntity):
         """锁定门锁。"""
         projection = self._projection
         control_key = projection.control_key if projection is not None else "lock"
-        success = await self.coordinator.async_control_device(
-            self._device_id,
-            {control_key: True},
-        )
-        if not success:
-            _LOGGER.error("Failed to lock %s", self._device_id)
+        try:
+            await self.coordinator.async_control_device(
+                self._device_id,
+                {control_key: True},
+            )
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"锁定门锁失败: 设备 {self._device_id}: {err}"
+            ) from err
 
     async def async_unlock(self, **kwargs: Any) -> None:
         """解锁门锁。"""
         projection = self._projection
         control_key = projection.control_key if projection is not None else "lock"
-        success = await self.coordinator.async_control_device(
-            self._device_id,
-            {control_key: False},
-        )
-        if not success:
-            _LOGGER.error("Failed to unlock %s", self._device_id)
+        try:
+            await self.coordinator.async_control_device(
+                self._device_id,
+                {control_key: False},
+            )
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"解锁门锁失败: 设备 {self._device_id}: {err}"
+            ) from err

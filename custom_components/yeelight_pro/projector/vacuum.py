@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping
 
+from homeassistant.components.vacuum import VacuumEntityFeature
+
 from ..canonical.models import ComponentInstanceModel, HADeviceInstanceModel
 from ..utils import to_bool, to_int, to_str, to_category, matches_category
 from .device import project_device_info
@@ -57,7 +59,7 @@ class HAVacuumProjection:
     status: str
     fan_speed: int | None
     fan_speed_list: list[str]
-    supported_features: int
+    supported_features: VacuumEntityFeature
     device_info: dict[str, Any] | None
     icon: str | None = None
 
@@ -238,10 +240,16 @@ def _map_status(raw_status: str | None, is_charging: bool | None) -> str:
     return _STATUS_MAP.get(raw_status.lower().strip(), "idle")
 
 
-def _default_supported_features() -> int:
+def _default_supported_features() -> VacuumEntityFeature:
     """返回默认支持的功能标志位."""
-    # START=1, STOP=2, RETURN_HOME=4, FAN_SPEED=8, BATTERY=16, STATUS=64
-    return 1 | 2 | 4 | 8 | 16 | 64
+    return (
+        VacuumEntityFeature.START
+        | VacuumEntityFeature.STOP
+        | VacuumEntityFeature.RETURN_HOME
+        | VacuumEntityFeature.FAN_SPEED
+        | VacuumEntityFeature.BATTERY
+        | VacuumEntityFeature.STATUS
+    )
 
 
 def _clamp_battery(value: int | None) -> int | None:

@@ -84,7 +84,7 @@ class YeelightProConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     access_token=self._access_token,
                     session=session,
                 )
-                await client.validate_connection()
+                await client.validate_auth()
 
                 # 获取家庭列表
                 return await self.async_step_cloud_houses()
@@ -158,7 +158,7 @@ class YeelightProConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     access_token=self._access_token,
                     session=session,
                 )
-                await client.validate_connection()
+                await client.validate_auth()
 
                 return await self._create_entry()
 
@@ -206,5 +206,62 @@ class YeelightProConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 CONF_PRIVATE_DOMAIN: self._domain if self._connection_mode == CONNECTION_MODE_PRIVATE else "",
                 CONF_ACCESS_TOKEN: self._access_token,
                 CONF_HOUSE_ID: self._house_id,
+            },
+        )
+
+    async def async_step_reauth(
+        self,
+        entry_data: dict[str, Any],
+    ) -> FlowResult:
+        """触发 reauth 流程，保存原始配置数据."""
+        self._reauth_entry_data = entry_data
+        self._connection_mode = entry_data.get(CONF_CONNECTION_MODE, CONNECTION_MODE_CLOUD)
+        self._domain = entry_data.get(
+            CONF_CLOUD_DOMAIN if self._connection_mode == CONNECTION_MODE_CLOUD else CONF_PRIVATE_DOMAIN,
+            "",
+        )
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> FlowResult:
+        """reauth 确认步骤：用户输入新的 Access Token."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            new_token = user_input[CONF_ACCESS_TOKEN]
+            try:
+                session = async_get_clientsession(self.hass)
+                client = YeelightProClient(
+                    domain=self._domain,
+                    access_token=new_token,
+                    session=session,
+                )
+                await client.validate_auth()
+            except AuthenticationError:
+                errors["base"] = "invalid_auth"
+            except ConnectionError:
+                errors["base"] = "cannot_connect"
+            except Exception:
+                _LOGGER.exception("Unexpected error during reauth")
+                errors["base"] = "unknown"
+            else:
+                # 更新配置条目的 token
+                entry = self._get_reauth_entry()
+                new_data = {**entry.data, CONF_ACCESS_TOKEN: new_token}
+                return self.async_update_reload_and_abort(
+                    entry,
+                    data=new_data,
+                )
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=vol.Schema({
+                vol.Required(CONF_ACCESS_TOKEN): str,
+            }),
+            errors=errors,
+            description_placeholders={
+                "domain": self._domain,
             },
         )

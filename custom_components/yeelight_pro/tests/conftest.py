@@ -44,12 +44,16 @@ def mock_coordinator():
     coordinator = MagicMock()
     coordinator.data = {}
     coordinator.client = MagicMock()
-    coordinator.client.get_scenes = AsyncMock(return_value=[])
-    coordinator.client.get_automations = AsyncMock(return_value=[])
-    coordinator.client.get_groups = AsyncMock(return_value=[])
-    coordinator.client.get_rooms = AsyncMock(return_value=[])
-    coordinator.async_execute_scene = AsyncMock(return_value=True)
-    coordinator.async_trigger_automation = AsyncMock(return_value=True)
+    coordinator.house_id = 12345
+    # 辅助数据直接挂载在 coordinator 上
+    coordinator.scenes = []
+    coordinator.automations = []
+    coordinator.groups = []
+    coordinator.rooms = []
+    coordinator.async_execute_scene = AsyncMock()
+    coordinator.async_trigger_automation = AsyncMock()
+    coordinator.async_control_device = AsyncMock()
+    coordinator.async_control_group = AsyncMock()
     return coordinator
 
 

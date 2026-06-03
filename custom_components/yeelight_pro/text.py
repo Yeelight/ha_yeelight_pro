@@ -52,16 +52,12 @@ async def async_setup_entry(
                 YeelightProDeviceLabel(coordinator, device_id, device_name)
             )
 
-    # 为自动化创建只读名称实体
-    try:
-        automations = await coordinator.client.get_automations(coordinator.house_id)
-        for automation in automations:
-            if automation.get("id"):
-                entities.append(
-                    YeelightProAutomationName(coordinator, automation)
-                )
-    except Exception as err:
-        _LOGGER.warning("获取自动化列表失败: %s", err)
+    # 为自动化创建只读名称实体（从 coordinator 缓存数据读取）
+    for automation in coordinator.automations:
+        if automation.get("id"):
+            entities.append(
+                YeelightProAutomationName(coordinator, automation)
+            )
 
     if entities:
         async_add_entities(entities)

@@ -36,7 +36,7 @@ from .const import (
 )
 from .core.client import YeelightProClient
 from .core.coordinator import YeelightProCoordinator
-from .core.exceptions import AuthenticationError, ConnectionError
+from .core.exceptions import ConnectionError
 from .entity_lifecycle import async_reconcile_entity_registry
 
 _LOGGER = logging.getLogger(__name__)
@@ -285,12 +285,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         session=session,
     )
 
-    # 验证连接
+    # 验证服务可达性（仅检查连通性，token 在 config_flow 已验证）
     try:
-        await client.validate_connection()
-    except AuthenticationError as err:
-        _LOGGER.error("Authentication failed: %s", err)
-        return False
+        await client.check_health()
     except ConnectionError as err:
         raise ConfigEntryNotReady(f"Connection failed: {err}") from err
 

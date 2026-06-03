@@ -7,11 +7,13 @@ from typing import Any
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
+from .core.exceptions import YeelightProError
 from .projector.switch import HASwitchProjection, project_switches
 
 _LOGGER = logging.getLogger(__name__)
@@ -123,24 +125,28 @@ class YeelightProSwitch(CoordinatorEntity, SwitchEntity):
         """开启开关."""
         projection = self._projection
         if projection is None:
-            _LOGGER.error("无法解析 switch 投影: %s", self._component_id)
-            return
-        success = await self.coordinator.async_control_device(
-            self._device_id,
-            {projection.control_key: True},
-        )
-        if not success:
-            _LOGGER.error("开启 switch 失败: %s", self._component_id)
+            raise HomeAssistantError(f"无法解析 switch 投影: {self._component_id}")
+        try:
+            await self.coordinator.async_control_device(
+                self._device_id,
+                {projection.control_key: True},
+            )
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"开启 switch 失败: {self._component_id}: {err}"
+            ) from err
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """关闭开关."""
         projection = self._projection
         if projection is None:
-            _LOGGER.error("无法解析 switch 投影: %s", self._component_id)
-            return
-        success = await self.coordinator.async_control_device(
-            self._device_id,
-            {projection.control_key: False},
-        )
-        if not success:
-            _LOGGER.error("关闭 switch 失败: %s", self._component_id)
+            raise HomeAssistantError(f"无法解析 switch 投影: {self._component_id}")
+        try:
+            await self.coordinator.async_control_device(
+                self._device_id,
+                {projection.control_key: False},
+            )
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"关闭 switch 失败: {self._component_id}: {err}"
+            ) from err

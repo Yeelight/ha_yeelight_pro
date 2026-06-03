@@ -10,10 +10,12 @@ from typing import Any
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
+from .core.exceptions import YeelightProError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,25 +29,13 @@ async def async_setup_entry(
     coordinator: YeelightProCoordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
     buttons: list[ButtonEntity] = []
 
-    # 获取自动化列表并创建按钮
-    try:
-        automations = await coordinator.client.get_automations(coordinator.house_id)
-    except Exception as err:
-        automations = []
-        _LOGGER.warning("获取自动化列表失败: %s", err)
-
-    for automation in automations:
+    # 从 coordinator 缓存数据创建自动化按钮
+    for automation in coordinator.automations:
         if automation.get("id"):
             buttons.append(YeelightProAutomationButton(coordinator, automation))
 
-    # 获取场景列表并创建按钮
-    try:
-        scenes = await coordinator.client.get_scenes(coordinator.house_id)
-    except Exception as err:
-        scenes = []
-        _LOGGER.warning("获取场景列表失败: %s", err)
-
-    for scene in scenes:
+    # 从 coordinator 缓存数据创建场景按钮
+    for scene in coordinator.scenes:
         if scene.get("id"):
             buttons.append(YeelightProSceneButton(coordinator, scene))
 
@@ -114,11 +104,13 @@ class YeelightProAutomationButton(ButtonEntity):
 
     async def async_press(self) -> None:
         """触发自动化."""
-        success = await self._coordinator.async_trigger_automation(self._automation_id)
-        if success:
+        try:
+            await self._coordinator.async_trigger_automation(self._automation_id)
             _LOGGER.info("自动化触发成功: %s", self._attr_name)
-        else:
-            _LOGGER.error("自动化触发失败: %s", self._attr_name)
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"自动化触发失败: {self._attr_name}: {err}"
+            ) from err
 
 
 class YeelightProSceneButton(ButtonEntity):
@@ -146,8 +138,10 @@ class YeelightProSceneButton(ButtonEntity):
 
     async def async_press(self) -> None:
         """执行场景."""
-        success = await self._coordinator.async_execute_scene(self._scene_id)
-        if success:
+        try:
+            await self._coordinator.async_execute_scene(self._scene_id)
             _LOGGER.info("场景执行成功: %s", self._attr_name)
-        else:
-            _LOGGER.error("场景执行失败: %s", self._attr_name)
+        except YeelightProError as err:
+            raise HomeAssistantError(
+                f"场景执行失败: {self._attr_name}: {err}"
+            ) from err

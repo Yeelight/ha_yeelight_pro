@@ -80,7 +80,8 @@ class YeelightProClient:
         **kwargs,
     ) -> dict[str, Any]:
         """发送 HTTP 请求."""
-        url = urljoin(self.base_url, path)
+        base = self.base_url.rstrip("/")
+        url = f"{base}{path}"
 
         try:
             async with self.session.request(
@@ -114,20 +115,42 @@ class YeelightProClient:
         except aiohttp.ClientError as err:
             raise ConnectionError(f"Connection error: {err}") from err
 
-    async def validate_connection(self) -> bool:
-        """验证连接."""
+    async def check_health(self) -> bool:
+        """检查服务端健康状态（需要认证）.
+
+        用于启动时验证服务是否可达。
+        """
         try:
-            await self._request("GET", "/healthz", with_auth=False)
+            # 使用 get_houses 来验证连接和认证
+            await self.get_houses()
             self._connected = True
             return True
         except Exception as err:
             self._connected = False
-            raise ConnectionError(f"Connection validation failed: {err}") from err
+            raise ConnectionError(f"Health check failed: {err}") from err
+
+    async def validate_auth(self) -> bool:
+        """验证认证凭据有效性（需要 token）.
+
+        通过调用需要认证的 API 端点来验证 token 是否有效。
+        config_flow 配置流程应使用此方法而非 check_health。
+        """
+        try:
+            await self.get_houses()
+            self._connected = True
+            return True
+        except AuthenticationError:
+            self._connected = False
+            raise
+        except Exception as err:
+            self._connected = False
+            raise ConnectionError(f"Auth validation failed: {err}") from err
 
     async def get_houses(self) -> list[dict[str, Any]]:
-        """获取家庭列表."""
-        response = await self._request("GET", "/v1/ha/houses")
-        return response.get("houses", [])
+        """获取用户的所有家庭列表."""
+        response = await self._request("POST", "/v1/house/r/all", json={})
+        data = response.get("data", {})
+        return data.get("list", [])
 
     async def get_devices(self, house_id: int) -> list[dict[str, Any]]:
         """获取设备列表."""
@@ -137,8 +160,8 @@ class YeelightProClient:
 
         while True:
             response = await self._request(
-                "POST",
-                f"/apis/iot/v2/thing/manage/house/{house_id}/device/r/info/{page}/{page_size}",
+                "GET",
+                f"/v1/open/node/house/{house_id}/devices/r/list/{page}/{page_size}",
             )
 
             data = response.get("data", {})
@@ -163,7 +186,7 @@ class YeelightProClient:
         while True:
             response = await self._request(
                 "GET",
-                f"/apis/iot/v2/thing/manage/house/{house_id}/gateway/r/info/{page}/{page_size}",
+                f"/v2/thing/schema/house/{house_id}/gateway/r/info/{page}/{page_size}",
             )
 
             data = response.get("data", {})
@@ -193,7 +216,7 @@ class YeelightProClient:
 
             response = await self._request(
                 "GET",
-                f"/apis/iot/v2/thing/schema/product/r/info?{pids_param}",
+                f"/v1/thing/schema/product/r/info?{pids_param}",
                 with_auth=False,
             )
 
@@ -212,29 +235,27 @@ class YeelightProClient:
         params: dict[str, Any],
         duration: int = 500,
     ) -> bool:
-        """控制设备."""
-        request_id = self._next_request_id()
+        """控制设备.
 
-        payload = {
-            "slot_type": "device",
-            "gateway_ids": [gateway_id],
-            "message": {
-                "id": 1,
-                "method": "gateway_set.prop",
-                "nodes": [
-                    {
-                        "id": device_id,
-                        "nt": 2,
-                        "duration": duration,
-                        "delay": 0,
-                        "set": params,
-                    }
-                ],
-            },
-            "request_id": request_id,
+        使用 open API 控制设备属性。
+        API: POST /v1/open/control/house/{house_id}/control/2/{device_id}/w/properties
+        """
+        # 将 params 转换为 command 格式
+        command_params = []
+        for prop_name, value in params.items():
+            command_params.append({"propName": prop_name, "value": value})
+
+        body = {
+            "command": "set",
+            "params": command_params,
+            "duration": duration,
         }
 
-        await self._request("POST", "/v1/control/device", json=payload)
+        await self._request(
+            "POST",
+            f"/v1/open/control/house/{self.house_id}/control/2/{device_id}/w/properties",
+            json=body,
+        )
         return True
 
     async def toggle_device(
@@ -243,43 +264,38 @@ class YeelightProClient:
         gateway_id: int,
         properties: list[str],
     ) -> bool:
-        """切换设备属性."""
-        request_id = self._next_request_id()
+        """切换设备属性.
 
-        payload = {
-            "slot_type": "device",
-            "gateway_ids": [gateway_id],
-            "message": {
-                "id": 1,
-                "method": "gateway_set.prop",
-                "nodes": [
-                    {
-                        "id": device_id,
-                        "nt": 2,
-                        "toggle": properties,
-                    }
-                ],
-            },
-            "request_id": request_id,
+        使用 open API 切换设备属性（如开关）。
+        API: POST /v1/open/control/house/{house_id}/control/2/{device_id}/w/properties
+        """
+        command_params = []
+        for prop_name in properties:
+            command_params.append({"propName": prop_name})
+
+        body = {
+            "command": "toggle",
+            "params": command_params,
+            "duration": 500,
         }
 
-        await self._request("POST", "/v1/control/device", json=payload)
+        await self._request(
+            "POST",
+            f"/v1/open/control/house/{self.house_id}/control/2/{device_id}/w/properties",
+            json=body,
+        )
         return True
 
     async def execute_scene(self, scene_id: str) -> bool:
-        """执行场景."""
-        request_id = self._next_request_id()
+        """执行场景.
 
-        payload = {
-            "message": {
-                "id": 1,
-                "method": "gateway_set.prop",
-                "scenes": [{"id": scene_id, "duration": 500}],
-            },
-            "request_id": request_id,
-        }
-
-        await self._request("POST", "/v1/control/scene", json=payload)
+        使用 open API 执行场景。
+        API: POST /v1/open/control/house/{house_id}/control/w/scenes/{scene_id}
+        """
+        await self._request(
+            "POST",
+            f"/v1/open/control/house/{self.house_id}/control/w/scenes/{scene_id}",
+        )
         return True
 
     async def get_rooms(self, house_id: int) -> list[dict[str, Any]]:
@@ -291,8 +307,12 @@ class YeelightProClient:
         Returns:
             房间列表，每个房间包含 id、name 等信息
         """
-        response = await self._request("GET", f"/v1/ha/houses/{house_id}/rooms")
-        return response.get("rooms", [])
+        response = await self._request(
+            "GET",
+            f"/v1/open/node/house/{house_id}/rooms/r/list/1/100",
+        )
+        data = response.get("data", {})
+        return data.get("rows", [])
 
     async def get_groups(self, house_id: int) -> list[dict[str, Any]]:
         """获取灯组列表.
@@ -303,8 +323,12 @@ class YeelightProClient:
         Returns:
             灯组列表，每个灯组包含 id、name、设备列表等信息
         """
-        response = await self._request("GET", f"/v1/ha/houses/{house_id}/groups")
-        return response.get("groups", [])
+        response = await self._request(
+            "GET",
+            f"/v1/open/node/house/{house_id}/groups/r/list/1/100",
+        )
+        data = response.get("data", {})
+        return data.get("rows", [])
 
     async def control_group(
         self,
@@ -314,24 +338,33 @@ class YeelightProClient:
     ) -> bool:
         """控制灯组.
 
+        使用 open API 控制灯组属性。
+        API: POST /v1/open/control/house/{house_id}/control/4/{group_id}/w/properties
+
         Args:
             group_id: 灯组 ID
-            params: 控制参数，如 {"power": "on", "brightness": 100}
+            params: 控制参数，如 {"p": true, "l": 100}
             duration: 过渡时间，单位毫秒
 
         Returns:
             控制命令是否发送成功
         """
-        request_id = self._next_request_id()
+        # 将 params 转换为 command 格式
+        command_params = []
+        for prop_name, value in params.items():
+            command_params.append({"propName": prop_name, "value": value})
 
-        payload = {
-            "id": group_id,
+        body = {
+            "command": "set",
+            "params": command_params,
             "duration": duration,
-            "set": params,
-            "request_id": request_id,
         }
 
-        await self._request("POST", "/v1/control/group", json=payload)
+        await self._request(
+            "POST",
+            f"/v1/open/control/house/{self.house_id}/control/4/{group_id}/w/properties",
+            json=body,
+        )
         return True
 
     async def get_scenes(self, house_id: int) -> list[dict[str, Any]]:
@@ -343,8 +376,12 @@ class YeelightProClient:
         Returns:
             场景列表，每个场景包含 id、name 等信息
         """
-        response = await self._request("GET", f"/v1/ha/houses/{house_id}/scenes")
-        return response.get("scenes", [])
+        response = await self._request(
+            "GET",
+            f"/v1/open/node/house/{house_id}/scenes/r/list/1/100",
+        )
+        data = response.get("data", {})
+        return data.get("rows", [])
 
     async def get_automations(self, house_id: int) -> list[dict[str, Any]]:
         """获取自动化列表.
@@ -356,9 +393,11 @@ class YeelightProClient:
             自动化列表，每个自动化包含 id、name、状态等信息
         """
         response = await self._request(
-            "GET", f"/v1/ha/houses/{house_id}/automations"
+            "GET",
+            f"/v1/automations/{house_id}/r/list/1/100",
         )
-        return response.get("automations", [])
+        data = response.get("data", {})
+        return data.get("rows", [])
 
     async def enable_automation(self, automation_id: str) -> bool:
         """启用自动化.
@@ -405,12 +444,19 @@ class YeelightProClient:
         Returns:
             区域列表，每个区域包含 id、name 等信息
         """
-        response = await self._request("GET", f"/v1/ha/houses/{house_id}/areas")
-        return response.get("areas", [])
+        response = await self._request(
+            "GET",
+            f"/v1/open/node/house/{house_id}/areas/r/list/1/100",
+        )
+        data = response.get("data", {})
+        return data.get("rows", [])
 
     async def get_house_snapshot(self, house_id: int) -> dict[str, Any]:
         """获取家庭快照."""
-        return await self._request("GET", f"/v1/ha/houses/{house_id}/snapshot")
+        return await self._request(
+            "GET",
+            f"/v1/open/node/house/{house_id}/r/info",
+        )
 
     async def disconnect(self) -> None:
         """断开连接."""

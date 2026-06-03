@@ -63,7 +63,7 @@ class TestConfigFlow:
     async def test_cloud_auth_success(self, mock_client_class, mock_get_session, config_flow):
         """测试云端认证成功."""
         mock_client = AsyncMock()
-        mock_client.validate_connection.return_value = True
+        mock_client.validate_auth.return_value = True
         mock_client_class.return_value = mock_client
 
         # 模拟 session
@@ -89,7 +89,7 @@ class TestConfigFlow:
         from custom_components.yeelight_pro.core.exceptions import AuthenticationError
 
         mock_client = AsyncMock()
-        mock_client.validate_connection.side_effect = AuthenticationError("Invalid")
+        mock_client.validate_auth.side_effect = AuthenticationError("Invalid")
         mock_client_class.return_value = mock_client
 
         # 模拟 session

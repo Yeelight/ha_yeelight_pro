@@ -30,6 +30,13 @@
           "access_token": "Access Token",
           "house_id": "家庭 ID"
         }
+      },
+      "reauth_confirm": {
+        "title": "重新认证",
+        "description": "Access Token 已失效，请输入新的 Token 以继续使用（域名：{domain}）。",
+        "data": {
+          "access_token": "新的 Access Token"
+        }
       }
     },
     "error": {
@@ -39,7 +46,8 @@
     },
     "abort": {
       "already_configured": "该服务器已配置",
-      "no_houses_found": "未找到家庭"
+      "no_houses_found": "未找到家庭",
+      "reauth_successful": "重新认证成功"
     }
   }
 }
