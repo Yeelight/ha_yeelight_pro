@@ -202,6 +202,15 @@ class YeelightProCoordinator(DataUpdateCoordinator):
             _LOGGER.error("Failed to execute scene %s: %s", scene_id, err)
             return False
 
+    async def async_trigger_automation(self, automation_id: str) -> bool:
+        """手动触发自动化."""
+        try:
+            await self.client.trigger_automation(automation_id)
+            return True
+        except Exception as err:
+            _LOGGER.error("Failed to trigger automation %s: %s", automation_id, err)
+            return False
+
     @property
     def topology_generation(self) -> int:
         """返回拓扑代数."""

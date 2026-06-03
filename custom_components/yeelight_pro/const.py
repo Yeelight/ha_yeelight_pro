@@ -34,6 +34,7 @@ PLATFORMS = [
     "light",
     "lock",
     "number",
+    "scene",
     "select",
     "sensor",
     "switch",
