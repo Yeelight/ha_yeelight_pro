@@ -1,0 +1,25 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate
+        uses: home-assistant/actions/hassfest@master
+
+      - name: Create zip
+        run: |
+          cd custom_components/yeelight_pro
+          zip -r ../../yeelight_pro.zip . \
+            -x '*.pyc' '*__pycache__*' '*tests*'
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: yeelight_pro.zip

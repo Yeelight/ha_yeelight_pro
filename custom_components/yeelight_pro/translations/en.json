@@ -1,0 +1,45 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Select Connection Mode",
+        "description": "Please select the connection method for Yeelight Pro.",
+        "data": {
+          "connection_mode": "Connection Mode"
+        }
+      },
+      "cloud_auth": {
+        "title": "Cloud Authentication",
+        "description": "Please enter the Access Token for Yeelight Pro.\n\nDomain: {domain}",
+        "data": {
+          "access_token": "Access Token"
+        }
+      },
+      "cloud_houses": {
+        "title": "Select House",
+        "description": "Please select the house to configure.",
+        "data": {
+          "house_id": "House"
+        }
+      },
+      "private_config": {
+        "title": "Private Deployment Configuration",
+        "description": "Please enter the configuration for the private deployment server.",
+        "data": {
+          "private_domain": "Server Address",
+          "access_token": "Access Token",
+          "house_id": "House ID"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to server",
+      "invalid_auth": "Authentication failed, please check Access Token",
+      "unknown": "Unknown error"
+    },
+    "abort": {
+      "already_configured": "This server is already configured",
+      "no_houses_found": "No houses found"
+    }
+  }
+}

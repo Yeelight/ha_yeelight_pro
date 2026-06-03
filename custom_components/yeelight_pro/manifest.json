@@ -1,0 +1,13 @@
+{
+  "domain": "yeelight_pro",
+  "name": "Yeelight Pro",
+  "codeowners": ["@yeelight"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/yeelight/ha_yeelight_pro",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "requirements": [],
+  "version": "1.0.0",
+  "homeassistant": "2024.1.0"
+}

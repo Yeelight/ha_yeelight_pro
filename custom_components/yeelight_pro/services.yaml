@@ -1,0 +1,32 @@
+# Yeelight Pro 服务定义
+
+assign_areas:
+  name: 批量分配区域
+  description: 批量为设备分配区域
+  fields:
+    devices:
+      name: 设备列表
+      description: 要分配区域的设备 ID 列表
+      required: true
+      example: '["light.living_room_1", "light.living_room_2"]'
+      selector:
+        object:
+    area_id:
+      name: 区域 ID
+      description: 目标区域的 ID
+      required: true
+      example: "living_room"
+      selector:
+        area:
+
+set_scene:
+  name: 激活场景
+  description: 激活指定的场景
+  fields:
+    scene_id:
+      name: 场景 ID
+      description: 要激活的场景 ID
+      required: true
+      example: "scene_movie_mode"
+      selector:
+        text:

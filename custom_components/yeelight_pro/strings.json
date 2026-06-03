@@ -1,0 +1,45 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "选择连接模式",
+        "description": "请选择 Yeelight Pro 的连接方式。",
+        "data": {
+          "connection_mode": "连接模式"
+        }
+      },
+      "cloud_auth": {
+        "title": "云端认证",
+        "description": "请输入 Yeelight Pro 的 Access Token。\n\n域名：{domain}",
+        "data": {
+          "access_token": "Access Token"
+        }
+      },
+      "cloud_houses": {
+        "title": "选择家庭",
+        "description": "请选择要配置的家庭。",
+        "data": {
+          "house_id": "家庭"
+        }
+      },
+      "private_config": {
+        "title": "私有部署配置",
+        "description": "请输入私有部署服务器的配置信息。",
+        "data": {
+          "private_domain": "服务器地址",
+          "access_token": "Access Token",
+          "house_id": "家庭 ID"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "无法连接到服务器",
+      "invalid_auth": "认证失败，请检查 Access Token",
+      "unknown": "未知错误"
+    },
+    "abort": {
+      "already_configured": "该服务器已配置",
+      "no_houses_found": "未找到家庭"
+    }
+  }
+}

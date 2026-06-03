@@ -1,0 +1,11 @@
+{
+  "name": "Yeelight Pro",
+  "homeassistant": "2024.1.0",
+  "render_readme": true,
+  "zip_release": true,
+  "filename": "yeelight_pro.zip",
+  "country": ["CN", "US", "EU"],
+  "persistent_directory": null,
+  "content_in_root": false,
+  "hacs": "2.0.0"
+}
