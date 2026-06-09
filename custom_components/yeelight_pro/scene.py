@@ -7,12 +7,13 @@ from typing import Any
 from homeassistant.components.scene import Scene
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
 from .core.exceptions import YeelightProError
+from .dynamic_entities import async_track_dynamic_entities
+from .entity_errors import raise_service_error
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,25 +29,28 @@ async def async_setup_entry(
     """设置 Yeelight Pro 场景平台."""
     coordinator: YeelightProCoordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
 
-    scenes = coordinator.scenes
-    if not scenes:
-        _LOGGER.debug("家庭 %s 下无场景数据", coordinator.house_id)
-        return
+    async_track_dynamic_entities(
+        config_entry,
+        coordinator,
+        async_add_entities,
+        _iter_scene_entities,
+        logger=_LOGGER,
+        platform_name="scene",
+    )
 
-    entities = [
+
+def _iter_scene_entities(coordinator: YeelightProCoordinator) -> list["YeelightProScene"]:
+    """按当前拓扑生成 scene 实体候选."""
+    return [
         YeelightProScene(
             coordinator=coordinator,
             scene_id=str(scene["id"]),
             name=scene.get("name", f"Scene {scene['id']}"),
             icon=scene.get("icon"),
         )
-        for scene in scenes
+        for scene in coordinator.scenes
         if scene.get("id")
     ]
-
-    if entities:
-        async_add_entities(entities)
-        _LOGGER.info("已添加 %s 个 scene 实体", len(entities))
 
 
 class YeelightProScene(Scene):
@@ -83,6 +87,4 @@ class YeelightProScene(Scene):
         try:
             await self._coordinator.async_execute_scene(self._scene_id)
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"激活场景失败: {self._attr_name} ({self._scene_id}): {err}"
-            ) from err
+            raise_service_error("scene.activate", err)

@@ -84,6 +84,7 @@ async def async_attach_trigger(
     trigger_info: TriggerInfo,
 ) -> CALLBACK_TYPE:
     """附加设备触发器."""
+    config = await async_validate_trigger_config(hass, config)
     device_registry = dr.async_get(hass)
     device_entry = device_registry.async_get(config[CONF_DEVICE_ID])
     if device_entry is None:

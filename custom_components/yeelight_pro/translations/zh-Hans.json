@@ -1,0 +1,270 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "选择连接模式",
+        "description": "请选择 Yeelight Pro 的连接方式。",
+        "data": {
+          "connection_mode": "连接模式"
+        }
+      },
+      "cloud_auth": {
+        "title": "云端认证",
+        "description": "请输入 Yeelight Pro 的 Access Token。\n\n域名：{domain}",
+        "data": {
+          "access_token": "Access Token"
+        }
+      },
+      "cloud_auth_method": {
+        "title": "云端认证方式",
+        "description": "请选择易来云端认证方式。",
+        "data": {
+          "cloud_auth_method": "认证方式"
+        }
+      },
+      "cloud_oauth_app": {
+        "title": "OAuth 应用信息",
+        "description": "请输入 Yeelight 开放平台分配的应用信息。\n\n域名：{domain}",
+        "data": {
+          "oauth_client_id": "Client ID",
+          "oauth_client_secret": "Client Secret",
+          "oauth_redirect_uri": "Redirect URI",
+          "oauth_device": "设备标识"
+        }
+      },
+      "cloud_oauth_code": {
+        "title": "OAuth 授权码",
+        "description": "打开授权链接完成授权，然后输入回调 URL 中的 code。此步骤会换取 Access Token 并继续选择家庭。\n\n授权链接：{authorization_url}\n\n域名：{domain}",
+        "data": {
+          "oauth_code": "授权码"
+        }
+      },
+      "cloud_houses": {
+        "title": "选择家庭",
+        "description": "请选择要配置的家庭。",
+        "data": {
+          "house_id": "家庭"
+        }
+      },
+      "cloud_devices": {
+        "title": "选择设备",
+        "description": "请选择要导入 Home Assistant 的真实设备。默认导入当前家庭的全部设备；取消勾选后，只会创建所选设备对应的实体。",
+        "data": {
+          "device_import_filter_include_devices": "设备"
+        }
+      },
+      "private_config": {
+        "title": "私有部署配置",
+        "description": "请输入私有部署服务器的配置信息。",
+        "data": {
+          "private_domain": "服务器地址",
+          "access_token": "Access Token",
+          "house_id": "家庭 ID"
+        }
+      },
+      "reauth_confirm": {
+        "title": "重新认证",
+        "description": "Access Token 已失效，请输入新的 Token 以继续使用（域名：{domain}）。",
+        "data": {
+          "access_token": "新的 Access Token"
+        }
+      },
+      "cloud_region": {
+        "title": "选择云端区域",
+        "description": "请选择易来账号所在区域。",
+        "data": {
+          "cloud_region": "区域"
+        }
+      },
+      "cloud_scan_login": {
+        "title": "易来 APP 扫码登录",
+        "description": "请打开易来 APP 1.5.0 或以上版本，进入扫码页面，扫描下方二维码完成授权。若扫码失败，可手动输入：{qrcode}\n\n当前状态：{status}\n剩余秒数：{remaining_seconds}\n轮询次数：{poll_count}\n\n提交后 Home Assistant 会持续轮询扫码授权状态。二维码过期后勾选刷新重新生成。",
+        "data": {
+          "scan_login_qrcode": "登录二维码",
+          "scan_login_refresh": "刷新二维码"
+        }
+      }
+    },
+    "progress": {
+      "cloud_scan_login_wait": "正在等待易来 APP 扫码授权。\n\n当前状态：{status}\n剩余秒数：{remaining_seconds}\n轮询次数：{poll_count}"
+    },
+    "options": {
+      "step": {
+        "init": {
+          "title": "Yeelight Pro 选项",
+          "description": "调整运行时刷新、调试和实验能力。",
+          "data": {
+            "scan_interval": "轮询间隔（秒）",
+            "debug_mode": "启用调试服务",
+            "experimental_platforms": "启用实验平台",
+            "hide_unknown_entities": "隐藏未知能力实体",
+            "topology_change_repairs": "设备拓扑变化时创建 Repairs 提示",
+            "device_import_filter_enabled": "启用设备导入过滤",
+            "device_import_filter_mode": "过滤规则匹配方式",
+            "device_import_filter_include_categories": "包含设备品类（逗号分隔）",
+            "device_import_filter_exclude_categories": "排除设备品类（逗号分隔）",
+            "device_import_filter_include_types": "包含 nodeType/type（逗号分隔）",
+            "device_import_filter_exclude_types": "排除 nodeType/type（逗号分隔）",
+            "device_import_filter_include_rooms": "包含房间 ID（逗号分隔）",
+            "device_import_filter_exclude_rooms": "排除房间 ID（逗号分隔）",
+            "device_import_filter_include_gateways": "包含网关 ID（逗号分隔）",
+            "device_import_filter_exclude_gateways": "排除网关 ID（逗号分隔）",
+            "device_import_filter_include_product_ids": "包含产品 ID（逗号分隔）",
+            "device_import_filter_exclude_product_ids": "排除产品 ID（逗号分隔）",
+            "device_import_filter_include_devices": "包含设备 ID（逗号分隔）",
+            "device_import_filter_exclude_devices": "排除设备 ID（逗号分隔）",
+            "live_updates": "启用 WebSocket 实时更新",
+            "local_gateway_control": "启用本地网关控制",
+            "local_gateway_host": "本地网关地址",
+            "local_gateway_port": "本地网关端口",
+            "analytics_runtime": "启用数据分析运行时",
+            "analytics_retention_days": "数据分析保留天数"
+          }
+        },
+        "confirm_runtime": {
+          "title": "确认 Yeelight Pro 选项",
+          "description": "将保存 {changed_count} 项可见选项变更。\n\n这些变更可在当前运行态直接生效，不需要重新加载集成。确认步骤不会调用额外的 Yeelight API。"
+        },
+        "confirm_reload": {
+          "title": "确认并重新加载 Yeelight Pro",
+          "description": "将保存 {changed_count} 项可见选项变更。\n\n其中包含会影响平台或实体候选的选项。保存后 Home Assistant 将按 options 更新监听重新加载该集成。确认步骤不会调用额外的 Yeelight API。"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "无法连接到服务器",
+      "invalid_auth": "认证失败，请检查 Access Token",
+      "unknown": "未知错误"
+    },
+    "abort": {
+      "already_configured": "该服务器已配置",
+      "no_houses_found": "未找到家庭",
+      "reauth_successful": "重新认证成功"
+    }
+  },
+  "selector": {
+    "connection_mode": {
+      "options": {
+        "cloud": "Yeelight Pro 云端（推荐）",
+        "private": "私有部署（Lucore）"
+      }
+    },
+    "cloud_auth_method": {
+      "options": {
+        "scan_login": "易来 APP 扫码登录",
+        "access_token": "手动 Access Token"
+      }
+    },
+    "device_import_filter_mode": {
+      "options": {
+        "or": "任一维度匹配",
+        "and": "所有维度匹配"
+      }
+    },
+    "cloud_region": {
+      "options": {
+        "cn": "中国大陆",
+        "sg": "新加坡",
+        "us": "北美",
+        "de": "欧洲"
+      }
+    }
+  },
+  "services": {
+    "assign_areas": {
+      "name": "批量分配区域",
+      "description": "批量为 HA 设备或实体对应的设备分配区域（管理员服务）"
+    },
+    "auto_assign_areas": {
+      "name": "自动分配区域",
+      "description": "根据设备名称中的房间关键词自动分配区域（管理员服务）"
+    },
+    "debug_emit_event": {
+      "name": "调试事件发射",
+      "description": "向 Home Assistant 事件总线发射调试 Yeelight Pro 设备事件（管理员服务）"
+    },
+    "refresh": {
+      "name": "手动刷新",
+      "description": "立即刷新已加载的 Yeelight Pro 数据并同步设备和实体注册表（管理员服务）",
+      "fields": {
+        "refresh_product_schemas": {
+          "name": "重新获取产品物模型",
+          "description": "强制重新获取当前设备使用的产品物模型；失败时继续回退已缓存物模型"
+        }
+      }
+    },
+    "cleanup_registry": {
+      "name": "注册表清理预检",
+      "description": "对 stale Yeelight Pro 实体执行 dry-run；二次确认后仅禁用 stale entities，不删除实体或设备注册表条目（管理员服务）",
+      "fields": {
+        "entry_id": {
+          "name": "配置条目 ID",
+          "description": "可选；dry-run 不填则汇总所有已加载 entry，confirm 时必须指定目标 entry"
+        },
+        "confirm": {
+          "name": "确认执行",
+          "description": "设为 true 时执行二次确认；必须同时提供 dry-run 返回的 audit_id"
+        },
+        "audit_id": {
+          "name": "审计 ID",
+          "description": "dry-run 返回的审计 ID；confirm 时必须匹配当前 stale 结果"
+        }
+      }
+    },
+    "refresh_analytics": {
+      "name": "刷新数据分析",
+      "description": "显式刷新一个 Yeelight Pro 数据分析接口，并仅保留脱敏聚合结果（管理员服务；需先在选项中启用）",
+      "fields": {
+        "entry_id": {
+          "name": "配置条目 ID",
+          "description": "可选；不填则刷新所有已启用数据分析运行时的 Yeelight Pro 配置条目"
+        },
+        "endpoint": {
+          "name": "数据分析接口",
+          "description": "要刷新的数据分析接口 key"
+        },
+        "date_code": {
+          "name": "日期代码",
+          "description": "日/月/年统计使用的 dateCode，例如 2024-08、2024-08-01 或 2024"
+        },
+        "start_date": {
+          "name": "开始日期",
+          "description": "趋势统计的开始日期，格式为 YYYY-MM-DD"
+        },
+        "end_date": {
+          "name": "结束日期",
+          "description": "趋势统计的结束日期，格式为 YYYY-MM-DD"
+        },
+        "area_id": {
+          "name": "区域 ID",
+          "description": "可选；仅报警和能源接口支持"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "analytics_alarm_total": {
+        "name": "数据分析报警总数"
+      },
+      "analytics_alarm_device_count": {
+        "name": "数据分析报警设备数"
+      },
+      "analytics_energy_used_kwh": {
+        "name": "数据分析用电量"
+      },
+      "analytics_energy_saved_kwh": {
+        "name": "数据分析节电量"
+      },
+      "analytics_action_total": {
+        "name": "数据分析操作总数"
+      }
+    }
+  },
+  "issues": {
+    "device_topology_changed": {
+      "title": "Yeelight Pro 设备清单已更新",
+      "description": "Yeelight Pro 检测到设备或拓扑信息发生变化，并已自动同步 Home Assistant 设备和实体注册表。\n\n本次变化摘要：新增 {added}，移除 {removed}，元数据变化 {metadata_changed}。\n\n当前聚合数量：设备 {devices}，网关 {gateways}，区域 {areas}，房间 {rooms}，灯组 {groups}，场景 {scenes}，自动化 {automations}。\n\n如果设备或实体显示不符合预期，请进入该集成页面检查实体列表，必要时重新加载集成。"
+    }
+  }
+}

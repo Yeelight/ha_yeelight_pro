@@ -19,9 +19,15 @@ from homeassistant.util.percentage import percentage_to_ranged_value
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
 from .core.exceptions import YeelightProError
+from .dynamic_entities import async_track_dynamic_entities
+from .entity_errors import raise_service_error
 from .projector.fan import HAFanProjection, NumericRange, project_fans
 
 _LOGGER = logging.getLogger(__name__)
+ERROR_FAN_PROJECTION_UNAVAILABLE = "无法解析风扇投影"
+ERROR_FAN_SPEED_PROJECTION_UNAVAILABLE = "无法解析风扇转速投影"
+ERROR_FAN_MODE_PROJECTION_UNAVAILABLE = "无法解析风扇模式投影"
+ERROR_FAN_DIRECTION_PROJECTION_UNAVAILABLE = "无法解析风扇方向投影"
 
 
 async def async_setup_entry(
@@ -32,7 +38,19 @@ async def async_setup_entry(
     """初始化 Yeelight Pro 风扇平台。"""
     coordinator: YeelightProCoordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
 
-    fans = []
+    async_track_dynamic_entities(
+        config_entry,
+        coordinator,
+        async_add_entities,
+        _iter_fan_entities,
+        logger=_LOGGER,
+        platform_name="fan",
+    )
+
+
+def _iter_fan_entities(coordinator: YeelightProCoordinator) -> list["YeelightProFan"]:
+    """按当前拓扑生成风扇实体候选。"""
+    fans: list[YeelightProFan] = []
     for device_id, device_data in coordinator.data.items():
         projections = project_fans(device_data, domain=DOMAIN)
         for projection in projections:
@@ -43,10 +61,7 @@ async def async_setup_entry(
                     component_id=projection.component_id,
                 )
             )
-
-    if fans:
-        async_add_entities(fans)
-        _LOGGER.info("Added %s fan entities", len(fans))
+    return fans
 
 
 class YeelightProFan(CoordinatorEntity, FanEntity):
@@ -183,9 +198,7 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
         """开启风扇。"""
         projection = self._projection
         if projection is None:
-            raise HomeAssistantError(
-                f"无法解析风扇投影: {self._component_id}"
-            )
+            raise HomeAssistantError(ERROR_FAN_PROJECTION_UNAVAILABLE)
 
         params: dict[str, Any] = {}
         if projection.power_key is not None:
@@ -208,17 +221,13 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
         try:
             await self.coordinator.async_control_device(self._device_id, params)
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"开启风扇失败: {self._component_id}: {err}"
-            ) from err
+            raise_service_error("fan.turn_on", err)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """关闭风扇。"""
         projection = self._projection
         if projection is None:
-            raise HomeAssistantError(
-                f"无法解析风扇投影: {self._component_id}"
-            )
+            raise HomeAssistantError(ERROR_FAN_PROJECTION_UNAVAILABLE)
 
         params: dict[str, Any] = {}
         if projection.power_key is not None:
@@ -232,17 +241,13 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
         try:
             await self.coordinator.async_control_device(self._device_id, params)
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"关闭风扇失败: {self._component_id}: {err}"
-            ) from err
+            raise_service_error("fan.turn_off", err)
 
     async def async_set_percentage(self, percentage: int) -> None:
         """设置风扇转速百分比。"""
         projection = self._projection
         if projection is None or projection.speed_key is None:
-            raise HomeAssistantError(
-                f"无法解析风扇转速投影: {self._component_id}"
-            )
+            raise HomeAssistantError(ERROR_FAN_SPEED_PROJECTION_UNAVAILABLE)
 
         params: dict[str, Any]
         if percentage <= 0:
@@ -264,17 +269,13 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
         try:
             await self.coordinator.async_control_device(self._device_id, params)
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"设置风扇转速失败: {self._component_id}: {err}"
-            ) from err
+            raise_service_error("fan.set_percentage", err)
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """设置风扇预设模式。"""
         projection = self._projection
         if projection is None or projection.mode_key is None:
-            raise HomeAssistantError(
-                f"无法解析风扇模式投影: {self._component_id}"
-            )
+            raise HomeAssistantError(ERROR_FAN_MODE_PROJECTION_UNAVAILABLE)
 
         params: dict[str, Any] = {projection.mode_key: preset_mode}
         if projection.power_key is not None:
@@ -283,17 +284,13 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
         try:
             await self.coordinator.async_control_device(self._device_id, params)
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"设置风扇模式失败: {self._component_id}: {err}"
-            ) from err
+            raise_service_error("fan.set_preset_mode", err)
 
     async def async_set_direction(self, direction: str) -> None:
         """设置风扇方向。"""
         projection = self._projection
         if projection is None or projection.direction_key is None:
-            raise HomeAssistantError(
-                f"无法解析风扇方向投影: {self._component_id}"
-            )
+            raise HomeAssistantError(ERROR_FAN_DIRECTION_PROJECTION_UNAVAILABLE)
 
         raw_direction = projection.direction_values.get(direction)
         if raw_direction is None:
@@ -309,9 +306,7 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
                 {projection.direction_key: raw_direction},
             )
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"设置风扇方向失败: {self._component_id}: {err}"
-            ) from err
+            raise_service_error("fan.set_direction", err)
 
     def _percentage_to_source(
         self,

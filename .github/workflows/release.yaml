@@ -3,6 +3,7 @@ name: Release
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 jobs:
   release:
@@ -10,16 +11,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate
-        uses: home-assistant/actions/hassfest@master
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-      - name: Create zip
+      - name: Install test dependencies
         run: |
-          cd custom_components/yeelight_pro
-          zip -r ../../yeelight_pro.zip . \
-            -x '*.pyc' '*__pycache__*' '*tests*'
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements_test.txt
+
+      - name: Run full release gate
+        run: |
+          python hacs_publish.py --check
+
+      - name: Create and validate release zip
+        run: |
+          python scripts/check_release_zip.py --write yeelight_pro.zip
 
       - name: Upload to release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: yeelight_pro.zip

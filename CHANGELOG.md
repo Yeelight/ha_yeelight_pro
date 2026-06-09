@@ -2,158 +2,70 @@
 
 All notable changes to the Yeelight Pro integration will be documented in this file.
 
-## [1.0.0] - 2026-06-03
-
-### 🎉 Initial Release
-
-首个正式版本发布，从 lucore_gateway 完整迁移到 ha_yeelight_pro。
-
-### ✨ New Features
-
-#### 核心架构
-
-- **统一客户端**: 支持 Yeelight Pro 云端和私有部署两种模式
-- **协调器模式**: 使用 DataUpdateCoordinator 管理设备状态
-- **投影模式**: canonical → adapters → converter → projector → entity 分层架构
-- **DRY 原则**: 统一的工具函数库 (utils.py)
-
-#### 支持的平台 (15 个)
-
-- **light** - 灯光控制（亮度/色温/RGB）
-- **fan** - 风扇控制（速度/方向/预设模式）
-- **switch** - 开关控制
-- **sensor** - 传感器（温度/湿度/照度）
-- **binary_sensor** - 二值传感器（移动/门窗）
-- **cover** - 窗帘控制（位置/开关）
-- **climate** - 空调控制（温度/HVAC 模式）
-- **lock** - 门锁控制
-- **event** - 事件和设备触发器
-- **scene** - 场景执行
-- **button** - 按钮（自动化触发/场景执行）
-- **select** - 选择器（房间/灯组/场景）
-- **number** - 数值控制（灯组亮度/色温）
-- **vacuum** - 扫地机器人
-- **text** - 文本显示（设备名称/标签）
-
-#### API 接口
-
-- **设备管理**: get_devices, get_gateways, get_product_schemas
-- **家庭管理**: get_houses, get_rooms, get_areas
-- **灯组管理**: get_groups, control_group
-- **场景管理**: get_scenes, execute_scene
-- **自动化管理**: get_automations, enable/disable/trigger_automation
-- **设备控制**: control_device, toggle_device
-
-#### 配置流程
-
-- **多步配置**: 云端/私有部署模式选择
-- **云端认证**: Access Token 验证
-- **家庭选择**: 自动获取家庭列表
-- **私有部署**: 域名和 Token 配置
-
-#### 服务
-
-- **assign_areas**: 批量分配区域
-- **auto_assign_areas**: 自动分配区域（基于设备名称）
-- **debug_emit_event**: 调试事件发射
-
-### 🏗️ Architecture
-
-#### 分层设计
-
-```text
-canonical/          - 规范模型层 (14 个 dataclass)
-adapters/           - 适配器层 (2 个适配器)
-converter/          - 转换层 (RUNTIME_PROPERTY_TEMPLATES)
-projector/          - 投影层 (9 个投影模块)
-core/               - 核心层 (client, coordinator)
-platform entities   - 平台实体层 (15 个平台)
-```
-
-#### 核心资产
-
-- **RUNTIME_PROPERTY_TEMPLATES**: 8 种设备类型的属性模板
-- **投影函数**: 灯光颜色转换、风扇速度计算、设备状态映射
-- **适配器**: ProductSchemaDtoV2 和 LAN 设备拓扑适配
-
-### 📊 Statistics
-
-- **总文件数**: 50 个 Python 文件
-- **总代码行数**: 9,753 行
-- **核心 dataclass**: 27 个
-- **投影函数**: 9 个
-- **平台实体**: 15 个
-- **测试用例**: 69 个 (100% 通过)
-- **代码覆盖率**: 30%
-
-### 🧪 Testing
-
-- **单元测试**: 69 个测试用例全部通过
-- **测试覆盖**: canonical, utils, config_flow, projector
-- **测试框架**: pytest + pytest-asyncio + pytest-cov
-
-### 📝 Documentation
-
-- **README.md**: 英文文档（完整）
-- **README_zh.md**: 中文文档（完整）
-- **API 文档**: 客户端方法文档
-- **架构文档**: 分层设计说明
-
-### 🔧 Dependencies
-
-- **Home Assistant**: >= 2024.1.0
-- **Python**: >= 3.11
-- **无额外依赖**: 使用 HA 内置库
-
-### 🎯 Key Improvements (相比 lucore_gateway)
-
-1. **架构优化**
-   - ✅ 文件大小合理 (<400行)
-   - ✅ DRY 原则执行到位
-   - ✅ 命名规范化 (Yeelight Pro)
-
-2. **功能增强**
-   - ✅ 新增 6 个平台 (scene, button, select, number, vacuum, text)
-   - ✅ 新增房间/灯组/自动化管理
-   - ✅ 统一的 API 客户端
-
-3. **代码质量**
-   - ✅ 完整的类型提示
-   - ✅ 中文文档字符串
-   - ✅ 统一的错误处理
-
-4. **测试覆盖**
-   - ✅ 核心模块测试
-   - ✅ 配置流程测试
-   - ✅ 投影层测试
-
-### 🚀 Future Plans
-
-- [ ] 提高测试覆盖率到 80%
-- [ ] 添加更多设备类型支持
-- [ ] 优化 SSE 实时更新
-- [ ] 添加设备诊断功能
-- [ ] 支持更多自动化触发器
-
----
-
-## [0.1.0] - 2026-06-03 (Development)
-
-### Added
-
-- 初始项目结构
-- 从 lucore_gateway 迁移核心代码
-- 基础测试框架
-
-### Changed
-
-- 域名从 lucore_gateway 改为 yeelight_pro
-- 架构从单体改为分层设计
+## [Unreleased]
 
 ### Fixed
 
-- 无
+- Fixed write APIs that referenced an implicit `client.house_id`; control, toggle, scene, and group commands now receive `house_id` explicitly.
+- Preserved authentication failures as `ConfigEntryAuthFailed` so Home Assistant can trigger reauthentication.
+- Made `pytest -q` reproducible from the integration root through local `pyproject.toml` settings.
+- Removed the stale `text.py` platform implementation; `text` remains a non-category Home Assistant platform concept and is not part of this release.
+- Fixed entity-registry reconciliation so scene buttons and scene entities with the same scene id are tracked separately.
+- Connected official Yeelight product schemas to the coordinator's canonical product and runtime device-instance payloads, so projector layers consume the same schema-aware path in production and tests.
+- Hardened diagnostics redaction for device-import filter form-only fields so room, gateway, product, and device identifiers cannot leak if those fields reach diagnostics.
+- Classified documented Yeelight OAuth errors such as insufficient scope, unauthorized clients, invalid scopes, redirect URI mismatches, and invalid requests without exposing vendor payload text.
+- Rejected malformed WebSocket push node lists consistently for both `prop` and `event` payload adapters instead of partially swallowing bad frames.
+- Preserved and sent the documented Open API `clientId` header when an OAuth-derived or migrated non-secret client id is available, while keeping the manual access-token path compatible.
 
----
+### Added
 
-For more details, see the [README](README.md) and [documentation](docs/).
+- Options flow for polling interval, debug mode, experimental platforms, unknown capability handling, manual non-destructive device import filtering, and topology Repairs notifications.
+- Runtime platform filtering; `vacuum` is opt-in experimental instead of enabled by default.
+- Lightweight capability registries for IoT category mapping, property semantics, and event aliases.
+- Persistent Home Assistant `.storage` product schema cache so temporary schema endpoint failures or Home Assistant restarts do not immediately degrade canonical device projections.
+- Home Assistant diagnostics export with sensitive config redaction and aggregate runtime counts.
+- Diagnostics aggregates for IoT registry health, spec correction, projected entity candidates, option/runtime alignment, and non-destructive device/entity import filter previews.
+- No-network Yeelight WebSocket received-payload adapters for documented `prop` and `event` payloads, routed through the shared runtime state/event bridge.
+- Optional Home Assistant Repairs issue for post-setup Yeelight device topology changes, enabled by default and controlled from integration options.
+- Read-only manual refresh service, borrowing the ha_xiaomi_home refresh/reconciliation idea without adding a new write path.
+- Simplified Chinese translation file aligned with `strings.json` and `en.json`.
+- P0 regression tests for control URLs, auth lifecycle, platform imports, options, capability mapping, translations, and Yeelight IoT category projection.
+- Release package structure checker at `scripts/check_release_zip.py`.
+- Release preflight guards for diagnostics capability flags and the non-destructive dynamic entity filter runtime contract.
+
+### Changed
+
+- Documentation now separates Yeelight IoT device categories from Home Assistant entity platforms.
+- Debug event emission now requires `debug_mode` and normalizes backend event aliases.
+- Debug event service registration now lives in `debug_service.py` to keep the integration entrypoint focused.
+- Gateway category is documented as device-registry topology rather than a normal control entity.
+
+### Current Verification
+
+- `python3 -m compileall -q custom_components/yeelight_pro`
+- `pytest -q`
+- `ruff check custom_components/yeelight_pro`
+- `mypy --explicit-package-bases --ignore-missing-imports custom_components/yeelight_pro`
+- `python3 validate_hacs.py`
+- `python3 scripts/check_release_zip.py`
+
+Use the latest local command output as the source of truth. This changelog intentionally does not freeze historical test counts, coverage percentages, or release zip file counts.
+
+### Known Gaps
+
+- Yeelight OAuth protocol helpers are covered as no-network contracts; Home
+  Assistant OAuth login/runtime refresh, multi-region accounts, local gateway
+  discovery/control, SSE/subscription updates, and full rules/spec filter
+  engines remain roadmap items.
+
+## [0.1.0] - 2026-06-03
+
+### Added
+
+- Initial migration from `lucore_gateway` into the `yeelight_pro` custom integration layout.
+- Canonical, adapter, converter, projector, coordinator, client, and platform entity layers.
+- Cloud and private deployment configuration flow foundation.
+
+### Notes
+
+- Earlier generated reports overstated release readiness and platform coverage. Use this changelog and README files as the current release-facing source of truth.

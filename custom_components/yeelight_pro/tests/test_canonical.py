@@ -1,12 +1,12 @@
 """canonical 模型层测试."""
-import pytest
 from custom_components.yeelight_pro.canonical.models import (
-    HAProductModel,
-    HADeviceInstanceModel,
+    ActionParamModel,
     ComponentModel,
+    HADeviceInstanceModel,
+    HAProductModel,
     PropertyModel,
-    ValueRangeModel,
     ValueItemModel,
+    ValueRangeModel,
 )
 
 
@@ -20,6 +20,18 @@ class TestValueRangeModel:
         assert model.min == 0
         assert model.max == 100
         assert model.step == 1
+
+    def test_from_dict_normalizes_numeric_values(self):
+        """测试范围值会收敛为 int 或 None."""
+        data = {"min": "2700", "max": 6500.9, "step": ""}
+        model = ValueRangeModel.from_dict(data)
+        assert model.min == 2700
+        assert model.max == 6500
+        assert model.step is None
+
+    def test_from_dict_with_invalid_range_values(self):
+        """测试全非法范围值返回 None."""
+        assert ValueRangeModel.from_dict({"min": "bad", "max": None, "step": ""}) is None
 
     def test_from_dict_with_none(self):
         """测试从 None 创建返回 None."""
@@ -37,7 +49,7 @@ class TestValueItemModel:
 
     def test_from_dict(self):
         """测试从字典创建."""
-        data = {"code": "warm", "desc": "暖白"}
+        data = {"code": " warm ", "desc": "暖白"}
         model = ValueItemModel.from_dict(data)
         assert model.code == "warm"
         assert model.desc == "暖白"
@@ -59,6 +71,9 @@ class TestPropertyModel:
             "prop_id": "brightness",
             "name": "亮度",
             "property_type": "integer",
+            "unit": "k",
+            "zoom": "-1",
+            "scale": "10",
             "value_range": {"min": 0, "max": 100, "step": 1},
             "value_list": [{"code": "low", "desc": "低"}],
         }
@@ -66,8 +81,32 @@ class TestPropertyModel:
         assert model.prop_id == "brightness"
         assert model.name == "亮度"
         assert model.property_type == "integer"
+        assert model.unit == "K"
+        assert model.zoom == -1
+        assert model.scale == 10
         assert model.value_range.min == 0
         assert len(model.value_list) == 1
+        assert model.value_list[0].code == "low"
+
+    def test_from_dict_normalizes_value_list(self):
+        """测试属性枚举列表过滤空 code 并去重."""
+        model = PropertyModel.from_dict(
+            {
+                "prop_id": "mode",
+                "value_list": [
+                    {"code": " 1 ", "desc": "Auto"},
+                    {"code": "", "desc": "Empty"},
+                    {"desc": "Missing"},
+                    {"code": 2, "desc": "Cool"},
+                    {"code": "2", "desc": "Duplicate cool"},
+                ],
+            }
+        )
+
+        assert [(item.code, item.desc) for item in model.value_list] == [
+            ("1", "Auto"),
+            ("2", "Cool"),
+        ]
 
     def test_from_dict_with_propId_alias(self):
         """测试 propId 别名."""
@@ -81,6 +120,32 @@ class TestPropertyModel:
         model = PropertyModel.from_dict(data)
         assert model.prop_id == "switch"
         assert model.name is None
+
+
+class TestActionParamModel:
+    """ActionParamModel 测试."""
+
+    def test_from_dict_normalizes_unit(self):
+        """测试动作参数单位归一化."""
+        model = ActionParamModel.from_dict(
+            {
+                "prop_id": "ct",
+                "unit": "kelvin",
+                "zoom": "bad",
+                "scale": 0,
+                "value_list": [
+                    {"code": "0", "desc": "Forward"},
+                    {"code": "0", "desc": "Duplicate"},
+                ],
+            }
+        )
+        assert model.prop_id == "ct"
+        assert model.unit == "K"
+        assert model.zoom == 1
+        assert model.scale == 1
+        assert [(item.code, item.desc) for item in model.value_list] == [
+            ("0", "Forward")
+        ]
 
 
 class TestComponentModel:
@@ -132,12 +197,20 @@ class TestHAProductModel:
         """测试转换为字典."""
         data = {
             "product": {"model_id": "YLCT01"},
-            "components": [],
+            "components": [
+                {
+                    "component_id": "light",
+                    "properties": [{"prop_id": "ct", "zoom": -1, "scale": 10}],
+                }
+            ],
         }
         model = HAProductModel.from_dict(data)
         result = model.to_dict()
         assert "product" in result
         assert "components" in result
+        prop = result["components"][0]["properties"][0]
+        assert prop["zoom"] == -1
+        assert prop["scale"] == 10
 
 
 class TestHADeviceInstanceModel:

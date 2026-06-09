@@ -1,9 +1,13 @@
 """utils 工具函数测试."""
 import pytest
 from custom_components.yeelight_pro.utils import (
+    apply_property_scale,
+    normalize_scale,
     to_bool,
     to_int,
     to_float,
+    normalize_unit,
+    normalize_zoom,
     to_str,
     to_str_or_empty,
     to_category,
@@ -102,6 +106,79 @@ class TestToStr:
         """测试空字符串返回 None."""
         assert to_str("") is None
         assert to_str("  ") is None
+
+
+class TestNormalizeUnit:
+    """normalize_unit 测试."""
+
+    def test_kelvin_aliases(self):
+        """测试色温单位别名."""
+        assert normalize_unit("k") == "K"
+        assert normalize_unit("kelvin") == "K"
+
+    def test_empty_and_none_aliases(self):
+        """测试空单位别名."""
+        assert normalize_unit(None) is None
+        assert normalize_unit("") is None
+        assert normalize_unit("none") is None
+        assert normalize_unit("no_unit") is None
+
+    def test_preserves_known_unit(self):
+        """测试保留已有 HA 单位."""
+        assert normalize_unit("%") == "%"
+        assert normalize_unit("lx") == "lx"
+
+
+class TestNormalizeScale:
+    """normalize_scale 测试."""
+
+    def test_valid_scale(self):
+        """测试有效缩放比例."""
+        assert normalize_scale("10") == 10
+
+    def test_invalid_scale_defaults_to_one(self):
+        """测试非法缩放比例回退为 1."""
+        assert normalize_scale(None) == 1
+        assert normalize_scale(0) == 1
+        assert normalize_scale("bad") == 1
+
+
+class TestNormalizeZoom:
+    """normalize_zoom 测试."""
+
+    def test_valid_zoom_values(self):
+        """测试文档允许的缩放方向."""
+        assert normalize_zoom("-1") == -1
+        assert normalize_zoom(0) == 0
+        assert normalize_zoom(1) == 1
+
+    def test_invalid_zoom_defaults_to_one(self):
+        """测试非法缩放方向回退为 1."""
+        assert normalize_zoom(None) == 1
+        assert normalize_zoom(2) == 1
+        assert normalize_zoom("bad") == 1
+
+
+class TestApplyPropertyScale:
+    """apply_property_scale 测试."""
+
+    def test_zoom_one_divides_by_scale(self):
+        """测试 zoom=1 按 data/scale 转实际值."""
+        assert apply_property_scale(1234, zoom=1, scale=10) == 123.4
+
+    def test_zoom_minus_one_multiplies_by_scale(self):
+        """测试 zoom=-1 按 data*scale 转实际值."""
+        assert apply_property_scale("12", zoom=-1, scale=10) == 120
+
+    def test_zoom_zero_and_scale_one_preserve_value(self):
+        """测试无需缩放时保持原值."""
+        assert apply_property_scale(12, zoom=0, scale=10) == 12
+        assert apply_property_scale(12, zoom=1, scale=1) == 12
+
+    def test_bool_and_non_numeric_values_are_not_scaled(self):
+        """测试布尔和非数值属性不缩放."""
+        assert apply_property_scale(True, zoom=1, scale=10) is True
+        assert apply_property_scale("on", zoom=1, scale=10) == "on"
 
 
 class TestToStrOrEmpty:

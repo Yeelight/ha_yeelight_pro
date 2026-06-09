@@ -1,0 +1,235 @@
+"""Helpers for adding Yeelight Pro entities discovered after refresh."""
+from __future__ import annotations
+
+import logging
+from collections.abc import Callable, Iterable, Mapping
+from typing import Any
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers import entity_registry as er
+
+from .const import CONF_DEVICE_IMPORT_FILTER, DOMAIN
+from .core.coordinator import YeelightProCoordinator
+from .device_filter import matches_device_import_filter
+
+EntityFactory = Callable[[YeelightProCoordinator], Iterable[Entity]]
+
+
+def async_track_dynamic_entities(
+    config_entry: ConfigEntry,
+    coordinator: YeelightProCoordinator,
+    async_add_entities: AddEntitiesCallback,
+    entity_factory: EntityFactory,
+    *,
+    logger: logging.Logger,
+    platform_name: str,
+    entity_domain: str | None = None,
+) -> None:
+    """Add entities now and whenever coordinator refresh discovers new ones."""
+    fallback_submitted_unique_ids: set[str] = set()
+    last_topology_generation = _topology_generation(coordinator)
+    entity_domain = entity_domain or _entity_domain(platform_name)
+
+    @callback
+    def _add_missing_entities() -> None:
+        nonlocal last_topology_generation
+        current_topology_generation = _topology_generation(coordinator)
+        if (
+            current_topology_generation is not None
+            and current_topology_generation == last_topology_generation
+        ):
+            return
+        last_topology_generation = current_topology_generation
+
+        registry_entries = _registry_entries_by_unique_id(
+            getattr(coordinator, "hass", None),
+            config_entry,
+            entity_domain,
+        )
+        batch_unique_ids: set[str] = set()
+        new_entities: list[Entity] = []
+        for entity in entity_factory(coordinator):
+            unique_id = _entity_unique_id(entity)
+            if unique_id is None:
+                logger.debug("Skipping %s entity without unique_id", platform_name)
+                continue
+            if unique_id in batch_unique_ids:
+                continue
+            batch_unique_ids.add(unique_id)
+            registry_entry = (
+                None if registry_entries is None else registry_entries.get(unique_id)
+            )
+            if registry_entries is None:
+                if unique_id in fallback_submitted_unique_ids:
+                    continue
+                fallback_submitted_unique_ids.add(unique_id)
+            elif _should_skip_registered_entity(
+                getattr(coordinator, "hass", None),
+                registry_entry,
+            ):
+                continue
+            elif registry_entry is None and not _matches_runtime_device_import_filter(
+                coordinator,
+                entity,
+                unique_id,
+            ):
+                logger.debug(
+                    "Skipping %s entity blocked by device import filter",
+                    platform_name,
+                )
+                continue
+            new_entities.append(entity)
+
+        if not new_entities:
+            return
+
+        async_add_entities(new_entities)
+        logger.info("Added %s %s entities", len(new_entities), platform_name)
+
+    last_topology_generation = None
+    _add_missing_entities()
+    config_entry.async_on_unload(coordinator.async_add_listener(_add_missing_entities))
+
+
+def _entity_unique_id(entity: Entity) -> str | None:
+    """Return an entity unique_id without requiring the entity to be added."""
+    unique_id = getattr(entity, "unique_id", None)
+    if isinstance(unique_id, str) and unique_id:
+        return unique_id
+
+    attr_unique_id = getattr(entity, "_attr_unique_id", None)
+    if isinstance(attr_unique_id, str) and attr_unique_id:
+        return attr_unique_id
+    return None
+
+
+def _topology_generation(coordinator: YeelightProCoordinator) -> int | None:
+    """Return topology generation when the coordinator exposes it."""
+    generation = getattr(coordinator, "topology_generation", None)
+    return generation if isinstance(generation, int) else None
+
+
+def _entity_domain(platform_name: str) -> str:
+    """Normalize a platform display name to a HA entity domain."""
+    return platform_name.strip().lower().replace(" ", "_")
+
+
+def _registry_entries_by_unique_id(
+    hass: HomeAssistant | None,
+    config_entry: ConfigEntry,
+    entity_domain: str,
+) -> dict[str, er.RegistryEntry] | None:
+    """Return registry entries for this config entry and HA entity domain."""
+    if hass is None:
+        return None
+    entity_registry = er.async_get(hass)
+    entries = er.async_entries_for_config_entry(entity_registry, config_entry.entry_id)
+    return {
+        entry.unique_id: entry
+        for entry in entries
+        if entry.platform == DOMAIN and _registry_entry_domain(entry) == entity_domain
+    }
+
+
+def _should_skip_registered_entity(
+    hass: HomeAssistant | None,
+    registry_entry: er.RegistryEntry | None,
+) -> bool:
+    """Return true when HA registry/runtime already owns this entity."""
+    if registry_entry is None:
+        return False
+    if getattr(registry_entry, "disabled_by", None) is not None:
+        return True
+    entity_id = getattr(registry_entry, "entity_id", None)
+    states = getattr(hass, "states", None)
+    state_get = getattr(states, "get", None)
+    return bool(
+        isinstance(entity_id, str)
+        and callable(state_get)
+        and state_get(entity_id) is not None
+    )
+
+
+def _registry_entry_domain(registry_entry: Any) -> str | None:
+    """Return the HA entity domain for a registry entry."""
+    domain = getattr(registry_entry, "domain", None)
+    if isinstance(domain, str) and domain:
+        return domain
+    entity_id = getattr(registry_entry, "entity_id", "")
+    if isinstance(entity_id, str) and "." in entity_id:
+        return entity_id.split(".", 1)[0]
+    return None
+
+
+def _matches_runtime_device_import_filter(
+    coordinator: YeelightProCoordinator,
+    entity: Entity,
+    unique_id: str,
+) -> bool:
+    """Return true when an entity is allowed by the runtime device filter."""
+    filter_config = _runtime_device_import_filter(coordinator)
+    if not filter_config:
+        return True
+
+    device_payload = _entity_device_payload(coordinator, entity, unique_id)
+    if device_payload is None:
+        return True
+    return matches_device_import_filter(device_payload, filter_config)
+
+
+def _runtime_device_import_filter(
+    coordinator: YeelightProCoordinator,
+) -> Mapping[str, Any] | None:
+    """Return configured device import filter when available."""
+    options = getattr(coordinator, "options", None)
+    if not isinstance(options, Mapping):
+        return None
+    filter_config = options.get(CONF_DEVICE_IMPORT_FILTER)
+    return filter_config if isinstance(filter_config, Mapping) else None
+
+
+def _entity_device_payload(
+    coordinator: YeelightProCoordinator,
+    entity: Entity,
+    unique_id: str,
+) -> dict[str, Any] | None:
+    """Return source device payload for device-backed entities."""
+    device_id = _entity_device_id(entity, unique_id)
+    if device_id is None:
+        return None
+
+    get_device = getattr(coordinator, "get_device", None)
+    if callable(get_device):
+        device = get_device(device_id)
+        if isinstance(device, dict):
+            return device
+
+    data = getattr(coordinator, "data", None)
+    if isinstance(data, dict):
+        device = data.get(device_id) or data.get(str(device_id))
+        if isinstance(device, dict):
+            return device
+    return None
+
+
+def _entity_device_id(entity: Entity, unique_id: str) -> int | None:
+    """Return Yeelight source device id from entity metadata when possible."""
+    raw_device_id = getattr(
+        entity,
+        "_device_id",
+        getattr(entity, "_source_device_id", None),
+    )
+    if isinstance(raw_device_id, int):
+        return raw_device_id
+    if isinstance(raw_device_id, str) and raw_device_id.isdigit():
+        return int(raw_device_id)
+
+    prefix = f"{DOMAIN}_"
+    if not unique_id.startswith(prefix):
+        return None
+    remainder = unique_id[len(prefix):]
+    first_part = remainder.split("_", 1)[0]
+    return int(first_part) if first_part.isdigit() else None

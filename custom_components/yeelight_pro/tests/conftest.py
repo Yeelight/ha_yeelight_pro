@@ -9,11 +9,13 @@
 - utils 工具函数
 """
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 from homeassistant.core import HomeAssistant
 
 from custom_components.yeelight_pro.const import DOMAIN
+
+pytest_plugins = ("custom_components.yeelight_pro.tests.config_flow_helpers",)
 
 
 @pytest.fixture
@@ -50,6 +52,7 @@ def mock_coordinator():
     coordinator.automations = []
     coordinator.groups = []
     coordinator.rooms = []
+    coordinator.areas = []
     coordinator.async_execute_scene = AsyncMock()
     coordinator.async_trigger_automation = AsyncMock()
     coordinator.async_control_device = AsyncMock()

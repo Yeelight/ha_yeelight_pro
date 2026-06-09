@@ -14,9 +14,12 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
 from .core.exceptions import YeelightProError
+from .dynamic_entities import async_track_dynamic_entities
+from .entity_errors import raise_service_error
 from .projector.switch import HASwitchProjection, project_switches
 
 _LOGGER = logging.getLogger(__name__)
+ERROR_SWITCH_PROJECTION_UNAVAILABLE = "无法解析 switch 投影"
 
 
 async def async_setup_entry(
@@ -27,7 +30,18 @@ async def async_setup_entry(
     """设置 Yeelight Pro switch 平台."""
     coordinator: YeelightProCoordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
 
-    # 遍历所有设备，投影开关实体
+    async_track_dynamic_entities(
+        config_entry,
+        coordinator,
+        async_add_entities,
+        _iter_switch_entities,
+        logger=_LOGGER,
+        platform_name="switch",
+    )
+
+
+def _iter_switch_entities(coordinator: YeelightProCoordinator) -> list["YeelightProSwitch"]:
+    """按当前拓扑生成 switch 实体候选."""
     switches: list[YeelightProSwitch] = []
     for device_id, device_data in coordinator.data.items():
         projections = project_switches(device_data, domain=DOMAIN)
@@ -39,10 +53,7 @@ async def async_setup_entry(
                     component_id=projection.component_id,
                 )
             )
-
-    if switches:
-        async_add_entities(switches)
-        _LOGGER.info("已添加 %s 个 switch 实体", len(switches))
+    return switches
 
 
 class YeelightProSwitch(CoordinatorEntity, SwitchEntity):
@@ -125,28 +136,24 @@ class YeelightProSwitch(CoordinatorEntity, SwitchEntity):
         """开启开关."""
         projection = self._projection
         if projection is None:
-            raise HomeAssistantError(f"无法解析 switch 投影: {self._component_id}")
+            raise HomeAssistantError(ERROR_SWITCH_PROJECTION_UNAVAILABLE)
         try:
             await self.coordinator.async_control_device(
                 self._device_id,
                 {projection.control_key: True},
             )
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"开启 switch 失败: {self._component_id}: {err}"
-            ) from err
+            raise_service_error("switch.turn_on", err)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """关闭开关."""
         projection = self._projection
         if projection is None:
-            raise HomeAssistantError(f"无法解析 switch 投影: {self._component_id}")
+            raise HomeAssistantError(ERROR_SWITCH_PROJECTION_UNAVAILABLE)
         try:
             await self.coordinator.async_control_device(
                 self._device_id,
                 {projection.control_key: False},
             )
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"关闭 switch 失败: {self._component_id}: {err}"
-            ) from err
+            raise_service_error("switch.turn_off", err)

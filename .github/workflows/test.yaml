@@ -1,17 +1,18 @@
-name: Test
+name: Tests
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.11', '3.12']
+        python-version: ["3.11", "3.12"]
 
     steps:
       - uses: actions/checkout@v4
@@ -23,15 +24,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -r requirements_test.txt
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements_test.txt
 
       - name: Run tests
         run: |
-          pytest --cov=custom_components/yeelight_pro \
-                 --cov-report=xml \
-                 --cov-report=term-missing
-
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-        with:
-          file: ./coverage.xml
+          python -m pytest -q

@@ -7,295 +7,152 @@ from __future__ import annotations
 import logging
 from typing import Any, Mapping
 
-import voluptuous as vol
-
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import (
+    ConfigEntryAuthFailed,
+    ConfigEntryNotReady,
+)
 from homeassistant.helpers import (
-    area_registry as ar,
-    config_validation as cv,
     device_registry as dr,
 )
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
+from .analytics_service import async_register_analytics_service
+from .area_service import async_register_area_services
 from .const import (
-    ATTR_COMPONENT_ID,
-    ATTR_EVENT_ATTRIBUTES,
-    ATTR_EVENT_TYPE,
-    ATTR_SOURCE_DEVICE_ID,
     CONF_ACCESS_TOKEN,
     CONF_CONNECTION_MODE,
     CONF_CLOUD_DOMAIN,
     CONF_HOUSE_ID,
+    CONF_OAUTH_CLIENT_ID,
     CONF_PRIVATE_DOMAIN,
     CONNECTION_MODE_CLOUD,
-    DEVICE_EVENT_TYPE,
     DOMAIN,
-    PLATFORMS,
+    get_enabled_platforms,
 )
 from .core.client import YeelightProClient
 from .core.coordinator import YeelightProCoordinator
-from .core.exceptions import ConnectionError
+from .core.exceptions import AuthenticationError, ConnectionError, safe_error_summary
+from .debug_service import async_register_debug_event_service
 from .entity_lifecycle import async_reconcile_entity_registry
+from .entry_migration import (
+    async_migrate_config_entry,
+    normalize_entry_data,
+)
+from .ha_device_registry import (
+    active_device_identifiers as _active_device_identifiers,
+    async_sync_gateway_devices as _async_sync_gateway_devices,
+    device_payload_identifiers as _device_payload_identifiers,
+)
+from .lan_runtime import async_start_lan_runtime
+from .live_runtime import async_start_live_runtime
+from .repair_issues import (
+    async_create_topology_changed_issue,
+    async_delete_topology_changed_issues,
+)
+from .refresh_service import async_register_refresh_service
+from .registry_cleanup_service import async_register_registry_cleanup_service
+from .runtime_options import (
+    async_options_updated as _async_options_updated,
+    entry_options as _entry_options,
+    topology_change_repairs_enabled as _topology_change_repairs_enabled,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
-# 服务 schema 定义
-SERVICE_ASSIGN_AREAS_SCHEMA = vol.Schema({
-    vol.Required("devices"): cv.ensure_list,
-    vol.Required("area_id"): cv.string,
-})
-
-SERVICE_AUTO_ASSIGN_AREAS_SCHEMA = vol.Schema({
-    vol.Optional("gateway_id"): cv.string,
-})
-
-SERVICE_DEBUG_EMIT_EVENT_SCHEMA = vol.Schema({
-    vol.Required(ATTR_SOURCE_DEVICE_ID): vol.Any(int, cv.string),
-    vol.Required(ATTR_COMPONENT_ID): cv.string,
-    vol.Required(ATTR_EVENT_TYPE): cv.string,
-    vol.Optional(ATTR_EVENT_ATTRIBUTES, default={}): dict,
-})
-
-
-def _build_debug_event_payload(data: Mapping[str, Any]) -> dict[str, Any]:
-    """将调试服务输入规范化为运行时事件总线载荷。"""
-    return {
-        ATTR_SOURCE_DEVICE_ID: str(data[ATTR_SOURCE_DEVICE_ID]),
-        ATTR_COMPONENT_ID: str(data[ATTR_COMPONENT_ID]),
-        ATTR_EVENT_TYPE: str(data[ATTR_EVENT_TYPE]),
-        ATTR_EVENT_ATTRIBUTES: dict(data.get(ATTR_EVENT_ATTRIBUTES) or {}),
-    }
-
-
-def _normalize_registry_pairs(value: Any) -> set[tuple[str, str]]:
-    """将 JSON 风格的配对数组转换为 HA 注册表元组集合。"""
-    pairs: set[tuple[str, str]] = set()
-    for item in value or []:
-        if isinstance(item, (list, tuple)) and len(item) == 2:
-            pairs.add((str(item[0]), str(item[1])))
-    return pairs
-
-
-def _normalize_registry_pair(value: Any) -> tuple[str, str] | None:
-    """将 JSON 风格的配对转换为 HA 注册表元组。"""
-    if isinstance(value, (list, tuple)) and len(value) == 2:
-        return (str(value[0]), str(value[1]))
-    return None
-
-
-async def _async_sync_gateway_devices(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    coordinator: YeelightProCoordinator,
-) -> None:
-    """确保网关父设备和源设备存在于 HA 设备注册表中。"""
-    device_registry = dr.async_get(hass)
-    synced_gateways = 0
-    synced_devices = 0
-
-    def _sync_device(device_payload: Mapping[str, Any], *, is_gateway: bool) -> bool:
-        payload = device_payload.get("ha_device_instance")
-        device_info = payload.get("device_info") if isinstance(payload, Mapping) else None
-        if not isinstance(device_info, Mapping):
-            return False
-
-        identifiers = _normalize_registry_pairs(device_info.get("identifiers"))
-        connections = _normalize_registry_pairs(device_info.get("connections"))
-        if not identifiers and not connections:
-            return False
-
-        kwargs: dict[str, Any] = {
-            "config_entry_id": entry.entry_id,
-            "identifiers": identifiers,
-        }
-        if connections:
-            kwargs["connections"] = connections
-
-        via_device = _normalize_registry_pair(device_info.get("via_device"))
-        if via_device is not None:
-            kwargs["via_device"] = via_device
-
-        for key in (
-            "manufacturer",
-            "model",
-            "model_id",
-            "name",
-            "serial_number",
-            "sw_version",
-            "hw_version",
-            "configuration_url",
-            "suggested_area",
-        ):
-            value = device_info.get(key)
-            if value is not None:
-                kwargs[key] = value
-
-        device_entry = device_registry.async_get_or_create(**kwargs)
-        if via_device is not None:
-            parent_entry = device_registry.async_get_device(identifiers={via_device})
-            if (
-                parent_entry is not None
-                and getattr(device_entry, "via_device_id", None) != parent_entry.id
-            ):
-                updated = device_registry.async_update_device(
-                    device_entry.id,
-                    via_device_id=parent_entry.id,
-                )
-                if updated is not None:
-                    device_entry = updated
-        _LOGGER.debug(
-            "Synced %s device %s into HA registry as %s with identifiers=%s",
-            "gateway" if is_gateway else "source",
-            kwargs.get("name"),
-            getattr(device_entry, "id", None),
-            sorted(identifiers),
-        )
-        return True
-
-    for gateway in coordinator.get_gateway_devices().values():
-        if _sync_device(gateway, is_gateway=True):
-            synced_gateways += 1
-
-    for device in coordinator.data.values():
-        if device.get("is_gateway"):
-            continue
-        if _sync_device(device, is_gateway=False):
-            synced_devices += 1
-
-    if synced_gateways or synced_devices:
-        _LOGGER.info(
-            "Synced %s gateway devices and %s source devices into HA registry",
-            synced_gateways,
-            synced_devices,
-        )
+__all__ = [
+    "_active_device_identifiers",
+    "_async_sync_gateway_devices",
+    "_device_payload_identifiers",
+    "async_migrate_entry",
+    "async_reload_entry",
+    "async_remove_config_entry_device",
+    "async_remove_entry",
+    "async_setup",
+    "async_setup_entry",
+    "async_unload_entry",
+]
 
 
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Set up the Yeelight Pro integration."""
     hass.data.setdefault(DOMAIN, {})
 
-    # 注册批量分配区域服务
-    async def handle_assign_areas(call: ServiceCall) -> None:
-        """处理批量分配区域服务。"""
-        devices = call.data["devices"]
-        area_id = call.data["area_id"]
-        device_registry = dr.async_get(hass)
-
-        for device_id in devices:
-            try:
-                device_registry.async_update_device(device_id, area_id=area_id)
-                _LOGGER.info("Assigned device %s to area %s", device_id, area_id)
-            except Exception as err:
-                _LOGGER.error("Failed to assign device %s: %s", device_id, err)
-
-    # 注册自动分配区域服务
-    async def handle_auto_assign_areas(call: ServiceCall) -> None:
-        """处理自动分配区域服务。"""
-        gateway_id = call.data.get("gateway_id")
-        device_registry = dr.async_get(hass)
-        area_registry = ar.async_get(hass)
-
-        area_map = {area.name: area.id for area in area_registry.async_list_areas()}
-
-        # 房间关键词映射
-        area_keywords = {
-            "客厅": "客厅", "卧室": "卧室", "主卧": "主卧",
-            "次卧": "次卧", "厨房": "厨房", "餐厅": "餐厅",
-            "书房": "书房", "阳台": "阳台", "卫生间": "卫生间",
-            "浴室": "浴室", "走廊": "走廊", "玄关": "玄关",
-            "工作区": "工作区",
-        }
-
-        assigned_count = 0
-        for device in device_registry.devices.values():
-            if gateway_id and device.id != gateway_id:
-                continue
-
-            # 过滤 Yeelight Pro 设备
-            if not any(identifier[0] == DOMAIN for identifier in device.identifiers):
-                continue
-
-            device_name = device.name or ""
-            for keyword, area_name in area_keywords.items():
-                if keyword in device_name:
-                    if area_name not in area_map:
-                        new_area = area_registry.async_create(area_name)
-                        area_map[area_name] = new_area.id
-                        _LOGGER.info("Created new area: %s", area_name)
-
-                    device_registry.async_update_device(
-                        device.id,
-                        area_id=area_map[area_name],
-                    )
-                    assigned_count += 1
-                    _LOGGER.info("Auto-assigned %s to %s", device_name, area_name)
-                    break
-
-        _LOGGER.info("Auto-assigned %s devices to areas", assigned_count)
-
-    # 注册调试事件发射服务
-    async def handle_debug_emit_event(call: ServiceCall) -> None:
-        """向 HA 事件总线发射调试 Yeelight Pro 设备事件。"""
-        payload = _build_debug_event_payload(call.data)
-        hass.bus.async_fire(DEVICE_EVENT_TYPE, payload)
-        _LOGGER.info(
-            "Emitted debug Yeelight Pro event: source_device_id=%s "
-            "component_id=%s event_type=%s",
-            payload[ATTR_SOURCE_DEVICE_ID],
-            payload[ATTR_COMPONENT_ID],
-            payload[ATTR_EVENT_TYPE],
-        )
-
-    hass.services.async_register(
-        DOMAIN, "assign_areas", handle_assign_areas,
-        schema=SERVICE_ASSIGN_AREAS_SCHEMA,
-    )
-    hass.services.async_register(
-        DOMAIN, "auto_assign_areas", handle_auto_assign_areas,
-        schema=SERVICE_AUTO_ASSIGN_AREAS_SCHEMA,
-    )
-    hass.services.async_register(
-        DOMAIN, "debug_emit_event", handle_debug_emit_event,
-        schema=SERVICE_DEBUG_EMIT_EVENT_SCHEMA,
-    )
+    async_register_area_services(hass)
+    async_register_debug_event_service(hass)
+    async_register_refresh_service(hass, _async_post_manual_refresh)
+    async_register_registry_cleanup_service(hass)
+    async_register_analytics_service(hass)
 
     return True
 
 
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate a Yeelight Pro config entry."""
+    return await async_migrate_config_entry(hass, entry)
+
+
+async def _async_post_manual_refresh(
+    entry: ConfigEntry,
+    coordinator: YeelightProCoordinator,
+) -> None:
+    """Run registry maintenance after a manual refresh."""
+    hass = coordinator.hass
+    previous_generation = coordinator.topology_generation
+    await _async_sync_gateway_devices(hass, entry, coordinator)
+    await async_reconcile_entity_registry(hass, entry, coordinator)
+    if (
+        coordinator.topology_generation != previous_generation
+        and _topology_change_repairs_enabled(entry)
+    ):
+        async_create_topology_changed_issue(
+            hass,
+            entry,
+            coordinator,
+            previous_generation=previous_generation,
+        )
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Yeelight Pro from a config entry."""
-    # 获取配置
-    connection_mode = entry.data[CONF_CONNECTION_MODE]
-    access_token = entry.data[CONF_ACCESS_TOKEN]
-    house_id = entry.data[CONF_HOUSE_ID]
+    entry_data = normalize_entry_data(entry.data)
+    connection_mode = entry_data[CONF_CONNECTION_MODE]
+    access_token = entry_data[CONF_ACCESS_TOKEN]
+    client_id = entry_data.get(CONF_OAUTH_CLIENT_ID, "")
+    house_id = entry_data[CONF_HOUSE_ID]
 
     # 确定域名
     if connection_mode == CONNECTION_MODE_CLOUD:
-        domain = entry.data.get(CONF_CLOUD_DOMAIN, "api.yeelight.com")
+        domain = entry_data[CONF_CLOUD_DOMAIN]
     else:
-        domain = entry.data.get(CONF_PRIVATE_DOMAIN, "192.168.1.100:8080")
+        domain = entry_data[CONF_PRIVATE_DOMAIN]
 
     # 创建客户端
     session = async_get_clientsession(hass)
     client = YeelightProClient(
         domain=domain,
         access_token=access_token,
+        client_id=client_id,
         session=session,
     )
 
     # 验证服务可达性（仅检查连通性，token 在 config_flow 已验证）
     try:
         await client.check_health()
+    except AuthenticationError:
+        raise ConfigEntryAuthFailed("Yeelight Pro authentication failed") from None
     except ConnectionError as err:
-        raise ConfigEntryNotReady(f"Connection failed: {err}") from err
+        raise ConfigEntryNotReady(
+            f"Connection failed: {safe_error_summary(err)}"
+        ) from None
 
     # 创建协调器
     coordinator = YeelightProCoordinator(
         hass=hass,
         client=client,
         house_id=house_id,
+        options=_entry_options(entry),
     )
 
     # 首次数据更新
@@ -304,30 +161,55 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # 同步网关设备到 HA 注册表
     await _async_sync_gateway_devices(hass, entry, coordinator)
 
-    # 清理过期实体注册表条目
+    # 记录过期实体注册表条目；显式 cleanup service 才会禁用 stale 实体。
     await async_reconcile_entity_registry(hass, entry, coordinator)
 
     # 存储到 hass.data
-    hass.data[DOMAIN][entry.entry_id] = {
+    platforms = get_enabled_platforms(_entry_options(entry))
+    runtime_data = {
         "client": client,
         "coordinator": coordinator,
+        "entry": entry,
+        "platforms": platforms,
     }
+    hass.data[DOMAIN][entry.entry_id] = runtime_data
 
-    # 拓扑变更监听：自动触发设备同步和实体清理
+    try:
+        push_manager = await async_start_live_runtime(hass, entry, coordinator)
+        if push_manager is not None:
+            runtime_data["push_manager"] = push_manager
+        lan_runtime = await async_start_lan_runtime(entry, coordinator)
+        if lan_runtime is not None:
+            runtime_data["lan_runtime"] = lan_runtime
+    except Exception:
+        await _async_stop_loaded_runtime(runtime_data)
+        hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+        raise
+
+    # 拓扑变更监听：自动触发设备同步和实体 stale 记录
     last_topology_generation = coordinator.topology_generation
 
     def _schedule_topology_sync() -> None:
         nonlocal last_topology_generation
         if coordinator.topology_generation == last_topology_generation:
             return
+        previous_generation = last_topology_generation
         last_topology_generation = coordinator.topology_generation
         hass.async_create_task(_async_sync_gateway_devices(hass, entry, coordinator))
         hass.async_create_task(async_reconcile_entity_registry(hass, entry, coordinator))
+        if _topology_change_repairs_enabled(entry):
+            async_create_topology_changed_issue(
+                hass,
+                entry,
+                coordinator,
+                previous_generation=previous_generation,
+            )
 
     entry.async_on_unload(coordinator.async_add_listener(_schedule_topology_sync))
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 
     # 设置平台
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    await hass.config_entries.async_forward_entry_setups(entry, platforms)
 
     _LOGGER.info(
         "Yeelight Pro integration setup complete for house %s (%s mode)",
@@ -340,13 +222,70 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    loaded = hass.data.get(DOMAIN, {}).get(entry.entry_id, {})
+    platforms = loaded.get("platforms", get_enabled_platforms(_entry_options(entry)))
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, platforms)
 
     if unload_ok:
-        data = hass.data[DOMAIN].pop(entry.entry_id)
-        await data["client"].disconnect()
+        data = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+        await _async_stop_loaded_runtime(data)
+        hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
 
     return unload_ok
+
+
+async def _async_stop_loaded_runtime(data: Any) -> None:
+    """Stop optional runtime managers and disconnect the client."""
+    if not isinstance(data, Mapping):
+        return
+
+    push_manager = data.get("push_manager")
+    stop_push = getattr(push_manager, "async_stop", None)
+    if callable(stop_push):
+        await stop_push()
+
+    lan_runtime = data.get("lan_runtime")
+    stop_lan = getattr(lan_runtime, "async_stop", None)
+    if callable(stop_lan):
+        await stop_lan()
+
+    client = data.get("client")
+    disconnect = getattr(client, "disconnect", None)
+    if callable(disconnect):
+        await disconnect()
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Remove local artifacts for a config entry."""
+    async_delete_topology_changed_issues(hass, entry)
+    return True
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    device_entry: dr.DeviceEntry,
+) -> bool:
+    """Allow local removal only for stale Yeelight Pro device entries."""
+    yeelight_identifiers = {
+        identifier for identifier in device_entry.identifiers if identifier[0] == DOMAIN
+    }
+    if not yeelight_identifiers:
+        return False
+
+    loaded = hass.data.get(DOMAIN, {}).get(config_entry.entry_id)
+    coordinator = loaded.get("coordinator") if isinstance(loaded, Mapping) else None
+    if not isinstance(coordinator, YeelightProCoordinator):
+        return False
+
+    active_identifiers = _active_device_identifiers(coordinator)
+    if yeelight_identifiers & active_identifiers:
+        _LOGGER.info(
+            "Rejected local removal for active Yeelight Pro device %s",
+            device_entry.id,
+        )
+        return False
+    return True
 
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:

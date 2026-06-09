@@ -12,16 +12,16 @@ from homeassistant.components.light import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
 from .core.exceptions import YeelightProError
+from .dynamic_entities import async_track_dynamic_entities
+from .entity_errors import raise_service_error
 from .projector.light import (
     HALightProjection,
-    LIGHT_COLOR_MODE_HINT_KEY,
     NumericRange,
     project_light,
 )
@@ -42,14 +42,23 @@ async def async_setup_entry(
     """初始化 Yeelight Pro 灯光平台。"""
     coordinator: YeelightProCoordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
 
-    lights = []
+    async_track_dynamic_entities(
+        config_entry,
+        coordinator,
+        async_add_entities,
+        _iter_light_entities,
+        logger=_LOGGER,
+        platform_name="light",
+    )
+
+
+def _iter_light_entities(coordinator: YeelightProCoordinator) -> list["YeelightProLight"]:
+    """按当前拓扑生成灯光实体候选。"""
+    lights: list[YeelightProLight] = []
     for device_id, device_data in coordinator.data.items():
         if project_light(device_data, domain=DOMAIN) is not None:
             lights.append(YeelightProLight(coordinator, device_id))
-
-    if lights:
-        async_add_entities(lights)
-        _LOGGER.info("Added %s light entities", len(lights))
+    return lights
 
 
 class YeelightProLight(CoordinatorEntity, LightEntity):
@@ -187,12 +196,16 @@ class YeelightProLight(CoordinatorEntity, LightEntity):
                 projection.brightness_range if projection is not None else None,
             )
 
-        # 设置色温
-        if ATTR_COLOR_TEMP_KELVIN in kwargs:
+        # 设置色温：只在实体投影明确支持 COLOR_TEMP 时下发 ct。
+        if (
+            ATTR_COLOR_TEMP_KELVIN in kwargs
+            and projection is not None
+            and ColorMode.COLOR_TEMP in projection.supported_color_modes
+        ):
             kelvin = int(kwargs[ATTR_COLOR_TEMP_KELVIN])
             params["ct"] = self._clamp_color_temp_kelvin(
                 kelvin,
-                projection.color_temp_range_kelvin if projection is not None else None,
+                projection.color_temp_range_kelvin,
             )
 
         # 设置 RGB 颜色
@@ -204,9 +217,7 @@ class YeelightProLight(CoordinatorEntity, LightEntity):
         try:
             await self.coordinator.async_control_device(self._device_id, params)
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"开启灯光失败: 设备 {self._device_id}: {err}"
-            ) from err
+            raise_service_error("light.turn_on", err)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """关闭灯光。"""
@@ -215,9 +226,7 @@ class YeelightProLight(CoordinatorEntity, LightEntity):
                 self._device_id, {"p": False}
             )
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"关闭灯光失败: 设备 {self._device_id}: {err}"
-            ) from err
+            raise_service_error("light.turn_off", err)
 
     def _brightness_from_ha(
         self, brightness: int, brightness_range: NumericRange | None

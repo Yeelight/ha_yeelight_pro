@@ -20,9 +20,12 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
 from .core.exceptions import YeelightProError
+from .dynamic_entities import async_track_dynamic_entities
+from .entity_errors import raise_service_error
 from .projector.vacuum import HAVacuumProjection, project_vacuum
 
 _LOGGER = logging.getLogger(__name__)
+ERROR_INVALID_VACUUM_FAN_SPEED = "无效的吸力档位"
 
 # HA 状态字符串 → 内部状态映射
 _STATE_MAP: dict[str, str] = {
@@ -49,14 +52,23 @@ async def async_setup_entry(
     """设置 Yeelight Pro 扫地机器人平台."""
     coordinator: YeelightProCoordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
 
+    async_track_dynamic_entities(
+        config_entry,
+        coordinator,
+        async_add_entities,
+        _iter_vacuum_entities,
+        logger=_LOGGER,
+        platform_name="vacuum",
+    )
+
+
+def _iter_vacuum_entities(coordinator: YeelightProCoordinator) -> list["YeelightProVacuum"]:
+    """按当前拓扑生成 vacuum 实体候选."""
     vacuums: list[YeelightProVacuum] = []
     for device_id, device_data in coordinator.data.items():
         if project_vacuum(device_data, domain=DOMAIN) is not None:
             vacuums.append(YeelightProVacuum(coordinator, device_id))
-
-    if vacuums:
-        async_add_entities(vacuums)
-        _LOGGER.info("已添加 %s 个 vacuum 实体", len(vacuums))
+    return vacuums
 
 
 class YeelightProVacuum(CoordinatorEntity, StateVacuumEntity):
@@ -168,9 +180,7 @@ class YeelightProVacuum(CoordinatorEntity, StateVacuumEntity):
                 self._device_id, {"action": "start"}
             )
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"启动清扫失败: 设备 {self._device_id}: {err}"
-            ) from err
+            raise_service_error("vacuum.start", err)
 
     async def async_pause(self) -> None:
         """暂停清扫."""
@@ -179,9 +189,7 @@ class YeelightProVacuum(CoordinatorEntity, StateVacuumEntity):
                 self._device_id, {"action": "pause"}
             )
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"暂停清扫失败: 设备 {self._device_id}: {err}"
-            ) from err
+            raise_service_error("vacuum.pause", err)
 
     async def async_stop(self, **kwargs: Any) -> None:
         """停止清扫."""
@@ -190,9 +198,7 @@ class YeelightProVacuum(CoordinatorEntity, StateVacuumEntity):
                 self._device_id, {"action": "stop"}
             )
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"停止清扫失败: 设备 {self._device_id}: {err}"
-            ) from err
+            raise_service_error("vacuum.stop", err)
 
     async def async_return_to_base(self, **kwargs: Any) -> None:
         """返回充电座."""
@@ -201,25 +207,19 @@ class YeelightProVacuum(CoordinatorEntity, StateVacuumEntity):
                 self._device_id, {"action": "return_to_base"}
             )
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"返回充电座失败: 设备 {self._device_id}: {err}"
-            ) from err
+            raise_service_error("vacuum.return_to_base", err)
 
     async def async_set_fan_speed(self, fan_speed: str, **kwargs: Any) -> None:
         """设置吸力档位."""
         if fan_speed not in self.fan_speed_list:
-            raise HomeAssistantError(
-                f"无效的吸力档位: {fan_speed}，可选项: {self.fan_speed_list}"
-            )
+            raise HomeAssistantError(ERROR_INVALID_VACUUM_FAN_SPEED)
         speed_index = self.fan_speed_list.index(fan_speed)
         try:
             await self.coordinator.async_control_device(
                 self._device_id, {"fan_speed": speed_index}
             )
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"设置吸力档位失败: 设备 {self._device_id}: {err}"
-            ) from err
+            raise_service_error("vacuum.set_fan_speed", err)
 
     @staticmethod
     def _default_features() -> int:

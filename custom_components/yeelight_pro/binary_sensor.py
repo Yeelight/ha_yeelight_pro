@@ -9,6 +9,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
+from .dynamic_entities import async_track_dynamic_entities
 from .projector.binary_sensor import (
     HABinarySensorProjection,
     project_binary_sensors,
@@ -25,8 +26,21 @@ async def async_setup_entry(
     """Set up Yeelight Pro binary sensor platform."""
     coordinator: YeelightProCoordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
 
-    # 获取所有二值传感器设备
-    binary_sensors = []
+    async_track_dynamic_entities(
+        config_entry,
+        coordinator,
+        async_add_entities,
+        _iter_binary_sensor_entities,
+        logger=_LOGGER,
+        platform_name="binary sensor",
+    )
+
+
+def _iter_binary_sensor_entities(
+    coordinator: YeelightProCoordinator,
+) -> list["YeelightProBinarySensor"]:
+    """按当前拓扑生成 binary sensor 实体候选."""
+    binary_sensors: list[YeelightProBinarySensor] = []
     for device_id, device_data in coordinator.data.items():
         projections = project_binary_sensors(device_data, domain=DOMAIN)
         for projection in projections:
@@ -37,10 +51,7 @@ async def async_setup_entry(
                     component_id=projection.component_id,
                 )
             )
-
-    if binary_sensors:
-        async_add_entities(binary_sensors)
-        _LOGGER.info(f"Added {len(binary_sensors)} binary sensor entities")
+    return binary_sensors
 
 
 BINARY_SENSOR_DEVICE_CLASS_MAP = {

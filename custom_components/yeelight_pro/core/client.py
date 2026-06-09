@@ -4,34 +4,31 @@
 """
 from __future__ import annotations
 
-import asyncio
-import logging
-import uuid
-from typing import Any, Mapping
-from urllib.parse import urljoin
+from typing import Any
 
-import aiohttp
 from aiohttp import ClientSession, ClientTimeout
 
-from ..const import (
-    DEFAULT_PRODUCT_SCHEMA_BATCH_SIZE,
-    DEFAULT_REQUEST_TIMEOUT,
-    DEFAULT_THING_MANAGE_PAGE_SIZE,
-)
+from ..const import DEFAULT_REQUEST_TIMEOUT
+from ..oauth_contract import YeelightOAuthToken
+from ..scan_login_contract import YeelightScanLoginQrCode
+from .client_node_api import YeelightProNodeApiMixin
+from .client_request import build_client_headers, request_json
 from .exceptions import (
     AuthenticationError,
-    CommandError,
     ConnectionError,
-    DeviceNotFoundError,
-    RateLimitError,
-    ServerError,
-    TokenExpiredError,
+    safe_error_summary,
+)
+from .oauth import (
+    exchange_authorization_code as _exchange_authorization_code,
+    refresh_oauth_token as _refresh_oauth_token,
+)
+from .scan_login import (
+    check_scan_login_qrcode as _check_scan_login_qrcode,
+    create_scan_login_qrcode as _create_scan_login_qrcode,
 )
 
-_LOGGER = logging.getLogger(__name__)
 
-
-class YeelightProClient:
+class YeelightProClient(YeelightProNodeApiMixin):
     """Yeelight Pro HTTP 客户端."""
 
     def __init__(
@@ -39,15 +36,16 @@ class YeelightProClient:
         domain: str,
         access_token: str,
         session: ClientSession,
+        client_id: str | None = None,
         timeout: int = DEFAULT_REQUEST_TIMEOUT,
     ):
         """初始化客户端."""
         self.domain = domain.rstrip("/")
         self.access_token = access_token
+        self.client_id = client_id.strip() if isinstance(client_id, str) else ""
         self.session = session
         self.timeout = ClientTimeout(total=timeout)
         self._connected = False
-        self._request_seq = 0
 
     @property
     def base_url(self) -> str:
@@ -58,18 +56,11 @@ class YeelightProClient:
 
     def _get_headers(self, *, with_auth: bool = True) -> dict[str, str]:
         """获取请求头."""
-        headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        }
-        if with_auth and self.access_token:
-            headers["Authorization"] = f"Bearer {self.access_token}"
-        return headers
-
-    def _next_request_id(self) -> str:
-        """生成请求 ID."""
-        self._request_seq += 1
-        return f"ha-yeelight-{uuid.uuid4().hex[:8]}-{self._request_seq}"
+        return build_client_headers(
+            access_token=self.access_token,
+            client_id=self.client_id,
+            with_auth=with_auth,
+        )
 
     async def _request(
         self,
@@ -82,38 +73,78 @@ class YeelightProClient:
         """发送 HTTP 请求."""
         base = self.base_url.rstrip("/")
         url = f"{base}{path}"
+        return await request_json(
+            self.session,
+            self.timeout,
+            method,
+            url,
+            headers=self._get_headers(with_auth=with_auth),
+            **kwargs,
+        )
 
-        try:
-            async with self.session.request(
-                method,
-                url,
-                headers=self._get_headers(with_auth=with_auth),
-                timeout=self.timeout,
-                **kwargs,
-            ) as response:
-                # 处理认证错误
-                if response.status == 401:
-                    raise TokenExpiredError("Access token expired or invalid")
-                if response.status == 403:
-                    raise AuthenticationError("Access denied")
+    async def exchange_authorization_code(
+        self,
+        *,
+        client_id: str,
+        client_secret: str,
+        redirect_uri: str,
+        code: str,
+        device: str | None = "home-assistant",
+    ) -> YeelightOAuthToken:
+        """Exchange an OAuth authorization code for Yeelight access tokens."""
+        return await _exchange_authorization_code(
+            self.session,
+            self.timeout,
+            client_id=client_id,
+            client_secret=client_secret,
+            redirect_uri=redirect_uri,
+            code=code,
+            device=device,
+        )
 
-                # 处理频率限制
-                if response.status == 429:
-                    raise RateLimitError("Rate limit exceeded")
+    async def refresh_oauth_token(
+        self,
+        *,
+        client_id: str,
+        client_secret: str,
+        refresh_token: str,
+    ) -> YeelightOAuthToken:
+        """Refresh Yeelight OAuth tokens with the documented single-use token."""
+        return await _refresh_oauth_token(
+            self.session,
+            self.timeout,
+            client_id=client_id,
+            client_secret=client_secret,
+            refresh_token=refresh_token,
+        )
 
-                # 处理服务器错误
-                if response.status >= 500:
-                    raise ServerError(f"Server error: HTTP {response.status}")
+    async def create_scan_login_qrcode(
+        self,
+        *,
+        region: str,
+        device: str,
+    ) -> YeelightScanLoginQrCode:
+        """Create a Yeelight APP scan-login QR code state."""
+        return await _create_scan_login_qrcode(
+            self.session,
+            self.timeout,
+            region=region,
+            device=device,
+        )
 
-                # 处理客户端错误
-                if response.status >= 400:
-                    error_text = await response.text()
-                    raise CommandError(f"HTTP {response.status}: {error_text}")
-
-                return await response.json()
-
-        except aiohttp.ClientError as err:
-            raise ConnectionError(f"Connection error: {err}") from err
+    async def check_scan_login_qrcode(
+        self,
+        *,
+        region: str,
+        qr_code_id: str,
+    ) -> YeelightScanLoginQrCode:
+        """Poll a Yeelight APP scan-login QR code state."""
+        return await _check_scan_login_qrcode(
+            self.session,
+            self.timeout,
+            region=region,
+            qr_code_id=qr_code_id,
+        )
 
     async def check_health(self) -> bool:
         """检查服务端健康状态（需要认证）.
@@ -125,9 +156,14 @@ class YeelightProClient:
             await self.get_houses()
             self._connected = True
             return True
+        except AuthenticationError:
+            self._connected = False
+            raise
         except Exception as err:
             self._connected = False
-            raise ConnectionError(f"Health check failed: {err}") from err
+            raise ConnectionError(
+                f"Health check failed: {safe_error_summary(err)}"
+            ) from None
 
     async def validate_auth(self) -> bool:
         """验证认证凭据有效性（需要 token）.
@@ -144,319 +180,9 @@ class YeelightProClient:
             raise
         except Exception as err:
             self._connected = False
-            raise ConnectionError(f"Auth validation failed: {err}") from err
-
-    async def get_houses(self) -> list[dict[str, Any]]:
-        """获取用户的所有家庭列表."""
-        response = await self._request("POST", "/v1/house/r/all", json={})
-        data = response.get("data", {})
-        return data.get("list", [])
-
-    async def get_devices(self, house_id: int) -> list[dict[str, Any]]:
-        """获取设备列表."""
-        all_devices = []
-        page = 1
-        page_size = DEFAULT_THING_MANAGE_PAGE_SIZE
-
-        while True:
-            response = await self._request(
-                "GET",
-                f"/v1/open/node/house/{house_id}/devices/r/list/{page}/{page_size}",
-            )
-
-            data = response.get("data", {})
-            rows = data.get("rows", [])
-            total = data.get("total", 0)
-
-            all_devices.extend(rows)
-
-            if len(all_devices) >= total or not rows:
-                break
-
-            page += 1
-
-        return all_devices
-
-    async def get_gateways(self, house_id: int) -> list[dict[str, Any]]:
-        """获取网关列表."""
-        all_gateways = []
-        page = 1
-        page_size = DEFAULT_THING_MANAGE_PAGE_SIZE
-
-        while True:
-            response = await self._request(
-                "GET",
-                f"/v2/thing/schema/house/{house_id}/gateway/r/info/{page}/{page_size}",
-            )
-
-            data = response.get("data", {})
-            rows = data.get("rows", [])
-            total = data.get("total", 0)
-
-            all_gateways.extend(rows)
-
-            if len(all_gateways) >= total or not rows:
-                break
-
-            page += 1
-
-        return all_gateways
-
-    async def get_product_schemas(
-        self,
-        product_ids: list[int],
-    ) -> dict[int, dict[str, Any]]:
-        """获取产品规格."""
-        schemas = {}
-
-        # 分批处理
-        for i in range(0, len(product_ids), DEFAULT_PRODUCT_SCHEMA_BATCH_SIZE):
-            batch = product_ids[i:i + DEFAULT_PRODUCT_SCHEMA_BATCH_SIZE]
-            pids_param = "&".join(f"pids={pid}" for pid in batch)
-
-            response = await self._request(
-                "GET",
-                f"/v1/thing/schema/product/r/info?{pids_param}",
-                with_auth=False,
-            )
-
-            data = response.get("data", {})
-            for schema in data.get("schemas", []):
-                pid = schema.get("pid")
-                if pid:
-                    schemas[pid] = schema
-
-        return schemas
-
-    async def control_device(
-        self,
-        device_id: int,
-        gateway_id: int,
-        params: dict[str, Any],
-        duration: int = 500,
-    ) -> bool:
-        """控制设备.
-
-        使用 open API 控制设备属性。
-        API: POST /v1/open/control/house/{house_id}/control/2/{device_id}/w/properties
-        """
-        # 将 params 转换为 command 格式
-        command_params = []
-        for prop_name, value in params.items():
-            command_params.append({"propName": prop_name, "value": value})
-
-        body = {
-            "command": "set",
-            "params": command_params,
-            "duration": duration,
-        }
-
-        await self._request(
-            "POST",
-            f"/v1/open/control/house/{self.house_id}/control/2/{device_id}/w/properties",
-            json=body,
-        )
-        return True
-
-    async def toggle_device(
-        self,
-        device_id: int,
-        gateway_id: int,
-        properties: list[str],
-    ) -> bool:
-        """切换设备属性.
-
-        使用 open API 切换设备属性（如开关）。
-        API: POST /v1/open/control/house/{house_id}/control/2/{device_id}/w/properties
-        """
-        command_params = []
-        for prop_name in properties:
-            command_params.append({"propName": prop_name})
-
-        body = {
-            "command": "toggle",
-            "params": command_params,
-            "duration": 500,
-        }
-
-        await self._request(
-            "POST",
-            f"/v1/open/control/house/{self.house_id}/control/2/{device_id}/w/properties",
-            json=body,
-        )
-        return True
-
-    async def execute_scene(self, scene_id: str) -> bool:
-        """执行场景.
-
-        使用 open API 执行场景。
-        API: POST /v1/open/control/house/{house_id}/control/w/scenes/{scene_id}
-        """
-        await self._request(
-            "POST",
-            f"/v1/open/control/house/{self.house_id}/control/w/scenes/{scene_id}",
-        )
-        return True
-
-    async def get_rooms(self, house_id: int) -> list[dict[str, Any]]:
-        """获取房间列表.
-
-        Args:
-            house_id: 家庭 ID
-
-        Returns:
-            房间列表，每个房间包含 id、name 等信息
-        """
-        response = await self._request(
-            "GET",
-            f"/v1/open/node/house/{house_id}/rooms/r/list/1/100",
-        )
-        data = response.get("data", {})
-        return data.get("rows", [])
-
-    async def get_groups(self, house_id: int) -> list[dict[str, Any]]:
-        """获取灯组列表.
-
-        Args:
-            house_id: 家庭 ID
-
-        Returns:
-            灯组列表，每个灯组包含 id、name、设备列表等信息
-        """
-        response = await self._request(
-            "GET",
-            f"/v1/open/node/house/{house_id}/groups/r/list/1/100",
-        )
-        data = response.get("data", {})
-        return data.get("rows", [])
-
-    async def control_group(
-        self,
-        group_id: str,
-        params: dict[str, Any],
-        duration: int = 500,
-    ) -> bool:
-        """控制灯组.
-
-        使用 open API 控制灯组属性。
-        API: POST /v1/open/control/house/{house_id}/control/4/{group_id}/w/properties
-
-        Args:
-            group_id: 灯组 ID
-            params: 控制参数，如 {"p": true, "l": 100}
-            duration: 过渡时间，单位毫秒
-
-        Returns:
-            控制命令是否发送成功
-        """
-        # 将 params 转换为 command 格式
-        command_params = []
-        for prop_name, value in params.items():
-            command_params.append({"propName": prop_name, "value": value})
-
-        body = {
-            "command": "set",
-            "params": command_params,
-            "duration": duration,
-        }
-
-        await self._request(
-            "POST",
-            f"/v1/open/control/house/{self.house_id}/control/4/{group_id}/w/properties",
-            json=body,
-        )
-        return True
-
-    async def get_scenes(self, house_id: int) -> list[dict[str, Any]]:
-        """获取场景列表.
-
-        Args:
-            house_id: 家庭 ID
-
-        Returns:
-            场景列表，每个场景包含 id、name 等信息
-        """
-        response = await self._request(
-            "GET",
-            f"/v1/open/node/house/{house_id}/scenes/r/list/1/100",
-        )
-        data = response.get("data", {})
-        return data.get("rows", [])
-
-    async def get_automations(self, house_id: int) -> list[dict[str, Any]]:
-        """获取自动化列表.
-
-        Args:
-            house_id: 家庭 ID
-
-        Returns:
-            自动化列表，每个自动化包含 id、name、状态等信息
-        """
-        response = await self._request(
-            "GET",
-            f"/v1/automations/{house_id}/r/list/1/100",
-        )
-        data = response.get("data", {})
-        return data.get("rows", [])
-
-    async def enable_automation(self, automation_id: str) -> bool:
-        """启用自动化.
-
-        Args:
-            automation_id: 自动化 ID
-
-        Returns:
-            操作是否成功
-        """
-        await self._request("POST", f"/v1/automation/{automation_id}/enable")
-        return True
-
-    async def disable_automation(self, automation_id: str) -> bool:
-        """禁用自动化.
-
-        Args:
-            automation_id: 自动化 ID
-
-        Returns:
-            操作是否成功
-        """
-        await self._request("POST", f"/v1/automation/{automation_id}/disable")
-        return True
-
-    async def trigger_automation(self, automation_id: str) -> bool:
-        """手动触发自动化.
-
-        Args:
-            automation_id: 自动化 ID
-
-        Returns:
-            操作是否成功
-        """
-        await self._request("POST", f"/v1/automation/{automation_id}/trigger")
-        return True
-
-    async def get_areas(self, house_id: int) -> list[dict[str, Any]]:
-        """获取区域列表.
-
-        Args:
-            house_id: 家庭 ID
-
-        Returns:
-            区域列表，每个区域包含 id、name 等信息
-        """
-        response = await self._request(
-            "GET",
-            f"/v1/open/node/house/{house_id}/areas/r/list/1/100",
-        )
-        data = response.get("data", {})
-        return data.get("rows", [])
-
-    async def get_house_snapshot(self, house_id: int) -> dict[str, Any]:
-        """获取家庭快照."""
-        return await self._request(
-            "GET",
-            f"/v1/open/node/house/{house_id}/r/info",
-        )
+            raise ConnectionError(
+                f"Auth validation failed: {safe_error_summary(err)}"
+            ) from None
 
     async def disconnect(self) -> None:
         """断开连接."""

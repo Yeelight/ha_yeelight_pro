@@ -67,6 +67,9 @@ def project_binary_sensors(
     device_payload: Mapping[str, Any], *, domain: str
 ) -> list[HABinarySensorProjection]:
     """将 coordinator payload 投影为一个或多个 binary sensor."""
+    if _is_event_style_device(device_payload):
+        return []
+
     instance = _load_instance(device_payload)
     params = _runtime_state(device_payload, instance)
     device_info = project_device_info(instance) if instance is not None else None
@@ -79,8 +82,6 @@ def project_binary_sensors(
     projections: list[HABinarySensorProjection] = []
     for key, spec in BINARY_SENSOR_SPECS.items():
         if key not in params:
-            continue
-        if not _should_project_binary_sensor(key, device_payload):
             continue
 
         is_on = to_bool(params.get(key))
@@ -124,16 +125,6 @@ def _device_name(
 def _projection_name(base_name: str | None, label: str | None) -> str | None:
     """返回投影名称，当前直接使用标签."""
     return label
-
-
-def _should_project_binary_sensor(
-    prop_key: str,
-    device_payload: Mapping[str, Any],
-) -> bool:
-    """过滤事件型设备，这类设备仅暴露防拆状态时不投影其他 sensor."""
-    if prop_key != "alm":
-        return True
-    return not _is_event_style_device(device_payload)
 
 
 def _is_event_style_device(device_payload: Mapping[str, Any]) -> bool:

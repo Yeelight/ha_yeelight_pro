@@ -1,25 +1,79 @@
 """配置流程测试."""
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
-from homeassistant import config_entries
+import pytest
+
 from homeassistant.data_entry_flow import FlowResultType
 
-from custom_components.yeelight_pro.config_flow import YeelightProConfigFlow
+from custom_components.yeelight_pro.config_flow_helpers import house_choices
+from custom_components.yeelight_pro.config_flow_helpers import (
+    cloud_auth_method_schema,
+    cloud_region_schema,
+    user_schema,
+)
 from custom_components.yeelight_pro.const import (
-    DOMAIN,
+    CLOUD_AUTH_METHOD_ACCESS_TOKEN,
+    CLOUD_AUTH_METHOD_SCAN_LOGIN,
+    CLOUD_REGIONS,
+    CONF_CLOUD_REGION,
     CONNECTION_MODE_CLOUD,
     CONNECTION_MODE_PRIVATE,
     CONF_CONNECTION_MODE,
-    CONF_ACCESS_TOKEN,
-    CONF_HOUSE_ID,
+    DEFAULT_CLOUD_REGION,
 )
 
 
-@pytest.fixture
-def config_flow():
-    """创建配置流程实例."""
-    return YeelightProConfigFlow()
+def test_house_choices_normalize_cloud_api_variants() -> None:
+    """家庭选择项兼容开放平台字段别名，并跳过无 ID 数据."""
+    choices = house_choices([
+        {"houseId": "house-b", "houseName": ""},
+        {"house_id": "house-a", "house_name": "Alpha"},
+        {"id": 3, "name": "Beta"},
+        {"name": "Missing ID"},
+    ])
+
+    assert choices == {
+        "house-a": "Alpha",
+        3: "Beta",
+        "house-b": "House house-b",
+    }
+
+
+def test_cloud_auth_method_schema_uses_localized_labels() -> None:
+    """认证方式选择项应使用 HA selector 翻译合同."""
+    schema = cloud_auth_method_schema()
+    field = next(iter(schema.schema))
+    auth_selector = schema.schema[field]
+
+    assert auth_selector.config["translation_key"] == "cloud_auth_method"
+    assert auth_selector.config["options"] == [
+        CLOUD_AUTH_METHOD_SCAN_LOGIN,
+        CLOUD_AUTH_METHOD_ACCESS_TOKEN,
+    ]
+
+
+def test_cloud_region_schema_uses_localized_region_selector() -> None:
+    """云端区域选择项应使用 HA selector 翻译合同."""
+    schema = cloud_region_schema()
+    field = next(iter(schema.schema))
+    region_selector = schema.schema[field]
+
+    assert field.schema == CONF_CLOUD_REGION
+    assert field.default() == DEFAULT_CLOUD_REGION
+    assert region_selector.config["translation_key"] == "cloud_region"
+    assert region_selector.config["options"] == CLOUD_REGIONS
+
+
+def test_user_schema_uses_localized_connection_mode_selector() -> None:
+    """连接模式选择项应使用 HA selector 翻译合同."""
+    schema = user_schema()
+    field = next(iter(schema.schema))
+    mode_selector = schema.schema[field]
+
+    assert mode_selector.config["translation_key"] == "connection_mode"
+    assert mode_selector.config["options"] == [
+        CONNECTION_MODE_CLOUD,
+        CONNECTION_MODE_PRIVATE,
+    ]
 
 
 class TestConfigFlow:
@@ -29,6 +83,7 @@ class TestConfigFlow:
         """测试初始化."""
         assert config_flow.VERSION == 1
         assert config_flow._connection_mode is None
+        assert config_flow._cloud_auth_method == CLOUD_AUTH_METHOD_SCAN_LOGIN
 
     @pytest.mark.asyncio
     async def test_user_step_shows_form(self, config_flow):
@@ -44,7 +99,7 @@ class TestConfigFlow:
             {CONF_CONNECTION_MODE: CONNECTION_MODE_CLOUD}
         )
         assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "cloud_auth"
+        assert result["step_id"] == "cloud_region"
         assert config_flow._connection_mode == CONNECTION_MODE_CLOUD
 
     @pytest.mark.asyncio
@@ -56,52 +111,3 @@ class TestConfigFlow:
         assert result["type"] == FlowResultType.FORM
         assert result["step_id"] == "private_config"
         assert config_flow._connection_mode == CONNECTION_MODE_PRIVATE
-
-    @pytest.mark.asyncio
-    @patch("custom_components.yeelight_pro.config_flow.async_get_clientsession")
-    @patch("custom_components.yeelight_pro.config_flow.YeelightProClient")
-    async def test_cloud_auth_success(self, mock_client_class, mock_get_session, config_flow):
-        """测试云端认证成功."""
-        mock_client = AsyncMock()
-        mock_client.validate_auth.return_value = True
-        mock_client_class.return_value = mock_client
-
-        # 模拟 session
-        mock_session = MagicMock()
-        mock_get_session.return_value = mock_session
-
-        config_flow._connection_mode = CONNECTION_MODE_CLOUD
-        config_flow._domain = "api.yeelight.com"
-        config_flow.hass = MagicMock()
-
-        result = await config_flow.async_step_cloud_auth(
-            {CONF_ACCESS_TOKEN: "test_token"}
-        )
-        assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "cloud_houses"
-        assert config_flow._access_token == "test_token"
-
-    @pytest.mark.asyncio
-    @patch("custom_components.yeelight_pro.config_flow.async_get_clientsession")
-    @patch("custom_components.yeelight_pro.config_flow.YeelightProClient")
-    async def test_cloud_auth_invalid_token(self, mock_client_class, mock_get_session, config_flow):
-        """测试云端认证失败."""
-        from custom_components.yeelight_pro.core.exceptions import AuthenticationError
-
-        mock_client = AsyncMock()
-        mock_client.validate_auth.side_effect = AuthenticationError("Invalid")
-        mock_client_class.return_value = mock_client
-
-        # 模拟 session
-        mock_session = MagicMock()
-        mock_get_session.return_value = mock_session
-
-        config_flow._connection_mode = CONNECTION_MODE_CLOUD
-        config_flow._domain = "api.yeelight.com"
-        config_flow.hass = MagicMock()
-
-        result = await config_flow.async_step_cloud_auth(
-            {CONF_ACCESS_TOKEN: "invalid_token"}
-        )
-        assert result["type"] == FlowResultType.FORM
-        assert result["errors"]["base"] == "invalid_auth"

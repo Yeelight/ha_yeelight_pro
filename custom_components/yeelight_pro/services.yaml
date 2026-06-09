@@ -2,11 +2,11 @@
 
 assign_areas:
   name: 批量分配区域
-  description: 批量为设备分配区域
+  description: 批量为 HA 设备或实体对应的设备分配区域（管理员服务）
   fields:
     devices:
-      name: 设备列表
-      description: 要分配区域的设备 ID 列表
+      name: 设备或实体列表
+      description: 要分配区域的 HA 设备注册表 ID 或实体 ID 列表
       required: true
       example: '["light.living_room_1", "light.living_room_2"]'
       selector:
@@ -21,11 +21,11 @@ assign_areas:
 
 auto_assign_areas:
   name: 自动分配区域
-  description: 根据设备名称中的房间关键词自动分配区域
+  description: 根据设备名称中的房间关键词自动分配区域（管理员服务）
   fields:
     gateway_id:
       name: 网关 ID
-      description: 限定指定网关下的设备（可选，不填则处理所有 Yeelight Pro 设备）
+      description: 限定指定 HA 网关设备注册表 ID 下的子设备（可选，不填则处理所有 Yeelight Pro 设备）
       required: false
       example: "gateway_01"
       selector:
@@ -33,8 +33,14 @@ auto_assign_areas:
 
 debug_emit_event:
   name: 调试事件发射
-  description: 向 Home Assistant 事件总线发射调试 Yeelight Pro 设备事件（仅用于开发调试）
+  description: 向 Home Assistant 事件总线发射调试 Yeelight Pro 设备事件（管理员服务，仅用于开发调试）
   fields:
+    entry_id:
+      name: 配置条目 ID
+      description: 可选；限定指定 Yeelight Pro 配置条目，避免多中枢环境路由到非预期 entry
+      required: false
+      selector:
+        text:
     source_device_id:
       name: 源设备 ID
       description: 发射事件的源设备标识
@@ -63,3 +69,87 @@ debug_emit_event:
       example: '{"key": "value"}'
       selector:
         object:
+
+refresh:
+  name: 手动刷新
+  description: 立即刷新已加载的 Yeelight Pro 数据并同步设备/实体注册表（管理员服务）
+  fields:
+    entry_id:
+      name: 配置条目 ID
+      description: 可选；不填则刷新所有已加载的 Yeelight Pro 配置条目
+      required: false
+      selector:
+        text:
+    refresh_product_schemas:
+      name: 重新获取产品物模型
+      description: 强制重新获取当前设备使用的产品物模型；失败时继续回退已缓存物模型
+      required: false
+      default: false
+      selector:
+        boolean:
+
+cleanup_registry:
+  name: 注册表清理预检
+  description: 对 stale Yeelight Pro 实体执行 dry-run；二次确认后仅禁用 stale entities，不删除实体或设备注册表条目（管理员服务）
+  fields:
+    entry_id:
+      name: 配置条目 ID
+      description: 可选；dry-run 不填则汇总所有已加载 entry，confirm 时必须指定目标 entry
+      required: false
+      selector:
+        text:
+    confirm:
+      name: 确认执行
+      description: 设为 true 时执行二次确认；必须同时提供 dry-run 返回的 audit_id
+      required: false
+      default: false
+      selector:
+        boolean:
+    audit_id:
+      name: 审计 ID
+      description: dry-run 返回的审计 ID；confirm 时必须匹配当前 stale 结果
+      required: false
+      selector:
+        text:
+
+refresh_analytics:
+  name: 刷新数据分析
+  description: 显式刷新一个 Yeelight Pro 数据分析接口，并仅保留脱敏聚合结果（管理员服务；需先在选项中启用）
+  fields:
+    entry_id:
+      name: 配置条目 ID
+      description: 可选；不填则刷新所有已启用数据分析运行时的 Yeelight Pro 配置条目
+      required: false
+      selector:
+        text:
+    endpoint:
+      name: 数据分析接口
+      description: 要刷新的数据分析接口 key
+      required: true
+      example: "energy_analyse"
+      selector:
+        text:
+    date_code:
+      name: 日期代码
+      description: 日/月/年统计使用的 dateCode，例如 2024-08、2024-08-01 或 2024
+      required: false
+      selector:
+        text:
+    start_date:
+      name: 开始日期
+      description: 趋势统计的开始日期，格式为 YYYY-MM-DD
+      required: false
+      selector:
+        text:
+    end_date:
+      name: 结束日期
+      description: 趋势统计的结束日期，格式为 YYYY-MM-DD
+      required: false
+      selector:
+        text:
+    area_id:
+      name: 区域 ID
+      description: 可选；仅报警和能源接口支持
+      required: false
+      selector:
+        text:

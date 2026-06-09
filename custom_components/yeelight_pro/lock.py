@@ -14,9 +14,12 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
 from .core.exceptions import YeelightProError
+from .dynamic_entities import async_track_dynamic_entities
+from .entity_errors import raise_service_error
 from .projector.lock import HALockProjection, project_lock
 
 _LOGGER = logging.getLogger(__name__)
+ERROR_LOCK_PROJECTION_UNAVAILABLE = "无法解析 lock 投影"
 
 
 async def async_setup_entry(
@@ -27,14 +30,23 @@ async def async_setup_entry(
     """初始化 Yeelight Pro 门锁平台。"""
     coordinator: YeelightProCoordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
 
-    locks = []
+    async_track_dynamic_entities(
+        config_entry,
+        coordinator,
+        async_add_entities,
+        _iter_lock_entities,
+        logger=_LOGGER,
+        platform_name="lock",
+    )
+
+
+def _iter_lock_entities(coordinator: YeelightProCoordinator) -> list["YeelightProLock"]:
+    """按当前拓扑生成 lock 实体候选。"""
+    locks: list[YeelightProLock] = []
     for device_id, device_data in coordinator.data.items():
         if project_lock(device_data, domain=DOMAIN) is not None:
             locks.append(YeelightProLock(coordinator, device_id))
-
-    if locks:
-        async_add_entities(locks)
-        _LOGGER.info("Added %s lock entities", len(locks))
+    return locks
 
 
 class YeelightProLock(CoordinatorEntity, LockEntity):
@@ -99,27 +111,25 @@ class YeelightProLock(CoordinatorEntity, LockEntity):
     async def async_lock(self, **kwargs: Any) -> None:
         """锁定门锁。"""
         projection = self._projection
-        control_key = projection.control_key if projection is not None else "lock"
+        if projection is None:
+            raise HomeAssistantError(ERROR_LOCK_PROJECTION_UNAVAILABLE)
         try:
             await self.coordinator.async_control_device(
                 self._device_id,
-                {control_key: True},
+                {projection.control_key: True},
             )
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"锁定门锁失败: 设备 {self._device_id}: {err}"
-            ) from err
+            raise_service_error("lock.lock", err)
 
     async def async_unlock(self, **kwargs: Any) -> None:
         """解锁门锁。"""
         projection = self._projection
-        control_key = projection.control_key if projection is not None else "lock"
+        if projection is None:
+            raise HomeAssistantError(ERROR_LOCK_PROJECTION_UNAVAILABLE)
         try:
             await self.coordinator.async_control_device(
                 self._device_id,
-                {control_key: False},
+                {projection.control_key: False},
             )
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"解锁门锁失败: 设备 {self._device_id}: {err}"
-            ) from err
+            raise_service_error("lock.unlock", err)

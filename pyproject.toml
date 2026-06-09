@@ -5,16 +5,26 @@ description = "Yeelight Pro integration for Home Assistant"
 requires-python = ">=3.11"
 
 [tool.pytest.ini_options]
-# 独立 testpaths，避免继承上层仓库配置
-rootdir = "."
 testpaths = ["custom_components/yeelight_pro/tests"]
+pythonpath = ["."]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
-# 隔离项目：不搜索上层目录的 conftest
-confcutdir = "."
 # 仅加载当前项目的 markers
 markers = [
     "asyncio: 标记异步测试",
+]
+
+[tool.coverage.run]
+source = ["custom_components/yeelight_pro"]
+omit = [
+    "custom_components/yeelight_pro/tests/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
 ]

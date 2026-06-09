@@ -1,0 +1,242 @@
+"""Release preflight protocol contract tests."""
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from scripts import hacs_preflight
+
+
+def test_oauth_contract_check_requires_runtime_coverage_tokens(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """preflight 应拒绝空文件冒充 OAuth token runtime 覆盖."""
+    component_root = tmp_path / "custom_components" / "yeelight_pro"
+    core_root = component_root / "core"
+    tests_root = component_root / "tests"
+    tests_root.mkdir(parents=True)
+    core_root.mkdir()
+    monkeypatch.setattr(hacs_preflight, "COMPONENT_ROOT", component_root)
+
+    _write_test_file(
+        component_root / "oauth_contract.py",
+        (
+            "DEFAULT_OAUTH_AUTHORIZE_URL DEFAULT_OAUTH_TOKEN_URL "
+            "build_authorization_url build_authorization_code_token_body "
+            "build_refresh_token_body parse_oauth_token_response raise_for_body_error"
+        ),
+    )
+    _write_test_file(
+        component_root / "scan_login_contract.py",
+        (
+            "CLOUD_REGION_BASE_DOMAINS SCAN_LOGIN_QRCODE_TTL_MS "
+            "build_scan_login_qrcode_path build_scan_login_status_path "
+            "build_scan_login_qrcode_content parse_scan_login_response"
+        ),
+    )
+    _write_test_file(
+        core_root / "oauth.py",
+        "DEFAULT_OAUTH_TOKEN_URL exchange_authorization_code",
+    )
+    _write_test_file(
+        core_root / "scan_login.py",
+        "account_base_url create_scan_login_qrcode",
+    )
+    _write_test_file(
+        tests_root / "test_oauth_contract.py",
+        "build_authorization_url OAUTH_GRANT_AUTHORIZATION_CODE",
+    )
+    _write_test_file(tests_root / "test_scan_login_contract.py", "SCAN_LOGIN_QRCODE_TTL_MS")
+    _write_test_file(tests_root / "test_p0_oauth_runtime.py", "refresh_oauth_token")
+    _write_test_file(tests_root / "test_scan_login_runtime.py", "FakeScanLoginSession")
+
+    errors = hacs_preflight._check_oauth_contract_tests()
+
+    assert any("refresh-token runtime method" in error for error in errors)
+    assert any("shared OAuth token parser use" in error for error in errors)
+    assert any("OAuth error classifier coverage" in error for error in errors)
+    assert any("authorization-code client coverage" in error for error in errors)
+    assert any("documented refresh error coverage" in error for error in errors)
+    assert any("scan-login polling coverage" in error for error in errors)
+
+
+def test_push_contract_check_requires_coverage_tokens(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """preflight 应拒绝空测试文件冒充 push 契约覆盖."""
+    component_root = tmp_path / "custom_components" / "yeelight_pro"
+    core_root = component_root / "core"
+    tests_root = component_root / "tests"
+    tests_root.mkdir(parents=True)
+    core_root.mkdir()
+    monkeypatch.setattr(hacs_preflight, "COMPONENT_ROOT", component_root)
+
+    _write_test_file(
+        component_root / "push_contract.py",
+        "build_push_url build_subscribe_message build_heartbeat_message socket",
+    )
+    _write_test_file(
+        component_root / "push_manager.py",
+        "PushTransport PushManager async_handle_push_payload",
+    )
+    _write_test_file(component_root / "push_transport.py", "ws_connect")
+    _write_test_file(component_root / "push.py", "")
+    _write_test_file(core_root / "runtime_bridge.py", "socket")
+    _write_test_file(tests_root / "test_push_contract.py", "")
+    _write_test_file(tests_root / "test_push_payloads.py", "")
+    _write_test_file(tests_root / "test_push_manager.py", "FakeTransport")
+    _write_test_file(tests_root / "push_transport_helpers.py", "FakeSession")
+    _write_test_file(tests_root / "test_push_transport.py", "push_transport_helpers")
+    _write_test_file(
+        tests_root / "test_push_transport_failures.py",
+        "push_transport_helpers",
+    )
+    _write_test_file(tests_root / "test_runtime_bridge.py", "")
+    _write_test_file(tests_root / "test_runtime_bridge_lan_events.py", "")
+
+    errors = hacs_preflight._check_push_contract_tests()
+
+    assert (
+        "push_contract.py missing monotonic message id builder: PushMessageBuilder"
+    ) in errors
+    assert any("bounded reconnect policy helper" in error for error in errors)
+    assert any("reconnect policy timing coverage" in error for error in errors)
+    assert any("reconnect policy pure helper coverage" in error for error in errors)
+    assert any("reconnect policy validation coverage" in error for error in errors)
+    assert (
+        "push_contract.py must remain no-network: socket"
+    ) in errors
+    assert (
+        "push_manager.py missing diagnostics-safe error aggregation: last_error_type"
+    ) in errors
+    assert any("transport cleanup retry state" in error for error in errors)
+    assert any("websocket runtime transport" in error for error in errors)
+    assert any("automatic reconnect scheduler" in error for error in errors)
+    assert any("automatic reconnect loop" in error for error in errors)
+    assert any("session protocol seam" in error for error in errors)
+    assert any("subscribe frame send boundary" in error for error in errors)
+    assert any("heartbeat frame send boundary" in error for error in errors)
+    assert any("documented heartbeat interval use" in error for error in errors)
+    assert any("incoming JSON object filter" in error for error in errors)
+    assert any("reader failure cleanup boundary" in error for error in errors)
+    assert any("start-time payload error coverage" in error for error in errors)
+    assert any("stop failure retry coverage" in error for error in errors)
+    assert any("finite websocket stream coverage" in error for error in errors)
+    assert any("controllable heartbeat sleep coverage" in error for error in errors)
+    assert any("connect subscribe dispatch coverage" in error for error in errors)
+    assert any("heartbeat loop cancellation coverage" in error for error in errors)
+    assert any("transport stop cleanup coverage" in error for error in errors)
+    assert any("transport start idempotency coverage" in error for error in errors)
+    assert any("transport reconnect after reader-end coverage" in error for error in errors)
+    assert any("transport reconnect retry backoff coverage" in error for error in errors)
+    assert any("subscribe failure cleanup coverage" in error for error in errors)
+    assert any("transport stop retry cleanup coverage" in error for error in errors)
+    assert any("heartbeat failure cleanup coverage" in error for error in errors)
+    assert any("reader failure cleanup coverage" in error for error in errors)
+    assert any("callback failure cleanup coverage" in error for error in errors)
+    assert any("token validation before connect coverage" in error for error in errors)
+    assert any("shared runtime payload bridge" in error for error in errors)
+    assert any("push event privacy filter" in error for error in errors)
+    assert any("push prop metadata boundary coverage" in error for error in errors)
+    assert any("push event privacy coverage" in error for error in errors)
+    assert any("schema event component inference" in error for error in errors)
+    assert any("runtime property merge path" in error for error in errors)
+    assert any("Bearer prefix regression coverage" in error for error in errors)
+    assert any("coordinator bridge coverage" in error for error in errors)
+    assert any("start-time payload dispatch coverage" in error for error in errors)
+    assert any("LAN coordinator bridge coverage" in error for error in errors)
+    assert any("LAN fallback component inference coverage" in error for error in errors)
+    assert any("indexed runtime state bridge coverage" in error for error in errors)
+    assert any("schema-scaled runtime update rebuild coverage" in error for error in errors)
+    assert (
+        "core/runtime_bridge.py must remain no-network: socket"
+    ) in errors
+
+
+def test_lan_contract_check_requires_coverage_tokens(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """preflight 应拒绝空测试文件冒充 LAN 契约覆盖."""
+    component_root = tmp_path / "custom_components" / "yeelight_pro"
+    tests_root = component_root / "tests"
+    tests_root.mkdir(parents=True)
+    monkeypatch.setattr(hacs_preflight, "COMPONENT_ROOT", component_root)
+
+    _write_test_file(component_root / "lan_methods.py", "METHOD_POST_PROP socket")
+    _write_test_file(
+        component_root / "lan_contract.py",
+        (
+            "LAN_DISCOVERY_MESSAGE LAN_DISCOVERY_PORT LAN_GATEWAY_PORT "
+            "parse_discovery_response encode_lan_frame decode_lan_frames"
+        ),
+    )
+    _write_test_file(component_root / "lan_discovery.py", "socket")
+    _write_test_file(component_root / "lan_runtime.py", "")
+    _write_test_file(component_root / "lan_payload.py", "socket")
+    _write_test_file(tests_root / "test_lan_contract.py", "lan_control")
+    _write_test_file(tests_root / "test_lan_discovery.py", "")
+    _write_test_file(tests_root / "test_lan_runtime.py", "")
+    _write_test_file(tests_root / "test_lan_payload.py", "")
+
+    errors = hacs_preflight._check_lan_contract_tests()
+
+    assert any("LAN event push method constant" in error for error in errors)
+    assert (
+        "lan_contract.py missing property-control frame builder: "
+        "build_set_properties_message"
+    ) in errors
+    assert (
+        "lan_contract.py missing monotonic message id builder: LanMessageBuilder"
+    ) in errors
+    assert any("LAN property update model" in error for error in errors)
+    assert any("gateway_post.prop adapter" in error for error in errors)
+    assert any("gateway_post.event adapter" in error for error in errors)
+    assert any("invalid payload rejection" in error for error in errors)
+    assert any("LAN event privacy filter" in error for error in errors)
+    assert any("must remain no-network" in error for error in errors)
+    assert (
+        "lan_methods.py must remain no-network: socket"
+    ) in errors
+    assert any("UDP discovery runtime helper" in error for error in errors)
+    assert any("UDP broadcast enable flag" in error for error in errors)
+    assert any("hostless LAN discovery fallback" in error for error in errors)
+    assert any("UDP discovery runtime coverage" in error for error in errors)
+    assert any("LAN hostless discovery fallback coverage" in error for error in errors)
+    assert any("gateway discovery text coverage" in error for error in errors)
+    assert any("CRLF frame encoder coverage" in error for error in errors)
+    assert any("LAN event privacy coverage" in error for error in errors)
+    assert any("access token redaction coverage" in error for error in errors)
+    assert any("documented approach event alias coverage" in error for error in errors)
+
+
+def test_analytics_contract_check_requires_coverage_tokens(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """preflight 应拒绝空文件冒充数据分析 API 合同覆盖."""
+    component_root = tmp_path / "custom_components" / "yeelight_pro"
+    tests_root = component_root / "tests"
+    tests_root.mkdir(parents=True)
+    monkeypatch.setattr(hacs_preflight, "COMPONENT_ROOT", component_root)
+
+    _write_test_file(component_root / "analytics_contract.py", "")
+    _write_test_file(tests_root / "test_analytics_contract.py", "")
+
+    errors = hacs_preflight._check_analytics_contract_tests()
+
+    assert any("alarm analyse endpoint key" in error for error in errors)
+    assert any("energy trend endpoint key" in error for error in errors)
+    assert any("complete analytics path builder" in error for error in errors)
+    assert any("documented areaId boundary" in error for error in errors)
+    assert any("analytics path coverage" in error for error in errors)
+    assert any("daily action path coverage" in error for error in errors)
+    assert any("analytics date/area boundary coverage" in error for error in errors)
+
+
+def _write_test_file(path: Path, content: str) -> None:
+    """Write a minimal synthetic test file for preflight inspection."""
+    path.write_text(content, encoding="utf-8")

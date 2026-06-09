@@ -5,13 +5,14 @@ from typing import Any
 from homeassistant.components.cover import CoverEntity, CoverEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
 from .core.exceptions import YeelightProError
+from .dynamic_entities import async_track_dynamic_entities
+from .entity_errors import raise_service_error
 from .projector.cover import HACoverProjection, project_cover
 
 _LOGGER = logging.getLogger(__name__)
@@ -25,14 +26,23 @@ async def async_setup_entry(
     """Set up Yeelight Pro cover platform."""
     coordinator: YeelightProCoordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
 
-    covers = []
+    async_track_dynamic_entities(
+        config_entry,
+        coordinator,
+        async_add_entities,
+        _iter_cover_entities,
+        logger=_LOGGER,
+        platform_name="cover",
+    )
+
+
+def _iter_cover_entities(coordinator: YeelightProCoordinator) -> list["YeelightProCover"]:
+    """按当前拓扑生成 cover 实体候选."""
+    covers: list[YeelightProCover] = []
     for device_id, device_data in coordinator.data.items():
         if project_cover(device_data, domain=DOMAIN) is not None:
             covers.append(YeelightProCover(coordinator, device_id))
-
-    if covers:
-        async_add_entities(covers)
-        _LOGGER.info(f"Added {len(covers)} cover entities")
+    return covers
 
 
 class YeelightProCover(CoordinatorEntity, CoverEntity):
@@ -136,18 +146,14 @@ class YeelightProCover(CoordinatorEntity, CoverEntity):
         try:
             await self.coordinator.async_control_device(self._device_id, {"tp": 100})
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"打开窗帘失败: 设备 {self._device_id}: {err}"
-            ) from err
+            raise_service_error("cover.open_cover", err)
 
     async def async_close_cover(self, **kwargs: Any) -> None:
         """Close the cover."""
         try:
             await self.coordinator.async_control_device(self._device_id, {"tp": 0})
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"关闭窗帘失败: 设备 {self._device_id}: {err}"
-            ) from err
+            raise_service_error("cover.close_cover", err)
 
     async def async_set_cover_position(self, **kwargs: Any) -> None:
         """Move the cover to a specific position."""
@@ -158,6 +164,4 @@ class YeelightProCover(CoordinatorEntity, CoverEntity):
                 {"tp": max(0, min(100, int(position)))},
             )
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"设置窗帘位置失败: 设备 {self._device_id}, 位置 {position}: {err}"
-            ) from err
+            raise_service_error("cover.set_cover_position", err)

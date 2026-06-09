@@ -8,13 +8,14 @@ from homeassistant.components.climate import ClimateEntity, HVACMode
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
 from .core.exceptions import YeelightProError
+from .dynamic_entities import async_track_dynamic_entities
+from .entity_errors import raise_service_error
 from .projector.climate import HAClimateProjection, project_climate
 
 _LOGGER = logging.getLogger(__name__)
@@ -28,14 +29,23 @@ async def async_setup_entry(
     """初始化 Yeelight Pro 空调平台。"""
     coordinator: YeelightProCoordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
 
-    climates = []
+    async_track_dynamic_entities(
+        config_entry,
+        coordinator,
+        async_add_entities,
+        _iter_climate_entities,
+        logger=_LOGGER,
+        platform_name="climate",
+    )
+
+
+def _iter_climate_entities(coordinator: YeelightProCoordinator) -> list["YeelightProClimate"]:
+    """按当前拓扑生成 climate 实体候选。"""
+    climates: list[YeelightProClimate] = []
     for device_id, device_data in coordinator.data.items():
         if project_climate(device_data, domain=DOMAIN) is not None:
             climates.append(YeelightProClimate(coordinator, device_id))
-
-    if climates:
-        async_add_entities(climates)
-        _LOGGER.info("Added %s climate entities", len(climates))
+    return climates
 
 
 class YeelightProClimate(CoordinatorEntity, ClimateEntity):
@@ -141,9 +151,7 @@ class YeelightProClimate(CoordinatorEntity, ClimateEntity):
                 {"actt": float(temperature)},
             )
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"设置空调温度失败: 设备 {self._device_id}: {err}"
-            ) from err
+            raise_service_error("climate.set_temperature", err)
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """设置 HVAC 模式。"""
@@ -153,6 +161,4 @@ class YeelightProClimate(CoordinatorEntity, ClimateEntity):
                 {"aco": hvac_mode != HVACMode.OFF},
             )
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"设置空调模式失败: 设备 {self._device_id}: {err}"
-            ) from err
+            raise_service_error("climate.set_hvac_mode", err)

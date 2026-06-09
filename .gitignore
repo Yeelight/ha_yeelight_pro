@@ -26,6 +26,12 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+# documentation
+docs/
+!docs/
+!docs/HA_XIAOMI_HOME_GAP_REVIEW.md
+!docs/IOT_SPEC_REGISTRY.md
+
 # PyInstaller
 *.manifest
 *.spec

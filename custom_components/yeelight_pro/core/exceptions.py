@@ -1,5 +1,7 @@
 """Yeelight Pro 统一异常体系."""
 
+from __future__ import annotations
+
 
 class YeelightProError(Exception):
     """Yeelight Pro 集成基础异常."""
@@ -43,3 +45,8 @@ class RateLimitError(YeelightProError):
 
 class ServerError(YeelightProError):
     """服务器错误."""
+
+
+def safe_error_summary(err: BaseException) -> str:
+    """Return a log-safe error summary without vendor payload details."""
+    return type(err).__name__

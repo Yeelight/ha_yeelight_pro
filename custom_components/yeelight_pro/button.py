@@ -10,12 +10,13 @@ from typing import Any
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
 from .core.exceptions import YeelightProError
+from .dynamic_entities import async_track_dynamic_entities
+from .entity_errors import raise_service_error
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,21 +28,30 @@ async def async_setup_entry(
 ) -> None:
     """设置 Yeelight Pro button 平台."""
     coordinator: YeelightProCoordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
+
+    async_track_dynamic_entities(
+        config_entry,
+        coordinator,
+        async_add_entities,
+        _iter_button_entities,
+        logger=_LOGGER,
+        platform_name="button",
+    )
+
+
+def _iter_button_entities(coordinator: YeelightProCoordinator) -> list[ButtonEntity]:
+    """按当前拓扑生成 button 实体候选."""
     buttons: list[ButtonEntity] = []
 
-    # 从 coordinator 缓存数据创建自动化按钮
     for automation in coordinator.automations:
         if automation.get("id"):
             buttons.append(YeelightProAutomationButton(coordinator, automation))
 
-    # 从 coordinator 缓存数据创建场景按钮
     for scene in coordinator.scenes:
         if scene.get("id"):
             buttons.append(YeelightProSceneButton(coordinator, scene))
 
-    if buttons:
-        async_add_entities(buttons)
-        _LOGGER.info("已添加 %s 个 button 实体", len(buttons))
+    return buttons
 
 
 def _build_gateway_device_info(
@@ -108,9 +118,7 @@ class YeelightProAutomationButton(ButtonEntity):
             await self._coordinator.async_trigger_automation(self._automation_id)
             _LOGGER.info("自动化触发成功: %s", self._attr_name)
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"自动化触发失败: {self._attr_name}: {err}"
-            ) from err
+            raise_service_error("button.trigger_automation", err)
 
 
 class YeelightProSceneButton(ButtonEntity):
@@ -142,6 +150,4 @@ class YeelightProSceneButton(ButtonEntity):
             await self._coordinator.async_execute_scene(self._scene_id)
             _LOGGER.info("场景执行成功: %s", self._attr_name)
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"场景执行失败: {self._attr_name}: {err}"
-            ) from err
+            raise_service_error("button.execute_scene", err)

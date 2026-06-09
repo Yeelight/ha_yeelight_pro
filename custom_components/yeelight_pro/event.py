@@ -24,6 +24,7 @@ from .const import (
     DOMAIN,
 )
 from .core.coordinator import YeelightProCoordinator
+from .dynamic_entities import async_track_dynamic_entities
 from .projector.event import HAEventProjection, project_events
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,7 +38,19 @@ async def async_setup_entry(
     """设置 Yeelight Pro event 平台."""
     coordinator: YeelightProCoordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
 
-    entities = []
+    async_track_dynamic_entities(
+        config_entry,
+        coordinator,
+        async_add_entities,
+        _iter_event_entities,
+        logger=_LOGGER,
+        platform_name="event",
+    )
+
+
+def _iter_event_entities(coordinator: YeelightProCoordinator) -> list["YeelightProEventEntity"]:
+    """按当前拓扑生成 event 实体候选."""
+    entities: list[YeelightProEventEntity] = []
     for device_id, device_data in coordinator.data.items():
         for projection in project_events(device_data, domain=DOMAIN):
             entities.append(
@@ -47,10 +60,7 @@ async def async_setup_entry(
                     component_id=projection.component_id,
                 )
             )
-
-    if entities:
-        async_add_entities(entities)
-        _LOGGER.info("Added %s event entities", len(entities))
+    return entities
 
 
 class YeelightProEventEntity(CoordinatorEntity, EventEntity):
@@ -76,8 +86,9 @@ class YeelightProEventEntity(CoordinatorEntity, EventEntity):
             if projection is not None
             else f"{DOMAIN}_{source_device_id}_{component_id}_event"
         )
+        self._fallback_event_types: list[str] = []
         if projection is not None:
-            self._attr_event_types = list(projection.event_types)
+            self._fallback_event_types = list(projection.event_types)
             self._attr_device_class = projection.device_class
 
     @property
@@ -105,6 +116,15 @@ class YeelightProEventEntity(CoordinatorEntity, EventEntity):
         if projection is None:
             return False
         return projection.available
+
+    @property
+    def event_types(self) -> list[str]:
+        """返回当前 schema 投影声明的事件类型."""
+        projection = self._projection
+        if projection is not None:
+            self._fallback_event_types = list(projection.event_types)
+            return list(projection.event_types)
+        return list(self._fallback_event_types)
 
     @property
     def device_info(self) -> dict[str, Any] | None:

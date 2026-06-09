@@ -17,6 +17,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
 from .core.exceptions import YeelightProError
+from .entity_errors import raise_service_error
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,6 +28,9 @@ ICON_SCENE = "mdi:palette"
 
 # 空选项占位
 EMPTY_OPTION = "无可用选项"
+ERROR_UNKNOWN_ROOM_OPTION = "未知房间选项"
+ERROR_UNKNOWN_GROUP_OPTION = "未知灯组选项"
+ERROR_UNKNOWN_SCENE_OPTION = "未知场景选项"
 
 
 async def async_setup_entry(
@@ -85,12 +89,12 @@ class YeelightProRoomSelect(CoordinatorEntity, SelectEntity):
         """初始化房间选择器."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{DOMAIN}_{coordinator.house_id}_select_room"
-        self._options, self._name_to_id = _extract_options(rooms)
         self._selected: str | None = None
 
         # 设置默认选中第一个房间
-        if self._options:
-            self._selected = self._options[0]
+        options, _ = _extract_options(rooms)
+        if options:
+            self._selected = options[0]
 
     @property
     def device_info(self) -> dict[str, Any]:
@@ -104,12 +108,14 @@ class YeelightProRoomSelect(CoordinatorEntity, SelectEntity):
     @property
     def options(self) -> list[str]:
         """返回可选房间列表."""
-        return self._options if self._options else [EMPTY_OPTION]
+        options, _ = _extract_options(self.coordinator.rooms)
+        return options if options else [EMPTY_OPTION]
 
     @property
     def current_option(self) -> str | None:
         """返回当前选中的房间."""
-        if not self._options:
+        options, _ = _extract_options(self.coordinator.rooms)
+        if not options or self._selected not in options:
             return None
         return self._selected
 
@@ -117,12 +123,12 @@ class YeelightProRoomSelect(CoordinatorEntity, SelectEntity):
         """选择房间."""
         if option == EMPTY_OPTION:
             return
-        if option not in self._name_to_id:
-            _LOGGER.error("未知房间选项: %s", option)
-            return
+        _, name_to_id = _extract_options(self.coordinator.rooms)
+        if option not in name_to_id:
+            raise HomeAssistantError(ERROR_UNKNOWN_ROOM_OPTION)
         self._selected = option
         self.async_write_ha_state()
-        _LOGGER.debug("已选择房间: %s (ID: %s)", option, self._name_to_id[option])
+        _LOGGER.debug("已选择房间: %s (ID: %s)", option, name_to_id[option])
 
 
 class YeelightProGroupSelect(CoordinatorEntity, SelectEntity):
@@ -140,12 +146,12 @@ class YeelightProGroupSelect(CoordinatorEntity, SelectEntity):
         """初始化灯组选择器."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{DOMAIN}_{coordinator.house_id}_select_group"
-        self._options, self._name_to_id = _extract_options(groups)
         self._selected: str | None = None
 
         # 设置默认选中第一个灯组
-        if self._options:
-            self._selected = self._options[0]
+        options, _ = _extract_options(groups)
+        if options:
+            self._selected = options[0]
 
     @property
     def device_info(self) -> dict[str, Any]:
@@ -159,12 +165,14 @@ class YeelightProGroupSelect(CoordinatorEntity, SelectEntity):
     @property
     def options(self) -> list[str]:
         """返回可选灯组列表."""
-        return self._options if self._options else [EMPTY_OPTION]
+        options, _ = _extract_options(self.coordinator.groups)
+        return options if options else [EMPTY_OPTION]
 
     @property
     def current_option(self) -> str | None:
         """返回当前选中的灯组."""
-        if not self._options:
+        options, _ = _extract_options(self.coordinator.groups)
+        if not options or self._selected not in options:
             return None
         return self._selected
 
@@ -172,12 +180,12 @@ class YeelightProGroupSelect(CoordinatorEntity, SelectEntity):
         """选择灯组."""
         if option == EMPTY_OPTION:
             return
-        if option not in self._name_to_id:
-            _LOGGER.error("未知灯组选项: %s", option)
-            return
+        _, name_to_id = _extract_options(self.coordinator.groups)
+        if option not in name_to_id:
+            raise HomeAssistantError(ERROR_UNKNOWN_GROUP_OPTION)
         self._selected = option
         self.async_write_ha_state()
-        _LOGGER.debug("已选择灯组: %s (ID: %s)", option, self._name_to_id[option])
+        _LOGGER.debug("已选择灯组: %s (ID: %s)", option, name_to_id[option])
 
 
 class YeelightProSceneSelect(CoordinatorEntity, SelectEntity):
@@ -195,7 +203,6 @@ class YeelightProSceneSelect(CoordinatorEntity, SelectEntity):
         """初始化场景选择器."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{DOMAIN}_{coordinator.house_id}_select_scene"
-        self._options, self._name_to_id = _extract_options(scenes)
         self._last_executed: str | None = None
 
     @property
@@ -210,12 +217,14 @@ class YeelightProSceneSelect(CoordinatorEntity, SelectEntity):
     @property
     def options(self) -> list[str]:
         """返回可选场景列表."""
-        return self._options if self._options else [EMPTY_OPTION]
+        options, _ = _extract_options(self.coordinator.scenes)
+        return options if options else [EMPTY_OPTION]
 
     @property
     def current_option(self) -> str | None:
         """返回最后执行的场景."""
-        if not self._options:
+        options, _ = _extract_options(self.coordinator.scenes)
+        if not options or self._last_executed not in options:
             return None
         return self._last_executed
 
@@ -223,9 +232,10 @@ class YeelightProSceneSelect(CoordinatorEntity, SelectEntity):
         """选择并执行场景."""
         if option == EMPTY_OPTION:
             return
-        scene_id = self._name_to_id.get(option)
+        _, name_to_id = _extract_options(self.coordinator.scenes)
+        scene_id = name_to_id.get(option)
         if scene_id is None:
-            raise HomeAssistantError(f"未知场景选项: {option}")
+            raise HomeAssistantError(ERROR_UNKNOWN_SCENE_OPTION)
 
         try:
             await self.coordinator.async_execute_scene(scene_id)
@@ -233,6 +243,4 @@ class YeelightProSceneSelect(CoordinatorEntity, SelectEntity):
             self.async_write_ha_state()
             _LOGGER.debug("已执行场景: %s (ID: %s)", option, scene_id)
         except YeelightProError as err:
-            raise HomeAssistantError(
-                f"执行场景失败: {option} (ID: {scene_id}): {err}"
-            ) from err
+            raise_service_error("select.execute_scene", err)

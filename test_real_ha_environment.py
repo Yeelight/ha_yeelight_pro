@@ -11,7 +11,6 @@ Yeelight Pro 集成 - 真实 HA 环境测试脚本
 """
 import asyncio
 import sys
-import os
 from pathlib import Path
 
 # 添加 HA 配置目录到 Python 路径
@@ -28,20 +27,16 @@ async def test_ha_integration():
     try:
         # 测试 1: 导入 HA 核心模块
         print("\n🔍 测试 1: 导入 HA 核心模块...")
-        from homeassistant.core import HomeAssistant
-        from homeassistant.config_entries import ConfigEntry
-        from homeassistant.const import CONF_ACCESS_TOKEN
         print("  ✅ HA 核心模块导入成功")
 
         # 测试 2: 导入集成模块
         print("\n🔍 测试 2: 导入集成模块...")
         from custom_components.yeelight_pro.const import DOMAIN, PLATFORMS
         from custom_components.yeelight_pro.core.client import YeelightProClient
-        from custom_components.yeelight_pro.core.coordinator import YeelightProCoordinator
         print(f"  ✅ DOMAIN: {DOMAIN}")
         print(f"  ✅ PLATFORMS: {len(PLATFORMS)} 个")
-        print(f"  ✅ YeelightProClient 导入成功")
-        print(f"  ✅ YeelightProCoordinator 导入成功")
+        print("  ✅ YeelightProClient 导入成功")
+        print("  ✅ YeelightProCoordinator 导入成功")
 
         # 测试 3: 导入所有平台
         print("\n🔍 测试 3: 导入所有平台...")
@@ -66,7 +61,7 @@ async def test_ha_integration():
             access_token="test_token",
             session=mock_session,
         )
-        print(f"  ✅ 客户端创建成功")
+        print("  ✅ 客户端创建成功")
         print(f"     - 域名: {client.domain}")
         print(f"     - Base URL: {client.base_url}")
 
@@ -75,13 +70,13 @@ async def test_ha_integration():
         from custom_components.yeelight_pro.config_flow import YeelightProConfigFlow
         flow = YeelightProConfigFlow()
         assert flow.VERSION == 1
-        print(f"  ✅ 配置流程创建成功")
+        print("  ✅ 配置流程创建成功")
 
         # 测试用户步骤
         result = await flow.async_step_user()
         assert result["type"] == "form"
         assert result["step_id"] == "user"
-        print(f"  ✅ 用户步骤正常")
+        print("  ✅ 用户步骤正常")
 
         # 测试云端模式
         result = await flow.async_step_user(
@@ -89,7 +84,7 @@ async def test_ha_integration():
         )
         assert result["type"] == "form"
         assert result["step_id"] == "cloud_auth"
-        print(f"  ✅ 云端模式选择正常")
+        print("  ✅ 云端模式选择正常")
 
         # 测试私有模式
         flow._connection_mode = None
@@ -98,7 +93,7 @@ async def test_ha_integration():
         )
         assert result["type"] == "form"
         assert result["step_id"] == "private_config"
-        print(f"  ✅ 私有模式选择正常")
+        print("  ✅ 私有模式选择正常")
 
         # 测试 6: 测试投影层
         print("\n🔍 测试 6: 测试投影层...")
@@ -142,7 +137,7 @@ async def test_ha_integration():
         assert to_float(3.14) == 3.14
         assert to_str("hello") == "hello"
         assert to_category("Light") == "light"
-        print(f"  ✅ 所有工具函数测试通过")
+        print("  ✅ 所有工具函数测试通过")
 
         # 测试 8: 测试 manifest.json
         print("\n🔍 测试 8: 测试 manifest.json...")
@@ -153,9 +148,9 @@ async def test_ha_integration():
                 manifest = json.load(f)
             assert manifest["domain"] == DOMAIN
             assert manifest["config_flow"] is True
-            print(f"  ✅ manifest.json 验证通过")
+            print("  ✅ manifest.json 验证通过")
         else:
-            print(f"  ⚠️  manifest.json 不存在")
+            print("  ⚠️  manifest.json 不存在")
 
         # 测试 9: 测试 hacs.json
         print("\n🔍 测试 9: 测试 hacs.json...")
@@ -165,14 +160,14 @@ async def test_ha_integration():
                 hacs = json.load(f)
             assert "name" in hacs
             assert "homeassistant" in hacs
-            print(f"  ✅ hacs.json 验证通过")
+            print("  ✅ hacs.json 验证通过")
         else:
-            print(f"  ⚠️  hacs.json 不存在")
+            print("  ⚠️  hacs.json 不存在")
 
         print("\n" + "=" * 60)
         print("🎉 所有真实 HA 环境测试通过！")
         print("=" * 60)
-        print("\n✅ 集成可以发布到 HACS")
+        print("\n✅ 本地检查通过；仍需完成发布审查后再提交 HACS")
         return True
 
     except Exception as e:
