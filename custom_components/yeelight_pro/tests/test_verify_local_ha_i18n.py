@@ -132,6 +132,31 @@ def test_verify_i18n_contracts_rejects_untranslated_selector_option(
     )
 
 
+def test_verify_i18n_contracts_rejects_scan_login_guidance_drift(
+    tmp_path: Path,
+) -> None:
+    """扫码登录翻译缺二维码、倒计时、轮询或刷新提示时应阻断."""
+    install_root = tmp_path / "custom_components" / "yeelight_pro"
+    payload = translation_payload()
+    payload["config"]["step"]["cloud_scan_login"]["description"] = (
+        "Open Yeelight APP and scan the QR code. Status: {status}."
+    )
+    payload["config"]["progress"]["cloud_scan_login_wait"] = (
+        "Waiting for scan authorization. Status: {status}."
+    )
+    write_installed_i18n(install_root, english=payload)
+    report = VerificationReport()
+
+    verify_i18n_contracts(install_root, report)
+
+    assert not report.ok
+    assert any("Yeelight APP 1.5.0" in failure for failure in report.failures)
+    assert any("refresh" in failure for failure in report.failures)
+    assert any("qrcode" in failure for failure in report.failures)
+    assert any("remaining_seconds" in failure for failure in report.failures)
+    assert any("poll_count" in failure for failure in report.failures)
+
+
 def test_verify_i18n_contracts_rejects_unknown_repair_placeholder(
     tmp_path: Path,
 ) -> None:

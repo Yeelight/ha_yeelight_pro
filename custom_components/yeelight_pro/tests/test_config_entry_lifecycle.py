@@ -273,12 +273,13 @@ async def test_setup_entry_respects_disabled_topology_repairs_option(
 
 
 @pytest.mark.asyncio
-async def test_setup_entry_cleans_optional_runtime_when_lan_start_fails(
+async def test_setup_entry_keeps_cloud_runtime_when_lan_start_fails(
     hass: HomeAssistant,
     mock_config_entry: MagicMock,
     mock_client: AsyncMock,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """可选 live/LAN runtime 启动失败时应清理半加载资源."""
+    """本地网关启动失败时，云端轮询和控制 fallback 仍应可用."""
     hass.data.setdefault(DOMAIN, {})
     mock_config_entry.options = {
         CONF_LIVE_UPDATES: True,
@@ -304,14 +305,65 @@ async def test_setup_entry_cleans_optional_runtime_when_lan_start_fails(
         "custom_components.yeelight_pro.async_start_lan_runtime",
         AsyncMock(side_effect=OSError("gateway-secret")),
     ):
+        coordinator = make_setup_coordinator()
+        coordinator_class.return_value = coordinator
+
+        from custom_components.yeelight_pro import async_setup_entry
+
+        assert await async_setup_entry(hass, mock_config_entry) is True
+
+    push_manager.async_stop.assert_not_awaited()
+    mock_client.disconnect.assert_not_awaited()
+    forward_platforms.assert_awaited_once()
+    runtime_data = hass.data[DOMAIN][mock_config_entry.entry_id]
+    assert runtime_data["push_manager"] is push_manager
+    assert runtime_data["lan_runtime"].health.as_dict() == {
+        "running": False,
+        "connected": False,
+        "sent_count": 0,
+        "received_count": 0,
+        "last_error_type": "OSError",
+    }
+    coordinator.set_lan_runtime.assert_called_once_with(None)
+    assert "OSError" in caplog.text
+    assert "gateway-secret" not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_setup_entry_keeps_polling_when_live_runtime_initial_connect_fails(
+    hass: HomeAssistant,
+    mock_config_entry: MagicMock,
+    mock_client: AsyncMock,
+) -> None:
+    """WebSocket 初始网络失败不能阻断集成回退到轮询运行."""
+    hass.data.setdefault(DOMAIN, {})
+    mock_config_entry.options = {CONF_LIVE_UPDATES: True}
+    push_manager = MagicMock()
+    push_manager.health.as_dict.return_value = {
+        "running": True,
+        "started_count": 1,
+        "stopped_count": 0,
+        "handled_payloads": 0,
+        "last_error_type": "OSError",
+    }
+
+    with patch(
+        "custom_components.yeelight_pro.YeelightProClient",
+        return_value=mock_client,
+    ), patch(
+        "custom_components.yeelight_pro.YeelightProCoordinator",
+    ) as coordinator_class, patch(
+        "homeassistant.config_entries.ConfigEntries.async_forward_entry_setups",
+        new_callable=AsyncMock,
+    ) as forward_platforms, patch(
+        "custom_components.yeelight_pro.async_start_live_runtime",
+        AsyncMock(return_value=push_manager),
+    ):
         coordinator_class.return_value = make_setup_coordinator()
 
         from custom_components.yeelight_pro import async_setup_entry
 
-        with pytest.raises(OSError):
-            await async_setup_entry(hass, mock_config_entry)
+        assert await async_setup_entry(hass, mock_config_entry) is True
 
-    push_manager.async_stop.assert_awaited_once()
-    mock_client.disconnect.assert_awaited_once()
-    forward_platforms.assert_not_awaited()
-    assert mock_config_entry.entry_id not in hass.data[DOMAIN]
+    forward_platforms.assert_awaited_once()
+    assert hass.data[DOMAIN][mock_config_entry.entry_id]["push_manager"] is push_manager

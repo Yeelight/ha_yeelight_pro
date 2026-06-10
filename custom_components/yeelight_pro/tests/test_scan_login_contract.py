@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 import pytest
 
 from custom_components.yeelight_pro.core.exceptions import CommandError, ProtocolError
@@ -65,6 +67,56 @@ def test_parse_scan_login_created_response_returns_pollable_qrcode() -> None:
     assert state.token is None
 
 
+def test_parse_scan_login_created_response_accepts_snake_case_aliases() -> None:
+    """二维码响应字段可能按 snake_case 返回，解析器仍应保持同一合同。"""
+    now_ms = int(time.time() * 1000)
+
+    state = parse_scan_login_response({
+        "success": True,
+        "data": {
+            "qr_code_id": "qr-2",
+            "device": "ha-device-2",
+            "create_at": now_ms,
+            "expire_in": SCAN_LOGIN_QRCODE_TTL_MS,
+            "expire_at": now_ms + SCAN_LOGIN_QRCODE_TTL_MS,
+            "status": "CREATED",
+        },
+    })
+
+    assert state.qr_code_id == "qr-2"
+    assert state.device == "ha-device-2"
+    assert state.qrcode_content == "qr-2&ha-device-2"
+    assert state.expire_in_ms == SCAN_LOGIN_QRCODE_TTL_MS
+    assert state.expire_at_ms == now_ms + SCAN_LOGIN_QRCODE_TTL_MS
+
+
+def test_parse_scan_login_response_derives_expire_at_for_countdown() -> None:
+    """缺少 expireAt 时应由 createAt + expireIn 推导绝对过期时间."""
+    payload = scan_login_created_payload()
+    data = payload["data"]
+    assert isinstance(data, dict)
+    data.pop("expireAt")
+
+    state = parse_scan_login_response(payload)
+
+    assert state.create_at_ms is not None
+    assert state.expire_in_ms == SCAN_LOGIN_QRCODE_TTL_MS
+    assert state.expire_at_ms == state.create_at_ms + SCAN_LOGIN_QRCODE_TTL_MS
+
+
+def test_expired_scan_login_qrcode_is_not_pollable() -> None:
+    """绝对过期时间到达后，本地不应继续轮询二维码。"""
+    payload = scan_login_created_payload()
+    data = payload["data"]
+    assert isinstance(data, dict)
+    data["expireAt"] = int(time.time() * 1000) - 1
+
+    state = parse_scan_login_response(payload)
+
+    assert state.expires_in_seconds == 0
+    assert state.pollable is False
+
+
 def test_parse_scan_login_login_response_returns_token_model() -> None:
     """LOGIN 响应中的 token 应复用 OAuth token 模型并保留账号元数据."""
     state = parse_scan_login_response(scan_login_login_payload())
@@ -79,6 +131,43 @@ def test_parse_scan_login_login_response_returns_token_model() -> None:
     assert state.token.region == "CN"
     assert state.token.client_id == "client-1"
     assert state.token.username == "user-1"
+
+
+def test_parse_scan_login_login_response_accepts_token_field_aliases() -> None:
+    """LOGIN token 字段别名不能破坏多账号隔离元数据保存。"""
+    now_ms = int(time.time() * 1000)
+
+    state = parse_scan_login_response({
+        "success": True,
+        "data": {
+            "qrcodeid": "qr-3",
+            "device": "ha-device-3",
+            "create_at": now_ms,
+            "expire_in": SCAN_LOGIN_QRCODE_TTL_MS,
+            "status": "LOGIN",
+            "token": {
+                "access_token": "access-3",
+                "token_type": "bearer",
+                "refresh_token": "refresh-3",
+                "expires_in": 3600,
+                "user_id": 445566,
+                "region": "US",
+                "device": "ha-device-3",
+                "client_id": "client-3",
+                "username": "user-3",
+            },
+        },
+    })
+
+    assert state.status == ScanLoginStatus.LOGIN
+    assert state.qr_code_id == "qr-3"
+    assert state.token is not None
+    assert state.token.access_token == "access-3"
+    assert state.token.refresh_token == "refresh-3"
+    assert state.token.user_id == 445566
+    assert state.token.region == "US"
+    assert state.token.client_id == "client-3"
+    assert state.token.username == "user-3"
 
 
 @pytest.mark.parametrize(

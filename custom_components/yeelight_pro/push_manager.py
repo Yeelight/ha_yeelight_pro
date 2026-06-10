@@ -12,6 +12,14 @@ PushPayloadCallback = Callable[[Mapping[str, Any]], Awaitable[object]]
 class PushTransport(Protocol):
     """Transport contract used by future push implementations."""
 
+    @property
+    def last_start_error_type(self) -> str | None:
+        """Return the aggregate error type from a recoverable start failure."""
+
+    @property
+    def last_runtime_error_type(self) -> str | None:
+        """Return the aggregate error type from a background runtime failure."""
+
     async def async_start(self, callback: PushPayloadCallback) -> None:
         """Start receiving push payloads and forward them to callback."""
 
@@ -53,6 +61,7 @@ class PushManager:
     @property
     def health(self) -> PushHealth:
         """Return diagnostics-safe aggregate push health."""
+        self._sync_transport_runtime_error()
         return self._health
 
     async def async_start(self) -> None:
@@ -69,6 +78,10 @@ class PushManager:
             raise
         self._transport_started = True
         self._health.started_count += 1
+        transport_start_error = getattr(self._transport, "last_start_error_type", None)
+        if transport_start_error is not None:
+            self._health.last_error_type = transport_start_error
+        self._sync_transport_runtime_error()
 
     async def async_stop(self) -> None:
         """Stop the injected transport once."""
@@ -98,6 +111,12 @@ class PushManager:
         self._health.handled_payloads += 1
         self._health.last_error_type = None
         return result
+
+    def _sync_transport_runtime_error(self) -> None:
+        """Copy transport runtime error type into aggregate health."""
+        transport_error = getattr(self._transport, "last_runtime_error_type", None)
+        if isinstance(transport_error, str) and transport_error:
+            self._health.last_error_type = transport_error
 
 
 __all__ = [

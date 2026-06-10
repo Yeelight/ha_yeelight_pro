@@ -41,6 +41,32 @@ async def test_push_transport_closes_websocket_when_subscribe_fails() -> None:
     assert [message["method"] for message in websocket.sent_json] == ["subscribe"]
     assert websocket.closed is True
 
+
+@pytest.mark.asyncio
+async def test_push_transport_control_error_frame_closes_websocket() -> None:
+    """服务器返回订阅错误控制帧时应关闭并只保留聚合错误类型。"""
+    websocket = FakeWebSocket([
+        FakeMessage(
+            WSMsgType.TEXT,
+            '{"method":"subscribe","code":"401","msg":"token-secret device-secret"}',
+        )
+    ])
+    session = FakeSession(websocket)
+    callback = AsyncMock()
+    transport = YeelightPushWebSocketTransport(
+        session=session,
+        token="fake-token",
+        auto_reconnect=False,
+    )
+
+    await transport.async_start(callback)
+    await asyncio.sleep(0)
+    await transport.async_stop()
+
+    assert transport.last_runtime_error_type == "PushControlFrameError"
+    callback.assert_not_awaited()
+    assert websocket.closed is True
+
     await transport.async_stop()
 
     assert websocket.closed is True
@@ -81,6 +107,7 @@ async def test_push_transport_heartbeat_failure_closes_websocket() -> None:
         session=session,
         token="fake-token",
         sleep=sleep,
+        auto_reconnect=False,
     )
 
     await transport.async_start(AsyncMock())
@@ -94,6 +121,8 @@ async def test_push_transport_heartbeat_failure_closes_websocket() -> None:
         "heartbeat",
     ]
     assert websocket.closed is True
+    assert transport.last_runtime_error_type == "OSError"
+    assert "token-secret" not in str(transport.last_runtime_error_type)
 
     await transport.async_stop()
 
@@ -110,6 +139,7 @@ async def test_push_transport_reader_failure_closes_websocket() -> None:
         session=session,
         token="fake-token",
         sleep=sleep,
+        auto_reconnect=False,
     )
 
     await transport.async_start(AsyncMock())
@@ -120,6 +150,8 @@ async def test_push_transport_reader_failure_closes_websocket() -> None:
 
     assert [message["method"] for message in websocket.sent_json] == ["subscribe"]
     assert websocket.closed is True
+    assert transport.last_runtime_error_type == "OSError"
+    assert "token-secret" not in str(transport.last_runtime_error_type)
 
     await transport.async_stop()
 
@@ -139,6 +171,7 @@ async def test_push_transport_callback_failure_closes_websocket() -> None:
         session=session,
         token="fake-token",
         sleep=sleep,
+        auto_reconnect=False,
     )
 
     await transport.async_start(callback)
@@ -148,6 +181,8 @@ async def test_push_transport_callback_failure_closes_websocket() -> None:
 
     callback.assert_awaited_once()
     assert websocket.closed is True
+    assert transport.last_runtime_error_type == "RuntimeError"
+    assert "token-secret" not in str(transport.last_runtime_error_type)
 
     await transport.async_stop()
 

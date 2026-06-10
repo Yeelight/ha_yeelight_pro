@@ -22,6 +22,14 @@ from scripts.hacs_preflight_data import (
 )
 
 MAX_PYTHON_FILE_LINES = 400
+SEMANTIC_VERSION_RE = re.compile(
+    r"^(0|[1-9]\d*)\."
+    r"(0|[1-9]\d*)\."
+    r"(0|[1-9]\d*)"
+    r"(?:-(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)"
+    r"(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*)?"
+    r"(?:\+[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?$"
+)
 USER_VISIBLE_ERROR_CLASSES = {"HomeAssistantError", "ServiceValidationError"}
 
 
@@ -97,6 +105,11 @@ def check_json(root: Path) -> list[str]:
         errors.append("manifest.json domain must be yeelight_pro")
     if manifest.get("iot_class") != "cloud_polling":
         errors.append("manifest.json iot_class must match the current polling model")
+    manifest_version = manifest.get("version")
+    if not isinstance(manifest_version, str) or not SEMANTIC_VERSION_RE.fullmatch(
+        manifest_version
+    ):
+        errors.append("manifest.json version must use semantic versioning")
 
     hacs = _read_json(root, "hacs.json")
     missing_hacs = REQUIRED_HACS_FIELDS - set(hacs)
@@ -204,26 +217,44 @@ def check_iot_registry_integrity(component_root: Path) -> list[str]:
 def check_readme_claims(root: Path) -> list[str]:
     """Block stale release claims in current release-facing docs."""
     errors: list[str] = []
-    doc_paths = [
+    doc_paths = _release_claim_doc_paths(root)
+    for path in doc_paths:
+        content = path.read_text(encoding="utf-8")
+        for claim in STALE_DOC_CLAIMS:
+            if claim in content:
+                errors.append(
+                    f"stale release claim in {_release_claim_label(path, root)}: {claim}"
+                )
+        for pattern in STALE_DOC_PATTERNS:
+            if re.search(pattern, content, flags=re.IGNORECASE):
+                errors.append(
+                    "stale release claim in "
+                    f"{_release_claim_label(path, root)}: /{pattern}/"
+                )
+    return errors
+
+
+def _release_claim_doc_paths(root: Path) -> list[Path]:
+    """Return release-facing docs that must not drift from runtime facts."""
+    paths = [
         root / "README.md",
         root / "README_zh.md",
         root / "CHANGELOG.md",
         root / "RELEASE_GUIDE.md",
         *sorted((root / "docs").glob("*.md")),
     ]
-    for path in doc_paths:
-        content = path.read_text(encoding="utf-8")
-        for claim in STALE_DOC_CLAIMS:
-            if claim in content:
-                errors.append(
-                    f"stale release claim in {path.relative_to(root)}: {claim}"
-                )
-        for pattern in STALE_DOC_PATTERNS:
-            if re.search(pattern, content, flags=re.IGNORECASE):
-                errors.append(
-                    f"stale release claim in {path.relative_to(root)}: /{pattern}/"
-                )
-    return errors
+    homeassistant_progress = root.parent.parent / "最新进度.md"
+    if homeassistant_progress.exists():
+        paths.append(homeassistant_progress)
+    return paths
+
+
+def _release_claim_label(path: Path, root: Path) -> str:
+    """Return a stable path label for claim-guard errors."""
+    try:
+        return str(path.relative_to(root))
+    except ValueError:
+        return str(path.relative_to(root.parent.parent))
 
 
 def _read_json(root: Path, relative_path: str) -> dict:

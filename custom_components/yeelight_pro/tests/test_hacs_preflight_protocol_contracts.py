@@ -45,12 +45,25 @@ def test_oauth_contract_check_requires_runtime_coverage_tokens(
         "account_base_url create_scan_login_qrcode",
     )
     _write_test_file(
+        component_root / "config_flow_scan_login_helpers.py",
+        "QrCodeSelector CONF_SCAN_LOGIN_QRCODE cloud_scan_login_schema_for_qrcode",
+    )
+    _write_test_file(
+        component_root / "config_flow_scan_login.py",
+        "async_show_progress",
+    )
+    _write_test_file(
         tests_root / "test_oauth_contract.py",
         "build_authorization_url OAUTH_GRANT_AUTHORIZATION_CODE",
     )
     _write_test_file(tests_root / "test_scan_login_contract.py", "SCAN_LOGIN_QRCODE_TTL_MS")
     _write_test_file(tests_root / "test_p0_oauth_runtime.py", "refresh_oauth_token")
     _write_test_file(tests_root / "test_scan_login_runtime.py", "FakeScanLoginSession")
+    _write_test_file(tests_root / "test_config_flow_scan_login_device.py", "")
+    scripts_root = component_root.parent.parent / "scripts"
+    scripts_root.mkdir()
+    _write_test_file(tests_root / "test_verify_scan_login.py", "")
+    _write_test_file(scripts_root / "verify_scan_login.py", "")
 
     errors = hacs_preflight._check_oauth_contract_tests()
 
@@ -58,8 +71,40 @@ def test_oauth_contract_check_requires_runtime_coverage_tokens(
     assert any("shared OAuth token parser use" in error for error in errors)
     assert any("OAuth error classifier coverage" in error for error in errors)
     assert any("authorization-code client coverage" in error for error in errors)
+    assert any("QR countdown expiry derivation helper" in error for error in errors)
+    assert any("QR countdown expiry derivation coverage" in error for error in errors)
+    assert any("scan-login HA instance device helper" in error for error in errors)
+    assert any("HA instance id source for scan-login device" in error for error in errors)
+    assert any("scan-login device hash derivation" in error for error in errors)
+    assert any("scan-login device prefix boundary" in error for error in errors)
+    assert any("scan-login device id privacy coverage" in error for error in errors)
+    assert any("scan-login device id uniqueness coverage" in error for error in errors)
+    assert any("raw HA instance id leakage regression marker" in error for error in errors)
     assert any("documented refresh error coverage" in error for error in errors)
     assert any("scan-login polling coverage" in error for error in errors)
+    assert any("production scan-login confirm guard coverage" in error for error in errors)
+    assert any("production scan-login device env guard coverage" in error for error in errors)
+    assert any("production scan-login bounded-run guard coverage" in error for error in errors)
+    assert any("production scan-login redacted summary coverage" in error for error in errors)
+    assert any("production scan-login default no-network coverage" in error for error in errors)
+    assert any(
+        "production scan-login script-path no-network coverage" in error
+        for error in errors
+    )
+    assert any(
+        "production scan-login fake-login aggregate coverage" in error
+        for error in errors
+    )
+    assert any("explicit production scan-login confirm flag" in error for error in errors)
+    assert any("environment-only scan-login device input" in error for error in errors)
+    assert any("diagnostics-safe scan-login probe summary" in error for error in errors)
+    assert any(
+        "Home Assistant-free scan-login contract path" in error for error in errors
+    )
+    assert any(
+        "Home Assistant-free scan-login contract loader" in error
+        for error in errors
+    )
 
 
 def test_push_contract_check_requires_coverage_tokens(
@@ -86,6 +131,7 @@ def test_push_contract_check_requires_coverage_tokens(
     _write_test_file(component_root / "push.py", "")
     _write_test_file(core_root / "runtime_bridge.py", "socket")
     _write_test_file(tests_root / "test_push_contract.py", "")
+    _write_test_file(tests_root / "test_push_websocket_contract.py", "")
     _write_test_file(tests_root / "test_push_payloads.py", "")
     _write_test_file(tests_root / "test_push_manager.py", "FakeTransport")
     _write_test_file(tests_root / "push_transport_helpers.py", "FakeSession")
@@ -94,6 +140,11 @@ def test_push_contract_check_requires_coverage_tokens(
         tests_root / "test_push_transport_failures.py",
         "push_transport_helpers",
     )
+    _write_test_file(tests_root / "test_live_runtime.py", "")
+    _write_test_file(tests_root / "test_verify_push_websocket.py", "")
+    scripts_root = component_root.parent.parent / "scripts"
+    scripts_root.mkdir()
+    _write_test_file(scripts_root / "verify_push_websocket.py", "")
     _write_test_file(tests_root / "test_runtime_bridge.py", "")
     _write_test_file(tests_root / "test_runtime_bridge_lan_events.py", "")
 
@@ -102,6 +153,10 @@ def test_push_contract_check_requires_coverage_tokens(
     assert (
         "push_contract.py missing monotonic message id builder: PushMessageBuilder"
     ) in errors
+    assert any("WebSocket-only endpoint scheme guard" in error for error in errors)
+    assert any(
+        "WebSocket-only endpoint rejection coverage" in error for error in errors
+    )
     assert any("bounded reconnect policy helper" in error for error in errors)
     assert any("reconnect policy timing coverage" in error for error in errors)
     assert any("reconnect policy pure helper coverage" in error for error in errors)
@@ -116,6 +171,7 @@ def test_push_contract_check_requires_coverage_tokens(
     assert any("websocket runtime transport" in error for error in errors)
     assert any("automatic reconnect scheduler" in error for error in errors)
     assert any("automatic reconnect loop" in error for error in errors)
+    assert any("recoverable initial-connect error diagnostics" in error for error in errors)
     assert any("session protocol seam" in error for error in errors)
     assert any("subscribe frame send boundary" in error for error in errors)
     assert any("heartbeat frame send boundary" in error for error in errors)
@@ -123,6 +179,10 @@ def test_push_contract_check_requires_coverage_tokens(
     assert any("incoming JSON object filter" in error for error in errors)
     assert any("reader failure cleanup boundary" in error for error in errors)
     assert any("start-time payload error coverage" in error for error in errors)
+    assert any(
+        "recoverable transport start error health coverage" in error
+        for error in errors
+    )
     assert any("stop failure retry coverage" in error for error in errors)
     assert any("finite websocket stream coverage" in error for error in errors)
     assert any("controllable heartbeat sleep coverage" in error for error in errors)
@@ -132,12 +192,34 @@ def test_push_contract_check_requires_coverage_tokens(
     assert any("transport start idempotency coverage" in error for error in errors)
     assert any("transport reconnect after reader-end coverage" in error for error in errors)
     assert any("transport reconnect retry backoff coverage" in error for error in errors)
+    assert any("initial connect failure reconnect coverage" in error for error in errors)
     assert any("subscribe failure cleanup coverage" in error for error in errors)
     assert any("transport stop retry cleanup coverage" in error for error in errors)
     assert any("heartbeat failure cleanup coverage" in error for error in errors)
     assert any("reader failure cleanup coverage" in error for error in errors)
     assert any("callback failure cleanup coverage" in error for error in errors)
     assert any("token validation before connect coverage" in error for error in errors)
+    assert any("live WebSocket end-to-end coordinator dispatch coverage" in error for error in errors)
+    assert any(
+        "WebSocket-only event notification rejects non-WebSocket fallback frames"
+        in error
+        for error in errors
+    )
+    assert any("production WebSocket confirm guard coverage" in error for error in errors)
+    assert any("production WebSocket token env guard coverage" in error for error in errors)
+    assert any("production WebSocket bounded-run guard coverage" in error for error in errors)
+    assert any("production WebSocket redacted summary coverage" in error for error in errors)
+    assert any("production WebSocket default no-network coverage" in error for error in errors)
+    assert any(
+        "production WebSocket script-path no-network coverage" in error
+        for error in errors
+    )
+    assert any("explicit production WebSocket confirm flag" in error for error in errors)
+    assert any("environment-only push token input" in error for error in errors)
+    assert any("diagnostics-safe probe summary" in error for error in errors)
+    assert any("Home Assistant-free push contract load path" in error for error in errors)
+    assert any("Home Assistant-free pure contract loader" in error for error in errors)
+    assert any("field-name-only JSON shape summary" in error for error in errors)
     assert any("shared runtime payload bridge" in error for error in errors)
     assert any("push event privacy filter" in error for error in errors)
     assert any("push prop metadata boundary coverage" in error for error in errors)
@@ -156,13 +238,41 @@ def test_push_contract_check_requires_coverage_tokens(
     ) in errors
 
 
+def test_push_contract_check_rejects_sse_runtime_paths(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """易来事件通知只有 WebSocket，preflight 必须拒绝 SSE runtime 回退。"""
+    component_root = tmp_path / "custom_components" / "yeelight_pro"
+    component_root.mkdir(parents=True)
+    monkeypatch.setattr(hacs_preflight, "COMPONENT_ROOT", component_root)
+    _write_test_file(
+        component_root / "sse_consumer.py",
+        (
+            'class SSETransport: ...\n'
+            '# sse_consumer\n'
+            'EventSource("https://example.test/events")\n'
+            '"text/event-stream"'
+        ),
+    )
+
+    errors = hacs_preflight._check_push_contract_tests()
+
+    assert any("SSE runtime path" in error for error in errors)
+    assert any("EventSource runtime path" in error for error in errors)
+    assert any("SSE content-type runtime path" in error for error in errors)
+    assert any("SSE consumer runtime path" in error for error in errors)
+
+
 def test_lan_contract_check_requires_coverage_tokens(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """preflight 应拒绝空测试文件冒充 LAN 契约覆盖."""
     component_root = tmp_path / "custom_components" / "yeelight_pro"
+    core_root = component_root / "core"
     tests_root = component_root / "tests"
+    core_root.mkdir(parents=True)
     tests_root.mkdir(parents=True)
     monkeypatch.setattr(hacs_preflight, "COMPONENT_ROOT", component_root)
 
@@ -177,9 +287,15 @@ def test_lan_contract_check_requires_coverage_tokens(
     _write_test_file(component_root / "lan_discovery.py", "socket")
     _write_test_file(component_root / "lan_runtime.py", "")
     _write_test_file(component_root / "lan_payload.py", "socket")
+    _write_test_file(core_root / "lan_control.py", "async_try_lan_control_device")
+    _write_test_file(
+        core_root / "coordinator_controls.py",
+        "CoordinatorControlMixin async_try_lan_control_device",
+    )
     _write_test_file(tests_root / "test_lan_contract.py", "lan_control")
     _write_test_file(tests_root / "test_lan_discovery.py", "")
     _write_test_file(tests_root / "test_lan_runtime.py", "")
+    _write_test_file(tests_root / "test_lan_control_routing.py", "")
     _write_test_file(tests_root / "test_lan_payload.py", "")
 
     errors = hacs_preflight._check_lan_contract_tests()
@@ -193,6 +309,11 @@ def test_lan_contract_check_requires_coverage_tokens(
         "lan_contract.py missing monotonic message id builder: LanMessageBuilder"
     ) in errors
     assert any("LAN property update model" in error for error in errors)
+    assert any("LAN device toggle routing helper" in error for error in errors)
+    assert any("LAN group write routing helper" in error for error in errors)
+    assert any("LAN scene execution routing helper" in error for error in errors)
+    assert any("LAN numeric group route coverage" in error for error in errors)
+    assert any("LAN cloud scene id fallback coverage" in error for error in errors)
     assert any("gateway_post.prop adapter" in error for error in errors)
     assert any("gateway_post.event adapter" in error for error in errors)
     assert any("invalid payload rejection" in error for error in errors)
@@ -224,7 +345,10 @@ def test_analytics_contract_check_requires_coverage_tokens(
     monkeypatch.setattr(hacs_preflight, "COMPONENT_ROOT", component_root)
 
     _write_test_file(component_root / "analytics_contract.py", "")
+    _write_test_file(component_root / "analytics_runtime.py", "")
     _write_test_file(tests_root / "test_analytics_contract.py", "")
+    _write_test_file(tests_root / "test_analytics_runtime.py", "")
+    _write_test_file(tests_root / "test_analytics_service.py", "")
 
     errors = hacs_preflight._check_analytics_contract_tests()
 
@@ -235,6 +359,16 @@ def test_analytics_contract_check_requires_coverage_tokens(
     assert any("analytics path coverage" in error for error in errors)
     assert any("daily action path coverage" in error for error in errors)
     assert any("analytics date/area boundary coverage" in error for error in errors)
+    assert any("analytics finite numeric guard" in error for error in errors)
+    assert any("analytics runtime raw payload storage guard" in error for error in errors)
+    assert any("analytics runtime no raw payload attribute coverage" in error for error in errors)
+    assert any(
+        "analytics non-finite numeric rejection coverage" in error
+        for error in errors
+    )
+    assert any("analytics service missing context rejection coverage" in error for error in errors)
+    assert any("analytics aggregate-only service response coverage" in error for error in errors)
+    assert any("analytics service raw error redaction coverage" in error for error in errors)
 
 
 def _write_test_file(path: Path, content: str) -> None:

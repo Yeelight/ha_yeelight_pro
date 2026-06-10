@@ -31,6 +31,9 @@ ERROR_CONFIRM_REQUIRES_ENTRY = "Registry cleanup confirmation requires entry_id"
 ERROR_CONFIRM_REQUIRES_AUDIT = "Registry cleanup confirmation requires audit_id"
 ERROR_AUDIT_MISMATCH = "Registry cleanup audit_id does not match current dry-run result"
 ERROR_NO_CLEANUP_TARGETS = "No loaded Yeelight Pro config entries can be cleaned up"
+ERROR_ADMIN_CONTEXT_REQUIRED = (
+    "Yeelight Pro registry cleanup requires an admin user context"
+)
 
 SERVICE_CLEANUP_REGISTRY_SCHEMA = vol.Schema({
     vol.Optional(ATTR_ENTRY_ID): cv.string,
@@ -68,7 +71,11 @@ def async_register_registry_cleanup_service(hass: HomeAssistant) -> None:
 async def _async_require_admin(hass: HomeAssistant, call: ServiceCall) -> None:
     """Apply the same admin boundary as HA admin service helpers."""
     if call.context.user_id is None:
-        return
+        raise Unauthorized(
+            context=call.context,
+            perm_category=DOMAIN,
+            permission=ERROR_ADMIN_CONTEXT_REQUIRED,
+        )
     user = await hass.auth.async_get_user(call.context.user_id)
     if user is None:
         raise UnknownUser(context=call.context)
@@ -132,8 +139,7 @@ async def _async_confirm_cleanup(
     except ValueError as err:
         raise ServiceValidationError(ERROR_AUDIT_MISMATCH) from err
     _LOGGER.info(
-        "Confirmed Yeelight Pro stale registry cleanup for entry %s: disabled=%s",
-        entry_id,
+        "Confirmed Yeelight Pro stale registry cleanup: disabled=%s",
         audit.disabled_entities,
     )
     return _audit_service_response(entry_id, audit)

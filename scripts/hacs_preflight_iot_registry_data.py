@@ -101,6 +101,12 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         "test_event_input_payload_does_not_use_unknown_sensor_fallback": (
             "event-input unknown fallback rejection coverage"
         ),
+        "test_low_confidence_components_do_not_use_unknown_sensor_fallback": (
+            "low-frequency component fallback rejection coverage"
+        ),
+        "test_low_confidence_summary_counts_unsupported_without_identifiers": (
+            "low-frequency diagnostics aggregate-only coverage"
+        ),
     },
     "test_projection_boundaries.py": {
         "test_unknown_bool_value_does_not_project_generic_writable_or_binary_entity": (
@@ -111,6 +117,12 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         ),
         "test_event_input_unknown_scalar_does_not_project_fallback_sensor": (
             "event-input sensor fallback boundary coverage"
+        ),
+        "test_low_frequency_component_unknown_scalar_does_not_project_fallback_sensor": (
+            "low-frequency component projection boundary coverage"
+        ),
+        "test_bridge_protocol_metadata_does_not_enable_unknown_fallback_sensor": (
+            "bridge protocol metadata projection boundary coverage"
         ),
         "test_vacuum_projection_is_experimental_and_requires_explicit_vacuum_payload": (
             "vacuum experimental projection boundary coverage"

@@ -101,9 +101,13 @@ def test_iot_registry_contract_check_requires_coverage_tokens(
         "unknown bool/control fallback rejection coverage",
         "unknown writable platform fallback rejection coverage",
         "event-input unknown fallback rejection coverage",
+        "low-frequency component fallback rejection coverage",
+        "low-frequency diagnostics aggregate-only coverage",
         "unknown bool projection boundary coverage",
         "unknown enum/structured projection boundary coverage",
         "event-input sensor fallback boundary coverage",
+        "low-frequency component projection boundary coverage",
+        "bridge protocol metadata projection boundary coverage",
         "vacuum experimental projection boundary coverage",
         "core IoT category exclusion coverage",
         "light component-state merge coverage",
@@ -146,9 +150,12 @@ def test_split_contract_check_requires_coverage_tokens(
     _write_test_file(tests_root / "config_flow_helpers.py", "")
     _write_test_file(tests_root / "test_config_flow.py", "")
     _write_test_file(tests_root / "test_config_flow_cloud.py", "")
+    _write_test_file(tests_root / "test_config_flow_cloud_devices.py", "")
     _write_test_file(tests_root / "test_config_flow_device_picker.py", "")
+    _write_test_file(tests_root / "test_config_flow_entry_creation.py", "")
     _write_test_file(tests_root / "test_config_flow_oauth.py", "")
     _write_test_file(tests_root / "test_config_flow_reauth.py", "")
+    _write_test_file(tests_root / "test_config_flow_reauth_identity.py", "")
     _write_test_file(tests_root / "p0_client_helpers.py", "")
     _write_test_file(tests_root / "test_client_helpers.py", "")
     _write_test_file(tests_root / "test_client_control_contracts.py", "")
@@ -161,6 +168,7 @@ def test_split_contract_check_requires_coverage_tokens(
     _write_test_file(tests_root / "test_options_flow_contract.py", "")
     _write_test_file(tests_root / "test_translation_runtime_contract.py", "")
     _write_test_file(component_root / "config_flow_device_picker.py", "")
+    _write_test_file(component_root / "config_flow_account.py", "")
 
     errors = hacs_preflight._check_split_contract_tests()
 
@@ -178,6 +186,24 @@ def test_split_contract_check_requires_coverage_tokens(
         for error in errors
     )
     assert any("manual token auth path coverage" in error for error in errors)
+    assert any("real device picker options privacy coverage" in error for error in errors)
+    assert any("device picker unknown id rejection coverage" in error for error in errors)
+    assert any(
+        "manual token multi-account redacted unique-id coverage" in error
+        for error in errors
+    )
+    assert any(
+        "manual token multi-account separation coverage" in error
+        for error in errors
+    )
+    assert any(
+        "blank account id token-fingerprint fallback coverage" in error
+        for error in errors
+    )
+    assert any(
+        "blank stored user id reauth rejection coverage" in error
+        for error in errors
+    )
     assert any("scan-login LOGIN token flow coverage" in error for error in errors)
     assert any("reauth entry normalization coverage" in error for error in errors)
     assert any("shared OAuth client fake coverage" in error for error in errors)
@@ -245,6 +271,7 @@ def test_lifecycle_contract_check_requires_coverage_tokens(
     _write_test_file(component_root / "__init__.py", "async_remove_config_entry_device")
     _write_test_file(component_root / "ha_device_registry.py", "")
     _write_test_file(component_root / "entity_lifecycle.py", "")
+    _write_test_file(component_root / "entity_candidates.py", "")
     _write_test_file(component_root / "entity_lifecycle_cleanup.py", "")
     _write_test_file(component_root / "registry_cleanup_service.py", "")
     _write_test_file(component_root / "repair_issues.py", "")
@@ -253,12 +280,19 @@ def test_lifecycle_contract_check_requires_coverage_tokens(
     _write_test_file(tests_root / "test_entity_lifecycle.py", "")
     _write_test_file(tests_root / "test_entity_lifecycle_reconcile.py", "")
     _write_test_file(tests_root / "test_registry_cleanup_service.py", "")
+    _write_test_file(tests_root / "test_registry_cleanup_service_privacy.py", "")
     _write_test_file(tests_root / "test_repair_issue_cleanup.py", "")
     _write_test_file(tests_root / "test_repair_issues.py", "")
+    _write_test_file(tests_root / "test_config_entry_lifecycle.py", "")
 
     errors = hacs_preflight._check_lifecycle_contract_tests()
 
     assert any("active device identifier guard" in error for error in errors)
+    assert any("candidate-level device import filter match" in error for error in errors)
+    assert any(
+        "live WebSocket initial failure polling fallback coverage" in error
+        for error in errors
+    )
     assert any("config-entry runtime stop helper" in error for error in errors)
     assert any("optional push manager unload cleanup" in error for error in errors)
     assert any("confirmed cleanup disable helper" in error for error in errors)
@@ -268,8 +302,20 @@ def test_lifecycle_contract_check_requires_coverage_tokens(
         for error in errors
     )
     assert any("automatic stale entity non-deletion coverage" in error for error in errors)
+    assert any(
+        "filtered device stale-without-removal coverage" in error
+        for error in errors
+    )
     assert any("domain-scoped unique-id coverage" in error for error in errors)
     assert any("shared lifecycle registry fake" in error for error in errors)
+    assert any(
+        "cleanup service filtered-device confirm coverage" in error
+        for error in errors
+    )
+    assert any(
+        "cleanup service response/log identifier redaction coverage" in error
+        for error in errors
+    )
     assert any("diagnostics summary type guard coverage" in error for error in errors)
     assert any("stale Repairs issue cleanup coverage" in error for error in errors)
     assert any("Repairs diff sanitizer coverage" in error for error in errors)

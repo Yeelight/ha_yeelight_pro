@@ -28,6 +28,7 @@ ERROR_INVALID_ANALYTICS_REQUEST = "Invalid Yeelight Pro analytics request"
 ERROR_NO_ANALYTICS_TARGETS = "No loaded Yeelight Pro analytics runtime can refresh"
 ERROR_ANALYTICS_AUTH = "Yeelight Pro analytics authentication failed"
 ERROR_ANALYTICS_REFRESH = "Yeelight Pro analytics refresh failed"
+ERROR_ADMIN_CONTEXT_REQUIRED = "Yeelight Pro analytics refresh requires an admin user context"
 
 SERVICE_REFRESH_ANALYTICS_SCHEMA = vol.Schema({
     vol.Optional(ATTR_ENTRY_ID): cv.string,
@@ -62,8 +63,8 @@ def async_register_analytics_service(hass: HomeAssistant) -> None:
                     end_date=call.data.get(ATTR_END_DATE),
                     area_id=call.data.get(ATTR_AREA_ID),
                 )
-            except CommandError as err:
-                raise ServiceValidationError(ERROR_INVALID_ANALYTICS_REQUEST) from err
+            except CommandError:
+                raise ServiceValidationError(ERROR_INVALID_ANALYTICS_REQUEST) from None
             except AuthenticationError:
                 raise HomeAssistantError(ERROR_ANALYTICS_AUTH) from None
             except ConnectionError:
@@ -88,7 +89,11 @@ def async_register_analytics_service(hass: HomeAssistant) -> None:
 async def _async_require_admin(hass: HomeAssistant, call: ServiceCall) -> None:
     """Apply Home Assistant's admin-only service boundary."""
     if call.context.user_id is None:
-        return
+        raise Unauthorized(
+            context=call.context,
+            perm_category=DOMAIN,
+            permission=ERROR_ADMIN_CONTEXT_REQUIRED,
+        )
     user = await hass.auth.async_get_user(call.context.user_id)
     if user is None:
         raise UnknownUser(context=call.context)

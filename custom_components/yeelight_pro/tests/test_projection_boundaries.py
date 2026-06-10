@@ -189,6 +189,50 @@ def test_event_input_unknown_scalar_does_not_project_fallback_sensor() -> None:
     ) == set()
 
 
+def test_low_frequency_component_unknown_scalar_does_not_project_fallback_sensor() -> None:
+    """audio/screen 等低频组件无样本前不能因隐藏关闭生成泛化 sensor。"""
+    for device_id, component_id, component_category in (
+        ("audio-lowfreq-1", "audio_control", "audio control"),
+        ("screen-lowfreq-1", "wifi_screen", "wifi screen"),
+    ):
+        device = projection_payload(
+            device_id=device_id,
+            category="other",
+            component_id=component_id,
+            state={"vendor_private": 7},
+            params={"vendor_private": 7},
+            component_category=component_category,
+        )
+        device["hide_unknown_entities"] = False
+
+        assert project_sensors(device, domain=DOMAIN) == []
+        assert collect_active_entity_keys(
+            LifecycleCoordinator(data={device_id: device}, hide_unknown_entities=False)
+        ) == set()
+
+
+def test_bridge_protocol_metadata_does_not_enable_unknown_fallback_sensor() -> None:
+    """Matter/Thread/DALI 桥接元数据不能单独放宽未知属性投影。"""
+    device = projection_payload(
+        device_id="bridge-metadata-1",
+        category="other",
+        component_id="vendor_meter",
+        state={"vendor_private": 7},
+        params={"vendor_private": 7},
+        component_category="vendor meter",
+    )
+    device["type"] = "sensor"
+    device["hide_unknown_entities"] = False
+    device["ha_product_model"]["product"]["bridge"] = {
+        "protocols": ["Matter", "Thread", "DALI"],
+    }
+
+    assert project_sensors(device, domain=DOMAIN) == []
+    assert collect_active_entity_keys(
+        LifecycleCoordinator(data={"bridge": device}, hide_unknown_entities=False)
+    ) == set()
+
+
 def test_ha_entity_platforms_are_not_yeelight_iot_device_categories() -> None:
     """scene/button/select/number/vacuum/text 是 HA 表达或实验能力，不是后台 IoT 品类。"""
     for platform in HA_ENTITY_PLATFORMS_NOT_IOT_CATEGORIES:

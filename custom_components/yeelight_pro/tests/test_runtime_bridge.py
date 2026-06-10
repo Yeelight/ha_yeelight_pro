@@ -10,6 +10,10 @@ from homeassistant.core import HomeAssistant
 from custom_components.yeelight_pro.const import DOMAIN
 from custom_components.yeelight_pro.core.coordinator import YeelightProCoordinator
 from custom_components.yeelight_pro.core.device_payload import DevicePayloadBuilder
+from custom_components.yeelight_pro.core.runtime_bridge import (
+    RuntimeEventDeduper,
+    runtime_event_dedupe_key,
+)
 from custom_components.yeelight_pro.light import YeelightProLight
 from custom_components.yeelight_pro.projector.sensor import project_sensors
 from custom_components.yeelight_pro.projector.switch import project_switches
@@ -199,6 +203,30 @@ async def test_lan_runtime_update_rebuilds_scaled_canonical_state(
     }
     assert by_component["current_power"].native_value == 120
     assert by_component["energy_consumption"].native_value == 25.0
+
+
+def test_runtime_event_dedupe_key_is_bounded_and_identifier_safe() -> None:
+    """事件去重键不能包含 msgId、设备 ID 或原始事件值。"""
+    payload = {
+        "source_device_id": "device-secret",
+        "component_id": "scene_panel",
+        "event_type": "click",
+        "event_attributes": {
+            "message_id": "message-secret",
+            "raw_event": "raw-secret",
+        },
+    }
+
+    key = runtime_event_dedupe_key(payload)
+    deduper = RuntimeEventDeduper(max_keys=1)
+
+    assert isinstance(key, str)
+    assert key
+    assert "message-secret" not in key
+    assert "device-secret" not in key
+    assert "raw-secret" not in key
+    assert deduper.is_duplicate(payload) is False
+    assert deduper.is_duplicate(payload) is True
 
 
 def _lamp_schema() -> dict:

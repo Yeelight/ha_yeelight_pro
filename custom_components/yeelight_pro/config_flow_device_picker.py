@@ -120,10 +120,12 @@ def selected_device_ids_from_input(
         values = raw_value
     else:
         values = []
+    allowed_device_ids = {choice.device_id for choice in choices}
     return [
         device_id
         for value in values
         if (device_id := to_str(value)) is not None
+        and device_id in allowed_device_ids
     ]
 
 

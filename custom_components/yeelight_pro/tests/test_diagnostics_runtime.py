@@ -16,7 +16,9 @@ from custom_components.yeelight_pro.const import (
     CONF_SCAN_INTERVAL,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
     CONNECTION_MODE_CLOUD,
+    DOMAIN,
 )
+from custom_components.yeelight_pro import _OptionalRuntimeStartupFailure
 from custom_components.yeelight_pro.diagnostics import (
     async_get_config_entry_diagnostics,
 )
@@ -296,3 +298,32 @@ async def test_diagnostics_reports_safe_runtime_health(
     assert "RuntimeError" in dumped
     assert "api.yeelight.com/apis/iot/house/429392" not in dumped
     assert "token-secret" not in dumped
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_reports_optional_lan_start_failure_without_details(
+    hass: HomeAssistant,
+    diagnostics_entry: MagicMock,
+) -> None:
+    """LAN 可选启动失败只暴露聚合错误类型，不导出 host/token/原始消息."""
+    coordinator = build_empty_diagnostics_coordinator()
+    install_runtime_entry(hass, diagnostics_entry, coordinator, platforms=["light"])
+    hass.data[DOMAIN][diagnostics_entry.entry_id]["lan_runtime"] = (
+        _OptionalRuntimeStartupFailure(
+            OSError("192.168.1.20 token=secret gateway-secret")
+        )
+    )
+
+    data = await async_get_config_entry_diagnostics(hass, diagnostics_entry)
+
+    assert data["runtime"]["health"]["lan"] == {
+        "running": False,
+        "connected": False,
+        "sent_count": 0,
+        "received_count": 0,
+        "last_error_type": "OSError",
+    }
+    dumped = json.dumps(data, ensure_ascii=False)
+    assert "192.168.1.20" not in dumped
+    assert "secret" not in dumped
+    assert "gateway-secret" not in dumped

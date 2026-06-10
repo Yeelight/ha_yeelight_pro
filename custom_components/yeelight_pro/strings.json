@@ -113,7 +113,8 @@
             "device_import_filter_exclude_product_ids": "排除产品 ID（逗号分隔）",
             "device_import_filter_include_devices": "包含设备 ID（逗号分隔）",
             "device_import_filter_exclude_devices": "排除设备 ID（逗号分隔）",
-            "live_updates": "启用 WebSocket 实时更新",
+            "device_import_filter_picker": "打开真实设备选择器",
+            "live_updates": "启用 WebSocket 事件通知",
             "local_gateway_control": "启用本地网关控制",
             "local_gateway_host": "本地网关地址",
             "local_gateway_port": "本地网关端口",
@@ -127,13 +128,21 @@
         },
         "confirm_reload": {
           "title": "确认并重新加载 Yeelight Pro",
-          "description": "将保存 {changed_count} 项可见选项变更。\n\n其中包含会影响平台或实体候选的选项。保存后 Home Assistant 将按 options 更新监听重新加载该集成。确认步骤不会调用额外的 Yeelight API。"
+            "description": "将保存 {changed_count} 项可见选项变更。\n\n其中包含会影响平台或实体候选的选项。保存后 Home Assistant 将按 options 更新监听重新加载该集成。确认步骤不会调用额外的 Yeelight API。"
+        },
+        "cloud_devices": {
+          "title": "调整导入设备",
+          "description": "从当前云端家庭重新加载真实设备，并选择要导入 Home Assistant 的设备。保存后只会写入设备 ID 过滤规则，不会保存设备名称、房间名称或原始设备列表。",
+          "data": {
+            "device_import_filter_include_devices": "设备"
+          }
         }
       }
     },
     "error": {
       "cannot_connect": "无法连接到服务器",
       "invalid_auth": "认证失败，请检查 Access Token",
+      "scan_login_expired": "二维码已过期，请勾选刷新二维码后重试",
       "unknown": "未知错误"
     },
     "abort": {

@@ -18,7 +18,8 @@ Yeelight Pro integration for Home Assistant. It supports Yeelight cloud and priv
 
 - Cloud and private deployment setup
 - Reauthentication flow for expired or invalid tokens
-- Tested Yeelight OAuth token endpoint client helpers and a manual authorization-code setup path; full Home Assistant webhook/redirect OAuth login still depends on product OAuth credentials, redirect ownership, and token-storage decisions
+- Yeelight APP scan-login cloud setup through regional account APIs; QR-code login is the current primary cloud login UX
+- Tested Yeelight OAuth token endpoint client helpers and a manual authorization-code setup path; full Home Assistant webhook/redirect OAuth login is not a current release target
 - Configurable polling interval, debug mode, experimental platform loading, unknown capability filtering, manual non-destructive device import filtering, and topology Repairs notifications
 - Canonical -> adapter -> converter -> projector -> entity architecture
 - Lightweight Yeelight IoT spec registry for category, component, property, event, protocol, and `nodeType` facts
@@ -29,9 +30,11 @@ Yeelight Pro integration for Home Assistant. It supports Yeelight cloud and priv
 - Optional Home Assistant Repairs issue with sanitized add/remove/metadata-change counts when Yeelight device topology changes after setup
 - Debug event service guarded by the `debug_mode` option
 - Read-only manual refresh service that refreshes loaded coordinators and reconciles HA device/entity registries
-- Real cloud device picker during cloud setup: after a house is selected, the
-  config flow loads that house's device list and stores the selected devices as
-  an import filter for future device-sourced entities
+- Real cloud device picker during cloud setup and later options changes: after
+  a house is selected, the integration can load that house's device list and
+  store selected device ids as an import filter for future device-sourced
+  entities. If the device list cannot be loaded, users can continue without
+  enabling or changing a device import filter.
 - Opt-in analytics runtime with an admin-only manual refresh service and
   aggregate-only analytics sensors; it is disabled by default and does not store
   raw analytics payloads
@@ -99,6 +102,8 @@ Open the integration options to configure:
 - Debug mode: enables `yeelight_pro.debug_emit_event`
 - Experimental platforms: enables opt-in platforms such as `vacuum`
 - Hide unknown entities: keeps unsupported capabilities from being exposed as generic entities
+- Device import filtering: edit conservative manual rules or, for cloud
+  entries, reopen the real device picker to adjust selected devices after setup
 - Topology change Repairs: creates a Home Assistant Repairs issue with aggregate and sanitized diff counts when device/entity topology changes after setup; enabled by default
 
 ## Services
@@ -131,6 +136,19 @@ python3 validate_hacs.py
 python3 scripts/check_release_zip.py
 python3 scripts/sync_local_ha_runtime.py
 python3 scripts/verify_local_ha.py
+python3 scripts/verify_local_ha_soak.py
+python3 scripts/verify_local_ha_recovery.py
+```
+
+Guarded production probes are available for authorized external validation and
+must remain fail-closed without their explicit confirmation flags:
+
+```bash
+python3 scripts/verify_push_websocket.py
+python3 scripts/verify_scan_login.py
+python3 scripts/verify_cloud_devices.py
+python3 scripts/verify_lan_gateway.py
+python3 scripts/verify_analytics.py
 ```
 
 CI/release entrypoints are kept in `.github/workflows/test.yaml`,
@@ -140,27 +158,35 @@ Do not commit tokens, Home Assistant credentials, personal house IDs, or raw dev
 
 ## Known Gaps
 
-- Yeelight OAuth URL/body/response contract helpers are tested, but Home
-  Assistant OAuth login, refresh-token storage/rotation, and automatic token
-  refresh remain roadmap items.
-- Multi-region API hosts are implemented; multi-account-in-one-entry UX remains
-  a roadmap item.
-- Local gateway TCP control is available behind explicit host/port options.
-  Automatic gateway discovery and mDNS remain roadmap items.
+- Full Home Assistant webhook/redirect OAuth login is not implemented because
+  Yeelight APP scan-login is the current cloud login path. If product direction
+  reopens OAuth later, it will need Yeelight-issued credentials, redirect policy,
+  CSRF state handling, and token lifecycle rules before implementation.
+- Multi-region API hosts are implemented. Multiple cloud accounts are supported
+  as separate config entries through scan-login account metadata, Open API
+  clientId, or a redacted manual-token fingerprint. Multi-account-in-one-entry
+  UX remains a roadmap item.
+- Local gateway TCP control is available behind explicit options. When
+  `local_gateway_control` is enabled and the host field is empty, the runtime
+  attempts the documented UDP broadcast discovery once before opening TCP.
+  mDNS, continuous network scanning, cloud/LAN topology merge, and hardware
+  validation remain roadmap items.
 - WebSocket push message builders, injected push manager, and opt-in live
-  WebSocket runtime are covered by tests. SSE/subscription support remains a
-  roadmap item because the local Yeelight event material only documents
-  WebSocket. Current runtime updates still use polling unless `live_updates` is
-  explicitly enabled.
+  WebSocket runtime are covered by tests. The Yeelight event-notification
+  material only documents WebSocket, so live event notifications are implemented
+  only through WebSocket when `live_updates` is explicitly enabled. Default
+  topology refresh and full-state fallback still use polling.
 - Analytics runtime is implemented as explicit opt-in manual refresh and
   aggregate sensors only. Automatic polling, full historical analytics, raw
   payload persistence, and real production payload validation remain roadmap
   items.
 - Full rules/spec filter engines remain roadmap items.
 - Device import filtering currently supports diagnostics preview, manual
-  comma-separated options rules, a real cloud device picker during cloud setup,
-  and conservative stop-new-entities behavior for future device-sourced
-  entities. Existing registry cleanup is available only as explicit dry-run plus
+  comma-separated options rules, a real cloud device picker during cloud setup
+  and later options changes, and conservative stop-new-entities behavior for
+  future device-sourced entities. If the cloud device list cannot be loaded,
+  setup can still create an entry and options can continue without changing the
+  stored filter. Existing registry cleanup is available only as explicit dry-run plus
   audit-id confirmation that disables stale entities; delete, hide, migrate, and
   device-registry cleanup semantics remain roadmap items.
 

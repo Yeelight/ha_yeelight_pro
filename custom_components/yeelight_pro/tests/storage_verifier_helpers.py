@@ -22,8 +22,9 @@ def config_entry() -> dict[str, Any]:
     return {
         "domain": "yeelight_pro",
         "disabled_by": None,
+        "unique_id": "cloud:cn:122349:1",
         "version": 1,
-        "minor_version": 3,
+        "minor_version": 4,
         "data": {
             "access_token": "secret-token",
             "account_user_id": 122349,

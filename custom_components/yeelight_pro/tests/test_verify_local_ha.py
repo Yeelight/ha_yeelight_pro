@@ -121,6 +121,14 @@ def test_required_modules_include_config_flow_options_helper() -> None:
     )
 
 
+def test_required_modules_include_config_flow_account_helper() -> None:
+    """本地 HA 安装态必须保留扫码登录账号隔离 helper."""
+    assert (
+        "custom_components.yeelight_pro.config_flow_account"
+        in REQUIRED_RUNTIME_MODULES
+    )
+
+
 def test_required_modules_include_event_projector_helper() -> None:
     """本地 HA 安装态必须保留拆分后的 event projector helper."""
     assert (
@@ -153,6 +161,8 @@ def test_required_modules_include_protocol_contract_modules() -> None:
         "custom_components.yeelight_pro.lan_payload",
         "custom_components.yeelight_pro.lan_runtime",
         "custom_components.yeelight_pro.live_runtime",
+        "custom_components.yeelight_pro.core.coordinator_controls",
+        "custom_components.yeelight_pro.core.lan_control",
     }
 
     assert expected_modules <= set(REQUIRED_RUNTIME_MODULES)

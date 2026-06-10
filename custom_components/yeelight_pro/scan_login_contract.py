@@ -47,6 +47,16 @@ _REGION_ALIASES = {
     "eu": CLOUD_REGION_EU,
     "europe": CLOUD_REGION_EU,
 }
+_QR_CODE_ID_FIELDS = ("qrCodeId", "qrcodeId", "qrcodeid", "qr_code_id")
+_CREATE_AT_FIELDS = ("createAt", "create_at")
+_EXPIRE_IN_FIELDS = ("expireIn", "expire_in")
+_EXPIRE_AT_FIELDS = ("expireAt", "expire_at")
+_ACCESS_TOKEN_FIELDS = ("accessToken", "access_token")
+_TOKEN_TYPE_FIELDS = ("tokenType", "token_type")
+_REFRESH_TOKEN_FIELDS = ("refreshToken", "refresh_token")
+_EXPIRES_IN_FIELDS = ("expiresIn", "expires_in")
+_CLIENT_ID_FIELDS = ("clientId", "client_id")
+_USER_ID_FIELDS = ("id", "userId", "user_id")
 
 
 class ScanLoginStatus:
@@ -100,6 +110,9 @@ class YeelightScanLoginQrCode:
     @property
     def pollable(self) -> bool:
         """Return whether the qrcode can still be polled."""
+        remaining = self.expires_in_seconds
+        if remaining == 0:
+            return False
         return self.status in {
             ScanLoginStatus.CREATED,
             ScanLoginStatus.SCANNED,
@@ -117,6 +130,11 @@ def iot_base_url(region: str) -> str:
     """Return the documented IoT API base URL for a cloud region."""
     normalized = _normalize_region(region)
     return f"{CLOUD_REGION_BASE_DOMAINS[normalized].rstrip('/')}/apis/iot"
+
+
+def normalize_cloud_region(region: str) -> str:
+    """Return a canonical cloud region key from account or UI aliases."""
+    return _normalize_region(region)
 
 
 def build_scan_login_qrcode_path(device: str) -> str:
@@ -174,12 +192,15 @@ def parse_scan_login_response(payload: Mapping[str, Any]) -> YeelightScanLoginQr
         raise ProtocolError("Invalid Yeelight scan-login token response")
 
     return YeelightScanLoginQrCode(
-        qr_code_id=_required_text(data.get("qrCodeId"), "qrCodeId"),
+        qr_code_id=_required_text(
+            _first_value(data, *_QR_CODE_ID_FIELDS),
+            "qrCodeId",
+        ),
         device=_required_text(data.get("device"), "device"),
         status=status,
-        create_at_ms=_optional_int(data.get("createAt")),
-        expire_in_ms=_optional_int(data.get("expireIn")),
-        expire_at_ms=_optional_int(data.get("expireAt")),
+        create_at_ms=_optional_int(_first_value(data, *_CREATE_AT_FIELDS)),
+        expire_in_ms=_optional_int(_first_value(data, *_EXPIRE_IN_FIELDS)),
+        expire_at_ms=_expire_at_ms(data),
         source=_optional_text(data.get("source")),
         token=token,
     )
@@ -191,18 +212,18 @@ def parse_scan_login_status(payload: Mapping[str, Any]) -> YeelightScanLoginQrCo
 
 
 def _parse_scan_login_token(value: Any) -> YeelightOAuthToken:
-    """Parse camelCase scan-login token fields through the shared token model."""
+    """Parse scan-login token field aliases through the shared token model."""
     if not isinstance(value, Mapping):
         raise ProtocolError("Invalid Yeelight scan-login token response")
     return parse_oauth_token_response({
-        "access_token": value.get("accessToken"),
-        "token_type": value.get("tokenType"),
-        "refresh_token": value.get("refreshToken"),
-        "expires_in": value.get("expiresIn"),
-        "id": value.get("id"),
+        "access_token": _first_value(value, *_ACCESS_TOKEN_FIELDS),
+        "token_type": _first_value(value, *_TOKEN_TYPE_FIELDS),
+        "refresh_token": _first_value(value, *_REFRESH_TOKEN_FIELDS),
+        "expires_in": _first_value(value, *_EXPIRES_IN_FIELDS),
+        "id": _first_value(value, *_USER_ID_FIELDS),
         "region": value.get("region"),
         "device": value.get("device"),
-        "client_id": value.get("clientId"),
+        "client_id": _first_value(value, *_CLIENT_ID_FIELDS),
         "username": value.get("username"),
         "scope": value.get("scope"),
     })
@@ -239,6 +260,27 @@ def _optional_int(value: Any) -> int | None:
         return None
 
 
+def _first_value(value: Mapping[str, Any], *fields: str) -> Any:
+    """Return the first non-empty value from documented response field aliases."""
+    for field in fields:
+        candidate = value.get(field)
+        if candidate not in (None, ""):
+            return candidate
+    return None
+
+
+def _expire_at_ms(data: Mapping[str, Any]) -> int | None:
+    """Return absolute QR expiry, deriving it from createAt + expireIn if needed."""
+    explicit = _optional_int(_first_value(data, *_EXPIRE_AT_FIELDS))
+    if explicit is not None:
+        return explicit
+    create_at = _optional_int(_first_value(data, *_CREATE_AT_FIELDS))
+    expire_in = _optional_int(_first_value(data, *_EXPIRE_IN_FIELDS))
+    if create_at is None or expire_in is None:
+        return None
+    return create_at + expire_in
+
+
 __all__ = [
     "SCAN_LOGIN_QRCODE_TTL_MS",
     "SCAN_LOGIN_QRCODE_TTL_SECONDS",
@@ -255,6 +297,7 @@ __all__ = [
     "build_scan_login_qrcode_path",
     "build_scan_login_status_path",
     "iot_base_url",
+    "normalize_cloud_region",
     "parse_scan_login_response",
     "parse_scan_login_status",
     "scan_login_check_path",

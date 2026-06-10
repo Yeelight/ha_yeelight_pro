@@ -141,32 +141,48 @@ async def test_options_flow_confirms_runtime_only_options(mock_config_entry) -> 
     }
 
 
+@pytest.mark.parametrize(
+    ("option_key", "changed_value"),
+    [
+        pytest.param(CONF_LIVE_UPDATES, True, id="live_updates_websocket"),
+        pytest.param(CONF_LOCAL_GATEWAY_CONTROL, True, id="local_gateway_control"),
+        pytest.param(CONF_LOCAL_GATEWAY_HOST, "192.168.1.20", id="local_gateway_host"),
+        pytest.param(CONF_LOCAL_GATEWAY_PORT, 65444, id="local_gateway_port"),
+        pytest.param(CONF_ANALYTICS_RUNTIME, True, id="analytics_runtime"),
+    ],
+)
 @pytest.mark.asyncio
-async def test_options_flow_analytics_runtime_requires_reload(mock_config_entry) -> None:
-    """启用/关闭 analytics runtime 会改变 sensor 实体集合，必须 reload."""
+async def test_options_flow_background_runtime_options_require_reload(
+    mock_config_entry,
+    option_key: str,
+    changed_value,
+) -> None:
+    """启停 WebSocket/LAN/analytics 后台 runtime 必须进入 reload 确认页."""
     mock_config_entry.options = {
         CONF_SCAN_INTERVAL: 15,
         CONF_DEBUG_MODE: False,
         CONF_EXPERIMENTAL_PLATFORMS: False,
         CONF_HIDE_UNKNOWN_ENTITIES: True,
         CONF_TOPOLOGY_CHANGE_REPAIRS: True,
+        CONF_LIVE_UPDATES: False,
+        CONF_LOCAL_GATEWAY_CONTROL: False,
+        CONF_LOCAL_GATEWAY_HOST: "",
+        CONF_LOCAL_GATEWAY_PORT: 65443,
         CONF_ANALYTICS_RUNTIME: False,
         CONF_ANALYTICS_RETENTION_DAYS: 30,
     }
     flow = YeelightProOptionsFlow(mock_config_entry)
 
     result = await flow.async_step_init({
-        CONF_SCAN_INTERVAL: 15,
-        CONF_DEBUG_MODE: False,
-        CONF_EXPERIMENTAL_PLATFORMS: False,
-        CONF_HIDE_UNKNOWN_ENTITIES: True,
-        CONF_TOPOLOGY_CHANGE_REPAIRS: True,
-        CONF_ANALYTICS_RUNTIME: True,
-        CONF_ANALYTICS_RETENTION_DAYS: 30,
+        **mock_config_entry.options,
+        option_key: changed_value,
     })
 
     assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "confirm_reload"
+    assert result["description_placeholders"] == {
+        "changed_count": "1",
+    }
 
 
 @pytest.mark.asyncio

@@ -1,0 +1,82 @@
+name: Bug report
+description: Report a reproducible Yeelight Pro integration defect.
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not paste access tokens, refresh tokens, house IDs, device IDs, MAC addresses, usernames, endpoint URLs, or raw Yeelight/Home Assistant payloads. Use redacted diagnostics and aggregate facts only.
+  - type: input
+    id: version
+    attributes:
+      label: Integration version
+      description: Copy the version from custom_components/yeelight_pro/manifest.json.
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: home_assistant_version
+    attributes:
+      label: Home Assistant version
+      placeholder: "2026.6.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: connection_mode
+    attributes:
+      label: Connection mode
+      options:
+        - Cloud scan-login
+        - Manual cloud token
+        - Private deployment
+        - Local gateway opt-in
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: Describe the user-visible behavior you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Describe what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      description: Provide the shortest reproducible sequence.
+      placeholder: |
+        1. Open ...
+        2. Enable ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Redacted diagnostics
+      description: Attach Home Assistant diagnostics after checking that secrets and raw identifiers are redacted.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Redacted logs
+      description: Paste only relevant sanitized log lines. Remove tokens, URLs with house IDs, device IDs, MAC addresses, usernames, and raw payloads.
+    validations:
+      required: false
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Privacy confirmation
+      options:
+        - label: I removed access tokens, refresh tokens, house IDs, device IDs, MAC addresses, usernames, endpoint URLs, and raw payloads.
+          required: true

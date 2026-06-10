@@ -9,7 +9,11 @@ from homeassistant.core import HomeAssistant
 from ..event_support import YeelightRuntimeEvent
 from ..lan_payload import lan_event_payloads, lan_property_updates
 from ..push import push_event_payloads, push_property_updates
-from .runtime_bridge import RuntimePayloadBridge, property_updates_from_adapter
+from .runtime_bridge import (
+    RuntimeEventDeduper,
+    RuntimePayloadBridge,
+    property_updates_from_adapter,
+)
 from .runtime_state import RuntimeStateStore
 
 
@@ -21,6 +25,7 @@ class _RuntimeCoordinator(Protocol):
     devices: Mapping[int, dict[str, Any]]
     gateways: Mapping[int, dict[str, Any]]
     _runtime_state: RuntimeStateStore
+    _push_event_deduper: RuntimeEventDeduper
     _device_payload_builder: Any
 
     def get_device(self, device_id: int) -> dict[str, Any] | None:
@@ -51,7 +56,11 @@ class CoordinatorRuntimeMixin:
         ):
             self.async_update_listeners()
 
-        return await bridge.dispatch_event_payloads(push_event_payloads(payload))
+        return await bridge.dispatch_event_payloads(
+            self._push_event_deduper.filter_new_payloads(
+                push_event_payloads(payload)
+            )
+        )
 
     async def async_handle_lan_payload(
         self: _RuntimeCoordinator,

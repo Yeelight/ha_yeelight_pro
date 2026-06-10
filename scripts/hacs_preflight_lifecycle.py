@@ -26,6 +26,11 @@ LIFECYCLE_CONTRACT_TOKENS = {
         "entity_lifecycle_cleanup": "cleanup helper facade imports",
         "_registry_entry_disabled_by_user": "user-disabled entity preservation",
         "EntityRegistryReconcileSummary": "aggregate diagnostics summary",
+        "collect_entity_candidate_keys": "filtered candidate lifecycle source",
+    },
+    "entity_candidates.py": {
+        "CONF_DEVICE_IMPORT_FILTER": "candidate-level device import filter lookup",
+        "matches_device_import_filter": "candidate-level device import filter match",
     },
     "entity_lifecycle_cleanup.py": {
         "async_preview_stale_registry_cleanup": "cleanup dry-run helper",
@@ -45,6 +50,9 @@ LIFECYCLE_CONTRACT_TOKENS = {
         "async_delete_topology_changed_issues": "entry removal Repairs cleanup",
         "_topology_diff_summary": "topology diff sanitizer",
         "_TOPOLOGY_DIFF_COUNT_KEYS": "aggregate-only Repairs count allowlist",
+        "sha256": "redacted Repairs issue entry scope",
+        "_topology_issue_entry_scope": "hashed Repairs issue entry scope helper",
+        "_legacy_topology_issue_id": "legacy raw Repairs issue cleanup helper",
     },
     "tests/test_device_removal.py": {
         "test_remove_config_entry_device_rejects_active_source_device": (
@@ -64,6 +72,12 @@ LIFECYCLE_CONTRACT_TOKENS = {
         "FakeEntityRegistry": "shared lifecycle registry fake",
         "patch_entity_registry": "shared lifecycle registry patch helper",
     },
+    "tests/registry_cleanup_service_helpers.py": {
+        "install_cleanup_runtime": "cleanup service runtime test helper",
+        "patch_device_registry": "cleanup service device registry patch helper",
+        "admin_context": "cleanup service admin-context helper",
+        "call_cleanup_registry": "cleanup service call helper",
+    },
     "tests/test_entity_lifecycle_reconcile.py": {
         "test_reconcile_marks_stale_registry_entry_pending_without_removal": (
             "first-pass stale entity pending coverage"
@@ -80,6 +94,9 @@ LIFECYCLE_CONTRACT_TOKENS = {
         "test_reconcile_keeps_same_unique_id_in_other_domain": (
             "domain-scoped unique-id coverage"
         ),
+        "test_reconcile_treats_filtered_device_entities_as_stale_without_removal": (
+            "filtered device stale-without-removal coverage"
+        ),
     },
     "tests/test_registry_cleanup_service.py": {
         "test_cleanup_registry_service_dry_run_returns_audit_id": (
@@ -88,10 +105,37 @@ LIFECYCLE_CONTRACT_TOKENS = {
         "test_cleanup_registry_service_confirm_disables_stale_entities": (
             "cleanup service confirm disable coverage"
         ),
+        "test_cleanup_registry_service_disables_entities_excluded_by_import_filter": (
+            "cleanup service filtered-device confirm coverage"
+        ),
         "test_cleanup_registry_service_rejects_mismatched_audit_id": (
             "cleanup service stale result mismatch coverage"
         ),
+        "test_cleanup_registry_service_rejects_missing_user_context": (
+            "cleanup service explicit admin context coverage"
+        ),
+        "test_cleanup_registry_service_preserves_user_disabled_stale_entity": (
+            "cleanup service user-disabled stale entity preservation coverage"
+        ),
+        "RegistryEntryDisabler.USER": (
+            "cleanup service real user-disabled registry marker coverage"
+        ),
+        "ERROR_ADMIN_CONTEXT_REQUIRED": (
+            "cleanup service missing-admin-context error contract"
+        ),
+        "call_cleanup_registry": "cleanup service helper usage",
         "removed_entity_ids == []": "cleanup service never removes registry entries",
+    },
+    "tests/test_registry_cleanup_service_privacy.py": {
+        "test_cleanup_registry_service_rejects_stale_audit_after_topology_change": (
+            "cleanup service topology-change stale audit rejection coverage"
+        ),
+        "test_cleanup_registry_service_response_and_logs_are_identifier_safe": (
+            "cleanup service response/log identifier redaction coverage"
+        ),
+        "stale_entities == 2": "cleanup service changed stale-set rejection assertion",
+        "secret-device-identifier": "cleanup service device identifier privacy marker",
+        "removed_entity_ids == []": "cleanup privacy no-removal coverage",
     },
     "tests/test_entity_lifecycle.py": {
         "test_collect_active_entity_keys_keeps_scene_button_and_scene_separate": (
@@ -109,6 +153,9 @@ LIFECYCLE_CONTRACT_TOKENS = {
             "Repairs diff sanitizer coverage"
         ),
         "secret-token": "Repairs redaction regression marker",
+        '"entry-1" not in create_issue.call_args.args[2]': (
+            "Repairs issue id redaction assertion"
+        ),
     },
     "tests/test_repair_issue_cleanup.py": {
         "test_create_topology_changed_issue_deletes_stale_entry_issues": (
@@ -117,6 +164,8 @@ LIFECYCLE_CONTRACT_TOKENS = {
         "test_delete_topology_changed_issues_only_deletes_entry_topology_issues": (
             "entry-scoped Repairs cleanup coverage"
         ),
+        "HASHED_ENTRY_SCOPE": "hashed Repairs issue cleanup fixture",
+        "OTHER_HASHED_ENTRY_SCOPE": "other-entry hashed Repairs cleanup guard",
     },
     "tests/test_config_entry_unload.py": {
         "test_unload_entry": "config-entry unload cleanup coverage",
@@ -137,6 +186,21 @@ LIFECYCLE_CONTRACT_TOKENS = {
         ),
         "client_mock.disconnect.assert_not_awaited": (
             "failed unload client preservation coverage"
+        ),
+    },
+    "tests/test_config_entry_lifecycle.py": {
+        "test_setup_entry_keeps_polling_when_live_runtime_initial_connect_fails": (
+            "live WebSocket initial failure polling fallback coverage"
+        ),
+        "test_setup_entry_keeps_cloud_runtime_when_lan_start_fails": (
+            "optional LAN startup failure cloud fallback coverage"
+        ),
+        '"last_error_type": "OSError"': "recoverable live startup error aggregation",
+        "coordinator.set_lan_runtime.assert_called_once_with(None)": (
+            "failed optional LAN runtime is not attached to coordinator"
+        ),
+        "forward_platforms.assert_awaited_once": (
+            "platform setup continues after recoverable runtime startup failure"
         ),
     },
 }

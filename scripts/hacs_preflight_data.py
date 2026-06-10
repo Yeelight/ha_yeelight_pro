@@ -104,6 +104,28 @@ RELEASE_QUALITY_GATE_TOKENS = {
             "GitHub release zip creation command"
         ),
     },
+    ".github/ISSUE_TEMPLATE/bug_report.yml": {
+        "Integration version": "bug report version field",
+        "Redacted diagnostics": "bug report redacted diagnostics field",
+        "Privacy confirmation": "bug report privacy confirmation",
+        "access tokens, refresh tokens, house IDs, device IDs, MAC addresses": (
+            "bug report privacy boundary"
+        ),
+    },
+    ".github/ISSUE_TEMPLATE/feature_request.yml": {
+        "Protocol evidence": "feature request protocol evidence field",
+        "Sanitized product samples": "feature request sanitized sample field",
+        "needs-product-decision": "feature request product-decision label",
+        "uncertain capabilities may stay hidden": (
+            "feature request uncertainty boundary"
+        ),
+    },
+    ".github/ISSUE_TEMPLATE/support.yml": {
+        "Support request": "support template title",
+        "Redacted diagnostics or verifier output": "support redacted verifier field",
+        "WebSocket live updates": "support live-update topic",
+        "raw payloads": "support raw payload privacy boundary",
+    },
     "README.md": {
         "python3 -m compileall -q custom_components/yeelight_pro scripts hacs_publish.py": (
             "English README compile command"
@@ -116,6 +138,18 @@ RELEASE_QUALITY_GATE_TOKENS = {
         ),
         "python3 scripts/sync_local_ha_runtime.py": (
             "English README local HA runtime sync command"
+        ),
+        "python3 scripts/verify_lan_gateway.py": (
+            "English README production LAN gateway probe command"
+        ),
+        "must remain fail-closed": (
+            "English README production probe fail-closed boundary"
+        ),
+        "material only documents WebSocket": (
+            "English README WebSocket-only event-notification boundary"
+        ),
+        "only through WebSocket when `live_updates` is explicitly enabled": (
+            "English README live event transport boundary"
         ),
     },
     "README_zh.md": {
@@ -131,6 +165,16 @@ RELEASE_QUALITY_GATE_TOKENS = {
         "python3 scripts/sync_local_ha_runtime.py": (
             "Chinese README local HA runtime sync command"
         ),
+        "python3 scripts/verify_lan_gateway.py": (
+            "Chinese README production LAN gateway probe command"
+        ),
+        "必须保持 fail-closed": (
+            "Chinese README production probe fail-closed boundary"
+        ),
+        "易来事件通知资料只给出 WebSocket": (
+            "Chinese README WebSocket-only event-notification boundary"
+        ),
+        "只按 WebSocket 实现": "Chinese README live event transport boundary",
     },
     "RELEASE_GUIDE.md": {
         "python3 -m compileall -q custom_components/yeelight_pro scripts hacs_publish.py": (
@@ -147,6 +191,132 @@ RELEASE_QUALITY_GATE_TOKENS = {
         ),
         "release.yaml`: runs the full local release gate": (
             "release guide release workflow coverage text"
+        ),
+        "Use semantic versioning": "release guide semantic versioning policy",
+        "GitHub release tag, `manifest.json` version, and `CHANGELOG.md`": (
+            "release guide version alignment policy"
+        ),
+        "Triage public issues only through the checked-in GitHub issue templates": (
+            "release guide support workflow policy"
+        ),
+        "raw payloads before continuing technical analysis": (
+            "release guide support privacy boundary"
+        ),
+        "Yeelight documentation or sanitized sample evidence": (
+            "release guide feature evidence policy"
+        ),
+        "python3 scripts/verify_lan_gateway.py": (
+            "release guide production LAN gateway probe command"
+        ),
+        "Guarded production probes must stay fail-closed": (
+            "release guide production probe fail-closed policy"
+        ),
+    },
+    "docs/TEST_REPORT.md": {
+        "python3 scripts/verify_lan_gateway.py": (
+            "test report production LAN gateway probe command"
+        ),
+        "默认都必须 fail-closed": (
+            "test report production probe fail-closed boundary"
+        ),
+        "真实设备控制闭环仍需要单独授权验证": (
+            "test report external validation boundary"
+        ),
+    },
+    "docs/RELEASE_STATUS.md": {
+        ".github/ISSUE_TEMPLATE/bug_report.yml": (
+            "release status bug template material"
+        ),
+        ".github/ISSUE_TEMPLATE/feature_request.yml": (
+            "release status feature template material"
+        ),
+        ".github/ISSUE_TEMPLATE/support.yml": (
+            "release status support template material"
+        ),
+        "脱敏 diagnostics/logs": "release status support privacy policy",
+        "Yeelight 文档或脱敏样本证据": "release status feature evidence policy",
+        "CHANGELOG 和 manifest version": "release status version review policy",
+    },
+    "docs/GOAL_COMPLETION_AUDIT.md": {
+        "qrcodeid&device": "goal audit scan-login QR payload boundary",
+        "CN/SG/US/DE": "goal audit regional account domains",
+        "一个账号/家庭一个 config entry": "goal audit multi-account entry model",
+        "WebSocket-only 事件通知": (
+            "goal audit WebSocket-only event-notification status"
+        ),
+        "live_runtime.py -> YeelightPushWebSocketTransport -> push_transport.py ws_connect -> subscribe/heartbeat -> prop/event -> coordinator_runtime.py async_handle_push_payload": (
+            "goal audit WebSocket-only runtime chain"
+        ),
+        "非 WebSocket runtime": "goal audit non-WebSocket denial boundary",
+        "不得把非 WebSocket 实时协议写成 runtime 能力": (
+            "goal audit non-WebSocket release claim denial"
+        ),
+        "hostless one-shot UDP fallback": "goal audit LAN discovery boundary",
+        "analytics A": "goal audit analytics decision label",
+        "aggregate-only runtime": "goal audit analytics aggregate-only boundary",
+        "真实设备 picker A": "goal audit picker decision label",
+        "setup 和 options 均支持真实设备 picker": "goal audit picker setup/options boundary",
+        "cleanup B": "goal audit cleanup decision label",
+        "dry-run + audit_id confirm，只禁用 stale entities": (
+            "goal audit cleanup non-destructive boundary"
+        ),
+        "missing_confirm_flag": "goal audit production WebSocket fail-closed result",
+        "network_attempted=false": "goal audit production WebSocket no-network result",
+        "python3 scripts/verify_scan_login.py": (
+            "goal audit production scan-login probe command"
+        ),
+        "--confirm-production-scan-login": (
+            "goal audit production scan-login explicit confirm flag"
+        ),
+        "YEELIGHT_PRO_SCAN_LOGIN_DEVICE": (
+            "goal audit production scan-login device env guard"
+        ),
+        "python3 scripts/verify_cloud_devices.py": (
+            "goal audit production cloud devices probe command"
+        ),
+        "--confirm-production-cloud-devices": (
+            "goal audit production cloud devices explicit confirm flag"
+        ),
+        "YEELIGHT_PRO_CLOUD_ACCESS_TOKEN": (
+            "goal audit production cloud devices token env guard"
+        ),
+        "YEELIGHT_PRO_CLOUD_HOUSE_ID": (
+            "goal audit production cloud devices house env guard"
+        ),
+        "python3 scripts/verify_lan_gateway.py": (
+            "goal audit production LAN gateway probe command"
+        ),
+        "--confirm-production-lan-gateway": (
+            "goal audit production LAN gateway explicit confirm flag"
+        ),
+        "YEELIGHT_PRO_LAN_GATEWAY_HOST": (
+            "goal audit production LAN gateway host env guard"
+        ),
+        "python3 scripts/verify_analytics.py": (
+            "goal audit production analytics probe command"
+        ),
+        "--confirm-production-analytics": (
+            "goal audit production analytics explicit confirm flag"
+        ),
+        "YEELIGHT_PRO_ANALYTICS_ACCESS_TOKEN": (
+            "goal audit production analytics token env guard"
+        ),
+        "YEELIGHT_PRO_ANALYTICS_HOUSE_ID": (
+            "goal audit production analytics house env guard"
+        ),
+        "未调用真实 Yeelight 云端 API/WebSocket/LAN 硬件": (
+            "goal audit external validation boundary"
+        ),
+    },
+    "docs/IOT_SPEC_REGISTRY.md": {
+        "The open platform event-notification material documents WebSocket": (
+            "IoT registry WebSocket-only source-material boundary"
+        ),
+        "Cloud event notifications are WebSocket-only": (
+            "IoT registry WebSocket-only runtime boundary"
+        ),
+        "Received `prop` and `event` payloads are the only WebSocket objects": (
+            "IoT registry WebSocket data-frame boundary"
         ),
     },
 }

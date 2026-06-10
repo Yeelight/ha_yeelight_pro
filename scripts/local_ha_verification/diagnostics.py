@@ -13,6 +13,7 @@ from scripts.hacs_preflight_data import (
 from scripts.preflight_ast import literal_client_capability_flags
 
 from .constants import DOMAIN
+from .diagnostics_websocket import verify_websocket_event_runtime_contract
 from .report import VerificationReport
 
 REQUIRED_OPTION_STATUS_FIELDS = {
@@ -29,6 +30,10 @@ REQUIRED_OPTION_STATUS_TOKENS = {
     "CONF_DEVICE_IMPORT_FILTER",
     "normalize_entry_options",
     "option_status_diagnostics",
+}
+REQUIRED_DIAGNOSTIC_PAYLOAD_REDACTION_TOKENS = {
+    "CONF_SCAN_LOGIN_DEVICE": "scan-login device identifier constant",
+    "TO_REDACT": "diagnostics redaction set",
 }
 
 
@@ -76,6 +81,8 @@ def verify_diagnostics_capabilities(config_dir: Path, report: VerificationReport
         },
     )
     _verify_option_status_contract(install_root, report)
+    _verify_diagnostic_payload_redaction_contract(install_root, report)
+    verify_websocket_event_runtime_contract(install_root, report)
 
 
 def _verify_option_status_contract(
@@ -138,3 +145,73 @@ def _literal_string_keys(node: ast.Dict) -> set[str]:
         for key in node.keys
         if isinstance(key, ast.Constant) and isinstance(key.value, str)
     }
+
+
+def _verify_diagnostic_payload_redaction_contract(
+    install_root: Path,
+    report: VerificationReport,
+) -> None:
+    """Verify installed diagnostics redact the scan-login device identifier."""
+    path = install_root / "diagnostic_payloads.py"
+    if not path.exists():
+        report.fail("installed diagnostic_payloads.py is missing")
+        return
+
+    content = path.read_text(encoding="utf-8")
+    missing_tokens = [
+        token
+        for token in REQUIRED_DIAGNOSTIC_PAYLOAD_REDACTION_TOKENS
+        if token not in content
+    ]
+    if missing_tokens:
+        report.fail(
+            "installed diagnostic payload redaction missing tokens: "
+            f"{missing_tokens}"
+        )
+
+    redacted_names = _literal_redaction_names(path)
+    if "CONF_SCAN_LOGIN_DEVICE" not in redacted_names:
+        report.fail(
+            "installed diagnostic payload redaction must include "
+            "CONF_SCAN_LOGIN_DEVICE in TO_REDACT"
+        )
+
+    missing_count = len(missing_tokens) + int(
+        "CONF_SCAN_LOGIN_DEVICE" not in redacted_names
+    )
+    if missing_count == 0:
+        report.fact("diagnostics payload redacts scan-login device identifier")
+    report.metric(
+        "diagnostics_payload_redaction",
+        {
+            "required_tokens": len(REQUIRED_DIAGNOSTIC_PAYLOAD_REDACTION_TOKENS),
+            "missing_tokens": len(missing_tokens),
+            "scan_login_device_redacted": int(
+                "CONF_SCAN_LOGIN_DEVICE" in redacted_names
+            ),
+        },
+    )
+
+
+def _literal_redaction_names(path: Path) -> set[str]:
+    """Return variable names included in the installed TO_REDACT set."""
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+    except SyntaxError:
+        return set()
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        if not any(
+            isinstance(target, ast.Name) and target.id == "TO_REDACT"
+            for target in node.targets
+        ):
+            continue
+        return _name_references(node.value)
+    return set()
+
+
+def _name_references(node: ast.AST) -> set[str]:
+    """Return variable names referenced inside an AST expression."""
+    return {child.id for child in ast.walk(node) if isinstance(child, ast.Name)}
+

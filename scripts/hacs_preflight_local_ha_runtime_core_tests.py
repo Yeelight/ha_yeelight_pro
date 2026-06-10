@@ -11,6 +11,9 @@ LOCAL_HA_RUNTIME_CORE_TEST_TOKENS = {
         ),
         "test_refresh_service.py": "refresh service test coverage",
         "test_registry_cleanup_service.py": "registry cleanup service test coverage",
+        "test_registry_cleanup_service_privacy.py": (
+            "registry cleanup privacy test coverage"
+        ),
     },
     "custom_components/yeelight_pro/tests/test_entry_options_migration.py": {
         "test_normalize_entry_options_clamps_scan_interval": (
@@ -145,10 +148,87 @@ LOCAL_HA_RUNTIME_CORE_TEST_TOKENS = {
         "test_cleanup_registry_service_confirm_disables_stale_entities": (
             "registry cleanup confirm disable coverage"
         ),
+        "test_cleanup_registry_service_disables_entities_excluded_by_import_filter": (
+            "registry cleanup filtered-device confirm coverage"
+        ),
         "test_cleanup_registry_service_rejects_mismatched_audit_id": (
             "registry cleanup audit mismatch coverage"
         ),
+        "test_cleanup_registry_service_rejects_missing_user_context": (
+            "registry cleanup explicit admin context coverage"
+        ),
+        "test_cleanup_registry_service_preserves_user_disabled_stale_entity": (
+            "registry cleanup user-disabled stale entity preservation coverage"
+        ),
+        "RegistryEntryDisabler.USER": (
+            "registry cleanup real user-disabled marker coverage"
+        ),
+        "ERROR_ADMIN_CONTEXT_REQUIRED": (
+            "registry cleanup missing-admin-context error contract"
+        ),
         "removed_entity_ids == []": "registry cleanup no-removal coverage",
+    },
+    "custom_components/yeelight_pro/tests/test_registry_cleanup_service_privacy.py": {
+        "test_cleanup_registry_service_response_and_logs_are_identifier_safe": (
+            "registry cleanup response/log privacy coverage"
+        ),
+        "test_cleanup_registry_service_rejects_stale_audit_after_topology_change": (
+            "registry cleanup topology-change replay guard"
+        ),
+        "secret-device-identifier": "registry cleanup device identifier privacy marker",
+        "stale_entities == 2": "registry cleanup changed stale-set assertion",
+        "removed_entity_ids == []": "registry cleanup privacy no-removal coverage",
+    },
+    "custom_components/yeelight_pro/tests/test_entity_lifecycle_reconcile.py": {
+        "test_reconcile_treats_filtered_device_entities_as_stale_without_removal": (
+            "filtered device stale-without-removal coverage"
+        ),
+        "registry.updated_entities == []": (
+            "filtered device automatic reconcile non-disable coverage"
+        ),
+    },
+    "custom_components/yeelight_pro/tests/test_p0_ha_runtime.py": {
+        "test_coordinator_control_device_uses_connected_lan_runtime": (
+            "connected LAN device control route coverage"
+        ),
+        "test_coordinator_control_device_falls_back_to_cloud_when_lan_disconnected": (
+            "LAN-disconnected cloud fallback coverage"
+        ),
+        "test_coordinator_lan_control_error_is_redacted": (
+            "LAN control error redaction coverage"
+        ),
+    },
+    "custom_components/yeelight_pro/tests/test_lan_control_routing.py": {
+        "test_coordinator_toggle_device_uses_connected_lan_runtime": (
+            "connected LAN device toggle route coverage"
+        ),
+        "test_coordinator_toggle_device_falls_back_to_cloud_when_lan_disconnected": (
+            "LAN-disconnected toggle cloud fallback coverage"
+        ),
+        "test_coordinator_toggle_device_falls_back_when_lan_health_is_unreadable": (
+            "unreadable LAN health cloud fallback coverage"
+        ),
+        "test_coordinator_lan_toggle_error_is_redacted": (
+            "LAN toggle error redaction coverage"
+        ),
+        "test_coordinator_control_group_uses_connected_lan_for_numeric_group_id": (
+            "connected LAN numeric group route coverage"
+        ),
+        "test_coordinator_control_group_falls_back_to_cloud_for_cloud_group_id": (
+            "cloud group-id fallback coverage"
+        ),
+        "test_coordinator_execute_scene_uses_connected_lan_for_numeric_scene_id": (
+            "connected LAN numeric scene route coverage"
+        ),
+        "test_coordinator_execute_scene_falls_back_to_cloud_for_cloud_scene_id": (
+            "cloud scene-id fallback coverage"
+        ),
+        "test_coordinator_lan_scene_error_is_redacted": (
+            "LAN scene error redaction coverage"
+        ),
+        "test_coordinator_lan_group_control_error_is_redacted": (
+            "LAN group error redaction coverage"
+        ),
     },
     "custom_components/yeelight_pro/tests/test_schema_cache.py": {
         "test_cache_storage_data_drops_sensitive_runtime_context": (

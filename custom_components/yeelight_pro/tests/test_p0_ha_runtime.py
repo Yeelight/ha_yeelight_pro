@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import importlib
 import traceback
-from unittest.mock import AsyncMock, patch
+from types import SimpleNamespace
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -15,6 +17,7 @@ from custom_components.yeelight_pro.core.client import YeelightProClient
 from custom_components.yeelight_pro.core.coordinator import YeelightProCoordinator
 from custom_components.yeelight_pro.core.exceptions import (
     AuthenticationError,
+    CommandError,
     ConnectionError as YeelightConnectionError,
     TokenExpiredError,
 )
@@ -181,6 +184,114 @@ async def test_coordinator_control_methods_pass_configured_house_id(
         "group_1",
         {"p": False},
         400,
+    )
+
+
+@pytest.mark.asyncio
+async def test_coordinator_control_device_uses_connected_lan_runtime(
+    hass: HomeAssistant,
+) -> None:
+    """本地网关已连接时，设备属性控制应走 LAN gateway_set.prop。"""
+    mock_client = AsyncMock(spec=YeelightProClient)
+    coordinator = YeelightProCoordinator(
+        hass=hass,
+        client=mock_client,
+        house_id=12345,
+    )
+    coordinator.devices = {67890: {"id": 67890, "name": "客厅灯"}}
+    lan_runtime = _connected_lan_runtime()
+    coordinator.set_lan_runtime(lan_runtime)
+
+    await coordinator.async_control_device(
+        device_id=67890,
+        params={"p": True},
+        duration=250,
+    )
+
+    lan_runtime.async_set_properties.assert_awaited_once_with([
+        {"id": 67890, "nt": 2, "duration": 250, "set": {"p": True}}
+    ])
+    mock_client.control_device.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_coordinator_control_device_falls_back_to_cloud_when_lan_disconnected(
+    hass: HomeAssistant,
+) -> None:
+    """LAN runtime 未连接时保持既有云端控制路径。"""
+    mock_client = AsyncMock(spec=YeelightProClient)
+    coordinator = YeelightProCoordinator(
+        hass=hass,
+        client=mock_client,
+        house_id=12345,
+    )
+    coordinator.devices = {67890: {"id": 67890, "name": "客厅灯"}}
+    lan_runtime = _connected_lan_runtime(connected=False)
+    coordinator.set_lan_runtime(lan_runtime)
+
+    await coordinator.async_control_device(
+        device_id=67890,
+        params={"p": True},
+        duration=250,
+    )
+
+    lan_runtime.async_set_properties.assert_not_awaited()
+    mock_client.control_device.assert_awaited_once_with(
+        12345,
+        67890,
+        {"p": True},
+        250,
+    )
+
+
+@pytest.mark.asyncio
+async def test_coordinator_lan_control_error_is_redacted(
+    hass: HomeAssistant,
+) -> None:
+    """LAN 控制失败只暴露异常类型，不泄漏 host/token/device 文本。"""
+    mock_client = AsyncMock(spec=YeelightProClient)
+    coordinator = YeelightProCoordinator(
+        hass=hass,
+        client=mock_client,
+        house_id=12345,
+    )
+    coordinator.devices = {67890: {"id": 67890, "name": "客厅灯"}}
+    lan_runtime = _connected_lan_runtime()
+    lan_runtime.async_set_properties.side_effect = OSError(
+        "192.168.1.20 token=secret device=67890"
+    )
+    coordinator.set_lan_runtime(lan_runtime)
+
+    with pytest.raises(CommandError) as exc_info:
+        await coordinator.async_control_device(
+            device_id=67890,
+            params={"p": True},
+            duration=250,
+        )
+
+    message = str(exc_info.value)
+    assert message == "Failed to control device over LAN: OSError"
+    assert "192.168.1.20" not in message
+    assert "secret" not in message
+    assert "67890" not in message
+    mock_client.control_device.assert_not_awaited()
+
+
+def _connected_lan_runtime(*, connected: bool = True) -> Any:
+    """Return a LAN runtime double with diagnostics-style health."""
+    return SimpleNamespace(
+        async_set_properties=AsyncMock(),
+        health=SimpleNamespace(
+            as_dict=MagicMock(
+                return_value={
+                    "running": True,
+                    "connected": connected,
+                    "sent_count": 0,
+                    "received_count": 0,
+                    "last_error_type": None,
+                }
+            )
+        ),
     )
 
 

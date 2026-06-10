@@ -1,0 +1,54 @@
+name: Feature request
+description: Request a new Yeelight Pro capability or Home Assistant projection.
+title: "[Feature]: "
+labels: ["enhancement", "needs-product-decision"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        New capabilities need Yeelight protocol evidence, sanitized product samples, and a Home Assistant UX decision before implementation. Do not paste access tokens, refresh tokens, house IDs, device IDs, MAC addresses, usernames, endpoint URLs, IP addresses tied to a user, secrets, or raw device payloads.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Feature area
+      options:
+        - Device or entity projection
+        - WebSocket event notification
+        - Local gateway control
+        - Analytics runtime
+        - Registry cleanup policy
+        - Config flow or account lifecycle
+        - Documentation or release process
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use case
+      description: Explain the workflow this would unlock in Home Assistant.
+    validations:
+      required: true
+  - type: textarea
+    id: protocol_evidence
+    attributes:
+      label: Protocol evidence
+      description: Link to Yeelight documentation or describe sanitized observed behavior. Do not include raw payloads with identifiers.
+    validations:
+      required: true
+  - type: textarea
+    id: product_samples
+    attributes:
+      label: Sanitized product samples
+      description: Include category, component IDs, property/event names, and expected HA platform only after removing house, room, gateway, device, MAC, username, token, URL, and raw payload values.
+    validations:
+      required: false
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Boundary confirmation
+      options:
+        - label: This request does not require destructive registry deletion or house transfer unless explicitly stated as a product decision.
+          required: true
+        - label: I understand uncertain capabilities may stay hidden until sample-backed tests exist.
+          required: true

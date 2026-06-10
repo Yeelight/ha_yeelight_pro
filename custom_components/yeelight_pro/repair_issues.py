@@ -1,6 +1,7 @@
 """Home Assistant Repairs issues for Yeelight Pro."""
 from __future__ import annotations
 
+from hashlib import sha256
 from typing import Any, Mapping
 
 from homeassistant.config_entries import ConfigEntry
@@ -92,8 +93,21 @@ def async_delete_topology_changed_issues(
 
 
 def _topology_issue_id(entry_id: str, generation: int) -> str:
-    """Return the stable Repairs issue id for a topology generation."""
+    """Return the stable Repairs issue id without exposing the raw entry id."""
+    return TOPOLOGY_CHANGED_ISSUE.format(
+        entry_id=_topology_issue_entry_scope(entry_id),
+        generation=generation,
+    )
+
+
+def _legacy_topology_issue_id(entry_id: str, generation: int) -> str:
+    """Return the pre-redaction Repairs issue id used by older builds."""
     return TOPOLOGY_CHANGED_ISSUE.format(entry_id=entry_id, generation=generation)
+
+
+def _topology_issue_entry_scope(entry_id: str) -> str:
+    """Return a non-reversible scope for entry-scoped Repairs issue ids."""
+    return sha256(str(entry_id).encode()).hexdigest()[:16]
 
 
 def _stale_topology_issue_ids(
@@ -105,6 +119,7 @@ def _stale_topology_issue_ids(
 ) -> list[str]:
     """Return old topology issue ids for the same config entry."""
     stale_issue_ids = {
+        _legacy_topology_issue_id(entry_id, previous_generation),
         _topology_issue_id(entry_id, previous_generation),
     } - {current_issue_id}
 
@@ -131,7 +146,13 @@ def _topology_issue_ids_for_entry(
     issue_registry: Any | None = None,
 ) -> list[str]:
     """Return topology issue ids that belong to one config entry."""
-    issue_prefix = TOPOLOGY_CHANGED_ISSUE.format(entry_id=entry_id, generation="")
+    issue_prefixes = (
+        TOPOLOGY_CHANGED_ISSUE.format(
+            entry_id=_topology_issue_entry_scope(entry_id),
+            generation="",
+        ),
+        TOPOLOGY_CHANGED_ISSUE.format(entry_id=entry_id, generation=""),
+    )
     if issue_registry is None:
         try:
             issue_registry = ir.async_get(hass)
@@ -142,10 +163,12 @@ def _topology_issue_ids_for_entry(
     for domain, issue_id in tuple(issue_registry.issues):
         if domain != DOMAIN:
             continue
-        if not issue_id.startswith(issue_prefix):
-            continue
-        if issue_id.removeprefix(issue_prefix).isdecimal():
-            issue_ids.append(issue_id)
+        for issue_prefix in issue_prefixes:
+            if issue_id.startswith(issue_prefix) and issue_id.removeprefix(
+                issue_prefix
+            ).isdecimal():
+                issue_ids.append(issue_id)
+                break
     return sorted(issue_ids)
 
 

@@ -78,6 +78,7 @@ CONF_DEVICE_IMPORT_FILTER_EXCLUDE_PRODUCT_IDS = (
 )
 CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES = "device_import_filter_include_devices"
 CONF_DEVICE_IMPORT_FILTER_EXCLUDE_DEVICES = "device_import_filter_exclude_devices"
+CONF_DEVICE_IMPORT_FILTER_PICKER = "device_import_filter_picker"
 CONF_LIVE_UPDATES = "live_updates"
 CONF_LOCAL_GATEWAY_CONTROL = "local_gateway_control"
 CONF_LOCAL_GATEWAY_HOST = "local_gateway_host"

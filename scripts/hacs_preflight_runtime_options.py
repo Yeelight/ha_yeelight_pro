@@ -69,6 +69,12 @@ def check_runtime_options_contract_tests(component_root: Path) -> list[str]:
     errors: list[str] = []
     runtime_options = component_root / "runtime_options.py"
     runtime_options_test = component_root / "tests" / "test_runtime_options.py"
+    options_flow_contract_test = (
+        component_root / "tests" / "test_options_flow_contract.py"
+    )
+    options_flow_picker_test = (
+        component_root / "tests" / "test_options_flow_device_picker.py"
+    )
     debug_service = component_root / "debug_service.py"
     debug_service_test = component_root / "tests" / "test_debug_service.py"
     if not runtime_options.exists():
@@ -76,6 +82,16 @@ def check_runtime_options_contract_tests(component_root: Path) -> list[str]:
         return errors
     if not runtime_options_test.exists():
         errors.append("runtime_options.py requires tests/test_runtime_options.py")
+        return errors
+    if not options_flow_contract_test.exists():
+        errors.append(
+            "runtime options require tests/test_options_flow_contract.py"
+        )
+        return errors
+    if not options_flow_picker_test.exists():
+        errors.append(
+            "runtime options require tests/test_options_flow_device_picker.py"
+        )
         return errors
     if not debug_service.exists():
         errors.append("runtime options require debug_service.py")
@@ -91,6 +107,11 @@ def check_runtime_options_contract_tests(component_root: Path) -> list[str]:
         {
             "CONF_EXPERIMENTAL_PLATFORMS": "reload on platform set changes",
             "CONF_HIDE_UNKNOWN_ENTITIES": "reload on entity projection changes",
+            "CONF_LIVE_UPDATES": "reload on WebSocket live update changes",
+            "CONF_LOCAL_GATEWAY_CONTROL": "reload on local gateway runtime toggle",
+            "CONF_LOCAL_GATEWAY_HOST": "reload on local gateway host changes",
+            "CONF_LOCAL_GATEWAY_PORT": "reload on local gateway port changes",
+            "CONF_ANALYTICS_RUNTIME": "reload on analytics runtime toggle",
             "apply_options": "runtime-only options apply without reload",
             "async_delete_topology_changed_issues": "clears disabled Repairs issues",
             "async_reload": "falls back to Home Assistant entry reload",
@@ -104,8 +125,48 @@ def check_runtime_options_contract_tests(component_root: Path) -> list[str]:
             "entity_projection_changes": "entity-affecting options reload",
             "runtime_missing": "missing runtime falls back to reload",
             "clears_topology_repairs": "disabled topology Repairs are cleared",
+            "test_options_update_reloads_when_background_runtime_option_changes": (
+                "background runtime options reload coverage"
+            ),
+            "live_updates_websocket": "WebSocket live update reload case",
+            "local_gateway_control": "local gateway runtime toggle reload case",
+            "local_gateway_host": "local gateway host reload case",
+            "local_gateway_port": "local gateway port reload case",
+            "analytics_runtime": "analytics runtime reload case",
         },
         "test_runtime_options.py",
+    ))
+    errors.extend(_missing_tokens(
+        options_flow_contract_test.read_text(encoding="utf-8"),
+        {
+            "test_options_flow_background_runtime_options_require_reload": (
+                "options flow routes background runtime changes to reload"
+            ),
+            "CONF_LIVE_UPDATES": "WebSocket live update option is in flow test",
+            "CONF_LOCAL_GATEWAY_CONTROL": "local gateway toggle is in flow test",
+            "CONF_LOCAL_GATEWAY_HOST": "local gateway host is in flow test",
+            "CONF_LOCAL_GATEWAY_PORT": "local gateway port is in flow test",
+            "CONF_ANALYTICS_RUNTIME": "analytics runtime is in flow test",
+            "confirm_reload": "reload confirmation step is asserted",
+        },
+        "test_options_flow_contract.py",
+    ))
+    errors.extend(_missing_tokens(
+        options_flow_picker_test.read_text(encoding="utf-8"),
+        {
+            "test_options_flow_real_device_picker_loads_current_cloud_devices": (
+                "options real-device picker API coverage"
+            ),
+            "test_options_flow_real_device_picker_selection_requires_reload": (
+                "options picker reload confirmation coverage"
+            ),
+            "test_options_flow_real_device_picker_load_error_is_redacted": (
+                "options picker redaction coverage"
+            ),
+            "CONF_DEVICE_IMPORT_FILTER_PICKER": "options picker opener coverage",
+            "Kitchen Secret": "options picker label privacy marker",
+        },
+        "test_options_flow_device_picker.py",
     ))
     errors.extend(_missing_tokens(
         debug_service.read_text(encoding="utf-8"),

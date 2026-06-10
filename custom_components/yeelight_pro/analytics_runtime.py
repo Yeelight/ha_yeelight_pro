@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+import math
 from typing import Any
 
 from .analytics_contract import (
@@ -65,6 +66,8 @@ class AnalyticsSnapshot:
 
 class AnalyticsRuntimeState:
     """In-memory retention for opt-in aggregate analytics."""
+
+    __slots__ = ("_history", "_retention_days")
 
     def __init__(self, *, retention_days: int) -> None:
         self._retention_days = retention_days
@@ -235,8 +238,10 @@ def _number(value: Any) -> Number | None:
     return None
 
 
-def _normalize_number(value: float) -> Number:
+def _normalize_number(value: float) -> Number | None:
     """Prefer ints for whole-number counters."""
+    if not math.isfinite(value):
+        return None
     return int(value) if float(value).is_integer() else value
 
 

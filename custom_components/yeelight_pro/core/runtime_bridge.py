@@ -1,13 +1,18 @@
 """Runtime push/LAN payload bridge for Yeelight Pro coordinators."""
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+from collections import OrderedDict
+from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from hashlib import blake2b
 from typing import Any
 
 from homeassistant.core import HomeAssistant
 
 from ..const import (
+    ATTR_COMPONENT_ID,
+    ATTR_EVENT_ATTRIBUTES,
+    ATTR_EVENT_TYPE,
     ATTR_SOURCE_DEVICE_ID,
     DEVICE_EVENT_TYPE,
 )
@@ -21,6 +26,8 @@ from .runtime_state import RuntimeStateStore
 
 CanonicalRebuilder = Callable[[dict[str, Any]], None]
 DeviceLookup = Callable[[int], Mapping[str, Any] | None]
+RuntimeEventDedupeKey = str
+MAX_RUNTIME_EVENT_DEDUPE_KEYS = 256
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,6 +109,62 @@ class RuntimePayloadBridge:
         return event
 
 
+class RuntimeEventDeduper:
+    """Bounded duplicate guard for already sanitized runtime event payloads."""
+
+    def __init__(self, *, max_keys: int = MAX_RUNTIME_EVENT_DEDUPE_KEYS) -> None:
+        """Initialize the deduper without storing raw event payloads."""
+        if max_keys <= 0:
+            raise ValueError("max_keys must be positive")
+        self._max_keys = max_keys
+        self._seen: OrderedDict[RuntimeEventDedupeKey, None] = OrderedDict()
+
+    def filter_new_payloads(
+        self,
+        payloads: Iterable[Mapping[str, Any]],
+    ) -> list[Mapping[str, Any]]:
+        """Return payloads whose message/event key has not been seen before."""
+        return [payload for payload in payloads if not self.is_duplicate(payload)]
+
+    def is_duplicate(self, payload: Mapping[str, Any]) -> bool:
+        """Return whether payload repeats a bounded message/event key."""
+        key = runtime_event_dedupe_key(payload)
+        if key is None:
+            return False
+        if key in self._seen:
+            self._seen.move_to_end(key)
+            return True
+        self._seen[key] = None
+        while len(self._seen) > self._max_keys:
+            self._seen.popitem(last=False)
+        return False
+
+
+def runtime_event_dedupe_key(
+    payload: Mapping[str, Any],
+) -> RuntimeEventDedupeKey | None:
+    """Build a non-reversible duplicate key for WebSocket message events."""
+    attributes = payload.get(ATTR_EVENT_ATTRIBUTES)
+    if not isinstance(attributes, Mapping):
+        return None
+    message_id = attributes.get("message_id")
+    if message_id in (None, ""):
+        return None
+
+    parts: tuple[Hashable, ...] = (
+        str(message_id),
+        str(payload.get(ATTR_SOURCE_DEVICE_ID, "")),
+        str(payload.get(ATTR_COMPONENT_ID, "")),
+        str(payload.get(ATTR_EVENT_TYPE, "")),
+        str(attributes.get("raw_event", "")),
+    )
+    digest = blake2b(digest_size=16)
+    for part in parts:
+        digest.update(str(part).encode())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
 def property_updates_from_adapter(
     updates: Sequence[Any],
 ) -> list[RuntimePropertyUpdate]:
@@ -121,8 +184,12 @@ def coerce_device_id(value: Any) -> int | None:
 
 
 __all__ = [
+    "MAX_RUNTIME_EVENT_DEDUPE_KEYS",
+    "RuntimeEventDeduper",
+    "RuntimeEventDedupeKey",
     "RuntimePayloadBridge",
     "RuntimePropertyUpdate",
     "coerce_device_id",
     "property_updates_from_adapter",
+    "runtime_event_dedupe_key",
 ]

@@ -17,6 +17,7 @@ from custom_components.yeelight_pro.const import (
     CONF_DEVICE_IMPORT_FILTER_INCLUDE_GATEWAYS,
     CONF_DEVICE_IMPORT_FILTER_INCLUDE_PRODUCT_IDS,
     CONF_DEVICE_IMPORT_FILTER_INCLUDE_ROOMS,
+    CONF_SCAN_LOGIN_DEVICE,
 )
 from custom_components.yeelight_pro.device_filter_options import (
     device_filter_form_keys,
@@ -42,6 +43,23 @@ def diagnostics_entry() -> MagicMock:
 def test_diagnostics_redacts_device_filter_form_keys_by_contract() -> None:
     """设备过滤表单字段即使误入 diagnostics，也必须按敏感键处理."""
     assert set(device_filter_form_keys()).issubset(TO_REDACT)
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_redacts_scan_login_device_identifier(
+    hass: HomeAssistant,
+    diagnostics_entry: MagicMock,
+) -> None:
+    """扫码登录 device 即使是派生值，也不能进入 diagnostics 导出。"""
+    diagnostics_entry.data[CONF_SCAN_LOGIN_DEVICE] = "ha-scan-device-secret"
+    coordinator = build_empty_diagnostics_coordinator()
+    install_runtime_entry(hass, diagnostics_entry, coordinator)
+
+    data = await async_get_config_entry_diagnostics(hass, diagnostics_entry)
+
+    dumped = json.dumps(data, ensure_ascii=False)
+    assert "ha-scan-device-secret" not in dumped
+    assert data["config_entry"]["data"][CONF_SCAN_LOGIN_DEVICE] == "**REDACTED**"
 
 
 @pytest.mark.asyncio

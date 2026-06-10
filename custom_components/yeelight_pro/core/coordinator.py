@@ -25,22 +25,16 @@ from ..const import (
 )
 from .auxiliary_data import AuxiliaryData, async_fetch_auxiliary_data
 from .client import YeelightProClient
-from .commands import (
-    async_control_device as async_execute_control_device,
-    async_control_group as async_execute_control_group,
-    async_execute_scene as async_execute_scene_command,
-    async_toggle_device as async_execute_toggle_device,
-    async_trigger_automation as async_trigger_automation_command,
-)
+from .coordinator_controls import CoordinatorControlMixin
 from .device_payload import DevicePayloadBuilder
 from .exceptions import (
     AuthenticationError,
     ConnectionError,
-    DeviceNotFoundError,
     safe_error_summary,
 )
-from .runtime_state import RuntimeStateStore
 from .coordinator_runtime import CoordinatorRuntimeMixin
+from .runtime_bridge import RuntimeEventDeduper
+from .runtime_state import RuntimeStateStore
 from .schema_cache import ProductSchemaCache, product_ids_from_items
 from .topology_diff import TopologyDiffSummary
 from .topology_tracker import TopologyTracker
@@ -48,7 +42,11 @@ from .topology_tracker import TopologyTracker
 _LOGGER = logging.getLogger(__name__)
 
 
-class YeelightProCoordinator(CoordinatorRuntimeMixin, DataUpdateCoordinator):
+class YeelightProCoordinator(
+    CoordinatorRuntimeMixin,
+    CoordinatorControlMixin,
+    DataUpdateCoordinator,
+):
     """Yeelight Pro 数据协调器."""
 
     def __init__(
@@ -76,6 +74,7 @@ class YeelightProCoordinator(CoordinatorRuntimeMixin, DataUpdateCoordinator):
         self.scenes: list[dict[str, Any]] = []
         self.automations: list[dict[str, Any]] = []
         self._runtime_state = RuntimeStateStore()
+        self._push_event_deduper = RuntimeEventDeduper()
         self._topology_tracker = TopologyTracker()
         self._device_payload_builder = DevicePayloadBuilder()
         self._product_schema_cache = ProductSchemaCache(hass)
@@ -83,6 +82,7 @@ class YeelightProCoordinator(CoordinatorRuntimeMixin, DataUpdateCoordinator):
         self._analytics_runtime = AnalyticsRuntimeState(
             retention_days=self.analytics_retention_days
         )
+        self._lan_runtime: Any | None = None
 
     @property
     def scan_interval(self) -> int:
@@ -130,6 +130,10 @@ class YeelightProCoordinator(CoordinatorRuntimeMixin, DataUpdateCoordinator):
     def analytics_summary(self) -> dict[str, Any]:
         """返回脱敏 analytics 聚合摘要。"""
         return self._analytics_runtime.latest_summary()
+
+    def set_lan_runtime(self, lan_runtime: Any | None) -> None:
+        """Attach the optional local gateway runtime used for device writes."""
+        self._lan_runtime = lan_runtime
 
     async def async_refresh_analytics(
         self,
@@ -272,105 +276,6 @@ class YeelightProCoordinator(CoordinatorRuntimeMixin, DataUpdateCoordinator):
     def get_gateway_devices(self) -> Dict[int, Dict[str, Any]]:
         """获取网关设备."""
         return self.gateways.copy()
-
-    async def async_control_device(
-        self,
-        device_id: int,
-        params: dict[str, Any],
-        duration: int = 500,
-    ) -> None:
-        """控制设备.
-
-        失败时抛出 HomeAssistantError 子类，实体层捕获后向 HA 报告。
-        """
-        device = self.get_device(device_id)
-        if not device:
-            raise DeviceNotFoundError("Device not found")
-
-        await async_execute_control_device(
-            self.client,
-            house_id=self.house_id,
-            device_id=device_id,
-            params=params,
-            duration=duration,
-        )
-
-        # 乐观更新
-        runtime_data = self.data if isinstance(self.data, Mapping) else {}
-        self._runtime_state.store_update(
-            device_id,
-            params,
-            devices=self.devices,
-            gateways=self.gateways,
-            data=runtime_data,
-            rebuild_canonical=(
-                self._device_payload_builder.attach_canonical_models_if_available
-            ),
-        )
-
-        # 通知监听器
-        self.async_update_listeners()
-
-    async def async_toggle_device(
-        self,
-        device_id: int,
-        properties: list[str],
-    ) -> None:
-        """切换设备属性.
-
-        失败时抛出异常，实体层捕获后向 HA 报告。
-        """
-        device = self.get_device(device_id)
-        if not device:
-            raise DeviceNotFoundError("Device not found")
-
-        await async_execute_toggle_device(
-            self.client,
-            house_id=self.house_id,
-            device_id=device_id,
-            properties=properties,
-        )
-
-        await self.async_request_refresh()
-
-    async def async_execute_scene(self, scene_id: str) -> None:
-        """执行场景.
-
-        失败时抛出异常，实体层捕获后向 HA 报告。
-        """
-        await async_execute_scene_command(
-            self.client,
-            house_id=self.house_id,
-            scene_id=scene_id,
-        )
-
-    async def async_trigger_automation(self, automation_id: str) -> None:
-        """手动触发自动化.
-
-        失败时抛出异常，实体层捕获后向 HA 报告。
-        """
-        await async_trigger_automation_command(
-            self.client,
-            automation_id=automation_id,
-        )
-
-    async def async_control_group(
-        self,
-        group_id: str,
-        params: dict[str, Any],
-        duration: int = 500,
-    ) -> None:
-        """控制灯组.
-
-        失败时抛出异常，实体层捕获后向 HA 报告。
-        """
-        await async_execute_control_group(
-            self.client,
-            house_id=self.house_id,
-            group_id=group_id,
-            params=params,
-            duration=duration,
-        )
 
     @property
     def topology_generation(self) -> int:

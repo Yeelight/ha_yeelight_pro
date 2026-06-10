@@ -38,6 +38,7 @@ def lifecycle_coordinator(
     *,
     data: dict[int, dict[str, object]] | None = None,
     scenes: list[dict[str, str]] | None = None,
+    options: dict[str, object] | None = None,
 ) -> SimpleNamespace:
     """Build the coordinator shape required by entity lifecycle helpers."""
     return SimpleNamespace(
@@ -47,6 +48,7 @@ def lifecycle_coordinator(
         groups=[],
         house_id=None,
         hide_unknown_entities=False,
+        options=options or {},
     )
 
 

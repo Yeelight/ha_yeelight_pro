@@ -113,7 +113,8 @@
             "device_import_filter_exclude_product_ids": "Exclude product IDs (comma-separated)",
             "device_import_filter_include_devices": "Include device IDs (comma-separated)",
             "device_import_filter_exclude_devices": "Exclude device IDs (comma-separated)",
-            "live_updates": "Enable live WebSocket updates",
+            "device_import_filter_picker": "Open real device picker",
+            "live_updates": "Enable WebSocket event notifications",
             "local_gateway_control": "Enable local gateway control",
             "local_gateway_host": "Local gateway host",
             "local_gateway_port": "Local gateway port",
@@ -127,13 +128,21 @@
         },
         "confirm_reload": {
           "title": "Confirm and reload Yeelight Pro",
-          "description": "{changed_count} visible option changes will be saved.\n\nAt least one changed option affects loaded platforms or entity candidates. After saving, Home Assistant will reload this integration through the options update listener. This confirmation step does not make an extra Yeelight API call."
+            "description": "{changed_count} visible option changes will be saved.\n\nAt least one changed option affects loaded platforms or entity candidates. After saving, Home Assistant will reload this integration through the options update listener. This confirmation step does not make an extra Yeelight API call."
+        },
+        "cloud_devices": {
+          "title": "Adjust imported devices",
+          "description": "Reload real devices from the current cloud house and select which devices to import into Home Assistant. Saving stores only device ID filter rules, not device names, room names, or raw device lists.",
+          "data": {
+            "device_import_filter_include_devices": "Devices"
+          }
         }
       }
     },
     "error": {
       "cannot_connect": "Failed to connect to server",
       "invalid_auth": "Authentication failed, please check Access Token",
+      "scan_login_expired": "The QR code has expired. Select refresh QR code and try again.",
       "unknown": "Unknown error"
     },
     "abort": {

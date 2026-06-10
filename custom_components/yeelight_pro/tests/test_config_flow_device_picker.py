@@ -58,6 +58,19 @@ def test_selected_device_ids_default_to_all_devices() -> None:
     assert selected_device_ids_from_input(None, choices) == ["dev-2", "dev-1"]
 
 
+def test_selected_device_ids_from_input_drops_unknown_choices() -> None:
+    """表单提交值必须来自当前真实设备 choices。"""
+    choices = device_choices([
+        {"id": "dev-1", "name": "Light"},
+        {"id": "dev-2", "name": "Curtain"},
+    ])
+
+    assert selected_device_ids_from_input(
+        {CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES: ["dev-1", "unknown-device"]},
+        choices,
+    ) == ["dev-1"]
+
+
 def test_selected_device_filter_is_disabled_for_all_or_empty_house() -> None:
     """全选或空家庭不应启用无意义过滤规则."""
     choices = device_choices([
@@ -83,6 +96,24 @@ def test_selected_device_filter_includes_only_selected_devices() -> None:
     ])
 
     assert device_import_filter_for_selected_devices(["dev-1"], choices) == {
+        "enabled": True,
+        "mode": "or",
+        "include": {"devices": ["dev-1"]},
+        "exclude": {},
+    }
+
+
+def test_selected_device_filter_drops_unknown_selected_ids() -> None:
+    """表单提交中的未知设备 ID 不应写入持久化 import filter。"""
+    choices = device_choices([
+        {"id": "dev-1", "name": "Light"},
+        {"id": "dev-2", "name": "Curtain"},
+    ])
+
+    assert device_import_filter_for_selected_devices(
+        ["dev-1", "dev-secret"],
+        choices,
+    ) == {
         "enabled": True,
         "mode": "or",
         "include": {"devices": ["dev-1"]},

@@ -18,6 +18,7 @@ from custom_components.yeelight_pro.const import (
     CONF_DEVICE_IMPORT_FILTER_INCLUDE_CATEGORIES,
     CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES,
     CONF_DEVICE_IMPORT_FILTER_MODE,
+    CONF_DEVICE_IMPORT_FILTER_PICKER,
     CONF_EXPERIMENTAL_PLATFORMS,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_SCAN_INTERVAL,
@@ -58,6 +59,22 @@ def test_translations_are_valid_and_key_aligned() -> None:
             "data",
             CONF_DEVICE_IMPORT_FILTER_EXCLUDE_CATEGORIES,
         ),
+        (
+            "config",
+            "options",
+            "step",
+            "init",
+            "data",
+            CONF_DEVICE_IMPORT_FILTER_PICKER,
+        ),
+        (
+            "config",
+            "options",
+            "step",
+            "cloud_devices",
+            "data",
+            CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES,
+        ),
         ("config", "options", "step", "confirm_runtime", "title"),
         ("config", "options", "step", "confirm_runtime", "description"),
         ("config", "options", "step", "confirm_reload", "title"),
@@ -66,6 +83,7 @@ def test_translations_are_valid_and_key_aligned() -> None:
         ("config", "step", "cloud_auth_method", "data", "cloud_auth_method"),
         ("config", "step", "cloud_scan_login", "data", CONF_SCAN_LOGIN_QRCODE),
         ("config", "step", "cloud_scan_login", "data", CONF_SCAN_LOGIN_REFRESH),
+        ("config", "error", "scan_login_expired"),
         ("config", "step", "cloud_devices", "data", CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES),
         ("config", "progress", "cloud_scan_login_wait"),
         ("config", "step", "reauth_confirm", "data", "access_token"),
@@ -102,6 +120,36 @@ def test_translations_are_valid_and_key_aligned() -> None:
 
     assert leaf_paths(strings) == leaf_paths(chinese)
     assert leaf_paths(strings) == leaf_paths(english)
+
+
+def test_scan_login_translations_keep_qr_countdown_and_refresh_guidance() -> None:
+    """扫码登录文本必须保留 APP 版本、倒计时、轮询和手动刷新提示."""
+    strings, english, chinese = _translation_payloads()
+
+    for payload in (strings, chinese):
+        description = payload["config"]["step"]["cloud_scan_login"]["description"]
+        progress = payload["config"]["progress"]["cloud_scan_login_wait"]
+        assert "易来 APP 1.5.0" in description
+        assert "{qrcode}" in description
+        assert "{status}" in description
+        assert "{remaining_seconds}" in description
+        assert "{poll_count}" in description
+        assert "刷新" in description
+        assert "{remaining_seconds}" in progress
+        assert "{poll_count}" in progress
+
+    english_description = english["config"]["step"]["cloud_scan_login"][
+        "description"
+    ]
+    english_progress = english["config"]["progress"]["cloud_scan_login_wait"]
+    assert "Yeelight APP 1.5.0" in english_description
+    assert "{qrcode}" in english_description
+    assert "{status}" in english_description
+    assert "{remaining_seconds}" in english_description
+    assert "{poll_count}" in english_description
+    assert "refresh" in english_description.casefold()
+    assert "{remaining_seconds}" in english_progress
+    assert "{poll_count}" in english_progress
 
 
 def test_topology_repair_placeholders_match_translations(

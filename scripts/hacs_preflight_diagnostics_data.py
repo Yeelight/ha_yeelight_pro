@@ -13,7 +13,7 @@ DIAGNOSTICS_ENABLED_CLIENT_CAPABILITIES = (
     "push_message_adapter",
     "runtime_payload_bridge",
     "websocket_message_contract",
-    "websocket_transport_skeleton",
+    "websocket_transport_runtime",
     "push_manager_contract",
     "push_connection",
     "websocket_subscription",
@@ -24,6 +24,7 @@ DIAGNOSTICS_ENABLED_CLIENT_CAPABILITIES = (
     "lan_control",
     "analytics_contract",
     "analytics_runtime",
+    "websocket_event_notifications",
 )
 DIAGNOSTICS_DISABLED_CLIENT_CAPABILITIES = (
     "oauth_flow",
@@ -34,6 +35,18 @@ DIAGNOSTICS_FORBIDDEN_CLIENT_CAPABILITIES = {
         "ambiguous OAuth flow label must stay renamed to "
         "manual_oauth_authorization_code_exchange"
     ),
+    "websocket_transport_skeleton": (
+        "WebSocket transport must be represented as a tested runtime capability"
+    ),
+    "sse_subscription": (
+        "Yeelight event notifications are WebSocket-only; do not add SSE capability"
+    ),
+    "eventsource_subscription": (
+        "Yeelight event notifications are WebSocket-only; do not add EventSource capability"
+    ),
+    "server_sent_events": (
+        "Yeelight event notifications are WebSocket-only; do not add Server-Sent Events capability"
+    ),
 }
 DIAGNOSTICS_CONTRACT_TEST_TOKENS = {
     "tests/test_diagnostics_redaction.py": {
@@ -43,6 +56,10 @@ DIAGNOSTICS_CONTRACT_TEST_TOKENS = {
         "token-secret": "token leakage regression marker",
         "device_filter_form_keys": "device-filter form-only keys stay redacted",
         "room-secret-form": "device-filter form value leakage marker",
+        "test_diagnostics_redacts_scan_login_device_identifier": (
+            "scan-login device diagnostics redaction coverage"
+        ),
+        "ha-scan-device-secret": "scan-login device leakage regression marker",
     },
     "tests/test_diagnostics_filters.py": {
         "entity_import_filter_preview": "filter preview stays aggregate-only",
@@ -100,9 +117,7 @@ DIAGNOSTICS_CONTRACT_TEST_TOKENS = {
         "push_message_adapter": "push payload adapter capability is explicit",
         "runtime_payload_bridge": "received payload bridge capability is explicit",
         "websocket_message_contract": "WebSocket message contract is explicit",
-        "websocket_transport_skeleton": (
-            "WebSocket transport skeleton capability is explicit"
-        ),
+        "websocket_transport_runtime": "WebSocket transport runtime is explicit",
         "push_manager_contract": "push manager contract is explicit",
         "lan_discovery_parser": "LAN discovery parser capability is explicit",
         "lan_message_contract": "LAN message contract capability is explicit",
@@ -110,6 +125,9 @@ DIAGNOSTICS_CONTRACT_TEST_TOKENS = {
         "analytics_contract": "data-analysis contract capability is explicit",
         "push_connection": "live push runtime capability is explicit",
         "websocket_subscription": "live WebSocket subscription capability is explicit",
+        "websocket_event_notifications": (
+            "WebSocket-only event-notification runtime is explicit"
+        ),
         "local_gateway_control": "local gateway control capability is explicit",
         "lan_control": "live LAN control capability is explicit",
         "mqtt_subscription": "live MQTT subscription remains explicitly disabled",

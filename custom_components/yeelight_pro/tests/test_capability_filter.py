@@ -9,6 +9,7 @@ from custom_components.yeelight_pro.capabilities.filter import (
     UNSUPPORTED_PLATFORM_REASON,
     UNSUPPORTED_VALUE_REASON,
     is_known_property_key,
+    is_low_confidence_component_payload,
     should_project_unknown_property,
     summarize_unknown_capabilities,
     unknown_sensor_component_id,
@@ -105,6 +106,37 @@ def test_event_input_payload_does_not_use_unknown_sensor_fallback() -> None:
     assert decision.reason == UNSUPPORTED_PLATFORM_REASON
 
 
+def test_low_confidence_components_do_not_use_unknown_sensor_fallback() -> None:
+    """低频组件和桥接协议缺少样本时不能暴露未知 fallback sensor。"""
+    for device in (
+        {"category": "other", "type": "sensor", "component_id": "audio control"},
+        {
+            "category": "other",
+            "type": "sensor",
+            "ha_device_instance": {
+                "components": [{"component_id": "wifi_screen", "state": {}}],
+            },
+        },
+        {
+            "category": "other",
+            "type": "sensor",
+            "ha_product_model": {
+                "product": {"bridge": {"protocols": ["Matter", "Thread"]}},
+            },
+        },
+    ):
+        assert is_low_confidence_component_payload(device) is True
+        decision = should_project_unknown_property(
+            "vendor_private",
+            7,
+            device,
+            platform="sensor",
+            hide_unknown_entities=False,
+        )
+        assert decision.allowed is False
+        assert decision.reason == UNSUPPORTED_PLATFORM_REASON
+
+
 def test_unknown_filter_summary_is_aggregate_only() -> None:
     """诊断摘要只输出计数，不暴露设备或属性明细。"""
     devices: list[Mapping[str, Any]] = [
@@ -132,3 +164,32 @@ def test_unknown_filter_summary_is_aggregate_only() -> None:
         "fallback_sensor_properties": 1,
         "unsupported_unknown_properties": 0,
     }
+
+
+def test_low_confidence_summary_counts_unsupported_without_identifiers() -> None:
+    """低频组件 diagnostics 只进入 unsupported 聚合，不输出属性或设备明细。"""
+    devices: list[Mapping[str, Any]] = [
+        {
+            "device_id": "screen-secret",
+            "category": "other",
+            "type": "sensor",
+            "ha_device_instance": {
+                "components": [
+                    {
+                        "component_id": "mesh_screen",
+                        "state": {"vendor_private": 7},
+                    }
+                ],
+            },
+        }
+    ]
+
+    summary = summarize_unknown_capabilities(devices, hide_unknown_entities=False)
+
+    assert summary == {
+        "hidden_unknown_properties": 0,
+        "fallback_sensor_properties": 0,
+        "unsupported_unknown_properties": 1,
+    }
+    assert "screen-secret" not in str(summary)
+    assert "vendor_private" not in str(summary)

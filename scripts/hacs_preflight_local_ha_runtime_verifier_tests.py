@@ -114,6 +114,9 @@ LOCAL_HA_RUNTIME_VERIFIER_TEST_TOKENS = {
         "test_verify_i18n_contracts_rejects_untranslated_selector_option": (
             "selector option translation coverage"
         ),
+        "test_verify_i18n_contracts_rejects_scan_login_guidance_drift": (
+            "scan-login QR guidance verifier coverage"
+        ),
         "test_verify_i18n_contracts_rejects_unknown_repair_placeholder": (
             "unknown Repairs placeholder coverage"
         ),
@@ -204,9 +207,44 @@ LOCAL_HA_RUNTIME_VERIFIER_TEST_TOKENS = {
         "test_verify_diagnostics_capabilities_requires_option_status_tokens": (
             "installed option_status token verifier coverage"
         ),
-        "debug_mode_enabled": "installed option_status debug-mode field coverage",
         "scan_interval_seconds": "installed option_status scan-interval field coverage",
         "normalize_entry_options": "installed option_status normalization guard",
+    },
+    "custom_components/yeelight_pro/tests/local_ha_diagnostics_verifier_helpers.py": {
+        "debug_mode_enabled": "installed option_status debug-mode field coverage",
         "CONF_DEVICE_IMPORT_FILTER": "installed option_status filter preview guard",
+        "write_websocket_event_runtime": (
+            "installed WebSocket event runtime fixture coverage"
+        ),
+        "include_live_transport_call": (
+            "installed WebSocket live-runtime call-edge fixture control"
+        ),
+        "include_ws_connect_call": (
+            "installed WebSocket ws_connect call-edge fixture control"
+        ),
+    },
+    "custom_components/yeelight_pro/tests/test_verify_local_ha_websocket_runtime.py": {
+        "test_verify_diagnostics_capabilities_requires_websocket_event_runtime": (
+            "installed WebSocket event runtime verifier coverage"
+        ),
+        "test_verify_diagnostics_capabilities_accepts_websocket_event_runtime": (
+            "installed WebSocket event runtime success fact coverage"
+        ),
+        "test_verify_diagnostics_capabilities_requires_websocket_runtime_health": (
+            "installed WebSocket runtime health verifier coverage"
+        ),
+        "test_verify_diagnostics_capabilities_rejects_eventsource_runtime": (
+            "installed non-WebSocket event runtime denylist coverage"
+        ),
+        "test_verify_diagnostics_capabilities_requires_websocket_call_edges": (
+            "installed WebSocket runtime call-edge verifier coverage"
+        ),
+        "WebSocket-only event runtime contract": (
+            "installed WebSocket event runtime success fact coverage"
+        ),
+        "EventSource runtime path": (
+            "installed EventSource runtime denial assertion"
+        ),
+        "*.ws_connect()": "installed WebSocket ws_connect denial assertion",
     },
 }

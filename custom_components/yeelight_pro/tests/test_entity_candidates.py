@@ -24,6 +24,7 @@ class _Coordinator:
     house_id: int | None = None
     hide_unknown_entities: bool = True
     analytics_runtime_enabled: bool = False
+    options: dict[str, Any] = field(default_factory=dict)
 
 
 def _light_payload() -> dict[str, Any]:
@@ -105,6 +106,36 @@ def test_entity_candidates_match_lifecycle_active_keys() -> None:
     assert ("switch", "yeelight_pro_relay-1_switch_1") in candidate_keys
     assert ("switch", "yeelight_pro_relay-1_switch_2") in candidate_keys
     assert ("vacuum", "yeelight_pro_vacuum-1_vacuum") in candidate_keys
+    assert ("button", "yeelight_pro_scene_scene_1") in candidate_keys
+    assert ("scene", "yeelight_pro_scene_scene_1") in candidate_keys
+
+
+def test_entity_candidates_apply_device_import_filter_to_device_sources_only() -> None:
+    """真实设备 picker/filter 只影响设备来源候选，保留拓扑辅助候选."""
+    blocked_payload = _light_payload()
+    blocked_payload["device_id"] = "blocked-light"
+    blocked_payload["ha_device_instance"]["device_id"] = "blocked-light"
+    blocked_payload["ha_device_instance"]["device_info"]["identifiers"] = [
+        ["yeelight_pro", "blocked-light"]
+    ]
+    coordinator = _Coordinator(
+        data={
+            "light-1": _light_payload(),
+            "blocked-light": blocked_payload,
+        },
+        scenes=[{"id": "scene_1"}],
+        options={
+            "device_import_filter": {
+                "enabled": True,
+                "exclude": {"devices": ["blocked-light"]},
+            }
+        },
+    )
+
+    candidate_keys = collect_entity_candidate_keys(coordinator)
+
+    assert ("light", "yeelight_pro_light-1_main_light") in candidate_keys
+    assert ("light", "yeelight_pro_blocked-light_main_light") not in candidate_keys
     assert ("button", "yeelight_pro_scene_scene_1") in candidate_keys
     assert ("scene", "yeelight_pro_scene_scene_1") in candidate_keys
 

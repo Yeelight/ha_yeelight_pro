@@ -34,6 +34,28 @@ _EVENT_INPUT_TOKENS = (
     "情景",
     "旋钮",
 )
+_LOW_CONFIDENCE_COMPONENT_TOKENS = (
+    "audio",
+    "wifi_screen",
+    "wifi screen",
+    "mesh_screen",
+    "mesh screen",
+    "knob_screen",
+    "knob screen",
+    "panorama_screen",
+    "panorama screen",
+    "knx",
+    "matter",
+    "thread",
+    "vendor_bridge",
+    "vendor bridge",
+    "声音",
+    "wifi屏",
+    "mesh屏",
+    "旋钮屏",
+    "全景屏",
+)
+_BRIDGE_PROTOCOL_TOKENS = ("matter", "thread", "dali")
 _UNKNOWN_ID_RE = re.compile(r"[^a-z0-9_]+")
 
 
@@ -67,6 +89,8 @@ def should_project_unknown_property(
         return CapabilityFilterDecision(False, None)
     if hide_unknown_entities:
         return CapabilityFilterDecision(False, UNKNOWN_CAPABILITY_REASON)
+    if is_low_confidence_component_payload(device_payload):
+        return CapabilityFilterDecision(False, UNSUPPORTED_PLATFORM_REASON)
     if platform != "sensor" or not _supports_unknown_sensor_fallback(device_payload):
         return CapabilityFilterDecision(False, UNSUPPORTED_PLATFORM_REASON)
     if not _is_fallback_sensor_value(value):
@@ -121,6 +145,14 @@ def summarize_unknown_capabilities(
     }
 
 
+def is_low_confidence_component_payload(device_payload: Mapping[str, Any]) -> bool:
+    """Return whether fallback projection needs samples before exposure."""
+    return bool(
+        _payload_has_token(device_payload, _LOW_CONFIDENCE_COMPONENT_TOKENS)
+        or _payload_has_bridge_protocol(device_payload)
+    )
+
+
 def _supports_unknown_sensor_fallback(device_payload: Mapping[str, Any]) -> bool:
     """仅 sensor 类来源允许未知只读 fallback，事件/控制类不放宽."""
     category = to_category(device_payload.get("category"))
@@ -131,6 +163,67 @@ def _supports_unknown_sensor_fallback(device_payload: Mapping[str, Any]) -> bool
     ):
         return False
     return source_type == "sensor" or platform_for_category(category) == "sensor"
+
+
+def _payload_has_token(
+    device_payload: Mapping[str, Any],
+    tokens: tuple[str, ...],
+) -> bool:
+    """Check device, component, and product categories for conservative tokens."""
+    values = [
+        device_payload.get("category"),
+        device_payload.get("type"),
+        device_payload.get("component_id"),
+    ]
+    instance = device_payload.get("ha_device_instance")
+    if isinstance(instance, Mapping):
+        values.extend(_component_values(instance.get("components")))
+    product_model = device_payload.get("ha_product_model")
+    if isinstance(product_model, Mapping):
+        product = product_model.get("product")
+        if isinstance(product, Mapping):
+            values.extend((product.get("category"), product.get("model")))
+        values.extend(_component_values(product_model.get("components")))
+    return any(matches_category(to_category(value), tokens) for value in values)
+
+
+def _payload_has_bridge_protocol(device_payload: Mapping[str, Any]) -> bool:
+    """Treat bridge-only protocols as metadata, not fallback entity confidence."""
+    product_model = device_payload.get("ha_product_model")
+    if not isinstance(product_model, Mapping):
+        return False
+    product = product_model.get("product")
+    if not isinstance(product, Mapping):
+        return False
+    bridge = product.get("bridge")
+    if not isinstance(bridge, Mapping):
+        return False
+    protocols = bridge.get("protocols")
+    if not isinstance(protocols, list):
+        return False
+    return any(
+        matches_category(to_category(item), _BRIDGE_PROTOCOL_TOKENS)
+        for item in protocols
+    )
+
+
+def _component_values(value: Any) -> list[Any]:
+    """Return category-like values from component payloads."""
+    if not isinstance(value, list):
+        return []
+    values: list[Any] = []
+    for item in value:
+        if not isinstance(item, Mapping):
+            continue
+        values.extend(
+            (
+                item.get("category"),
+                item.get("component_id"),
+                item.get("name"),
+                item.get("desc"),
+            )
+        )
+    return values
 
 
 def _is_fallback_sensor_value(value: Any) -> bool:

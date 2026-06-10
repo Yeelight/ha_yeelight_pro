@@ -11,7 +11,8 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from .analytics_runtime import ANALYTICS_METRIC_KEYS
-from .const import DEFAULT_HIDE_UNKNOWN_ENTITIES, DOMAIN
+from .const import CONF_DEVICE_IMPORT_FILTER, DEFAULT_HIDE_UNKNOWN_ENTITIES, DOMAIN
+from .device_filter import matches_device_import_filter
 from .projector.binary_sensor import project_binary_sensors
 from .projector.climate import project_climate
 from .projector.cover import project_cover
@@ -63,7 +64,10 @@ def iter_entity_candidates(
     hide_unknown_entities = bool(
         getattr(coordinator, "hide_unknown_entities", DEFAULT_HIDE_UNKNOWN_ENTITIES)
     )
+    device_import_filter = _device_import_filter(coordinator)
     for device_payload in coordinator.data.values():
+        if not matches_device_import_filter(device_payload, device_import_filter):
+            continue
         yield from iter_device_entity_candidates(
             device_payload,
             hide_unknown_entities=hide_unknown_entities,
@@ -255,6 +259,17 @@ def _iter_analytics_candidates(
             "analytics",
             component_id=metric_key,
         )
+
+
+def _device_import_filter(
+    coordinator: EntityCandidateCoordinator,
+) -> Mapping[str, Any] | None:
+    """Return the stored device import filter for lifecycle candidates."""
+    options = getattr(coordinator, "options", None)
+    if not isinstance(options, Mapping):
+        return None
+    filter_config = options.get(CONF_DEVICE_IMPORT_FILTER)
+    return filter_config if isinstance(filter_config, Mapping) else None
 
 
 def _projection_component_id(projection: Any) -> str | None:

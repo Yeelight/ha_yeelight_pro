@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-SPLIT_CONTRACT_TEST_TOKENS = {
+from scripts.hacs_preflight_split_client_contracts import (
+    SPLIT_CLIENT_CONTRACT_TEST_TOKENS,
+)
+
+_SPLIT_CONFIG_FLOW_CONTRACT_TEST_TOKENS = {
     "tests/test_capability_registry_contract.py": {
         "test_event_aliases_cover_backend_event_types": (
             "backend event alias contract coverage"
@@ -39,6 +43,25 @@ SPLIT_CONTRACT_TEST_TOKENS = {
         ),
         "EXPERIMENTAL_PLATFORMS": "experimental platform constant coverage",
     },
+    "tests/test_options_flow_device_picker.py": {
+        "test_options_flow_cloud_entry_shows_real_device_picker_opener": (
+            "options real-device picker opener coverage"
+        ),
+        "test_options_flow_private_entry_hides_real_device_picker_opener": (
+            "options private-entry picker hidden coverage"
+        ),
+        "test_options_flow_real_device_picker_loads_current_cloud_devices": (
+            "options real-device picker API coverage"
+        ),
+        "test_options_flow_real_device_picker_selection_requires_reload": (
+            "options real-device picker reload coverage"
+        ),
+        "test_options_flow_real_device_picker_load_error_is_redacted": (
+            "options real-device picker redaction coverage"
+        ),
+        "CONF_DEVICE_IMPORT_FILTER_PICKER": "options picker opener field coverage",
+        "Kitchen Secret": "options picker label privacy marker",
+    },
     "tests/test_translation_runtime_contract.py": {
         "test_translations_are_valid_and_key_aligned": (
             "translation leaf-key alignment coverage"
@@ -46,7 +69,13 @@ SPLIT_CONTRACT_TEST_TOKENS = {
         "test_topology_repair_placeholders_match_translations": (
             "Repairs placeholder runtime coverage"
         ),
+        "test_scan_login_translations_keep_qr_countdown_and_refresh_guidance": (
+            "scan-login QR countdown translation coverage"
+        ),
         "leaf_paths": "shared translation path helper reuse",
+        "Yeelight APP 1.5.0": "scan-login APP version translation guard",
+        "{remaining_seconds}": "scan-login countdown placeholder translation guard",
+        "{poll_count}": "scan-login poll-count placeholder translation guard",
         "CONF_DEVICE_IMPORT_FILTER_INCLUDE_CATEGORIES": (
             "device filter include translation coverage"
         ),
@@ -96,15 +125,33 @@ SPLIT_CONTRACT_TEST_TOKENS = {
         "test_cloud_houses_user_selection_opens_real_device_picker": (
             "cloud house to real device picker coverage"
         ),
+    },
+    "tests/test_config_flow_cloud_devices.py": {
         "test_cloud_devices_loads_real_devices_and_defaults_to_all": (
             "real cloud device picker API coverage"
+        ),
+        "test_cloud_devices_can_continue_without_filter_after_load_error": (
+            "device picker load-error continue without filter coverage"
         ),
         "test_cloud_devices_user_selection_creates_filtered_entry": (
             "real device picker import-filter persistence coverage"
         ),
+        "test_cloud_devices_entry_options_store_ids_not_picker_labels": (
+            "real device picker options privacy coverage"
+        ),
+    },
+    "tests/test_config_flow_entry_creation.py": {
         "test_create_entry_persists_open_api_client_id": (
             "Open API clientId persistence coverage"
         ),
+        "test_create_entry_manual_token_unique_id_uses_redacted_token_fingerprint": (
+            "manual token multi-account redacted unique-id coverage"
+        ),
+        "test_create_entry_manual_token_unique_id_separates_accounts": (
+            "manual token multi-account separation coverage"
+        ),
+        "test_scan_login_account_key_uses_redacted_token_fingerprint_without_metadata": "scan-login token fingerprint fallback coverage",
+        "test_scan_login_account_key_ignores_blank_user_id_alias": "blank account id token-fingerprint fallback coverage",
     },
     "tests/test_config_flow_device_picker.py": {
         "test_device_choices_normalize_open_api_rows": (
@@ -116,6 +163,12 @@ SPLIT_CONTRACT_TEST_TOKENS = {
         "test_selected_device_filter_includes_only_selected_devices": (
             "device picker import filter coverage"
         ),
+        "test_selected_device_filter_drops_unknown_selected_ids": (
+            "device picker unknown id rejection coverage"
+        ),
+        "test_selected_device_ids_from_input_drops_unknown_choices": (
+            "device picker input unknown id rejection coverage"
+        ),
         "NO_DEVICE_SELECTED_SENTINEL": "device picker import-none sentinel coverage",
     },
     "config_flow_device_picker.py": {
@@ -124,10 +177,18 @@ SPLIT_CONTRACT_TEST_TOKENS = {
         "device_import_filter_for_selected_devices": (
             "cloud device picker filter builder"
         ),
+        "allowed_device_ids": "device picker input allowlist",
         "SelectSelectorConfig": "Home Assistant native device multi-select",
         "CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES": (
             "device picker writes existing import filter option"
         ),
+    },
+    "options_flow.py": {
+        "async_step_cloud_devices": "options real-device picker step",
+        "async_load_device_choices": "options picker real cloud device loader",
+        "merge_options_device_picker": "options picker canonical filter merge",
+        "selected_device_ids_from_options": "options picker current selection helper",
+        "confirm_reload": "options picker reload confirmation boundary",
     },
     "tests/test_config_flow_oauth.py": {
         "test_cloud_scan_login_initial_step_creates_qrcode": (
@@ -141,15 +202,55 @@ SPLIT_CONTRACT_TEST_TOKENS = {
         "test_cloud_scan_login_progress_done_loads_houses": (
             "scan-login LOGIN token flow coverage"
         ),
-        "test_scan_login_poll_task_keeps_polling_until_login": (
-            "continuous scan-login polling coverage"
+        "test_cloud_scan_login_rejects_different_region": (
+            "initial scan-login region isolation coverage"
+        ),
+        "test_cloud_scan_login_expired_qrcode_requires_manual_refresh": (
+            "scan-login expired QR manual refresh coverage"
+        ),
+        "test_cloud_scan_login_poll_timeout_returns_expired_error": (
+            "scan-login polling timeout UX coverage"
         ),
         "test_cloud_auth_method_no_longer_routes_to_oauth_app": (
             "authorization-code UI downgrade coverage"
         ),
         "CONF_SCAN_LOGIN_REFRESH": "scan-login qrcode refresh form coverage",
     },
+    "tests/test_config_flow_scan_login_polling.py": {
+        "test_scan_login_poll_task_keeps_polling_until_login": (
+            "continuous scan-login polling coverage"
+        ),
+        "test_scan_login_needs_refresh_keeps_expired_qrcode_for_manual_refresh": (
+            "scan-login expired QR no auto-refresh coverage"
+        ),
+        "test_scan_login_description_placeholders_expose_pollable_state": (
+            "scan-login description placeholder coverage"
+        ),
+        "test_scan_login_poll_task_stops_when_local_qrcode_ttl_expires": (
+            "scan-login local TTL stop coverage"
+        ),
+    },
+    "tests/test_config_flow_scan_login_device.py": {
+        "test_scan_login_device_id_hashes_ha_instance_id_without_leaking_raw_id": (
+            "scan-login device id privacy coverage"
+        ),
+        "test_scan_login_device_id_changes_for_different_ha_instance_ids": (
+            "scan-login device id uniqueness coverage"
+        ),
+    },
     "tests/test_config_flow_reauth.py": {
+        "test_cloud_reauth_routes_to_scan_login_qrcode": (
+            "cloud reauth scan-login routing coverage"
+        ),
+        "test_cloud_reauth_scan_login_updates_token_metadata": (
+            "cloud reauth scan-login token update coverage"
+        ),
+        "test_cloud_reauth_scan_login_rejects_different_account": (
+            "cloud reauth account isolation coverage"
+        ),
+        "test_cloud_reauth_scan_login_rejects_different_region": (
+            "cloud reauth region isolation coverage"
+        ),
         "test_reauth_update_normalizes_entry_data_and_preserves_client_id": (
             "reauth entry normalization coverage"
         ),
@@ -158,168 +259,34 @@ SPLIT_CONTRACT_TEST_TOKENS = {
         ),
         "secret-token": "sensitive token log redaction marker",
     },
-    "tests/p0_client_helpers.py": {
-        "FakeSession": "shared HTTP client fake coverage",
-        "FakeOAuthSession": "shared OAuth client fake coverage",
-        "FakeScanLoginSession": "shared scan-login client fake coverage",
-        "oauth_success_payload": "documented OAuth response fixture coverage",
-        "scan_login_login_payload": "documented scan-login response fixture coverage",
+    "tests/test_config_flow_reauth_identity.py": {
+        "test_cloud_reauth_rejects_different_token_without_account_metadata": "metadata-less token mismatch rejection coverage",
+        "test_cloud_reauth_ignores_blank_stored_user_id_for_identity": "blank stored user id reauth rejection coverage",
+        "test_cloud_reauth_accepts_matching_token_fingerprint_without_metadata": "metadata-less token fingerprint match coverage",
     },
-    "tests/test_client_helpers.py": {
-        "roomId=678": "documented roomId query path coverage",
-        "?roomId=room_1": "documented group roomId query path coverage",
-        "/v1/example/2/50?roomId=678": "pagination-before-query path coverage",
-        "read_properties_body": "documented read properties body coverage",
-        "read_nodes_property_body": "documented multi-node single-property body coverage",
-        "read_nodes_properties_body": "documented multi-node multi-property body coverage",
-        "node_properties_read_path": "documented read properties path coverage",
-        "node_property_read_path": "documented single-property read path coverage",
-        "nodes_property_read_path": "documented multi-node single-property path coverage",
-        "nodes_properties_read_path": "documented multi-node multi-property path coverage",
+    "config_flow_account.py": {"redacted_token_fingerprint": "shared token fingerprint helper"},
+    "config_flow_reauth.py": {
+        "ReauthConfigFlowMixin": "split reauth config-flow mixin",
+        "async_step_cloud_scan_login": "cloud reauth routes through scan login",
+        "_same_reauth_account": "cloud reauth account isolation guard",
+        "_same_reauth_region": "cloud reauth region isolation guard",
+        "scan_login_token_matches_region": "shared scan-login region guard",
+        "async_step_reauth_confirm": "private manual token reauth boundary",
     },
-    "tests/test_client_control_contracts.py": {
-        "control_property_body": "documented single-property control body coverage",
-        "control_properties_body": (
-            "documented single-node multi-property control body coverage"
-        ),
-        "control_nodes_property_body": (
-            "documented multi-node single-property control body coverage"
-        ),
-        "node_properties_control_path": (
-            "documented single-node multi-property control path coverage"
-        ),
-        "node_property_control_path": (
-            "documented single-property control path coverage"
-        ),
-        "nodes_property_control_path": (
-            "documented multi-node single-property control path coverage"
-        ),
-        "test_client_control_property_methods_use_documented_contracts": (
-            "documented property control client coverage"
-        ),
-        "control_node_properties": (
-            "client single-node multi-property control entrypoint coverage"
-        ),
-        "/w/properties\",": "single-node multi-property write endpoint coverage",
-        "/w/properties/l": "single-property write endpoint coverage",
-        "\"params\"": "single-node multi-property body field coverage",
-        "\"index\"": "documented optional index field coverage",
-        "resIds": "multi-node control body field coverage",
-        "delay": "documented optional delay field coverage",
-        "category": "documented optional category field coverage",
+    "config_flow_scan_login_helpers.py": {
+        "ScanLoginFlowState": "scan-login flow state helper split",
+        "async_poll_scan_login_until_login": "continuous scan-login polling helper",
+        "cloud_scan_login_schema_for_qrcode": "QR-code schema builder",
+        "scan_login_account_key": "scan-login account-key helper",
+        "QrCodeSelector": "Home Assistant native QR-code selector",
     },
-    "tests/test_client_pagination.py": {
-        "test_client_get_houses_uses_documented_paginated_endpoint": (
-            "documented house list pagination coverage"
-        ),
-        "/v1/open/node/house/r/list/1/200": (
-            "documented house list endpoint coverage"
-        ),
-        "test_client_list_methods_use_paginated_endpoints": (
-            "documented 3.1 list endpoint coverage"
-        ),
-        "/v1/open/node/house/12345/areas/r/list": (
-            "documented area list endpoint coverage"
-        ),
-        "/v1/open/node/house/12345/rooms/r/list": (
-            "documented room list endpoint coverage"
-        ),
-        "/v1/open/node/house/12345/scenes/r/list": (
-            "documented scene list endpoint coverage"
-        ),
-        "test_client_room_scoped_lists_keep_query_after_pagination": (
-            "room-scoped list pagination coverage"
-        ),
-        "test_client_get_house_snapshot_uses_documented_endpoint": (
-            "documented house snapshot client request coverage"
-        ),
-        "/v1/open/node/house/12345/r/info": (
-            "documented house snapshot endpoint coverage"
-        ),
-        "get_devices": "device roomId pagination coverage",
-        "get_groups": "group roomId pagination coverage",
+    "config_flow_scan_login_region.py": {
+        "scan_login_token_matches_region": "shared scan-login region guard",
+        "normalize_cloud_region": "scan-login region alias normalization",
     },
-    "tests/test_p0_client_contracts.py": {
-        "test_client_keeps_open_api_methods_after_helper_split": (
-            "client public method split stability coverage"
-        ),
-        "get_house_snapshot": "client snapshot method remains on public client",
-        "execute_scene": "client scene execution entrypoint coverage",
-        "/v1/open/control/house/12345/control/w/scenes/scene_1": (
-            "documented scene execution endpoint coverage"
-        ),
-        "control_node_properties": (
-            "client single-node multi-property control entrypoint coverage"
-        ),
-        "control_node_property": "client single-property control entrypoint coverage",
-        "control_nodes_property": "client multi-node control entrypoint coverage",
-        "test_client_read_node_properties_uses_documented_read_contract": (
-            "documented read properties client coverage"
-        ),
-        "test_client_read_property_methods_use_documented_contracts": (
-            "documented read property variants client coverage"
-        ),
-        "test_client_automation_action_methods_use_stable_paths": (
-            "automation action client path coverage"
-        ),
-        "enable_automation": "automation enable client entrypoint coverage",
-        "disable_automation": "automation disable client entrypoint coverage",
-        "trigger_automation": "automation trigger client entrypoint coverage",
-        "/r/properties": "read properties endpoint coverage",
-        "propNames": "read properties body field coverage",
-        "resIds": "multi-node read body field coverage",
-        "/v1/automation/auto_1/trigger": "automation trigger path assertion",
-    },
-    "tests/test_p0_control_auth.py": {
-        "test_client_request_preserves_auth_error_classification": (
-            "client auth error classification coverage"
-        ),
-        "test_client_request_redacts_http_error_response_body": (
-            "client HTTP error body redaction coverage"
-        ),
-        "test_command_wrapper_redacts_identifiers_and_nested_error_details": (
-            "command wrapper redaction coverage"
-        ),
-        "test_command_wrapper_traceback_does_not_keep_sensitive_cause": (
-            "command wrapper traceback redaction coverage"
-        ),
-        "test_validate_auth_preserves_authentication_errors": (
-            "validate_auth auth propagation coverage"
-        ),
-        "TokenExpiredError": "token-expired classification coverage",
-        "AuthenticationError": "forbidden auth classification coverage",
-        "secret-token": "HTTP body redaction regression marker",
-        "traceback.format_exception": "traceback redaction inspection coverage",
-    },
-    "tests/test_push_payloads.py": {
-        "test_push_property_updates_normalize_open_platform_payload": (
-            "push property payload normalization coverage"
-        ),
-        "test_push_event_payloads_normalize_open_platform_payload": (
-            "push event payload normalization coverage"
-        ),
-        "test_infer_event_component_id_uses_unique_schema_event_match": (
-            "schema event component inference coverage"
-        ),
-    },
-    "tests/config_entry_lifecycle_helpers.py": {
-        "make_config_entry": "shared config-entry fixture coverage",
-        "make_setup_coordinator": "setup coordinator fixture coverage",
-        "CONF_OAUTH_CLIENT_ID": "Open API client id runtime fixture coverage",
-    },
-    "tests/test_config_entry_unload.py": {
-        "test_unload_entry": "config-entry unload cleanup coverage",
-        "push_manager.async_stop.assert_awaited_once": (
-            "push manager unload stop coverage"
-        ),
-        "test_unload_entry_keeps_runtime_when_platform_unload_fails": (
-            "failed unload runtime preservation coverage"
-        ),
-        "push_manager.async_stop.assert_not_awaited": (
-            "failed unload push manager preservation coverage"
-        ),
-        "test_remove_entry_cleans_local_topology_repair_issues": (
-            "remove-entry Repairs cleanup coverage"
-        ),
-    },
+}
+
+SPLIT_CONTRACT_TEST_TOKENS = {
+    **_SPLIT_CONFIG_FLOW_CONTRACT_TEST_TOKENS,
+    **SPLIT_CLIENT_CONTRACT_TEST_TOKENS,
 }

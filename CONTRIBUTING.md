@@ -6,7 +6,7 @@
 - Use sanitized fixtures for device samples.
 - Keep Yeelight IoT categories separate from Home Assistant entity platforms in docs and tests.
 - Treat `vacuum` as experimental unless real Yeelight payloads prove the mapping.
-- Do not document OAuth, SSE, local gateway control, multi-region accounts, or full rules/spec filters as implemented until code and tests exist.
+- Do not document Home Assistant OAuth, local gateway discovery, multi-account-in-one-entry UX, or full rules/spec filters as implemented until code and tests exist.
 
 ## Test Commands
 
@@ -48,5 +48,7 @@ Do not include:
 - [ ] `pytest -q` passes.
 - [ ] New behavior has regression tests.
 - [ ] Release-facing docs match implemented behavior.
+- [ ] `custom_components/yeelight_pro/manifest.json`, release notes, and `CHANGELOG.md` describe the same release version when preparing a public release.
+- [ ] Public support or bug reports use the GitHub issue templates and contain only sanitized diagnostics/logs.
 - [ ] New options have translations in `strings.json`, `translations/en.json`, and `translations/zh-Hans.json`.
 - [ ] Generated files are excluded from the release package.

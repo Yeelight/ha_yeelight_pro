@@ -2,35 +2,20 @@
 
 from __future__ import annotations
 
-import ast
 from collections import Counter
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
 
-from .constants import DOMAIN, SOURCE_COMPONENT_ROOT
+from .constants import DOMAIN
 from .options import verify_config_entry_options
 from .platforms import verify_platform_options_alignment
 from .report import VerificationReport
+from .storage_entries import (
+    verify_config_entry_migration,
+    verify_config_entry_unique_ids,
+)
 from .storage_helpers import read_json, safe_storage_items, sensitive_cache_hits, storage_path
-
-REQUIRED_CONFIG_ENTRY_DATA_KEYS = {
-    "access_token",
-    "cloud_domain",
-    "cloud_region",
-    "connection_mode",
-    "house_id",
-    "private_domain",
-}
-OPTIONAL_CONFIG_ENTRY_DATA_KEYS = {
-    "account_user_id",
-    "account_username",
-    "oauth_client_id",
-    "refresh_token",
-    "scan_login_device",
-    "token_expires_in",
-    "token_type",
-}
 
 
 def verify_storage(
@@ -80,7 +65,8 @@ def verify_storage(
     else:
         report.fact(f"enabled config entries: {len(enabled_entries)}")
     report.metric("config_entries", len(enabled_entries))
-    _verify_config_entry_migration(enabled_entries, report)
+    verify_config_entry_migration(enabled_entries, report)
+    verify_config_entry_unique_ids(enabled_entries, report)
     verify_config_entry_options(enabled_entries, report)
 
     devices = [
@@ -166,113 +152,6 @@ def verify_product_schema_cache(config_dir: Path, report: VerificationReport) ->
         report.fact("product schema cache contains no sensitive markers")
         report.fact(f"product schema cache schema count: {schema_count}")
         report.metric("product_schema_cache", {"schema_count": schema_count})
-
-
-def _verify_config_entry_migration(
-    entries: Iterable[Mapping[str, Any]],
-    report: VerificationReport,
-) -> None:
-    """Verify installed Yeelight Pro config entries are migrated without raw output."""
-    entry_list = list(entries)
-    if not entry_list:
-        return
-
-    expected_version = _expected_entry_version()
-    if expected_version is None:
-        report.fail("entry migration version constants are not literal")
-        return
-
-    versions = Counter(
-        (
-            _int_or_zero(entry.get("version")),
-            _int_or_zero(entry.get("minor_version")),
-        )
-        for entry in entry_list
-    )
-    if set(versions) != {expected_version}:
-        report.fail(
-            "config entry migration version mismatch: "
-            f"expected {expected_version}, got {dict(sorted(versions.items()))}"
-        )
-    else:
-        report.fact(
-            "config entry versions: "
-            f"{expected_version[0]}.{expected_version[1]} x {versions[expected_version]}"
-        )
-    report.metric("config_entry_versions", dict(sorted(versions.items())))
-
-    missing_by_key = _missing_config_entry_keys(entry_list)
-    if missing_by_key:
-        report.fail(f"config entry data missing required keys: {missing_by_key}")
-    else:
-        report.fact(
-            "config entry required data keys present: "
-            f"{sorted(REQUIRED_CONFIG_ENTRY_DATA_KEYS)}"
-        )
-    optional_missing_by_key = _missing_config_entry_keys(
-        entry_list,
-        required_keys=OPTIONAL_CONFIG_ENTRY_DATA_KEYS,
-    )
-    if optional_missing_by_key:
-        report.fact(f"config entry optional data keys absent: {optional_missing_by_key}")
-    else:
-        report.fact(
-            "config entry optional data keys present: "
-            f"{sorted(OPTIONAL_CONFIG_ENTRY_DATA_KEYS)}"
-        )
-    report.metric("optional_config_entry_missing_keys", optional_missing_by_key)
-
-
-def _missing_config_entry_keys(
-    entries: Iterable[Mapping[str, Any]],
-    *,
-    required_keys: set[str] = REQUIRED_CONFIG_ENTRY_DATA_KEYS,
-) -> dict[str, int]:
-    """Return required config-entry data keys missing from enabled entries."""
-    missing_counter: Counter[str] = Counter()
-    for entry in entries:
-        data = entry.get("data")
-        if not isinstance(data, Mapping):
-            for key in required_keys:
-                missing_counter[key] += 1
-            continue
-        for key in required_keys:
-            if key not in data:
-                missing_counter[key] += 1
-    return dict(sorted(missing_counter.items()))
-
-
-def _int_or_zero(value: Any) -> int:
-    """Return an int value from HA storage version fields."""
-    return value if isinstance(value, int) else 0
-
-
-def _expected_entry_version() -> tuple[int, int] | None:
-    """Read migration version constants without importing Home Assistant."""
-    constants = _literal_module_ints(
-        SOURCE_COMPONENT_ROOT / "entry_migration.py",
-        {"ENTRY_VERSION", "ENTRY_MINOR_VERSION"},
-    )
-    version = constants.get("ENTRY_VERSION")
-    minor_version = constants.get("ENTRY_MINOR_VERSION")
-    if version is None or minor_version is None:
-        return None
-    return (version, minor_version)
-
-
-def _literal_module_ints(path: Path, names: set[str]) -> dict[str, int]:
-    """Return selected module-level integer constants from a Python source file."""
-    tree = ast.parse(path.read_text(encoding="utf-8"))
-    values: dict[str, int] = {}
-    for node in tree.body:
-        if not isinstance(node, ast.Assign):
-            continue
-        if not isinstance(node.value, ast.Constant) or not isinstance(node.value.value, int):
-            continue
-        for target in node.targets:
-            if isinstance(target, ast.Name) and target.id in names:
-                values[target.id] = node.value.value
-    return values
 
 
 def _is_yeelight_device(device: Mapping[str, Any]) -> bool:

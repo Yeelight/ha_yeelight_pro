@@ -53,10 +53,10 @@ Use the latest local command output as the source of truth. This changelog inten
 
 ### Known Gaps
 
-- Yeelight OAuth protocol helpers are covered as no-network contracts; Home
-  Assistant OAuth login/runtime refresh, multi-region accounts, local gateway
-  discovery/control, SSE/subscription updates, and full rules/spec filter
-  engines remain roadmap items.
+- Yeelight OAuth protocol helpers are covered as no-network contracts; APP
+  scan-login is the cloud setup path. Home Assistant OAuth login/runtime
+  refresh, multi-account-in-one-entry UX, local gateway discovery, and full
+  rules/spec filter engines remain roadmap items.
 
 ## [0.1.0] - 2026-06-03
 

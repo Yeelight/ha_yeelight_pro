@@ -15,10 +15,11 @@ from .const import (
     ATTR_SOURCE_DEVICE_ID,
 )
 from .event_support import safe_runtime_event_params
+from .push_contract import PUSH_DATA_TYPE_EVENT, PUSH_DATA_TYPE_PROP
 from .utils import to_int
 
-PUSH_TYPE_EVENT = "event"
-PUSH_TYPE_PROP = "prop"
+PUSH_TYPE_EVENT = PUSH_DATA_TYPE_EVENT
+PUSH_TYPE_PROP = PUSH_DATA_TYPE_PROP
 
 
 @dataclass(frozen=True, slots=True)

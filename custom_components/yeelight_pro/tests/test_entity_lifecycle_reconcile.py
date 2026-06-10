@@ -99,6 +99,58 @@ async def test_reconcile_keeps_same_stale_registry_entry_on_second_pass(
 
 
 @pytest.mark.asyncio
+async def test_reconcile_treats_filtered_device_entities_as_stale_without_removal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """设备导入过滤可进入 stale 判断，但自动 reconcile 不删除实体。"""
+    registry = FakeEntityRegistry([
+        registry_entry(
+            unique_id="yeelight_pro_blocked-light_light",
+            entity_id="light.blocked",
+            domain="light",
+        )
+    ])
+    coordinator = lifecycle_coordinator(
+        data={
+            1: {
+                "device_id": "blocked-light",
+                "category": "light",
+                "type": "light",
+                "online": True,
+                "params": {"p": True},
+            }
+        },
+        options={
+            "device_import_filter": {
+                "enabled": True,
+                "exclude": {"devices": ["blocked-light"]},
+            }
+        },
+    )
+    patch_entity_registry(monkeypatch, registry)
+
+    active_unique_ids = await async_reconcile_entity_registry(
+        SimpleNamespace(),
+        SimpleNamespace(entry_id="entry_1"),
+        coordinator,
+    )
+
+    assert active_unique_ids == set()
+    assert registry.removed_entity_ids == []
+    assert registry.updated_entities == []
+    assert getattr(coordinator, "_yeelight_pro_pending_stale_entity_keys") == {
+        ("light", "yeelight_pro_blocked-light_light")
+    }
+    assert entity_registry_reconcile_diagnostics(coordinator) == {
+        "active": 0,
+        "registry_entries": 1,
+        "stale": 1,
+        "pending_stale": 1,
+        "disabled": 0,
+    }
+
+
+@pytest.mark.asyncio
 async def test_reconcile_preserves_user_disabled_stale_registry_entry(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

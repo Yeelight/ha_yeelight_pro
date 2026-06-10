@@ -7,12 +7,24 @@ from typing import Any
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
 
+from .const import CONF_ACCESS_TOKEN
 from .config_flow_helpers import (
+    device_picker_context,
     entry_options,
+    flow_error_from_exception,
     merge_options,
+    merge_options_device_picker,
     options_confirm_schema,
+    options_device_picker_requested,
     options_schema,
+    selected_device_ids_from_options,
     visible_option_change_count,
+)
+from .config_flow_device_picker import (
+    DevicePickerChoice,
+    async_load_device_choices,
+    cloud_devices_schema,
+    selected_device_ids_from_input,
 )
 from .entry_migration import normalize_entry_options
 from .runtime_options import options_require_reload
@@ -25,6 +37,8 @@ class YeelightProOptionsFlow(config_entries.OptionsFlow):
         """初始化 options flow."""
         self._config_entry = config_entry
         self._pending_options: dict[str, Any] | None = None
+        self._device_choices: tuple[DevicePickerChoice, ...] = ()
+        self._selected_device_ids: list[str] = []
 
     async def async_step_init(
         self,
@@ -32,6 +46,8 @@ class YeelightProOptionsFlow(config_entries.OptionsFlow):
     ) -> FlowResult:
         """编辑 Yeelight Pro 运行时选项."""
         if user_input is not None:
+            if options_device_picker_requested(user_input):
+                return await self.async_step_cloud_devices()
             self._pending_options = merge_options(
                 entry_options(self._config_entry),
                 user_input,
@@ -42,7 +58,55 @@ class YeelightProOptionsFlow(config_entries.OptionsFlow):
 
         return self.async_show_form(
             step_id="init",
-            data_schema=options_schema(entry_options(self._config_entry)),
+            data_schema=options_schema(
+                entry_options(self._config_entry),
+                self._config_entry,
+            ),
+        )
+
+    async def async_step_cloud_devices(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> FlowResult:
+        """通过真实云端设备 picker 调整导入范围."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            self._selected_device_ids = selected_device_ids_from_input(
+                user_input,
+                self._device_choices,
+            )
+            self._pending_options = merge_options_device_picker(
+                entry_options(self._config_entry),
+                self._selected_device_ids,
+                self._device_choices,
+            )
+            return await self.async_step_confirm_reload()
+
+        try:
+            domain, house_id, client_id = device_picker_context(self._config_entry)
+            self._device_choices = await async_load_device_choices(
+                self.hass,
+                domain=domain,
+                access_token=str(self._config_entry.data.get(CONF_ACCESS_TOKEN, "")),
+                house_id=house_id,
+                client_id=client_id,
+            )
+        except Exception as err:
+            errors["base"] = flow_error_from_exception("options cloud devices", err)
+            self._device_choices = ()
+
+        self._selected_device_ids = selected_device_ids_from_options(
+            entry_options(self._config_entry),
+            self._device_choices,
+        )
+        return self.async_show_form(
+            step_id="cloud_devices",
+            data_schema=cloud_devices_schema(
+                self._device_choices,
+                self._selected_device_ids,
+            ),
+            errors=errors,
         )
 
     async def async_step_confirm_runtime(

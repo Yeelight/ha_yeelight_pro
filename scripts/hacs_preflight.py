@@ -19,11 +19,12 @@ from scripts.hacs_preflight_core import (  # noqa: E402
     check_release_quality_gates,
     check_user_visible_error_redaction,
 )
-from scripts.hacs_preflight_contracts import (  # noqa: E402
+from scripts.hacs_preflight_analytics_contracts import (  # noqa: E402
     check_analytics_contract_tests,
+)
+from scripts.hacs_preflight_contracts import (  # noqa: E402
     check_forbidden_open_api_runtime,
     check_lan_contract_tests,
-    check_oauth_contract_tests,
     check_push_contract_tests,
 )
 from scripts.hacs_preflight_diagnostics import check_diagnostics_contracts  # noqa: E402
@@ -37,6 +38,9 @@ from scripts.hacs_preflight_local_ha import (  # noqa: E402
     VERIFY_LOCAL_HA_CONTRACT_TOKENS,
 )
 from scripts.hacs_preflight_lifecycle import check_lifecycle_contracts  # noqa: E402
+from scripts.hacs_preflight_oauth_contracts import (  # noqa: E402
+    check_oauth_contract_tests,
+)
 from scripts.hacs_preflight_runtime_options import (  # noqa: E402
     check_automation_contract_tests,
     check_runtime_options_contract_tests,

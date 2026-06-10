@@ -123,6 +123,8 @@ class FakeSession:
 
     async def ws_connect(self, url: str) -> FakeWebSocket:
         self.connected_urls.append(url)
+        if not self._websockets:
+            raise AssertionError("no websocket double queued")
         websocket = self._websockets.pop(0)
         if isinstance(websocket, Exception):
             raise websocket

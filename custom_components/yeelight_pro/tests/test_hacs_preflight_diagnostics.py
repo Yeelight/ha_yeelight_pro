@@ -60,6 +60,61 @@ def test_diagnostics_contract_check_rejects_ambiguous_oauth_flow_flag(
     assert any("oauth_authorization_code_flow" in error for error in errors)
 
 
+def test_diagnostics_contract_check_rejects_legacy_websocket_skeleton_flag(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """preflight 应拒绝把 WebSocket runtime 退回 skeleton 语义."""
+    component_root = _build_component_root(tmp_path)
+    _write_client_capability_diagnostics(
+        component_root,
+        include_legacy_websocket_skeleton=True,
+    )
+    _write_diagnostics_contract_tests(component_root)
+    monkeypatch.setattr(hacs_preflight, "COMPONENT_ROOT", component_root)
+
+    errors = hacs_preflight._check_diagnostics_redaction_contract_tests()
+
+    assert any("websocket_transport_skeleton" in error for error in errors)
+
+
+def test_diagnostics_contract_check_rejects_sse_subscription_flag(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """preflight 应拒绝增加 SSE capability，事件通知只走 WebSocket."""
+    component_root = _build_component_root(tmp_path)
+    _write_client_capability_diagnostics(
+        component_root,
+        include_sse_subscription=True,
+    )
+    _write_diagnostics_contract_tests(component_root)
+    monkeypatch.setattr(hacs_preflight, "COMPONENT_ROOT", component_root)
+
+    errors = hacs_preflight._check_diagnostics_redaction_contract_tests()
+
+    assert any("sse_subscription" in error for error in errors)
+
+
+def test_diagnostics_contract_check_rejects_eventsource_flags(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """preflight 应拒绝 EventSource/SSE 同义 capability，事件通知只走 WebSocket."""
+    component_root = _build_component_root(tmp_path)
+    _write_client_capability_diagnostics(
+        component_root,
+        include_eventsource_subscription=True,
+    )
+    _write_diagnostics_contract_tests(component_root)
+    monkeypatch.setattr(hacs_preflight, "COMPONENT_ROOT", component_root)
+
+    errors = hacs_preflight._check_diagnostics_redaction_contract_tests()
+
+    assert any("eventsource_subscription" in error for error in errors)
+    assert any("server_sent_events" in error for error in errors)
+
+
 def _build_component_root(tmp_path: Path) -> Path:
     """Create a minimal synthetic component tree for preflight checks."""
     component_root = tmp_path / "custom_components" / "yeelight_pro"
@@ -103,10 +158,10 @@ def _write_diagnostics_contract_tests(
         "scan_login_contract scan_login_runtime "
         "refresh_token_contract refresh_token_runtime push_message_adapter "
         "runtime_payload_bridge websocket_message_contract push_manager_contract "
-        "websocket_transport_skeleton lan_discovery_parser lan_message_contract "
+        "websocket_transport_runtime lan_discovery_parser lan_message_contract "
         "lan_payload_adapter analytics_contract push_connection "
-        "websocket_subscription local_gateway_control mqtt_subscription "
-        "analytics_runtime"
+        "websocket_subscription websocket_event_notifications "
+        "local_gateway_control mqtt_subscription analytics_runtime"
     )
     if include_lan_control:
         capability_tokens += " lan_control"
@@ -154,11 +209,28 @@ def _write_client_capability_diagnostics(
     *,
     mqtt_subscription: bool = False,
     include_ambiguous_oauth: bool = False,
+    include_legacy_websocket_skeleton: bool = False,
+    include_sse_subscription: bool = False,
+    include_eventsource_subscription: bool = False,
 ) -> None:
     """Write a minimal diagnostics module with literal capability flags."""
     ambiguous_oauth = (
         '        "oauth_authorization_code_flow": True,\n'
         if include_ambiguous_oauth
+        else ""
+    )
+    legacy_websocket = (
+        '        "websocket_transport_skeleton": True,\n'
+        if include_legacy_websocket_skeleton
+        else ""
+    )
+    sse_subscription = (
+        '        "sse_subscription": True,\n' if include_sse_subscription else ""
+    )
+    eventsource_subscription = (
+        '        "eventsource_subscription": True,\n'
+        '        "server_sent_events": True,\n'
+        if include_eventsource_subscription
         else ""
     )
     content = f"""
@@ -176,7 +248,10 @@ def _client_capabilities_for_entry(entry):
         "push_message_adapter": True,
         "runtime_payload_bridge": True,
         "websocket_message_contract": True,
-        "websocket_transport_skeleton": True,
+{legacy_websocket.rstrip()}
+        "websocket_transport_runtime": True,
+{sse_subscription.rstrip()}
+{eventsource_subscription.rstrip()}
         "push_manager_contract": True,
         "lan_discovery_parser": True,
         "lan_message_contract": True,
@@ -184,6 +259,7 @@ def _client_capabilities_for_entry(entry):
         "analytics_contract": True,
         "push_connection": True,
         "websocket_subscription": True,
+        "websocket_event_notifications": True,
         "local_gateway_control": True,
         "lan_control": True,
         "mqtt_subscription": {mqtt_subscription},

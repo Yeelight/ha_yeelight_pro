@@ -17,6 +17,19 @@ python3 scripts/sync_local_ha_runtime.py
 python3 scripts/verify_local_ha.py
 ```
 
+Guarded production probes must stay fail-closed without explicit confirmation
+flags. Run them before public release only when the corresponding production
+credential, account, WebSocket token, or LAN gateway hardware has been
+explicitly approved for validation:
+
+```bash
+python3 scripts/verify_push_websocket.py
+python3 scripts/verify_scan_login.py
+python3 scripts/verify_cloud_devices.py
+python3 scripts/verify_lan_gateway.py
+python3 scripts/verify_analytics.py
+```
+
 Optional external checks before public release:
 
 ```bash
@@ -64,10 +77,30 @@ Use `python3 scripts/check_release_zip.py --write dist/yeelight_pro.zip` to crea
 ## Before Publishing
 
 - Verify the version in `custom_components/yeelight_pro/manifest.json`.
+- Use semantic versioning for every public release tag.
+- Confirm the GitHub release tag, `manifest.json` version, and `CHANGELOG.md`
+  release section all describe the same candidate.
 - Verify `hacs.json` points to the same release zip filename.
 - Confirm no real token, password, house ID, or raw device payload is committed.
 - Confirm README and changelog only describe implemented and tested behavior.
 - Confirm `custom_components/yeelight_pro/text.py` remains absent unless a real writable TextEntity API and tests are added in a future release.
+- Confirm `.github/ISSUE_TEMPLATE/bug_report.yml`,
+  `.github/ISSUE_TEMPLATE/feature_request.yml`, and
+  `.github/ISSUE_TEMPLATE/support.yml` are present and still require sanitized
+  diagnostics instead of raw tokens, house IDs, device IDs, MAC addresses,
+  endpoint URLs, or raw payloads.
+
+## Support Workflow
+
+- Triage public issues only through the checked-in GitHub issue templates.
+- Ask for Home Assistant diagnostics or local verifier output only after the
+  reporter confirms it is redacted.
+- Close or edit reports that include access tokens, refresh tokens, house IDs,
+  device IDs, MAC addresses, usernames, endpoint URLs, IP addresses tied to a
+  user, or raw payloads before continuing technical analysis.
+- Do not turn a feature request into implementation work until the issue links
+  Yeelight documentation or sanitized sample evidence and records any required
+  product decision.
 
 ## Verification Policy
 

@@ -178,13 +178,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         push_manager = await async_start_live_runtime(hass, entry, coordinator)
         if push_manager is not None:
             runtime_data["push_manager"] = push_manager
-        lan_runtime = await async_start_lan_runtime(entry, coordinator)
-        if lan_runtime is not None:
-            runtime_data["lan_runtime"] = lan_runtime
     except Exception:
         await _async_stop_loaded_runtime(runtime_data)
         hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
         raise
+    await _async_start_optional_lan_runtime(entry, coordinator, runtime_data)
 
     # 拓扑变更监听：自动触发设备同步和实体 stale 记录
     last_topology_generation = coordinator.topology_generation
@@ -253,6 +251,53 @@ async def _async_stop_loaded_runtime(data: Any) -> None:
     disconnect = getattr(client, "disconnect", None)
     if callable(disconnect):
         await disconnect()
+
+
+async def _async_start_optional_lan_runtime(
+    entry: ConfigEntry,
+    coordinator: YeelightProCoordinator,
+    runtime_data: dict[str, Any],
+) -> None:
+    """Start optional LAN runtime without blocking cloud polling fallback."""
+    try:
+        lan_runtime = await async_start_lan_runtime(entry, coordinator)
+    except Exception as err:
+        runtime_data["lan_runtime"] = _OptionalRuntimeStartupFailure(err)
+        coordinator.set_lan_runtime(None)
+        _LOGGER.warning(
+            "Yeelight Pro optional LAN runtime failed to start: %s",
+            safe_error_summary(err),
+        )
+        return
+    if lan_runtime is not None:
+        runtime_data["lan_runtime"] = lan_runtime
+        coordinator.set_lan_runtime(lan_runtime)
+
+
+class _OptionalRuntimeStartupFailure:
+    """Diagnostics-safe health object for a failed optional runtime startup."""
+
+    def __init__(self, err: BaseException) -> None:
+        """Store only the exception type, not the message or endpoint."""
+        self.health = _OptionalRuntimeStartupFailureHealth(type(err).__name__)
+
+
+class _OptionalRuntimeStartupFailureHealth:
+    """Expose aggregate runtime failure health through diagnostics."""
+
+    def __init__(self, error_type: str) -> None:
+        """Initialize aggregate-only failure health."""
+        self._error_type = error_type
+
+    def as_dict(self) -> dict[str, Any]:
+        """Return a diagnostics-safe LAN health shape."""
+        return {
+            "running": False,
+            "connected": False,
+            "sent_count": 0,
+            "received_count": 0,
+            "last_error_type": self._error_type,
+        }
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

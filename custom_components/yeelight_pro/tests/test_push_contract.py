@@ -45,6 +45,21 @@ def test_build_push_url_uses_custom_base_url_without_trailing_slash() -> None:
     assert url == "wss://example.test/ws/fake-token"
 
 
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "http://example.test/events",
+        "https://example.test/events",
+        "eventsource://example.test/events",
+        "text/event-stream",
+    ],
+)
+def test_build_push_url_rejects_non_websocket_event_endpoints(base_url: str) -> None:
+    """易来事件通知只有 WebSocket，push endpoint 必须是 wss://。"""
+    with pytest.raises(ValueError, match="require a wss:// URL"):
+        build_push_url("fake-token", base_url=base_url)
+
+
 @pytest.mark.parametrize("token", ["", "   ", "Bearer", "Bearer   "])
 def test_build_push_url_rejects_empty_token(token: str) -> None:
     """空 token 必须拒绝，异常消息不包含 token 材料."""

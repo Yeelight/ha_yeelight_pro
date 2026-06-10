@@ -22,6 +22,8 @@ class FakeTransport:
         self.callback: PushPayloadCallback | None = None
         self.started_count = 0
         self.stopped_count = 0
+        self.last_start_error_type: str | None = None
+        self.last_runtime_error_type: str | None = None
 
     async def async_start(self, callback: PushPayloadCallback) -> None:
         """Store the callback without opening any network connection."""
@@ -200,6 +202,48 @@ async def test_push_manager_records_transport_start_error_type() -> None:
         "handled_payloads": 0,
         "last_error_type": "ConnectionError",
     }
+
+
+@pytest.mark.asyncio
+async def test_push_manager_preserves_recoverable_start_error_type() -> None:
+    """transport 后台重连时的启动错误应进入聚合 health."""
+
+    class RecoveringStartTransport(FakeTransport):
+        async def async_start(self, callback: PushPayloadCallback) -> None:
+            await super().async_start(callback)
+            self.last_start_error_type = "OSError"
+
+    manager = PushManager(AsyncMock(), RecoveringStartTransport())
+
+    await manager.async_start()
+
+    assert manager.health.as_dict() == {
+        "running": True,
+        "started_count": 1,
+        "stopped_count": 0,
+        "handled_payloads": 0,
+        "last_error_type": "OSError",
+    }
+
+
+@pytest.mark.asyncio
+async def test_push_manager_reports_transport_runtime_error_type() -> None:
+    """transport 后台错误应进入聚合 health，且不暴露异常文本."""
+    coordinator = AsyncMock()
+    transport = FakeTransport()
+    manager = PushManager(coordinator, transport)
+
+    await manager.async_start()
+    transport.last_runtime_error_type = "PushControlFrameError"
+
+    assert manager.health.as_dict() == {
+        "running": True,
+        "started_count": 1,
+        "stopped_count": 0,
+        "handled_payloads": 0,
+        "last_error_type": "PushControlFrameError",
+    }
+    assert "token-secret" not in str(manager.health.as_dict())
 
 
 @pytest.mark.asyncio

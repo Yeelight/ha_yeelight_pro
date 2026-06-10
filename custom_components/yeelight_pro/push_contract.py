@@ -15,6 +15,15 @@ PUSH_RECONNECT_MAX_DELAY_SECONDS = float(PUSH_HEARTBEAT_TIMEOUT_SECONDS)
 PUSH_RECONNECT_MULTIPLIER = 2.0
 PUSH_PROTOCOL_VERSION = "1.0"
 PUSH_SUBSCRIBE_TYPE = 2
+PUSH_EVENT_NOTIFICATION_TRANSPORT = "WebSocket"
+PUSH_CONTROL_METHOD_SUBSCRIBE = "subscribe"
+PUSH_CONTROL_METHOD_HEARTBEAT = "heartbeat"
+PUSH_CONTROL_METHODS = frozenset(
+    {PUSH_CONTROL_METHOD_SUBSCRIBE, PUSH_CONTROL_METHOD_HEARTBEAT}
+)
+PUSH_DATA_TYPE_PROP = "prop"
+PUSH_DATA_TYPE_EVENT = "event"
+PUSH_DATA_TYPES = frozenset({PUSH_DATA_TYPE_PROP, PUSH_DATA_TYPE_EVENT})
 
 
 def build_push_url(
@@ -24,7 +33,8 @@ def build_push_url(
 ) -> str:
     """Build the Yeelight push WebSocket URL without logging token material."""
     normalized_token = _normalize_push_token(token)
-    return f"{base_url.rstrip('/')}/{quote(normalized_token, safe='')}"
+    normalized_base_url = _normalize_push_base_url(base_url)
+    return f"{normalized_base_url}/{quote(normalized_token, safe='')}"
 
 
 def build_subscribe_message(
@@ -35,7 +45,7 @@ def build_subscribe_message(
     """Build a Yeelight push subscription frame."""
     return {
         "id": message_id,
-        "method": "subscribe",
+        "method": PUSH_CONTROL_METHOD_SUBSCRIBE,
         "params": {"type": PUSH_SUBSCRIBE_TYPE},
         "timestamp": _timestamp_or_now(timestamp),
         "version": PUSH_PROTOCOL_VERSION,
@@ -50,7 +60,7 @@ def build_heartbeat_message(
     """Build a Yeelight push heartbeat frame."""
     return {
         "id": message_id,
-        "method": "heartbeat",
+        "method": PUSH_CONTROL_METHOD_HEARTBEAT,
         "timestamp": _timestamp_or_now(timestamp),
         "version": PUSH_PROTOCOL_VERSION,
     }
@@ -134,6 +144,14 @@ def _normalize_push_token(token: str) -> str:
     return raw_token
 
 
+def _normalize_push_base_url(base_url: str) -> str:
+    """Reject non-WebSocket endpoints for Yeelight event notifications."""
+    raw_base_url = str(base_url).strip().rstrip("/")
+    if not raw_base_url.casefold().startswith("wss://"):
+        raise ValueError("Yeelight Pro event notifications require a wss:// URL")
+    return raw_base_url
+
+
 def _timestamp_or_now(timestamp: int | None) -> int:
     """Return a seconds-level timestamp."""
     return int(time.time()) if timestamp is None else int(timestamp)
@@ -141,6 +159,13 @@ def _timestamp_or_now(timestamp: int | None) -> int:
 
 __all__ = [
     "DEFAULT_PUSH_BASE_URL",
+    "PUSH_CONTROL_METHODS",
+    "PUSH_CONTROL_METHOD_HEARTBEAT",
+    "PUSH_CONTROL_METHOD_SUBSCRIBE",
+    "PUSH_DATA_TYPES",
+    "PUSH_DATA_TYPE_EVENT",
+    "PUSH_DATA_TYPE_PROP",
+    "PUSH_EVENT_NOTIFICATION_TRANSPORT",
     "PUSH_HEARTBEAT_INTERVAL_SECONDS",
     "PUSH_HEARTBEAT_TIMEOUT_SECONDS",
     "PUSH_RECONNECT_MAX_DELAY_SECONDS",

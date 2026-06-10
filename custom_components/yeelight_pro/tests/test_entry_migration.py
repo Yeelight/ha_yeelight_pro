@@ -53,6 +53,7 @@ from custom_components.yeelight_pro.const import (
 from custom_components.yeelight_pro.entry_migration import (
     ENTRY_MINOR_VERSION,
     ENTRY_VERSION,
+    config_entry_unique_id,
     normalize_entry_data,
 )
 
@@ -63,6 +64,7 @@ def _entry(
     options: object | None = None,
     version: int = 1,
     minor_version: int = 0,
+    unique_id: str | None = None,
 ) -> MagicMock:
     """Build a config entry test double."""
     entry = MagicMock(spec=ConfigEntry)
@@ -71,6 +73,7 @@ def _entry(
     entry.version = version
     entry.minor_version = minor_version
     entry.entry_id = "entry-1"
+    entry.unique_id = unique_id
     return entry
 
 
@@ -115,6 +118,7 @@ async def test_migrate_cloud_entry_aliases_and_option_defaults(
         },
         version=1,
         minor_version=1,
+        unique_id="yeelight_pro_cloud",
     )
     hass.config_entries.async_update_entry = MagicMock()
 
@@ -157,6 +161,7 @@ async def test_migrate_cloud_entry_aliases_and_option_defaults(
             CONF_ANALYTICS_RUNTIME: DEFAULT_ANALYTICS_RUNTIME,
             CONF_ANALYTICS_RETENTION_DAYS: DEFAULT_ANALYTICS_RETENTION_DAYS,
         },
+        unique_id="cloud:cn:user-1:429392",
         version=ENTRY_VERSION,
         minor_version=ENTRY_MINOR_VERSION,
     )
@@ -199,6 +204,7 @@ async def test_migrate_private_entry_fills_domains_and_default_options(
         CONF_SCAN_LOGIN_DEVICE: "",
     }
     assert update["options"] == _expected_default_options()
+    assert update["unique_id"] == "private:10.0.0.10:8080:1001"
     assert update["version"] == ENTRY_VERSION
     assert update["minor_version"] == ENTRY_MINOR_VERSION
 
@@ -207,7 +213,7 @@ async def test_migrate_private_entry_fills_domains_and_default_options(
 async def test_migrate_current_entry_is_noop(hass: HomeAssistant) -> None:
     """当前版本且 data/options 已归一时不应重复写 entry."""
     entry = _entry(
-        data={
+        data=normalize_entry_data({
             CONF_CONNECTION_MODE: CONNECTION_MODE_CLOUD,
             CONF_CLOUD_DOMAIN: DEFAULT_CLOUD_DOMAIN,
             CONF_PRIVATE_DOMAIN: "",
@@ -221,7 +227,7 @@ async def test_migrate_current_entry_is_noop(hass: HomeAssistant) -> None:
             CONF_ACCOUNT_USER_ID: None,
             CONF_ACCOUNT_USERNAME: "",
             CONF_SCAN_LOGIN_DEVICE: "",
-        },
+        }),
         options={
             CONF_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL,
             CONF_DEBUG_MODE: DEFAULT_DEBUG_MODE,
@@ -237,6 +243,7 @@ async def test_migrate_current_entry_is_noop(hass: HomeAssistant) -> None:
         },
         version=ENTRY_VERSION,
         minor_version=ENTRY_MINOR_VERSION,
+        unique_id="cloud:cn:token-a2f2b0b588bcc84f:429392",
     )
     hass.config_entries.async_update_entry = MagicMock()
 
@@ -283,3 +290,66 @@ def test_normalize_entry_data_uses_mode_defaults() -> None:
     assert cloud[CONF_PRIVATE_DOMAIN] == ""
     assert private[CONF_CLOUD_DOMAIN] == ""
     assert private[CONF_PRIVATE_DOMAIN] == DEFAULT_PRIVATE_DOMAIN
+
+
+def test_config_entry_unique_id_separates_cloud_region_account_and_house() -> None:
+    """云端 entry unique_id 必须同时隔离区域、账号和家庭."""
+    first = config_entry_unique_id({
+        CONF_CONNECTION_MODE: CONNECTION_MODE_CLOUD,
+        CONF_CLOUD_REGION: "sg",
+        CONF_ACCESS_TOKEN: "token-1",
+        CONF_ACCOUNT_USER_ID: 122349,
+        CONF_HOUSE_ID: 7,
+    })
+    second = config_entry_unique_id({
+        CONF_CONNECTION_MODE: CONNECTION_MODE_CLOUD,
+        CONF_CLOUD_REGION: "us",
+        CONF_ACCESS_TOKEN: "token-1",
+        CONF_ACCOUNT_USER_ID: 122349,
+        CONF_HOUSE_ID: 7,
+    })
+    third = config_entry_unique_id({
+        CONF_CONNECTION_MODE: CONNECTION_MODE_CLOUD,
+        CONF_CLOUD_REGION: "sg",
+        CONF_ACCESS_TOKEN: "token-2",
+        CONF_ACCOUNT_USER_ID: 122350,
+        CONF_HOUSE_ID: 7,
+    })
+    fourth = config_entry_unique_id({
+        CONF_CONNECTION_MODE: CONNECTION_MODE_CLOUD,
+        CONF_CLOUD_REGION: "sg",
+        CONF_ACCESS_TOKEN: "token-1",
+        CONF_ACCOUNT_USER_ID: 122349,
+        CONF_HOUSE_ID: 8,
+    })
+
+    assert first == "cloud:sg:122349:7"
+    assert len({first, second, third, fourth}) == 4
+
+
+@pytest.mark.asyncio
+async def test_migrate_legacy_cloud_entry_updates_region_account_unique_id(
+    hass: HomeAssistant,
+) -> None:
+    """旧 cloud unique_id 应迁移为区域/账号/家庭隔离形态."""
+    entry = _entry(
+        data={
+            CONF_CONNECTION_MODE: CONNECTION_MODE_CLOUD,
+            CONF_CLOUD_REGION: "us",
+            CONF_CLOUD_DOMAIN: "https://api-us.yeelight.com/apis/iot",
+            CONF_ACCESS_TOKEN: "legacy-token",
+            CONF_HOUSE_ID: 9,
+            CONF_ACCOUNT_USER_ID: 122349,
+        },
+        options=_expected_default_options(),
+        version=ENTRY_VERSION,
+        minor_version=ENTRY_MINOR_VERSION,
+        unique_id="yeelight_pro_cloud",
+    )
+    hass.config_entries.async_update_entry = MagicMock()
+
+    assert await async_migrate_entry(hass, entry) is True
+
+    update = hass.config_entries.async_update_entry.call_args.kwargs
+    assert update["unique_id"] == "cloud:us:122349:9"
+    assert update["minor_version"] == ENTRY_MINOR_VERSION

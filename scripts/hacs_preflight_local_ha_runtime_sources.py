@@ -1,138 +1,19 @@
-"""Runtime source contract tokens for local HA validation."""
+"""Runtime component source contract tokens for local HA validation."""
 
 from __future__ import annotations
 
 LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
     "scripts/hacs_preflight_local_ha_runtime_sources.py": {
-        "LOCAL_HA_RUNTIME_SOURCE_TOKENS": "runtime source token registry",
-        "scripts/local_ha_verification/diagnostics.py": (
-            "diagnostics verifier coverage"
+        "LOCAL_HA_RUNTIME_SOURCE_TOKENS": "runtime component source token registry",
+        "custom_components/yeelight_pro/core/schema_cache.py": (
+            "schema cache source token coverage"
         ),
-        "scripts/local_ha_verification/storage.py": "storage verifier coverage",
-        "scripts/local_ha_verification/storage_helpers.py": (
-            "storage helper verifier coverage"
+        "custom_components/yeelight_pro/core/lan_control.py": (
+            "LAN source token coverage"
         ),
-    },
-    "scripts/verify_local_ha.py": {
-        "scripts.local_ha_verification.cli": "thin compatibility CLI facade",
-        "verify_diagnostics_capabilities": "diagnostics capability verifier export",
-        "scripts.local_ha_verification.storage": "storage privacy helper exports",
-        "scripts.local_ha_verification.options": "option verifier exports",
-        "REQUIRED_OPTIONS_FLOW_TOKENS": "flow contract verifier export",
-        "verify_flow_contracts": "flow contract verifier export",
-        "REQUIRED_I18N_LEAF_PATHS": "i18n required path contract export",
-        "verify_i18n_contracts": "i18n verifier export",
-        "installed_enabled_platforms": "platform/options verifier export",
-        "SERVICE_FIELD_CONTRACTS": "service field contract export",
-        "registered_service_schema_fields": "runtime service schema export",
-        "registered_service_names": "runtime service registration export",
-        "verify_required_modules": "installed support module presence export",
-        "verify_product_schema_cache": "product schema privacy scan export",
-        "verify_synthetic_log_recovery": "synthetic runtime recovery verifier export",
-    },
-    "scripts/sync_local_ha_runtime.py": {
-        "sync_runtime_files": "local HA runtime sync helper",
-        "EXCLUDED_COMPARE_PARTS": "runtime sync excludes tests and caches",
-        "EXCLUDED_COMPARE_SUFFIXES": "runtime sync excludes bytecode suffixes",
-        "FORBIDDEN_INSTALL_NAMES": "runtime sync excludes forbidden install files",
-        "forbidden_install_paths": "post-sync install hygiene guard",
-        "forbidden local HA install files remain": "post-sync failure message",
-    },
-    "scripts/local_ha_verification/diagnostics.py": {
-        "DIAGNOSTICS_DISABLED_CLIENT_CAPABILITIES": (
-            "disabled live capability verifier contract"
+        "custom_components/yeelight_pro/projector/event_helpers.py": (
+            "event projector source token coverage"
         ),
-        "DIAGNOSTICS_ENABLED_CLIENT_CAPABILITIES": (
-            "enabled contract capability verifier contract"
-        ),
-        "DIAGNOSTICS_FORBIDDEN_CLIENT_CAPABILITIES": (
-            "forbidden ambiguous capability verifier contract"
-        ),
-        "verify_diagnostics_capabilities": "installed diagnostics capability check",
-        "diagnostics_capabilities": "diagnostics metric stability key",
-        "REQUIRED_OPTION_STATUS_FIELDS": "installed option_status field contract",
-        "REQUIRED_OPTION_STATUS_TOKENS": "installed option_status token contract",
-        "_verify_option_status_contract": "installed option_status verifier",
-        "_literal_option_status_fields": "installed option_status AST parser",
-        "debug_mode_enabled": "installed option_status debug-mode guard",
-        "scan_interval_seconds": "installed option_status scan-interval guard",
-        "diagnostics_option_status": "option_status metric stability key",
-    },
-    "scripts/local_ha_verification/install.py": {
-        "runtime_diff": "source/install runtime drift check",
-        "forbidden_install_paths": "release-excluded install artifact check",
-        "verify_required_modules": "installed support module presence check",
-        "verify_installation": "installed component shape check",
-    },
-    "scripts/local_ha_verification/flow_contracts.py": {
-        "REQUIRED_OPTIONS_FLOW_TOKENS": "options flow required token contract",
-        "REQUIRED_OPTIONS_FLOW_STEPS": "options flow confirmation step contract",
-        "verify_flow_contracts": "installed flow contract verifier",
-        "_create_entry_uses_pending_options": "pending options persistence AST guard",
-        "_returns_options_flow": "config flow options factory AST guard",
-        "flow_contracts": "flow contract stability metric",
-    },
-    "scripts/local_ha_verification/i18n.py": {
-        "TRANSLATION_FILES": "installed translation file contract",
-        "REQUIRED_I18N_LEAF_PATHS": "required translation key path contract",
-        "verify_i18n_contracts": "installed i18n verifier",
-        "_verify_leaf_paths": "translation key alignment guard",
-        "_verify_service_translations": "service translation contract guard",
-        "_verify_repair_placeholders": "Repair issue placeholder alignment guard",
-        "read_translation_payloads": "translation payload reader integration",
-        "installed_option_translation_keys": "options schema translation parser integration",
-        "installed_selector_option_translation_paths": (
-            "selector option translation parser integration"
-        ),
-        "installed_repair_placeholder_keys": (
-            "Repair issue runtime placeholder parser integration"
-        ),
-        "i18n_translations": "i18n stability metric",
-    },
-    "scripts/local_ha_verification/i18n_payloads.py": {
-        "read_translation_payloads": "installed translation payload reader",
-        "json.JSONDecodeError": "invalid translation JSON failure guard",
-        "leaf_paths": "translation leaf path helper",
-        "mapping_at": "nested translation mapping helper",
-        "value_at": "nested translation value helper",
-        "format_paths": "translation key path failure formatting",
-    },
-    "scripts/local_ha_verification/i18n_source.py": {
-        "installed_option_translation_keys": "installed options schema parser",
-        "installed_selector_option_translation_paths": (
-            "installed selector option translation parser"
-        ),
-        "SelectSelectorConfig": "selector translation source parser",
-        "installed_repair_placeholder_keys": "Repair issue placeholder parser",
-        "_schema_key_value": "vol schema translation key resolver",
-        "_dict_keys_from_comprehension": "Repair dict comprehension parser",
-        "async_create_issue": "Repair issue source call target",
-        "translation_placeholders": "Repair placeholder source keyword",
-    },
-    "scripts/local_ha_verification/storage.py": {
-        "safe_storage_items": "sanitized storage read failure handling",
-        "_verify_config_entry_migration": "config entry migration status check",
-        "REQUIRED_CONFIG_ENTRY_DATA_KEYS": "config entry required data keys",
-        "OPTIONAL_CONFIG_ENTRY_DATA_KEYS": "config entry optional data keys",
-        "verify_config_entry_options": "config entry option verifier call",
-        "verify_platform_options_alignment": "platform/options verifier call",
-        "_expected_entry_version": "config entry version constant parser",
-        "verify_storage": "aggregate HA storage verification",
-        "verify_product_schema_cache": "product schema privacy scan",
-        "sensitive_cache_hits": "structured schema cache privacy scan",
-        "schema values are not objects": "schema cache object-shape guard",
-        "product_schema_cache": "schema cache stability metric",
-        "entity_domains": "entity domain stability metric",
-        "config_entry_versions": "config entry version stability metric",
-    },
-    "scripts/local_ha_verification/storage_helpers.py": {
-        "storage_path": "HA storage path helper",
-        "read_json": "storage JSON object reader",
-        "storage_items": "storage list item reader",
-        "safe_storage_items": "sanitized storage read helper",
-        "sensitive_cache_hits": "structured schema cache privacy helper",
-        "SENSITIVE_CACHE_MARKERS": "sensitive key marker denylist use",
-        "SENSITIVE_CACHE_VALUE_PATTERNS": "sensitive value pattern denylist use",
     },
     "custom_components/yeelight_pro/core/schema_cache.py": {
         "_json_safe_schema": "schema cache JSON-safe object guard",
@@ -145,14 +26,41 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "_is_sensitive_schema_storage_text": "schema cache sensitive-text helper",
         "as_storage_data": "schema cache storage serializer",
     },
-    "scripts/local_ha_verification/options.py": {
-        "verify_config_entry_options": "config entry option status check",
-        "REQUIRED_CONFIG_ENTRY_OPTION_KEYS": "config entry required option keys",
-        "OPTIONAL_CONFIG_ENTRY_OPTION_KEYS": "config entry optional option keys",
-        "_expected_option_defaults": "option defaults constant parser",
-        "_invalid_option_values": "option bounds validation",
-        "_enabled_device_filter_count": "device filter aggregate status",
-        "config_entry_options": "option stability metric",
+    "custom_components/yeelight_pro/core/lan_control.py": {
+        "async_try_lan_control_device": "LAN device write routing helper",
+        "async_try_lan_toggle_device": "LAN device toggle routing helper",
+        "async_try_lan_control_group": "LAN group write routing helper",
+        "async_try_lan_execute_scene": "LAN scene execution routing helper",
+        "async_set_properties": "LAN runtime property write call",
+        "\"nt\": 2": "LAN node type for documented device writes",
+        "\"nt\": 4": "LAN node type for documented group writes",
+        "\"set\": dict(params)": "LAN gateway_set.prop set-payload boundary",
+        "\"toggle\": list(properties)": "LAN gateway_set.prop toggle boundary",
+        "scenes=[{\"id\": node_id, \"duration\": duration}]": (
+            "LAN scene execution payload boundary"
+        ),
+        "_lan_uint_id": "LAN numeric id fallback guard",
+        "safe_error_summary": "LAN control error redaction helper",
+    },
+    "custom_components/yeelight_pro/core/coordinator_controls.py": {
+        "CoordinatorControlMixin": "split coordinator control facade",
+        "async_try_lan_control_device": "LAN-first device set route",
+        "async_try_lan_toggle_device": "LAN-first device toggle route",
+        "async_try_lan_control_group": "LAN-first group route",
+        "async_try_lan_execute_scene": "LAN-first scene route",
+        "async_execute_control_device": "cloud fallback device set route",
+        "async_execute_toggle_device": "cloud fallback device toggle route",
+        "async_execute_control_group": "cloud fallback group route",
+        "async_execute_scene_command": "cloud fallback scene route",
+        "async_request_refresh": "toggle post-write refresh boundary",
+    },
+    "custom_components/yeelight_pro/__init__.py": {
+        "_async_start_optional_lan_runtime": "optional LAN runtime startup boundary",
+        "_OptionalRuntimeStartupFailure": "optional LAN startup failure diagnostics",
+        "coordinator.set_lan_runtime(None)": (
+            "failed optional LAN runtime not attached for writes"
+        ),
+        "safe_error_summary(err)": "optional LAN startup log redaction",
     },
     "custom_components/yeelight_pro/entry_migration.py": {
         "stored_device_import_filter_options": "stored import filter migration",
@@ -206,105 +114,5 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "build_runtime_property_model": "runtime template property builder",
         "infer_runtime_capabilities": "runtime capability inference helper",
         "RUNTIME_PROPERTY_TEMPLATES": "runtime inference template registry use",
-    },
-    "scripts/local_ha_verification/platforms.py": {
-        "verify_platform_options_alignment": "installed platform/options alignment check",
-        "installed_enabled_platforms": "installed enabled platform helper",
-        "_installed_platform_contract": "literal platform constants parser",
-        "_literal_module_lists": "literal string-list AST parser",
-        "experimental entity domains present without opt-in": (
-            "experimental platform runtime guard"
-        ),
-        "platform_options": "platform/options stability metric",
-    },
-    "scripts/local_ha_verification/services.py": {
-        "REQUIRED_SERVICES": "service definition verification",
-        "registered_service_names": "runtime service registration scan",
-        "_service_name_from_call": "AST service registration parser",
-        "verify_service_schema_contracts": "service field schema verifier call",
-        "verify_services": "installed service definition check",
-        "services": "service registration stability metric",
-    },
-    "scripts/local_ha_verification/service_schema.py": {
-        "SERVICE_FIELD_CONTRACTS": "service field release contract",
-        "documented_service_field_contracts": "services.yaml field parser",
-        "registered_service_schema_fields": "runtime service schema parser",
-        "_registered_service_schema_fields": "runtime service schema parser facade",
-        "verify_service_schema_contracts": "service field schema verifier",
-        "service_field_schemas": "service field stability metric",
-    },
-    "scripts/local_ha_verification/service_schema_runtime.py": {
-        "registered_service_schema_fields": "runtime service schema AST helper",
-        "_field_contract_from_schema_key": "AST vol.Schema field parser",
-        "_service_schema_from_call": "AST service schema registration parser",
-        "_all_string_constants": "cross-module string constant scanner",
-        "_schema_fields_by_name": "vol.Schema assignment scanner",
-        "_schema_keyword_name": "service schema keyword scanner",
-    },
-    "scripts/local_ha_verification/runtime.py": {
-        "verify_logs": "Yeelight Pro log failure scan",
-        "verify_synthetic_log_recovery": "synthetic recovery classification check",
-        "synthetic_runtime_recovery": "synthetic recovery stability metric",
-        "bad_line_entries": "indexed runtime log error scan",
-        "recovery_index > index": "time-ordered recovery validation",
-        "verify_docker": "local Docker health check",
-        "verify_ha_url": "local HA reachability check",
-    },
-    "scripts/local_ha_verification/constants.py": {
-        "BAD_LOG_MARKERS": "runtime error marker denylist",
-        "REQUIRED_RUNTIME_MODULES": "installed support module presence list",
-        "analytics_contract": "analytics no-network module presence check",
-        "oauth_contract": "OAuth no-network module presence check",
-        "scan_login_contract": "scan-login no-network module presence check",
-        "config_flow_scan_login": "scan-login config flow helper presence check",
-        "push_contract": "push contract module presence check",
-        "push_manager": "push manager module presence check",
-        "push_transport": "experimental push transport module presence check",
-        "entity_lifecycle_cleanup": "registry cleanup helper module presence check",
-        "registry_cleanup_service": "cleanup registry service module presence check",
-        "capabilities.spec_correction_normalizers": (
-            "spec correction normalizer runtime module presence check"
-        ),
-        "converter.runtime_inference_helpers": (
-            "runtime inference helper module presence check"
-        ),
-        "lan_contract": "LAN contract module presence check",
-        "lan_methods": "LAN method constants module presence check",
-        "lan_payload": "LAN payload adapter module presence check",
-        "core.client_node_base": "node API base helper runtime module presence check",
-        "core.client_node_api": "node API helper runtime module presence check",
-        "core.client_node_lists": "node API list helper runtime module presence check",
-        "core.client_node_properties": (
-            "node API property helper runtime module presence check"
-        ),
-        "core.client_request": "request helper runtime module presence check",
-        "core.coordinator_runtime": "coordinator runtime helper presence check",
-        "core.oauth": "OAuth runtime helper presence check",
-        "core.runtime_bridge": "runtime bridge helper presence check",
-        "device_trigger": "device automation trigger module presence check",
-        "projector.event_helpers": "event projector helper runtime module presence check",
-        "projector.sensor_helpers": "sensor projector helper runtime module presence check",
-        "ha_device_registry": "HA device registry sync module presence check",
-        "SENSITIVE_CACHE_MARKERS": "sensitive marker denylist",
-        "SENSITIVE_CACHE_VALUE_PATTERNS": "sensitive value pattern denylist",
-    },
-    "scripts/local_ha_verification/cli.py": {
-        "build_parser": "CLI parser",
-        "parse_domain_counts": "expected count parser",
-        "--repeat": "bounded repeat validation option",
-        "--repeat-delay": "bounded repeat delay option",
-        "--soak-seconds": "bounded soak validation option",
-        "--soak-interval": "bounded soak interval option",
-        "_run_soak": "time-window verification orchestration",
-        "_verify_stable_metrics": "multi-run metric drift gate",
-        "stable metric drift": "multi-run drift failure message",
-        "time.monotonic": "bounded soak monotonic clock",
-        "_run_once": "single-run verification orchestration",
-        "verify_flow_contracts": "flow contract check orchestration",
-        "verify_i18n_contracts": "i18n contract check orchestration",
-        "verify_diagnostics_capabilities": "diagnostics check orchestration",
-        "verify_installation": "install check orchestration",
-        "verify_storage": "storage check orchestration",
-        "verify_synthetic_log_recovery": "synthetic recovery check orchestration",
     },
 }

@@ -8,16 +8,22 @@ import voluptuous as vol
 from .const import (
     CONF_ANALYTICS_RETENTION_DAYS,
     CONF_ANALYTICS_RUNTIME,
+    CONF_CONNECTION_MODE,
+    CONF_CLOUD_DOMAIN,
     CONF_DEBUG_MODE,
     CONF_DEVICE_IMPORT_FILTER,
     CONF_EXPERIMENTAL_PLATFORMS,
     CONF_HIDE_UNKNOWN_ENTITIES,
+    CONF_DEVICE_IMPORT_FILTER_PICKER,
+    CONF_HOUSE_ID,
     CONF_LIVE_UPDATES,
     CONF_LOCAL_GATEWAY_CONTROL,
     CONF_LOCAL_GATEWAY_HOST,
     CONF_LOCAL_GATEWAY_PORT,
+    CONF_OAUTH_CLIENT_ID,
     CONF_SCAN_INTERVAL,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
+    CONNECTION_MODE_CLOUD,
     DEFAULT_ANALYTICS_RETENTION_DAYS,
     DEFAULT_ANALYTICS_RUNTIME,
     DEFAULT_DEBUG_MODE,
@@ -33,6 +39,10 @@ from .const import (
     MAX_SCAN_INTERVAL,
     MIN_ANALYTICS_RETENTION_DAYS,
     MIN_SCAN_INTERVAL,
+)
+from .config_flow_device_picker import (
+    DevicePickerChoice,
+    device_import_filter_for_selected_devices,
 )
 from .device_filter_options import (
     device_filter_form_keys,
@@ -63,7 +73,7 @@ def entry_options(entry: object) -> dict[str, Any]:
     return dict(options) if isinstance(options, Mapping) else {}
 
 
-def options_schema(options: Mapping[str, Any]) -> vol.Schema:
+def options_schema(options: Mapping[str, Any], entry: object | None = None) -> vol.Schema:
     """使用归一化默认值返回运行时 options 表单 schema."""
     normalized = normalize_entry_options(options)
     fields = {
@@ -146,6 +156,8 @@ def options_schema(options: Mapping[str, Any]) -> vol.Schema:
         ),
     }
     fields.update(device_filter_schema_fields(normalized))
+    if entry is not None:
+        fields.update(device_picker_schema_fields(entry))
     return vol.Schema(fields)
 
 
@@ -181,4 +193,91 @@ def merge_options(
     data[CONF_DEVICE_IMPORT_FILTER] = merge_device_import_filter(data, user_input)
     for key in device_filter_form_keys():
         data.pop(key, None)
+    data.pop(CONF_DEVICE_IMPORT_FILTER_PICKER, None)
     return data
+
+
+def options_device_picker_requested(user_input: Mapping[str, Any]) -> bool:
+    """Return whether the user asked to open the real-device picker step."""
+    return bool(user_input.get(CONF_DEVICE_IMPORT_FILTER_PICKER))
+
+
+def options_support_device_picker(entry: object) -> bool:
+    """Return whether an entry has enough cloud context to load real devices."""
+    data = getattr(entry, "data", None)
+    if not isinstance(data, Mapping):
+        return False
+    return (
+        data.get(CONF_CONNECTION_MODE) == CONNECTION_MODE_CLOUD
+        and bool(str(data.get(CONF_CLOUD_DOMAIN, "")).strip())
+        and bool(str(data.get(CONF_HOUSE_ID, "")).strip())
+    )
+
+
+def device_picker_schema_fields(entry: object) -> dict[Any, Any]:
+    """Return the optional real-device picker opener for cloud entries."""
+    if not options_support_device_picker(entry):
+        return {}
+    return {vol.Optional(CONF_DEVICE_IMPORT_FILTER_PICKER, default=False): bool}
+
+
+def selected_device_ids_from_options(
+    options: Mapping[str, Any],
+    choices: tuple[DevicePickerChoice, ...],
+) -> list[str]:
+    """Return current picker selections from stored import-filter options."""
+    all_device_ids = [choice.device_id for choice in choices]
+    if not all_device_ids:
+        return []
+    normalized = normalize_entry_options(options)
+    filter_config = normalized.get(CONF_DEVICE_IMPORT_FILTER)
+    if not isinstance(filter_config, Mapping):
+        return all_device_ids
+    if not filter_config.get("enabled"):
+        return all_device_ids
+    include = filter_config.get("include")
+    if not isinstance(include, Mapping):
+        return all_device_ids
+    raw_devices = include.get("devices")
+    if not isinstance(raw_devices, (list, tuple, set)):
+        return all_device_ids
+    allowed = set(all_device_ids)
+    selected = [
+        text
+        for value in raw_devices
+        if (text := str(value).strip()) and text in allowed
+    ]
+    return selected
+
+
+def merge_options_device_picker(
+    current_options: Mapping[str, Any],
+    selected_device_ids: list[str],
+    choices: tuple[DevicePickerChoice, ...],
+) -> dict[str, Any]:
+    """Store a real-device picker selection as the canonical import filter."""
+    data = dict(current_options)
+    data[CONF_DEVICE_IMPORT_FILTER] = device_import_filter_for_selected_devices(
+        selected_device_ids,
+        choices,
+    )
+    for key in device_filter_form_keys():
+        data.pop(key, None)
+    data.pop(CONF_DEVICE_IMPORT_FILTER_PICKER, None)
+    return data
+
+
+def device_picker_context(entry: object) -> tuple[str, int, str | None]:
+    """Return domain, house id, and client id for an options real-device picker."""
+    data = getattr(entry, "data", None)
+    if not isinstance(data, Mapping):
+        raise ValueError("cloud entry data is required for device picker")
+    domain = str(data.get(CONF_CLOUD_DOMAIN, "")).strip()
+    try:
+        house_id = int(str(data.get(CONF_HOUSE_ID, "")).strip())
+    except (TypeError, ValueError) as err:
+        raise ValueError("cloud house id is required for device picker") from err
+    client_id = str(data.get(CONF_OAUTH_CLIENT_ID, "")).strip() or None
+    if not domain:
+        raise ValueError("cloud domain is required for device picker")
+    return domain, house_id, client_id

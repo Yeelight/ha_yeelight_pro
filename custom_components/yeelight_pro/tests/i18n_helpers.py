@@ -25,14 +25,14 @@ def write_installed_i18n(
         "\n".join(service_yaml_lines()),
         encoding="utf-8",
     )
-    _write_json(install_root / "strings.json", strings or translation_payload())
+    _write_json(install_root / "strings.json", strings or chinese_translation_payload())
     _write_json(
         install_root / "translations" / "en.json",
         english or translation_payload(),
     )
     _write_json(
         install_root / "translations" / "zh-Hans.json",
-        chinese or translation_payload(),
+        chinese or chinese_translation_payload(),
     )
     _write_option_schema_sources(install_root, extra_option_key=extra_option_key)
     _write_repair_issue_source(
@@ -58,6 +58,7 @@ def translation_payload() -> dict[str, Any]:
         "device_import_filter_enabled": "Enable device filter",
         "device_import_filter_mode": "Device filter mode",
     }
+
     return {
         "config": {
             "step": {
@@ -83,7 +84,12 @@ def translation_payload() -> dict[str, Any]:
                 },
                 "cloud_scan_login": {
                     "title": "Scan login",
-                    "description": "Scan QR code.",
+                    "description": (
+                        "Open Yeelight APP 1.5.0 or later and scan the QR code. "
+                        "Manual content: {qrcode}. Status: {status}. "
+                        "Remaining seconds: {remaining_seconds}. "
+                        "Poll count: {poll_count}. Select refresh after expiry."
+                    ),
                     "data": {
                         "scan_login_qrcode": "Login QR code",
                         "scan_login_refresh": "Refresh QR code",
@@ -117,7 +123,11 @@ def translation_payload() -> dict[str, Any]:
                 },
             },
             "progress": {
-                "cloud_scan_login_wait": "Waiting for scan authorization.",
+                "cloud_scan_login_wait": (
+                    "Waiting for scan authorization. Status: {status}. "
+                    "Remaining seconds: {remaining_seconds}. "
+                    "Poll count: {poll_count}."
+                ),
             },
             "options": {
                 "step": {
@@ -198,6 +208,33 @@ def translation_payload() -> dict[str, Any]:
             }
         },
     }
+
+
+def chinese_translation_payload() -> dict[str, Any]:
+    """Return a Simplified Chinese variant with the same translation key shape."""
+    payload = translation_payload()
+    payload["config"]["step"]["cloud_scan_login"].update(
+        {
+            "title": "易来 APP 扫码登录",
+            "description": (
+                "请打开易来 APP 1.5.0 或以上版本并扫描二维码。"
+                "手动内容：{qrcode}。当前状态：{status}。"
+                "剩余秒数：{remaining_seconds}。轮询次数：{poll_count}。"
+                "过期后勾选刷新。"
+            ),
+        }
+    )
+    payload["config"]["step"]["cloud_scan_login"]["data"][
+        "scan_login_refresh"
+    ] = "刷新二维码"
+    payload["config"]["progress"]["cloud_scan_login_wait"] = (
+        "正在等待扫码授权。当前状态：{status}。"
+        "剩余秒数：{remaining_seconds}。轮询次数：{poll_count}。"
+    )
+    payload["selector"]["cloud_auth_method"]["options"][
+        "scan_login"
+    ] = "易来 APP 扫码登录"
+    return payload
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:

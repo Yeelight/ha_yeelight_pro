@@ -35,7 +35,8 @@ def test_verify_storage_checks_counts_without_raw_ids(tmp_path: Path) -> None:
 
     assert report.ok
     assert any("entity registry entries: 140" in fact for fact in report.facts)
-    assert any("config entry versions: 1.3 x 1" in fact for fact in report.facts)
+    assert any("config entry versions: 1.4 x 1" in fact for fact in report.facts)
+    assert any("config entry unique_id isolation" in fact for fact in report.facts)
     assert any("config entry required data keys present" in fact for fact in report.facts)
     assert any("config entry required option keys present" in fact for fact in report.facts)
     assert any("config entry option bounds valid" in fact for fact in report.facts)
@@ -129,6 +130,30 @@ def test_verify_storage_rejects_unmigrated_config_entry_version(tmp_path: Path) 
 
     assert not report.ok
     assert any("migration version mismatch" in failure for failure in report.failures)
+
+
+def test_verify_storage_rejects_legacy_cloud_unique_id(tmp_path: Path) -> None:
+    """安装态 verifier 应阻断未迁移的旧 cloud unique_id."""
+    entry = _config_entry()
+    entry["unique_id"] = "yeelight_pro_cloud"
+    _write_storage(tmp_path, "core.config_entries", {"entries": [entry]})
+    _write_storage(tmp_path, "core.device_registry", {"devices": _yeelight_devices()})
+    _write_storage(tmp_path, "core.entity_registry", {"entities": _yeelight_entities()})
+    report = VerificationReport()
+
+    verify_storage(
+        tmp_path,
+        report,
+        expected_config_entries=1,
+        expected_devices=2,
+        expected_entities=sum(DEFAULT_ENTITY_COUNTS.values()),
+        expected_entity_counts=DEFAULT_ENTITY_COUNTS,
+    )
+
+    assert not report.ok
+    assert any("unique_id isolation mismatch" in failure for failure in report.failures)
+    assert all("secret-token" not in failure for failure in report.failures)
+    assert all("122349" not in failure for failure in report.failures)
 
 
 def test_verify_storage_reports_missing_config_entry_keys_without_values(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -106,6 +107,36 @@ def test_required_release_file_guard_allows_unignored_docs(
     assert hacs_preflight._check_exists() == []
 
 
+@pytest.mark.parametrize("version", ["1", "v1.0.0", "1.0", "01.0.0", "1.0.0-01"])
+def test_json_guard_rejects_non_semantic_manifest_version(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    version: str,
+) -> None:
+    """manifest version 必须可直接对齐 GitHub release tag 语义化版本."""
+    root = tmp_path
+    _write_minimal_json_release_files(root, manifest_version=version)
+    monkeypatch.setattr(hacs_preflight, "ROOT", root)
+
+    errors = hacs_preflight._check_json()
+
+    assert errors == ["manifest.json version must use semantic versioning"]
+
+
+@pytest.mark.parametrize("version", ["1.0.0", "1.2.3-beta.1", "1.2.3+build.5"])
+def test_json_guard_accepts_semantic_manifest_version(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    version: str,
+) -> None:
+    """release preflight 应接受标准 MAJOR.MINOR.PATCH 及预发布/构建后缀."""
+    root = tmp_path
+    _write_minimal_json_release_files(root, manifest_version=version)
+    monkeypatch.setattr(hacs_preflight, "ROOT", root)
+
+    assert hacs_preflight._check_json() == []
+
+
 def test_user_visible_error_redaction_guard_rejects_dynamic_error_text(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -200,3 +231,40 @@ def test_forbidden_open_api_runtime_guard_ignores_tests(
 def _write_test_file(path: Path, content: str) -> None:
     """Write a minimal synthetic test file for preflight inspection."""
     path.write_text(content, encoding="utf-8")
+
+
+def _write_minimal_json_release_files(root: Path, *, manifest_version: str) -> None:
+    """Create only the JSON files needed by check_json."""
+    component_root = root / "custom_components" / "yeelight_pro"
+    translations_root = component_root / "translations"
+    translations_root.mkdir(parents=True)
+    _write_json_file(
+        component_root / "manifest.json",
+        {
+            "domain": "yeelight_pro",
+            "name": "Yeelight Pro",
+            "codeowners": ["@yeelight"],
+            "config_flow": True,
+            "documentation": "https://github.com/yeelight/ha_yeelight_pro",
+            "iot_class": "cloud_polling",
+            "version": manifest_version,
+        },
+    )
+    _write_json_file(component_root / "strings.json", {})
+    _write_json_file(translations_root / "en.json", {})
+    _write_json_file(translations_root / "zh-Hans.json", {})
+    _write_json_file(
+        root / "hacs.json",
+        {
+            "name": "Yeelight Pro",
+            "homeassistant": "2024.1.0",
+            "render_readme": True,
+            "zip_release": True,
+            "filename": "yeelight_pro.zip",
+        },
+    )
+
+
+def _write_json_file(path: Path, data: object) -> None:
+    """Write compact JSON for synthetic preflight fixtures."""
+    path.write_text(f"{json.dumps(data)}\n", encoding="utf-8")

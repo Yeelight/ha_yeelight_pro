@@ -46,6 +46,12 @@ def _runtime_coordinator(
             CONF_EXPERIMENTAL_PLATFORMS: False,
             CONF_HIDE_UNKNOWN_ENTITIES: True,
             CONF_TOPOLOGY_CHANGE_REPAIRS: True,
+            CONF_LIVE_UPDATES: DEFAULT_LIVE_UPDATES,
+            CONF_LOCAL_GATEWAY_CONTROL: DEFAULT_LOCAL_GATEWAY_CONTROL,
+            CONF_LOCAL_GATEWAY_HOST: DEFAULT_LOCAL_GATEWAY_HOST,
+            CONF_LOCAL_GATEWAY_PORT: DEFAULT_LOCAL_GATEWAY_PORT,
+            CONF_ANALYTICS_RUNTIME: DEFAULT_ANALYTICS_RUNTIME,
+            CONF_ANALYTICS_RETENTION_DAYS: DEFAULT_ANALYTICS_RETENTION_DAYS,
         },
         apply_options=apply_options,
     )
@@ -121,6 +127,38 @@ async def test_options_update_reloads_when_entity_projection_changes(
         CONF_HIDE_UNKNOWN_ENTITIES: True,
         CONF_TOPOLOGY_CHANGE_REPAIRS: True,
         CONF_ANALYTICS_RUNTIME: True,
+    }
+    hass.config_entries.async_reload = AsyncMock()
+
+    await async_options_updated(hass, mock_config_entry)
+
+    hass.config_entries.async_reload.assert_awaited_once_with(mock_config_entry.entry_id)
+    coordinator.apply_options.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("option_key", "changed_value"),
+    [
+        pytest.param(CONF_LIVE_UPDATES, True, id="live_updates_websocket"),
+        pytest.param(CONF_LOCAL_GATEWAY_CONTROL, True, id="local_gateway_control"),
+        pytest.param(CONF_LOCAL_GATEWAY_HOST, "192.168.1.20", id="local_gateway_host"),
+        pytest.param(CONF_LOCAL_GATEWAY_PORT, 65444, id="local_gateway_port"),
+        pytest.param(CONF_ANALYTICS_RUNTIME, True, id="analytics_runtime"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_options_update_reloads_when_background_runtime_option_changes(
+    hass: HomeAssistant,
+    mock_config_entry,
+    option_key: str,
+    changed_value: Any,
+) -> None:
+    """WebSocket、LAN、analytics 后台 runtime 开关变化必须 reload entry."""
+    coordinator = _runtime_coordinator(apply_options=MagicMock())
+    _install_runtime(hass, mock_config_entry, coordinator)
+    mock_config_entry.options = {
+        **coordinator.options,
+        option_key: changed_value,
     }
     hass.config_entries.async_reload = AsyncMock()
 

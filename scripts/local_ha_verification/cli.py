@@ -77,9 +77,9 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     """CLI entrypoint."""
-    args = build_parser().parse_args()
+    args = build_parser().parse_args(argv)
     started_at = time.monotonic()
     reports = _run_repeated(args)
     if args.soak_seconds:

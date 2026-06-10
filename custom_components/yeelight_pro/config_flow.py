@@ -29,6 +29,11 @@ from .const import (
     DEFAULT_CLOUD_REGION,
     DOMAIN,
 )
+from .config_flow_account import (
+    UNKNOWN_ACCOUNT_KEY,
+    account_identity,
+    account_key_from_identity,
+)
 from .config_flow_helpers import (
     async_load_house_choices,
     async_validate_auth,
@@ -39,7 +44,6 @@ from .config_flow_helpers import (
     cloud_region_schema,
     flow_error_from_exception,
     private_config_schema,
-    reauth_confirm_schema,
     user_schema,
 )
 from .config_flow_device_picker import (
@@ -53,15 +57,20 @@ from .config_flow_scan_login import (
     ScanLoginConfigFlowMixin,
     ScanLoginFlowState,
 )
+from .config_flow_reauth import ReauthConfigFlowMixin
 from .entry_migration import (
     ENTRY_MINOR_VERSION,
     ENTRY_VERSION,
-    normalize_entry_data,
 )
 from .options_flow import YeelightProOptionsFlow
 
 
-class YeelightProConfigFlow(ScanLoginConfigFlowMixin, config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
+class YeelightProConfigFlow(
+    ReauthConfigFlowMixin,
+    ScanLoginConfigFlowMixin,
+    config_entries.ConfigFlow,
+    domain=DOMAIN,
+):  # type: ignore[call-arg]
     """Yeelight Pro 配置流程."""
 
     VERSION = ENTRY_VERSION
@@ -83,11 +92,12 @@ class YeelightProConfigFlow(ScanLoginConfigFlowMixin, config_entries.ConfigFlow,
         self._scan_login_device = ""
         self._scan_login_state = ScanLoginFlowState()
         self._scan_login_poll_task_ref = None
-        self._scan_login_account_key = "unknown"
+        self._scan_login_account_key = UNKNOWN_ACCOUNT_KEY
         self._open_api_client_id = ""
         self._device_choices: tuple[DevicePickerChoice, ...] = ()
         self._selected_device_ids: list[str] = []
         self._reauth_entry_data: dict[str, Any] = {}
+        self._reauth_in_progress = False
 
     async def async_step_user(
         self,
@@ -268,7 +278,7 @@ class YeelightProConfigFlow(ScanLoginConfigFlowMixin, config_entries.ConfigFlow,
         # 生成唯一 ID
         unique_id = (
             f"{self._connection_mode}:{self._cloud_region}:"
-            f"{self._scan_login_account_key}:{self._house_id}"
+            f"{self._cloud_account_key()}:{self._house_id}"
             if self._connection_mode == CONNECTION_MODE_CLOUD
             else f"{self._connection_mode}:{self._domain}:{self._house_id}"
         )
@@ -315,58 +325,20 @@ class YeelightProConfigFlow(ScanLoginConfigFlowMixin, config_entries.ConfigFlow,
             )
         }
 
-    async def async_step_reauth(
-        self,
-        entry_data: dict[str, Any],
-    ) -> FlowResult:
-        """触发 reauth 流程，保存原始配置数据."""
-        self._reauth_entry_data = normalize_entry_data(entry_data)
-        self._connection_mode = self._reauth_entry_data[CONF_CONNECTION_MODE]
-        self._domain = self._reauth_entry_data[
-            CONF_CLOUD_DOMAIN
-            if self._connection_mode == CONNECTION_MODE_CLOUD
-            else CONF_PRIVATE_DOMAIN
-        ]
-        return await self.async_step_reauth_confirm()
-
-    async def async_step_reauth_confirm(
-        self,
-        user_input: dict[str, Any] | None = None,
-    ) -> FlowResult:
-        """reauth 确认步骤：用户输入新的 Access Token."""
-        errors: dict[str, str] = {}
-
-        if user_input is not None:
-            new_token = user_input[CONF_ACCESS_TOKEN]
-            try:
-                await async_validate_auth(
-                    self.hass,
-                    domain=self._domain,
-                    access_token=new_token,
-                    client_id=self._reauth_entry_data.get(CONF_OAUTH_CLIENT_ID, ""),
-                )
-            except Exception as err:
-                errors["base"] = flow_error_from_exception("reauth", err)
-            else:
-                # 更新配置条目的 token
-                entry = self._get_reauth_entry()
-                new_data = normalize_entry_data({
-                    **entry.data,
-                    CONF_ACCESS_TOKEN: new_token,
-                })
-                return self.async_update_reload_and_abort(
-                    entry,
-                    data=new_data,
-                )
-
-        return self.async_show_form(
-            step_id="reauth_confirm",
-            data_schema=reauth_confirm_schema(),
-            errors=errors,
-            description_placeholders={
-                "domain": self._domain,
-            },
-        )
+    def _cloud_account_key(self) -> str:
+        """返回不泄露 token 的云端账号隔离片段。"""
+        if (
+            isinstance(self._scan_login_account_key, str)
+            and self._scan_login_account_key
+            and self._scan_login_account_key != UNKNOWN_ACCOUNT_KEY
+        ):
+            return self._scan_login_account_key
+        return account_key_from_identity(account_identity(
+            account_user_id=self._account_user_id,
+            username=self._account_username,
+            client_id=self._open_api_client_id,
+            access_token=self._access_token,
+        ))
 
     @staticmethod
     @callback

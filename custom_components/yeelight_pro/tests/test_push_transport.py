@@ -1,4 +1,4 @@
-"""Tests for the Yeelight Pro WebSocket push transport skeleton."""
+"""Tests for the Yeelight Pro WebSocket push transport."""
 
 from __future__ import annotations
 
@@ -30,9 +30,12 @@ async def test_push_transport_connects_subscribes_and_dispatches_json_objects() 
     """transport 打开 URL 后先订阅，再只分发 JSON object payload."""
     websocket = FakeWebSocket(
         [
+            FakeMessage(WSMsgType.TEXT, '{"method":"subscribe","code":"200"}'),
+            FakeMessage(WSMsgType.TEXT, '{"method":"heartbeat","success":true}'),
             FakeMessage(WSMsgType.TEXT, '{"type":"prop","nodes":[{"id":1}]}'),
             FakeMessage(WSMsgType.TEXT, '["not-object"]'),
             FakeMessage(WSMsgType.TEXT, "not-json"),
+            FakeMessage(WSMsgType.TEXT, '{"type":"unknown","nodes":[]}'),
             FakeMessage(WSMsgType.BINARY, b'{"type":"event","nodes":[]}'),
             FakeMessage(WSMsgType.CLOSE, None),
         ]
@@ -215,6 +218,36 @@ async def test_push_transport_reconnect_backoff_retries_until_success() -> None:
         "subscribe"
     ]
     assert second_websocket.sent_json[0]["id"] == 2
+    assert transport.last_runtime_error_type == "OSError"
+
+
+@pytest.mark.asyncio
+async def test_push_transport_initial_connect_failure_schedules_reconnect() -> None:
+    """初始 WebSocket 网络失败不应阻塞 runtime，应后台退避重连."""
+    reconnect_sleep = ControlledSleep()
+    websocket = OpenFakeWebSocket()
+    session = FakeSession([OSError("token-secret"), websocket])
+    callback = AsyncMock()
+    transport = YeelightPushWebSocketTransport(
+        session=session,
+        token="fake-token",
+        reconnect_sleep=reconnect_sleep,
+    )
+
+    await transport.async_start(callback)
+
+    assert transport.last_start_error_type == "OSError"
+    await wait_for_sleep_calls(reconnect_sleep, 1)
+    reconnect_sleep.release.set()
+    await websocket.waiting_for_message.wait()
+    await transport.async_stop()
+
+    assert reconnect_sleep.delays == [1.0]
+    assert session.connected_urls == [
+        "wss://push.yeelight.com/ws/fake-token",
+        "wss://push.yeelight.com/ws/fake-token",
+    ]
+    assert [message["method"] for message in websocket.sent_json] == ["subscribe"]
 
 
 @pytest.mark.asyncio
@@ -228,3 +261,25 @@ async def test_push_transport_rejects_empty_token_before_connect() -> None:
         await transport.async_start(AsyncMock())
 
     assert session.connected_urls == []
+
+
+@pytest.mark.asyncio
+async def test_push_transport_ignores_control_ack_frames() -> None:
+    """订阅/心跳 ACK 不能进入 coordinator payload 计数。"""
+    websocket = FakeWebSocket([
+        FakeMessage(WSMsgType.TEXT, '{"method":"subscribe","code":"200"}'),
+        FakeMessage(WSMsgType.TEXT, '{"method":"heartbeat","success":true}'),
+    ])
+    session = FakeSession(websocket)
+    callback = AsyncMock()
+    transport = YeelightPushWebSocketTransport(
+        session=session,
+        token="fake-token",
+        auto_reconnect=False,
+    )
+
+    await transport.async_start(callback)
+    await asyncio.sleep(0)
+    await transport.async_stop()
+
+    callback.assert_not_awaited()

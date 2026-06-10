@@ -39,14 +39,26 @@ def test_runtime_options_contract_requires_debug_service_gate(
     tests_root.mkdir(parents=True)
     _write_test_file(
         component_root / "runtime_options.py",
-        "CONF_EXPERIMENTAL_PLATFORMS CONF_HIDE_UNKNOWN_ENTITIES apply_options "
+        "CONF_EXPERIMENTAL_PLATFORMS CONF_HIDE_UNKNOWN_ENTITIES "
+        "CONF_LIVE_UPDATES CONF_LOCAL_GATEWAY_CONTROL CONF_LOCAL_GATEWAY_HOST "
+        "CONF_LOCAL_GATEWAY_PORT CONF_ANALYTICS_RUNTIME apply_options "
         "async_delete_topology_changed_issues async_reload",
     )
     _write_test_file(
         tests_root / "test_runtime_options.py",
         "without_reload entity_projection_changes runtime_missing "
-        "clears_topology_repairs",
+        "clears_topology_repairs "
+        "test_options_update_reloads_when_background_runtime_option_changes "
+        "live_updates_websocket local_gateway_control local_gateway_host "
+        "local_gateway_port analytics_runtime",
     )
+    _write_test_file(
+        tests_root / "test_options_flow_contract.py",
+        "test_options_flow_background_runtime_options_require_reload "
+        "CONF_LIVE_UPDATES CONF_LOCAL_GATEWAY_CONTROL CONF_LOCAL_GATEWAY_HOST "
+        "CONF_LOCAL_GATEWAY_PORT CONF_ANALYTICS_RUNTIME confirm_reload",
+    )
+    _write_complete_options_picker_test(tests_root)
     _write_test_file(
         component_root / "debug_service.py",
         "async_register_admin_service coordinator.debug_mode async_handle_runtime_event",
@@ -59,6 +71,103 @@ def test_runtime_options_contract_requires_debug_service_gate(
     assert any("disabled debug service does not dispatch event" in error for error in errors)
 
 
+def test_runtime_options_contract_requires_background_runtime_reload_coverage(
+    tmp_path: Path,
+) -> None:
+    """preflight 必须保护 WebSocket/LAN/analytics runtime reload 合同."""
+    component_root = tmp_path / "custom_components" / "yeelight_pro"
+    tests_root = component_root / "tests"
+    tests_root.mkdir(parents=True)
+    _write_test_file(
+        component_root / "runtime_options.py",
+        "CONF_EXPERIMENTAL_PLATFORMS CONF_HIDE_UNKNOWN_ENTITIES apply_options "
+        "async_delete_topology_changed_issues async_reload",
+    )
+    _write_test_file(
+        tests_root / "test_runtime_options.py",
+        "without_reload entity_projection_changes runtime_missing "
+        "clears_topology_repairs",
+    )
+    _write_test_file(tests_root / "test_options_flow_contract.py", "confirm_reload")
+    _write_complete_options_picker_test(tests_root)
+    _write_test_file(
+        component_root / "debug_service.py",
+        "async_register_admin_service coordinator.debug_mode async_handle_runtime_event",
+    )
+    _write_test_file(
+        tests_root / "test_debug_service.py",
+        "test_debug_emit_event_service_rejects_disabled_debug_mode "
+        "assert_not_awaited debug mode is disabled",
+    )
+
+    errors = check_runtime_options_contract_tests(component_root)
+
+    assert any("reload on WebSocket live update changes" in error for error in errors)
+    assert any("local gateway host reload case" in error for error in errors)
+    assert any("analytics runtime reload case" in error for error in errors)
+    assert any("options flow routes background runtime changes" in error for error in errors)
+
+
+def test_runtime_options_contract_requires_options_device_picker_coverage(
+    tmp_path: Path,
+) -> None:
+    """preflight 必须保护 options 中真实设备 picker 的可调导入范围."""
+    component_root = tmp_path / "custom_components" / "yeelight_pro"
+    tests_root = component_root / "tests"
+    tests_root.mkdir(parents=True)
+    _write_test_file(
+        component_root / "runtime_options.py",
+        "CONF_EXPERIMENTAL_PLATFORMS CONF_HIDE_UNKNOWN_ENTITIES "
+        "CONF_LIVE_UPDATES CONF_LOCAL_GATEWAY_CONTROL CONF_LOCAL_GATEWAY_HOST "
+        "CONF_LOCAL_GATEWAY_PORT CONF_ANALYTICS_RUNTIME apply_options "
+        "async_delete_topology_changed_issues async_reload",
+    )
+    _write_test_file(
+        tests_root / "test_runtime_options.py",
+        "without_reload entity_projection_changes runtime_missing "
+        "clears_topology_repairs "
+        "test_options_update_reloads_when_background_runtime_option_changes "
+        "live_updates_websocket local_gateway_control local_gateway_host "
+        "local_gateway_port analytics_runtime",
+    )
+    _write_test_file(
+        tests_root / "test_options_flow_contract.py",
+        "test_options_flow_background_runtime_options_require_reload "
+        "CONF_LIVE_UPDATES CONF_LOCAL_GATEWAY_CONTROL CONF_LOCAL_GATEWAY_HOST "
+        "CONF_LOCAL_GATEWAY_PORT CONF_ANALYTICS_RUNTIME confirm_reload",
+    )
+    _write_test_file(
+        tests_root / "test_options_flow_device_picker.py",
+        "test_options_flow_real_device_picker_loads_current_cloud_devices "
+        "CONF_DEVICE_IMPORT_FILTER_PICKER",
+    )
+    _write_test_file(
+        component_root / "debug_service.py",
+        "async_register_admin_service coordinator.debug_mode async_handle_runtime_event",
+    )
+    _write_test_file(
+        tests_root / "test_debug_service.py",
+        "test_debug_emit_event_service_rejects_disabled_debug_mode "
+        "assert_not_awaited debug mode is disabled",
+    )
+
+    errors = check_runtime_options_contract_tests(component_root)
+
+    assert any("options picker reload confirmation coverage" in error for error in errors)
+    assert any("options picker label privacy marker" in error for error in errors)
+
+
 def _write_test_file(path: Path, content: str) -> None:
     """写入最小 synthetic test 文件供 preflight 扫描."""
     path.write_text(content, encoding="utf-8")
+
+
+def _write_complete_options_picker_test(tests_root: Path) -> None:
+    """写入满足 options picker preflight 的 synthetic test 文件."""
+    _write_test_file(
+        tests_root / "test_options_flow_device_picker.py",
+        "test_options_flow_real_device_picker_loads_current_cloud_devices "
+        "test_options_flow_real_device_picker_selection_requires_reload "
+        "test_options_flow_real_device_picker_load_error_is_redacted "
+        "CONF_DEVICE_IMPORT_FILTER_PICKER Kitchen Secret",
+    )

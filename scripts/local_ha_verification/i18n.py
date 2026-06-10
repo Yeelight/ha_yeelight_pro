@@ -29,6 +29,24 @@ TRANSLATION_FILES = (
     "translations/en.json",
     "translations/zh-Hans.json",
 )
+SCAN_LOGIN_DESCRIPTION_PATH = (
+    "config",
+    "step",
+    "cloud_scan_login",
+    "description",
+)
+SCAN_LOGIN_PROGRESS_PATH = ("config", "progress", "cloud_scan_login_wait")
+SCAN_LOGIN_PLACEHOLDERS = frozenset(
+    {"qrcode", "status", "remaining_seconds", "poll_count"}
+)
+SCAN_LOGIN_PROGRESS_PLACEHOLDERS = frozenset(
+    {"status", "remaining_seconds", "poll_count"}
+)
+SCAN_LOGIN_TEXT_MARKERS = {
+    "strings.json": ("易来 APP 1.5.0", "刷新"),
+    "translations/zh-Hans.json": ("易来 APP 1.5.0", "刷新"),
+    "translations/en.json": ("Yeelight APP 1.5.0", "refresh"),
+}
 
 REQUIRED_I18N_LEAF_PATHS: set[tuple[str, ...]] = {
     ("config", "step", "user", "data", "connection_mode"),
@@ -109,6 +127,7 @@ def verify_i18n_contracts(install_root: Path, report: VerificationReport) -> Non
     )
     _verify_service_translations(payloads, service_fields, report)
     _verify_repair_placeholders(install_root, payloads, report)
+    _verify_scan_login_translation_guidance(payloads, report)
 
     if len(report.failures) == failure_count:
         leaf_count = len(leaf_paths(next(iter(payloads.values()))))
@@ -274,3 +293,76 @@ def _verify_repair_placeholders(
                 "repair issue translation placeholders missing runtime keys in "
                 f"{name}: {missing_translation}"
             )
+
+
+def _verify_scan_login_translation_guidance(
+    payloads: Mapping[str, dict[str, Any]],
+    report: VerificationReport,
+) -> None:
+    """Verify scan-login QR guidance keeps countdown and refresh details."""
+    for name, payload in payloads.items():
+        description = value_at(payload, SCAN_LOGIN_DESCRIPTION_PATH)
+        progress = value_at(payload, SCAN_LOGIN_PROGRESS_PATH)
+        if not isinstance(description, str):
+            report.fail(
+                "scan-login QR description missing in "
+                f"{name}: {format_path(SCAN_LOGIN_DESCRIPTION_PATH)}"
+            )
+            continue
+        if not isinstance(progress, str):
+            report.fail(
+                "scan-login QR progress text missing in "
+                f"{name}: {format_path(SCAN_LOGIN_PROGRESS_PATH)}"
+            )
+            continue
+
+        markers = SCAN_LOGIN_TEXT_MARKERS.get(name, ())
+        _verify_text_markers(
+            name,
+            description,
+            markers,
+            "scan-login QR description",
+            report,
+        )
+        _verify_placeholders(
+            name,
+            description,
+            SCAN_LOGIN_PLACEHOLDERS,
+            "scan-login QR description",
+            report,
+        )
+        _verify_placeholders(
+            name,
+            progress,
+            SCAN_LOGIN_PROGRESS_PLACEHOLDERS,
+            "scan-login QR progress text",
+            report,
+        )
+
+
+def _verify_text_markers(
+    name: str,
+    text: str,
+    markers: tuple[str, ...],
+    label: str,
+    report: VerificationReport,
+) -> None:
+    """Verify required UX markers remain present in one translated text."""
+    folded_text = text.casefold()
+    for marker in markers:
+        if marker.casefold() not in folded_text:
+            report.fail(f"{label} missing marker in {name}: {marker}")
+
+
+def _verify_placeholders(
+    name: str,
+    text: str,
+    required: frozenset[str],
+    label: str,
+    report: VerificationReport,
+) -> None:
+    """Verify a translated text keeps all required placeholders."""
+    placeholders = set(re.findall(r"{([^{}]+)}", text))
+    missing = sorted(required - placeholders)
+    if missing:
+        report.fail(f"{label} missing placeholders in {name}: {missing}")

@@ -6,6 +6,7 @@ from typing import Any, Mapping
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
+from .config_flow_account import account_key_from_entry_data
 from .const import (
     CONF_ACCESS_TOKEN,
     CONF_ACCOUNT_USER_ID,
@@ -59,7 +60,7 @@ from .device_filter_options import (
 )
 
 ENTRY_VERSION = 1
-ENTRY_MINOR_VERSION = 3
+ENTRY_MINOR_VERSION = 4
 
 
 async def async_migrate_config_entry(
@@ -69,9 +70,11 @@ async def async_migrate_config_entry(
     """Migrate legacy Yeelight Pro config entry data and options."""
     data = normalize_entry_data(entry.data)
     options = normalize_entry_options(getattr(entry, "options", None))
+    unique_id = config_entry_unique_id(data)
     if (
         data == dict(entry.data)
         and options == _mapping_or_empty(getattr(entry, "options", None))
+        and getattr(entry, "unique_id", None) == unique_id
         and entry.version == ENTRY_VERSION
         and entry.minor_version == ENTRY_MINOR_VERSION
     ):
@@ -81,6 +84,7 @@ async def async_migrate_config_entry(
         entry,
         data=data,
         options=options,
+        unique_id=unique_id,
         version=ENTRY_VERSION,
         minor_version=ENTRY_MINOR_VERSION,
     )
@@ -204,6 +208,19 @@ def normalize_entry_options(value: Any) -> dict[str, Any]:
     if filter_config is not None:
         data[CONF_DEVICE_IMPORT_FILTER] = filter_config
     return data
+
+
+def config_entry_unique_id(entry_data: Mapping[str, Any]) -> str:
+    """Return the region/account/house isolated unique id for a config entry."""
+    data = normalize_entry_data(entry_data)
+    connection_mode = data[CONF_CONNECTION_MODE]
+    house_id = data[CONF_HOUSE_ID]
+    if connection_mode == CONNECTION_MODE_CLOUD:
+        return (
+            f"{CONNECTION_MODE_CLOUD}:{data[CONF_CLOUD_REGION]}:"
+            f"{account_key_from_entry_data(data)}:{house_id}"
+        )
+    return f"{CONNECTION_MODE_PRIVATE}:{data[CONF_PRIVATE_DOMAIN]}:{house_id}"
 
 
 def _connection_mode(value: Mapping[str, Any]) -> str:

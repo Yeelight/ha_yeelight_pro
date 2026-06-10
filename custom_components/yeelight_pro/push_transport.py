@@ -1,4 +1,4 @@
-"""Experimental WebSocket transport for Yeelight Pro push payloads."""
+"""WebSocket transport for Yeelight Pro push payloads."""
 
 from __future__ import annotations
 
@@ -11,6 +11,8 @@ from typing import Any, Protocol
 from aiohttp import WSMsgType
 
 from .push_contract import (
+    PUSH_CONTROL_METHODS,
+    PUSH_DATA_TYPES,
     PUSH_HEARTBEAT_INTERVAL_SECONDS,
     PushMessageBuilder,
     PushReconnectPolicy,
@@ -72,6 +74,19 @@ class YeelightPushWebSocketTransport:
         self._running = False
         self._callback: PushTransportPayloadCallback | None = None
         self._next_reconnect_delay: float | None = None
+        self._last_start_error_type: str | None = None
+        self._last_runtime_error_type: str | None = None
+        self._last_failure_was_connect = False
+
+    @property
+    def last_start_error_type(self) -> str | None:
+        """Return the aggregate error type from a recoverable start failure."""
+        return self._last_start_error_type
+
+    @property
+    def last_runtime_error_type(self) -> str | None:
+        """Return the aggregate error type from a background runtime failure."""
+        return self._last_runtime_error_type
 
     async def async_start(self, callback: PushTransportPayloadCallback) -> None:
         """Open the websocket, subscribe, and start a reader task."""
@@ -80,16 +95,31 @@ class YeelightPushWebSocketTransport:
         self._running = True
         self._callback = callback
         self._next_reconnect_delay = None
+        self._last_start_error_type = None
+        self._last_runtime_error_type = None
         try:
             await self._connect_once(callback)
-        except Exception:
+        except Exception as err:
+            if (
+                self._auto_reconnect
+                and not isinstance(err, ValueError)
+                and self._last_failure_was_connect
+            ):
+                self._last_start_error_type = type(err).__name__
+                self._schedule_reconnect()
+                return
             self._running = False
             self._callback = None
             raise
 
     async def _connect_once(self, callback: PushTransportPayloadCallback) -> None:
         """Open one websocket session and start its background tasks."""
-        websocket = await self._session.ws_connect(build_push_url(self._token))
+        try:
+            websocket = await self._session.ws_connect(build_push_url(self._token))
+        except Exception:
+            self._last_failure_was_connect = True
+            raise
+        self._last_failure_was_connect = False
         self._websocket = websocket
         try:
             await websocket.send_json(self._message_builder.next_subscribe())
@@ -101,6 +131,7 @@ class YeelightPushWebSocketTransport:
         self._reader_task = asyncio.create_task(self._read_messages(callback))
         self._heartbeat_task = asyncio.create_task(self._send_heartbeats())
         self._next_reconnect_delay = None
+        self._last_start_error_type = None
 
     async def async_stop(self) -> None:
         """Stop background tasks and close the active websocket."""
@@ -130,10 +161,14 @@ class YeelightPushWebSocketTransport:
         try:
             async for message in websocket:
                 payload = _json_payload_from_message(message)
-                if payload is not None:
+                if payload is None:
+                    continue
+                _raise_for_control_error_frame(payload)
+                if _is_push_data_payload(payload):
                     await callback(payload)
-        except Exception:
+        except Exception as err:
             reader_failed = True
+            self._last_runtime_error_type = type(err).__name__
         finally:
             await self._cleanup_after_reader_exit(
                 websocket, close_websocket=reader_failed
@@ -150,7 +185,8 @@ class YeelightPushWebSocketTransport:
                 if websocket is None:
                     return
                 await websocket.send_json(self._message_builder.next_heartbeat())
-        except Exception:
+        except Exception as err:
+            self._last_runtime_error_type = type(err).__name__
             if self._heartbeat_task is current_task:
                 self._heartbeat_task = None
             await self._close_after_background_failure()
@@ -235,7 +271,8 @@ class YeelightPushWebSocketTransport:
                 except asyncio.CancelledError:
                     cancelled = True
                     raise
-                except Exception:
+                except Exception as err:
+                    self._last_runtime_error_type = type(err).__name__
                     continue
         except (asyncio.CancelledError, GeneratorExit):
             cancelled = True
@@ -269,6 +306,23 @@ def _json_payload_from_message(message: Any) -> dict[str, Any] | None:
     return payload if isinstance(payload, dict) else None
 
 
+def _is_push_data_payload(payload: dict[str, Any]) -> bool:
+    """Return whether a WebSocket object is a documented prop/event payload."""
+    return payload.get("type") in PUSH_DATA_TYPES
+
+
+def _raise_for_control_error_frame(payload: dict[str, Any]) -> None:
+    """Reject subscribe/heartbeat control errors without exposing vendor text."""
+    method = payload.get("method")
+    if method not in PUSH_CONTROL_METHODS:
+        return
+
+    success = payload.get("success")
+    code = str(payload.get("code", "")).strip()
+    if success is False or code not in ("", "200"):
+        raise PushControlFrameError
+
+
 async def _cancel_task(task: asyncio.Task[None] | None) -> None:
     """Cancel and await a background task."""
     if task is not None and not task.done():
@@ -277,7 +331,12 @@ async def _cancel_task(task: asyncio.Task[None] | None) -> None:
             await task
 
 
+class PushControlFrameError(Exception):
+    """Aggregate-only error for failed WebSocket control frames."""
+
+
 __all__ = [
+    "PushControlFrameError",
     "PushSleep",
     "PushTransportPayloadCallback",
     "PushWebSocket",

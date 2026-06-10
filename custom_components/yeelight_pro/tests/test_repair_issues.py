@@ -16,6 +16,8 @@ from custom_components.yeelight_pro.repair_issues import (
 )
 from custom_components.yeelight_pro.core.topology_diff import TopologyDiffSummary
 
+HASHED_ENTRY_SCOPE = "5e2d5d1e58e94d76"
+
 
 def test_create_topology_changed_issue_uses_aggregate_counts(
     hass: HomeAssistant,
@@ -77,15 +79,15 @@ def test_create_topology_changed_issue_uses_aggregate_counts(
             previous_generation=3,
         )
 
-    delete_issue.assert_called_once_with(
-        hass,
-        DOMAIN,
+    deleted_issue_ids = {call.args[2] for call in delete_issue.call_args_list}
+    assert deleted_issue_ids == {
         TOPOLOGY_CHANGED_ISSUE.format(entry_id="entry-1", generation=3),
-    )
+        TOPOLOGY_CHANGED_ISSUE.format(entry_id=HASHED_ENTRY_SCOPE, generation=3),
+    }
     create_issue.assert_called_once_with(
         hass,
         DOMAIN,
-        TOPOLOGY_CHANGED_ISSUE.format(entry_id="entry-1", generation=4),
+        TOPOLOGY_CHANGED_ISSUE.format(entry_id=HASHED_ENTRY_SCOPE, generation=4),
         data={
             "previous_generation": 3,
             "current_generation": 4,
@@ -151,6 +153,7 @@ def test_create_topology_changed_issue_uses_aggregate_counts(
     )
     issue_data = create_issue.call_args.kwargs["data"]
     serialized = json.dumps(issue_data, ensure_ascii=False)
+    assert "entry-1" not in create_issue.call_args.args[2]
     assert "secret-device" not in serialized
     assert "secret-gateway" not in serialized
     assert "area-secret" not in serialized

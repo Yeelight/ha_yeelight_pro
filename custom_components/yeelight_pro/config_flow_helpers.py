@@ -32,10 +32,14 @@ from .const import (
     DEFAULT_PRIVATE_DOMAIN,
 )
 from .config_flow_options import (
+    device_picker_context as device_picker_context,
     entry_options as entry_options,
+    merge_options_device_picker as merge_options_device_picker,
     merge_options as merge_options,
     options_confirm_schema as options_confirm_schema,
+    options_device_picker_requested as options_device_picker_requested,
     options_schema as options_schema,
+    selected_device_ids_from_options as selected_device_ids_from_options,
     visible_option_change_count as visible_option_change_count,
 )
 from .core.client import YeelightProClient
