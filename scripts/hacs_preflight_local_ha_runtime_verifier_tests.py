@@ -128,9 +128,16 @@ LOCAL_HA_RUNTIME_VERIFIER_TEST_TOKENS = {
         "write_installed_i18n": "i18n verifier installed fixture writer",
         "translation_payload": "i18n verifier translation fixture payload",
         "i18n_service_helpers": "service translation fixture split import",
-        "options_schema": "options schema translation fixture source",
-        "translation_placeholders": "Repair placeholder fixture source",
+        "i18n_source_fixture_helpers": "source fixture split import",
         "device_topology_changed": "Repair issue translation fixture key",
+    },
+    "custom_components/yeelight_pro/tests/i18n_source_fixture_helpers.py": {
+        "write_option_schema_sources": "options schema translation fixture source",
+        "write_repair_issue_source": "Repair placeholder fixture source",
+        "options_schema": "options schema source token",
+        "translation_placeholders": "Repair placeholder source token",
+        "device_filter_options.py": "device filter selector fixture source",
+        "repair_issues.py": "Repair issue fixture source",
     },
     "custom_components/yeelight_pro/tests/i18n_service_helpers.py": {
         "service_yaml_lines": "service yaml fixture source",

@@ -206,6 +206,7 @@ REQUIRED_RELEASE_FILES = {
     "custom_components/yeelight_pro/tests/test_hacs_publish.py",
     "custom_components/yeelight_pro/tests/i18n_helpers.py",
     "custom_components/yeelight_pro/tests/i18n_service_helpers.py",
+    "custom_components/yeelight_pro/tests/i18n_source_fixture_helpers.py",
     "custom_components/yeelight_pro/tests/test_iot_registry.py",
     "custom_components/yeelight_pro/tests/test_iot_registry_events.py",
     "custom_components/yeelight_pro/tests/test_iot_registry_integrity.py",

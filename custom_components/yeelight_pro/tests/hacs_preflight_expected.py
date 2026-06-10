@@ -228,6 +228,7 @@ EXPECTED_TEST_FILES = {
     "test_select_dynamic_options.py",
     "test_translation_runtime_contract.py",
     "i18n_service_helpers.py",
+    "i18n_source_fixture_helpers.py",
     "test_verify_local_ha.py",
     "test_legacy_local_ha_entrypoints.py",
     "local_ha_diagnostics_verifier_helpers.py",
