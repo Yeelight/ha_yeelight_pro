@@ -29,14 +29,8 @@ LOCAL_HA_PRODUCTION_PROBE_TOKENS = {
         "tests/test_verify_lan_gateway.py": (
             "production LAN gateway probe test token guard"
         ),
-        "scripts/verify_analytics.py": (
-            "production analytics probe script token guard"
-        ),
-        "scripts/verify_analytics_support.py": (
-            "production analytics probe helper token guard"
-        ),
-        "tests/test_verify_analytics.py": (
-            "production analytics probe test token guard"
+        "scripts/verify_probe_client.py": (
+            "production HA-free probe client helper token guard"
         ),
     },
     "scripts/verify_push_websocket.py": {
@@ -48,6 +42,13 @@ LOCAL_HA_PRODUCTION_PROBE_TOKENS = {
         "PUSH_CONTRACT_PATH": "production WebSocket HA-free contract path",
         "_load_push_contract": "production WebSocket HA-free contract loader",
         "json_shapes": "production WebSocket field-shape summary",
+        "idle_timeouts": "production WebSocket bounded idle summary",
+        "_is_result_control_payload": (
+            "production WebSocket method-less result classifier"
+        ),
+        "_is_control_error_payload": (
+            "production WebSocket aggregate result error classifier"
+        ),
     },
     "scripts/verify_scan_login.py": {
         "confirm-production-scan-login": "production scan-login confirm flag",
@@ -55,6 +56,8 @@ LOCAL_HA_PRODUCTION_PROBE_TOKENS = {
         "validate_run_request": "production scan-login fail-closed guard",
         "ScanLoginProbeSummary": "production scan-login safe summary",
         "async_probe_scan_login": "explicit production scan-login entrypoint",
+        "show_qrcode": "production scan-login explicit QR display switch",
+        "_print_qrcode_event": "production scan-login QR event output",
         "SCAN_LOGIN_CONTRACT_PATH": "production scan-login HA-free contract path",
         "_load_scan_login_contract": (
             "production scan-login HA-free contract loader"
@@ -72,6 +75,7 @@ LOCAL_HA_PRODUCTION_PROBE_TOKENS = {
         "CloudDevicesProbeSummary": "production cloud devices safe summary",
         "async_probe_cloud_devices": "explicit production cloud devices entrypoint",
         "_load_yeelight_client": "production cloud devices client loader",
+        "_load_probe_client": "shared HA-free production probe client",
         "_update_summary_from_devices": (
             "production cloud devices aggregate-only summary"
         ),
@@ -90,25 +94,15 @@ LOCAL_HA_PRODUCTION_PROBE_TOKENS = {
         ),
         "methods": "production LAN gateway method-count summary",
     },
-    "scripts/verify_analytics.py": {
-        "confirm-production-analytics": "production analytics confirm flag",
-        "YEELIGHT_PRO_ANALYTICS_ACCESS_TOKEN": (
-            "production analytics token env guard"
-        ),
-        "YEELIGHT_PRO_ANALYTICS_HOUSE_ID": (
-            "production analytics house env guard"
-        ),
-        "validate_run_request": "production analytics fail-closed guard",
-        "async_probe_analytics": "explicit production analytics entrypoint",
-    },
-    "scripts/verify_analytics_support.py": {
-        "AnalyticsProbeSummary": "production analytics safe summary",
-        "update_summary_from_payload": (
-            "production analytics aggregate-only summary"
-        ),
-        "object_shapes": "production analytics field-shape summary",
-        "numeric_fields": "production analytics numeric-field summary",
-        "load_yeelight_client": "production analytics client loader",
+    "scripts/verify_probe_client.py": {
+        "ProbeYeelightClient": "HA-free production probe client class",
+        "load_yeelight_client": "HA-free production probe client loader",
+        "request_json": "shared request_json helper reuse",
+        "build_client_headers": "shared client header helper reuse",
+        "house_devices_path": "shared cloud devices path helper reuse",
+        "paginated_path": "shared paginated path helper reuse",
+        "schema_cache": "schema-cache import regression guard token",
+        "homeassistant": "Home Assistant import regression guard token",
     },
     "custom_components/yeelight_pro/tests/test_verify_scan_login.py": {
         "test_validate_run_request_requires_explicit_confirm": (
@@ -129,8 +123,43 @@ LOCAL_HA_PRODUCTION_PROBE_TOKENS = {
         "test_script_path_execution_is_no_network_without_confirm": (
             "production scan-login script-path no-network coverage"
         ),
+        "test_main_can_show_qrcode_only_after_explicit_confirm": (
+            "production scan-login explicit QR display coverage"
+        ),
         "test_probe_summarizes_created_scanned_login_without_values": (
             "production scan-login fake-login aggregate coverage"
+        ),
+    },
+    "custom_components/yeelight_pro/tests/test_verify_push_websocket.py": {
+        "test_validate_run_request_requires_explicit_confirm": (
+            "production WebSocket confirm guard coverage"
+        ),
+        "test_validate_run_request_requires_token_env": (
+            "production WebSocket token env guard coverage"
+        ),
+        "test_validate_run_request_rejects_unbounded_probe": (
+            "production WebSocket bounded-run guard coverage"
+        ),
+        "test_summary_classifies_control_and_data_frames_without_payload_values": (
+            "production WebSocket redacted summary coverage"
+        ),
+        "test_summary_classifies_methodless_result_ack_shapes_without_values": (
+            "production WebSocket method-less result ACK coverage"
+        ),
+        "test_summary_classifies_methodless_result_error_shapes_without_values": (
+            "production WebSocket method-less result error coverage"
+        ),
+        "test_probe_treats_bounded_idle_timeout_after_subscribe_as_ok": (
+            "production WebSocket bounded idle success coverage"
+        ),
+        "test_main_does_not_probe_network_without_confirm": (
+            "production WebSocket default no-network coverage"
+        ),
+        "test_script_path_execution_is_no_network_without_confirm": (
+            "production WebSocket script-path no-network coverage"
+        ),
+        "test_probe_summarizes_heartbeat_cleanup_error_without_values": (
+            "production WebSocket heartbeat cleanup redaction coverage"
         ),
     },
     "custom_components/yeelight_pro/tests/test_verify_cloud_devices.py": {
@@ -158,6 +187,12 @@ LOCAL_HA_PRODUCTION_PROBE_TOKENS = {
         "test_probe_summarizes_devices_without_values": (
             "production cloud devices fake-device aggregate coverage"
         ),
+        "test_probe_client_loader_is_homeassistant_free": (
+            "production cloud devices HA-free loader coverage"
+        ),
+        "test_probe_client_loader_does_not_need_homeassistant_package": (
+            "production cloud devices no-HA-package loader coverage"
+        ),
     },
     "custom_components/yeelight_pro/tests/test_verify_lan_gateway.py": {
         "test_validate_run_request_requires_explicit_confirm": (
@@ -180,32 +215,6 @@ LOCAL_HA_PRODUCTION_PROBE_TOKENS = {
         ),
         "test_probe_summarizes_lan_frames_without_values": (
             "production LAN gateway fake-frame aggregate coverage"
-        ),
-    },
-    "custom_components/yeelight_pro/tests/test_verify_analytics.py": {
-        "test_validate_run_request_requires_explicit_confirm": (
-            "production analytics confirm guard coverage"
-        ),
-        "test_validate_run_request_requires_token_and_house_env": (
-            "production analytics env guard coverage"
-        ),
-        "YEELIGHT_PRO_ANALYTICS_AREA_ID": (
-            "production analytics optional area env guard coverage"
-        ),
-        "test_validate_run_request_rejects_invalid_region_endpoint_and_timeout": (
-            "production analytics bounded-request guard coverage"
-        ),
-        "test_summary_describes_payload_shape_without_raw_values": (
-            "production analytics raw payload redaction coverage"
-        ),
-        "test_main_does_not_probe_network_without_confirm": (
-            "production analytics default no-network coverage"
-        ),
-        "test_script_path_execution_is_no_network_without_confirm": (
-            "production analytics script-path no-network coverage"
-        ),
-        "test_probe_summarizes_analytics_payload_without_values": (
-            "production analytics fake-payload aggregate coverage"
         ),
     },
 }

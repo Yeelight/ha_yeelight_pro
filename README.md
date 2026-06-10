@@ -35,9 +35,6 @@ Yeelight Pro integration for Home Assistant. It supports Yeelight cloud and priv
   store selected device ids as an import filter for future device-sourced
   entities. If the device list cannot be loaded, users can continue without
   enabling or changing a device import filter.
-- Opt-in analytics runtime with an admin-only manual refresh service and
-  aggregate-only analytics sensors; it is disabled by default and does not store
-  raw analytics payloads
 - Registry cleanup service with dry-run and audit-id confirmation; confirmation
   disables stale entities through Home Assistant's registry and does not delete
   entity or device registry entries
@@ -148,7 +145,6 @@ python3 scripts/verify_push_websocket.py
 python3 scripts/verify_scan_login.py
 python3 scripts/verify_cloud_devices.py
 python3 scripts/verify_lan_gateway.py
-python3 scripts/verify_analytics.py
 ```
 
 CI/release entrypoints are kept in `.github/workflows/test.yaml`,
@@ -176,10 +172,6 @@ Do not commit tokens, Home Assistant credentials, personal house IDs, or raw dev
   material only documents WebSocket, so live event notifications are implemented
   only through WebSocket when `live_updates` is explicitly enabled. Default
   topology refresh and full-state fallback still use polling.
-- Analytics runtime is implemented as explicit opt-in manual refresh and
-  aggregate sensors only. Automatic polling, full historical analytics, raw
-  payload persistence, and real production payload validation remain roadmap
-  items.
 - Full rules/spec filter engines remain roadmap items.
 - Device import filtering currently supports diagnostics preview, manual
   comma-separated options rules, a real cloud device picker during cloud setup

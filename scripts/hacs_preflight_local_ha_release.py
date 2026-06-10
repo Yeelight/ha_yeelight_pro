@@ -86,9 +86,6 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         "live WebSocket updates are implemented": (
             "unverified live WebSocket claim denylist"
         ),
-        "analytics runtime is enabled by default": (
-            "overstated analytics runtime claim denylist"
-        ),
         "house transfer is implemented": "destructive house transfer denylist",
         "device import filter deletes existing entities": (
             "destructive device-filter claim denylist"
@@ -154,7 +151,6 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         "FORBIDDEN_PARTS": "release zip forbidden directory guard",
         "FORBIDDEN_SUFFIXES": "release zip generated suffix guard",
         "REQUIRED_FILES": "release zip required runtime file guard",
-        "analytics_contract.py": "analytics contract zip required file guard",
         "client_node_api.py": "Open API node helper zip required file guard",
         "client_node_base.py": "Open API node base helper zip required file guard",
         "client_node_lists.py": "Open API node list helper zip required file guard",
@@ -300,17 +296,6 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         "test_release_claim_guard_rejects_house_transfer_claims": (
             "house transfer release claim coverage"
         ),
-        "test_release_claim_guard_rejects_overstated_analytics_claims": (
-            "overstated analytics release claim coverage"
-        ),
-    },
-    "custom_components/yeelight_pro/tests/test_hacs_preflight_release_claims_analytics.py": {
-        "test_release_claim_guard_rejects_disabled_analytics_runtime_claim": (
-            "disabled analytics runtime claim coverage"
-        ),
-        "Runtime analytics entities/services stay disabled": (
-            "disabled analytics rollback claim sample"
-        ),
     },
     "custom_components/yeelight_pro/tests/test_hacs_preflight_release_claims_picker.py": {
         "test_release_claim_guard_rejects_setup_only_device_picker_claims": (
@@ -334,9 +319,6 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         ),
         "test_lan_contract_check_requires_coverage_tokens": (
             "LAN protocol preflight coverage"
-        ),
-        "test_analytics_contract_check_requires_coverage_tokens": (
-            "analytics protocol preflight coverage"
         ),
     },
     "custom_components/yeelight_pro/tests/test_check_release_zip.py": {

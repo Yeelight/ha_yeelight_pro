@@ -17,16 +17,12 @@ from .diagnostics_websocket import verify_websocket_event_runtime_contract
 from .report import VerificationReport
 
 REQUIRED_OPTION_STATUS_FIELDS = {
-    "analytics_retention_days",
-    "analytics_runtime_enabled",
     "debug_mode_enabled",
     "live_updates_enabled",
     "local_gateway_control_enabled",
     "scan_interval_seconds",
 }
 REQUIRED_OPTION_STATUS_TOKENS = {
-    "CONF_ANALYTICS_RETENTION_DAYS",
-    "CONF_ANALYTICS_RUNTIME",
     "CONF_DEVICE_IMPORT_FILTER",
     "normalize_entry_options",
     "option_status_diagnostics",

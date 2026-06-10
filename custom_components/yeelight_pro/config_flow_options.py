@@ -6,8 +6,6 @@ from typing import Any, Mapping
 import voluptuous as vol
 
 from .const import (
-    CONF_ANALYTICS_RETENTION_DAYS,
-    CONF_ANALYTICS_RUNTIME,
     CONF_CONNECTION_MODE,
     CONF_CLOUD_DOMAIN,
     CONF_DEBUG_MODE,
@@ -24,8 +22,6 @@ from .const import (
     CONF_SCAN_INTERVAL,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
     CONNECTION_MODE_CLOUD,
-    DEFAULT_ANALYTICS_RETENTION_DAYS,
-    DEFAULT_ANALYTICS_RUNTIME,
     DEFAULT_DEBUG_MODE,
     DEFAULT_EXPERIMENTAL_PLATFORMS,
     DEFAULT_HIDE_UNKNOWN_ENTITIES,
@@ -35,9 +31,7 @@ from .const import (
     DEFAULT_LOCAL_GATEWAY_PORT,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TOPOLOGY_CHANGE_REPAIRS,
-    MAX_ANALYTICS_RETENTION_DAYS,
     MAX_SCAN_INTERVAL,
-    MIN_ANALYTICS_RETENTION_DAYS,
     MIN_SCAN_INTERVAL,
 )
 from .config_flow_device_picker import (
@@ -62,8 +56,6 @@ _OPTION_FORM_KEYS = (
     CONF_LOCAL_GATEWAY_CONTROL,
     CONF_LOCAL_GATEWAY_HOST,
     CONF_LOCAL_GATEWAY_PORT,
-    CONF_ANALYTICS_RUNTIME,
-    CONF_ANALYTICS_RETENTION_DAYS,
 )
 
 
@@ -134,26 +126,6 @@ def options_schema(options: Mapping[str, Any], entry: object | None = None) -> v
                 DEFAULT_LOCAL_GATEWAY_PORT,
             ),
         ): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
-        vol.Required(
-            CONF_ANALYTICS_RUNTIME,
-            default=normalized.get(
-                CONF_ANALYTICS_RUNTIME,
-                DEFAULT_ANALYTICS_RUNTIME,
-            ),
-        ): bool,
-        vol.Optional(
-            CONF_ANALYTICS_RETENTION_DAYS,
-            default=normalized.get(
-                CONF_ANALYTICS_RETENTION_DAYS,
-                DEFAULT_ANALYTICS_RETENTION_DAYS,
-            ),
-        ): vol.All(
-            vol.Coerce(int),
-            vol.Range(
-                min=MIN_ANALYTICS_RETENTION_DAYS,
-                max=MAX_ANALYTICS_RETENTION_DAYS,
-            ),
-        ),
     }
     fields.update(device_filter_schema_fields(normalized))
     if entry is not None:

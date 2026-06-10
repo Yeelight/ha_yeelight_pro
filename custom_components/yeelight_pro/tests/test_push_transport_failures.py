@@ -73,6 +73,36 @@ async def test_push_transport_control_error_frame_closes_websocket() -> None:
 
 
 @pytest.mark.asyncio
+async def test_push_transport_methodless_result_error_closes_websocket() -> None:
+    """生产 result-only 错误控制帧应关闭连接，且不分发到 coordinator。"""
+    websocket = FakeWebSocket([
+        FakeMessage(
+            WSMsgType.TEXT,
+            (
+                '{"data":{"detail":"device-secret"},"msgId":"message-secret",'
+                '"result":{"code":"401","message":"token-secret"},'
+                '"timestamp":"secret-time"}'
+            ),
+        )
+    ])
+    session = FakeSession(websocket)
+    callback = AsyncMock()
+    transport = YeelightPushWebSocketTransport(
+        session=session,
+        token="fake-token",
+        auto_reconnect=False,
+    )
+
+    await transport.async_start(callback)
+    await asyncio.sleep(0)
+    await transport.async_stop()
+
+    assert transport.last_runtime_error_type == "PushControlFrameError"
+    callback.assert_not_awaited()
+    assert websocket.closed is True
+
+
+@pytest.mark.asyncio
 async def test_push_transport_stop_failure_keeps_websocket_for_retry() -> None:
     """websocket close 失败后必须保留引用，允许下一次 stop 重试关闭."""
     websocket = FailingCloseWebSocket()

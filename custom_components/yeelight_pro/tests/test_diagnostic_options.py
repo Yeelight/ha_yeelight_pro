@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 from custom_components.yeelight_pro.const import (
-    DEFAULT_ANALYTICS_RETENTION_DAYS,
-    DEFAULT_ANALYTICS_RUNTIME,
     CONF_DEBUG_MODE,
     CONF_SCAN_INTERVAL,
     MAX_SCAN_INTERVAL,
@@ -36,8 +34,6 @@ def test_option_status_reports_unloaded_runtime() -> None:
         "topology_change_repairs": False,
         "live_updates_enabled": False,
         "local_gateway_control_enabled": False,
-        "analytics_runtime_enabled": DEFAULT_ANALYTICS_RUNTIME,
-        "analytics_retention_days": DEFAULT_ANALYTICS_RETENTION_DAYS,
         "import_filter_active": True,
         "import_filter_rule_count": 2,
         "import_filter_ignored_rule_count": 2,
@@ -82,8 +78,6 @@ def test_option_status_reports_loaded_runtime_alignment() -> None:
         "topology_change_repairs": False,
         "live_updates_enabled": False,
         "local_gateway_control_enabled": False,
-        "analytics_runtime_enabled": DEFAULT_ANALYTICS_RUNTIME,
-        "analytics_retention_days": DEFAULT_ANALYTICS_RETENTION_DAYS,
         "import_filter_active": True,
         "import_filter_rule_count": 2,
         "import_filter_ignored_rule_count": 2,

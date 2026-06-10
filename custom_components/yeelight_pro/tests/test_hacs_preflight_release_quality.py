@@ -135,22 +135,6 @@ def test_release_quality_gate_check_requires_lint_and_type_check(
         "goal audit production LAN gateway host env guard" in error
         for error in errors
     )
-    assert any(
-        "goal audit production analytics probe command" in error
-        for error in errors
-    )
-    assert any(
-        "goal audit production analytics explicit confirm flag" in error
-        for error in errors
-    )
-    assert any(
-        "goal audit production analytics token env guard" in error
-        for error in errors
-    )
-    assert any(
-        "goal audit production analytics house env guard" in error
-        for error in errors
-    )
     assert any("goal audit cleanup non-destructive boundary" in error for error in errors)
 
 

@@ -12,12 +12,8 @@ COMPONENT_ROOT = ROOT / "custom_components" / "yeelight_pro"
 
 REQUIRED_FILES = {
     "custom_components/yeelight_pro/__init__.py",
-    "custom_components/yeelight_pro/analytics_contract.py",
-    "custom_components/yeelight_pro/analytics_runtime.py",
-    "custom_components/yeelight_pro/analytics_service.py",
     "custom_components/yeelight_pro/capabilities/spec_correction_normalizers.py",
     "custom_components/yeelight_pro/core/client_node_base.py",
-    "custom_components/yeelight_pro/core/client_analytics.py",
     "custom_components/yeelight_pro/converter/runtime_inference_helpers.py",
     "custom_components/yeelight_pro/core/client_node_api.py",
     "custom_components/yeelight_pro/core/client_node_lists.py",

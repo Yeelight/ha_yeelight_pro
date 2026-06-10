@@ -36,35 +36,10 @@ def test_client_keeps_open_api_methods_after_helper_split() -> None:
         "trigger_automation",
         "get_areas",
         "get_house_snapshot",
-        "request_analytics",
     }
 
     for method_name in expected_methods:
         assert callable(getattr(YeelightProClient, method_name))
-
-
-@pytest.mark.asyncio
-async def test_client_request_analytics_uses_documented_post_path() -> None:
-    """数据分析 runtime 入口必须复用 3.4 path/query 合同。"""
-    client = YeelightProClient(
-        domain="https://api.yeelight.com/apis/iot",
-        access_token="test-token",
-        session=MagicMock(),
-    )
-
-    with patch.object(client, "_request", new_callable=AsyncMock) as mock_request:
-        await client.request_analytics(
-            house_id=12345,
-            endpoint_key="energy_analyse",
-            date_code="2024-08",
-            area_id=7,
-        )
-
-    mock_request.assert_awaited_once_with(
-        "POST",
-        "/v1/open/data/house/12345/energy/analyse?dateCode=2024-08&areaId=7",
-    )
-
 
 @pytest.mark.asyncio
 async def test_client_control_methods_use_explicit_house_id() -> None:

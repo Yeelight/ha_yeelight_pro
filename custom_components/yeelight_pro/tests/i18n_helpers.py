@@ -57,8 +57,6 @@ def translation_payload() -> dict[str, Any]:
         "local_gateway_control": "Local gateway control",
         "local_gateway_host": "Local gateway host",
         "local_gateway_port": "Local gateway port",
-        "analytics_runtime": "Analytics runtime",
-        "analytics_retention_days": "Analytics retention days",
         "device_import_filter_enabled": "Enable device filter",
         "device_import_filter_mode": "Device filter mode",
     }
@@ -190,17 +188,6 @@ def translation_payload() -> dict[str, Any]:
             }
         },
         "services": service_translation_payload(),
-        "entity": {
-            "sensor": {
-                "analytics_alarm_total": {"name": "Analytics alarm total"},
-                "analytics_alarm_device_count": {
-                    "name": "Analytics alarm devices",
-                },
-                "analytics_energy_used_kwh": {"name": "Analytics energy used"},
-                "analytics_energy_saved_kwh": {"name": "Analytics energy saved"},
-                "analytics_action_total": {"name": "Analytics action total"},
-            }
-        },
         "issues": {
             "device_topology_changed": {
                 "title": "Topology changed",
@@ -244,4 +231,3 @@ def chinese_translation_payload() -> dict[str, Any]:
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     """Write a JSON fixture."""
     path.write_text(json.dumps(payload), encoding="utf-8")
-

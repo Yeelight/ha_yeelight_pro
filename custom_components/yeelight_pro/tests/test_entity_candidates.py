@@ -23,7 +23,6 @@ class _Coordinator:
     groups: list[dict[str, Any]] = field(default_factory=list)
     house_id: int | None = None
     hide_unknown_entities: bool = True
-    analytics_runtime_enabled: bool = False
     options: dict[str, Any] = field(default_factory=dict)
 
 
@@ -233,33 +232,3 @@ def test_schema_unknown_actions_do_not_create_device_buttons() -> None:
 
     assert ("light", "yeelight_pro_action-device-1_main_light") in candidate_keys
     assert not any(key[0] == "button" for key in candidate_keys)
-
-
-def test_entity_candidates_include_analytics_sensors_when_enabled() -> None:
-    """启用 analytics runtime 后应把 5 个 house-level sensor 计入生命周期候选."""
-    candidates = list(
-        iter_entity_candidates(
-            _Coordinator(
-                data={},
-                house_id=12345,
-                analytics_runtime_enabled=True,
-            )
-        )
-    )
-
-    analytics_candidates = [item for item in candidates if item.source == "analytics"]
-
-    assert [(item.platform, item.unique_id) for item in analytics_candidates] == [
-        ("sensor", "yeelight_pro_12345_analytics_alarm_total"),
-        ("sensor", "yeelight_pro_12345_analytics_alarm_device_count"),
-        ("sensor", "yeelight_pro_12345_analytics_energy_used_kwh"),
-        ("sensor", "yeelight_pro_12345_analytics_energy_saved_kwh"),
-        ("sensor", "yeelight_pro_12345_analytics_action_total"),
-    ]
-    assert {item.component_id for item in analytics_candidates} == {
-        "alarm_total",
-        "alarm_device_count",
-        "energy_used_kwh",
-        "energy_saved_kwh",
-        "action_total",
-    }

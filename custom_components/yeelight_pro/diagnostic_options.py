@@ -5,8 +5,6 @@ from collections.abc import Mapping
 from typing import Any
 
 from .const import (
-    CONF_ANALYTICS_RETENTION_DAYS,
-    CONF_ANALYTICS_RUNTIME,
     CONF_DEBUG_MODE,
     CONF_DEVICE_IMPORT_FILTER,
     CONF_EXPERIMENTAL_PLATFORMS,
@@ -15,8 +13,6 @@ from .const import (
     CONF_LOCAL_GATEWAY_CONTROL,
     CONF_SCAN_INTERVAL,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
-    DEFAULT_ANALYTICS_RETENTION_DAYS,
-    DEFAULT_ANALYTICS_RUNTIME,
     DEFAULT_DEBUG_MODE,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TOPOLOGY_CHANGE_REPAIRS,
@@ -86,18 +82,6 @@ def option_status_diagnostics(
         ),
         "local_gateway_control_enabled": bool(
             normalized_entry_options.get(CONF_LOCAL_GATEWAY_CONTROL, False)
-        ),
-        "analytics_runtime_enabled": bool(
-            normalized_entry_options.get(
-                CONF_ANALYTICS_RUNTIME,
-                DEFAULT_ANALYTICS_RUNTIME,
-            )
-        ),
-        "analytics_retention_days": int(
-            normalized_entry_options.get(
-                CONF_ANALYTICS_RETENTION_DAYS,
-                DEFAULT_ANALYTICS_RETENTION_DAYS,
-            )
         ),
         "import_filter_active": device_import_preview.enabled,
         "import_filter_rule_count": device_import_preview.rules_count,

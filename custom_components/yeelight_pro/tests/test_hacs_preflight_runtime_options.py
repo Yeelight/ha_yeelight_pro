@@ -41,7 +41,7 @@ def test_runtime_options_contract_requires_debug_service_gate(
         component_root / "runtime_options.py",
         "CONF_EXPERIMENTAL_PLATFORMS CONF_HIDE_UNKNOWN_ENTITIES "
         "CONF_LIVE_UPDATES CONF_LOCAL_GATEWAY_CONTROL CONF_LOCAL_GATEWAY_HOST "
-        "CONF_LOCAL_GATEWAY_PORT CONF_ANALYTICS_RUNTIME apply_options "
+        "CONF_LOCAL_GATEWAY_PORT apply_options "
         "async_delete_topology_changed_issues async_reload",
     )
     _write_test_file(
@@ -50,13 +50,13 @@ def test_runtime_options_contract_requires_debug_service_gate(
         "clears_topology_repairs "
         "test_options_update_reloads_when_background_runtime_option_changes "
         "live_updates_websocket local_gateway_control local_gateway_host "
-        "local_gateway_port analytics_runtime",
+        "local_gateway_port",
     )
     _write_test_file(
         tests_root / "test_options_flow_contract.py",
         "test_options_flow_background_runtime_options_require_reload "
         "CONF_LIVE_UPDATES CONF_LOCAL_GATEWAY_CONTROL CONF_LOCAL_GATEWAY_HOST "
-        "CONF_LOCAL_GATEWAY_PORT CONF_ANALYTICS_RUNTIME confirm_reload",
+        "CONF_LOCAL_GATEWAY_PORT confirm_reload",
     )
     _write_complete_options_picker_test(tests_root)
     _write_test_file(
@@ -74,7 +74,7 @@ def test_runtime_options_contract_requires_debug_service_gate(
 def test_runtime_options_contract_requires_background_runtime_reload_coverage(
     tmp_path: Path,
 ) -> None:
-    """preflight 必须保护 WebSocket/LAN/analytics runtime reload 合同."""
+    """preflight 必须保护 WebSocket/LAN runtime reload 合同."""
     component_root = tmp_path / "custom_components" / "yeelight_pro"
     tests_root = component_root / "tests"
     tests_root.mkdir(parents=True)
@@ -104,7 +104,6 @@ def test_runtime_options_contract_requires_background_runtime_reload_coverage(
 
     assert any("reload on WebSocket live update changes" in error for error in errors)
     assert any("local gateway host reload case" in error for error in errors)
-    assert any("analytics runtime reload case" in error for error in errors)
     assert any("options flow routes background runtime changes" in error for error in errors)
 
 
@@ -119,7 +118,7 @@ def test_runtime_options_contract_requires_options_device_picker_coverage(
         component_root / "runtime_options.py",
         "CONF_EXPERIMENTAL_PLATFORMS CONF_HIDE_UNKNOWN_ENTITIES "
         "CONF_LIVE_UPDATES CONF_LOCAL_GATEWAY_CONTROL CONF_LOCAL_GATEWAY_HOST "
-        "CONF_LOCAL_GATEWAY_PORT CONF_ANALYTICS_RUNTIME apply_options "
+        "CONF_LOCAL_GATEWAY_PORT apply_options "
         "async_delete_topology_changed_issues async_reload",
     )
     _write_test_file(
@@ -128,13 +127,13 @@ def test_runtime_options_contract_requires_options_device_picker_coverage(
         "clears_topology_repairs "
         "test_options_update_reloads_when_background_runtime_option_changes "
         "live_updates_websocket local_gateway_control local_gateway_host "
-        "local_gateway_port analytics_runtime",
+        "local_gateway_port",
     )
     _write_test_file(
         tests_root / "test_options_flow_contract.py",
         "test_options_flow_background_runtime_options_require_reload "
         "CONF_LIVE_UPDATES CONF_LOCAL_GATEWAY_CONTROL CONF_LOCAL_GATEWAY_HOST "
-        "CONF_LOCAL_GATEWAY_PORT CONF_ANALYTICS_RUNTIME confirm_reload",
+        "CONF_LOCAL_GATEWAY_PORT confirm_reload",
     )
     _write_test_file(
         tests_root / "test_options_flow_device_picker.py",

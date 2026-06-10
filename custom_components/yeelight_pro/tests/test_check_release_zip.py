@@ -10,7 +10,6 @@ from scripts import check_release_zip
 def test_release_zip_required_files_include_runtime_contracts() -> None:
     """发布 zip 校验必须覆盖关键运行时和协议边界文件。"""
     assert {
-        "custom_components/yeelight_pro/analytics_contract.py",
         "custom_components/yeelight_pro/capabilities/spec_correction_normalizers.py",
         "custom_components/yeelight_pro/converter/runtime_inference_helpers.py",
         "custom_components/yeelight_pro/config_flow_account.py",

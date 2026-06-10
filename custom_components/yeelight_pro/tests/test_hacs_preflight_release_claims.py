@@ -133,36 +133,6 @@ def test_release_claim_guard_rejects_house_transfer_claims(
     assert any("README_zh.md: 家庭转移已支持" in error for error in errors)
     assert all("docs/iot" not in error for error in errors)
 
-
-def test_release_claim_guard_rejects_overstated_analytics_claims(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """release-facing 文档不能把 opt-in analytics 夸大成默认或完整能力."""
-    root = tmp_path
-    docs_root = root / "docs"
-    iot_root = docs_root / "iot"
-    docs_root.mkdir()
-    iot_root.mkdir()
-    _write_test_file(root / "README.md", "all analytics APIs are implemented")
-    _write_test_file(root / "README_zh.md", "数据分析默认启用")
-    _write_test_file(root / "CHANGELOG.md", "")
-    _write_test_file(root / "RELEASE_GUIDE.md", "")
-    _write_test_file(
-        docs_root / "IOT_SPEC_REGISTRY.md",
-        "opt-in analytics runtime is implemented",
-    )
-    _write_test_file(iot_root / "易来照明系统开放平台.md", "数据分析服务已实现")
-    monkeypatch.setattr(hacs_preflight, "ROOT", root)
-
-    errors = hacs_preflight._check_readme_claims()
-
-    assert any("README.md: all analytics APIs are implemented" in error for error in errors)
-    assert any("README_zh.md: 数据分析默认启用" in error for error in errors)
-    assert all("docs/IOT_SPEC_REGISTRY.md" not in error for error in errors)
-    assert all("docs/iot" not in error for error in errors)
-
-
 def test_release_claim_guard_rejects_obsolete_sse_runtime_gap_claim(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

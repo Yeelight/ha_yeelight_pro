@@ -333,44 +333,6 @@ def test_lan_contract_check_requires_coverage_tokens(
     assert any("access token redaction coverage" in error for error in errors)
     assert any("documented approach event alias coverage" in error for error in errors)
 
-
-def test_analytics_contract_check_requires_coverage_tokens(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """preflight 应拒绝空文件冒充数据分析 API 合同覆盖."""
-    component_root = tmp_path / "custom_components" / "yeelight_pro"
-    tests_root = component_root / "tests"
-    tests_root.mkdir(parents=True)
-    monkeypatch.setattr(hacs_preflight, "COMPONENT_ROOT", component_root)
-
-    _write_test_file(component_root / "analytics_contract.py", "")
-    _write_test_file(component_root / "analytics_runtime.py", "")
-    _write_test_file(tests_root / "test_analytics_contract.py", "")
-    _write_test_file(tests_root / "test_analytics_runtime.py", "")
-    _write_test_file(tests_root / "test_analytics_service.py", "")
-
-    errors = hacs_preflight._check_analytics_contract_tests()
-
-    assert any("alarm analyse endpoint key" in error for error in errors)
-    assert any("energy trend endpoint key" in error for error in errors)
-    assert any("complete analytics path builder" in error for error in errors)
-    assert any("documented areaId boundary" in error for error in errors)
-    assert any("analytics path coverage" in error for error in errors)
-    assert any("daily action path coverage" in error for error in errors)
-    assert any("analytics date/area boundary coverage" in error for error in errors)
-    assert any("analytics finite numeric guard" in error for error in errors)
-    assert any("analytics runtime raw payload storage guard" in error for error in errors)
-    assert any("analytics runtime no raw payload attribute coverage" in error for error in errors)
-    assert any(
-        "analytics non-finite numeric rejection coverage" in error
-        for error in errors
-    )
-    assert any("analytics service missing context rejection coverage" in error for error in errors)
-    assert any("analytics aggregate-only service response coverage" in error for error in errors)
-    assert any("analytics service raw error redaction coverage" in error for error in errors)
-
-
 def _write_test_file(path: Path, content: str) -> None:
     """Write a minimal synthetic test file for preflight inspection."""
     path.write_text(content, encoding="utf-8")

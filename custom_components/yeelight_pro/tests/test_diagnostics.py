@@ -70,14 +70,12 @@ async def test_diagnostics_returns_sane_unloaded_entry(
         "lan_discovery_parser": True,
         "lan_message_contract": True,
         "lan_payload_adapter": True,
-        "analytics_contract": True,
         "push_connection": True,
         "websocket_subscription": True,
         "websocket_event_notifications": True,
         "local_gateway_control": True,
         "lan_control": True,
         "mqtt_subscription": False,
-        "analytics_runtime": True,
     }
     assert data["runtime"]["iot_registry"]["valid"] is True
     assert data["runtime"]["iot_registry"]["categories"] == len(
@@ -98,8 +96,6 @@ async def test_diagnostics_returns_sane_unloaded_entry(
         "topology_change_repairs": False,
         "live_updates_enabled": False,
         "local_gateway_control_enabled": False,
-        "analytics_runtime_enabled": False,
-        "analytics_retention_days": 30,
         "import_filter_active": True,
         "import_filter_rule_count": 2,
         "import_filter_ignored_rule_count": 2,

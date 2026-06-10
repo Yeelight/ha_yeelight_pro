@@ -183,6 +183,62 @@ def test_script_path_execution_is_no_network_without_confirm() -> None:
     assert "ModuleNotFoundError" not in result.stderr
 
 
+def test_probe_client_loader_is_homeassistant_free() -> None:
+    """真实设备探针 loader 不得间接导入 Home Assistant runtime."""
+    before = set(sys.modules)
+
+    client_class = verify_cloud_devices._load_yeelight_client()
+
+    loaded = set(sys.modules) - before
+    assert client_class.__name__ == "ProbeYeelightClient"
+    assert "homeassistant" not in loaded
+    assert not any(module.startswith("homeassistant.") for module in loaded)
+    assert not any("schema_cache" in module for module in loaded)
+
+
+def test_probe_client_loader_does_not_need_homeassistant_package() -> None:
+    """即使 homeassistant 包不可导入，真实设备探针 loader 也必须可用."""
+    code = """
+import importlib.abc
+import json
+import sys
+
+class BlockHomeAssistant(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname == "homeassistant" or fullname.startswith("homeassistant."):
+            raise ModuleNotFoundError("No module named 'homeassistant'")
+        return None
+
+sys.meta_path.insert(0, BlockHomeAssistant())
+from scripts import verify_cloud_devices
+
+client_class = verify_cloud_devices._load_yeelight_client()
+print(json.dumps({
+    "client": client_class.__name__,
+    "homeassistant": any(
+        name == "homeassistant" or name.startswith("homeassistant.")
+        for name in sys.modules
+    ),
+    "schema_cache": any("schema_cache" in name for name in sys.modules),
+}))
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload == {
+        "client": "ProbeYeelightClient",
+        "homeassistant": False,
+        "schema_cache": False,
+    }
+
+
 def test_main_runs_probe_only_after_confirm_and_env(monkeypatch, capsys) -> None:
     """显式确认和 token/house 环境变量存在时才调用真实设备探测入口."""
     summary = verify_cloud_devices.CloudDevicesProbeSummary(ok=True, region="sg")

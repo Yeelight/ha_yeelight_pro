@@ -9,7 +9,7 @@ from homeassistant.components.switch import SwitchEntity
 from custom_components.yeelight_pro.light import ATTR_COLOR_TEMP_KELVIN, YeelightProLight
 from custom_components.yeelight_pro.fan import YeelightProFan
 from custom_components.yeelight_pro.switch import YeelightProSwitch
-from custom_components.yeelight_pro.sensor import YeelightProAnalyticsSensor, YeelightProSensor
+from custom_components.yeelight_pro.sensor import YeelightProSensor
 from custom_components.yeelight_pro.const import DOMAIN
 
 from .projection_helpers import projection_payload
@@ -243,28 +243,3 @@ class TestYeelightProSensor:
         assert energy.device_class == SensorDeviceClass.ENERGY
         assert energy.native_unit_of_measurement == "Wh"
         assert energy.state_class == SensorStateClass.TOTAL_INCREASING
-
-    def test_analytics_sensor_exposes_aggregate_summary(self, mock_coordinator):
-        """analytics sensor 只暴露 house-level 聚合值和刷新元数据。"""
-        mock_coordinator.house_id = 12345
-        mock_coordinator.analytics_summary.return_value = {
-            "energy_used_kwh": 3.5,
-            "last_endpoint": "energy_analyse",
-            "last_refreshed_at": "2026-06-09T00:00:00+00:00",
-            "retention_days": 30,
-            "history_size": 1,
-        }
-
-        sensor = YeelightProAnalyticsSensor(mock_coordinator, "energy_used_kwh")
-
-        assert sensor.unique_id == "yeelight_pro_12345_analytics_energy_used_kwh"
-        assert sensor.translation_key == "analytics_energy_used_kwh"
-        assert sensor.native_value == 3.5
-        assert sensor.native_unit_of_measurement == "kWh"
-        assert sensor.state_class == SensorStateClass.MEASUREMENT
-        assert sensor.extra_state_attributes == {
-            "last_endpoint": "energy_analyse",
-            "last_refreshed_at": "2026-06-09T00:00:00+00:00",
-            "retention_days": 30,
-            "history_size": 1,
-        }

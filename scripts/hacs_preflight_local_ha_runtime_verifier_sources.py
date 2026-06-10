@@ -282,7 +282,6 @@ LOCAL_HA_RUNTIME_VERIFIER_SOURCE_TOKENS = {
     "scripts/local_ha_verification/constants.py": {
         "BAD_LOG_MARKERS": "runtime error marker denylist",
         "REQUIRED_RUNTIME_MODULES": "installed support module presence list",
-        "analytics_contract": "analytics no-network module presence check",
         "oauth_contract": "OAuth no-network module presence check",
         "scan_login_contract": "scan-login no-network module presence check",
         "config_flow_reauth": "scan-login reauth config flow helper presence check",

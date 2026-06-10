@@ -7,7 +7,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .const import (
-    CONF_ANALYTICS_RUNTIME,
     CONF_EXPERIMENTAL_PLATFORMS,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_LIVE_UPDATES,
@@ -52,7 +51,6 @@ def options_require_reload(
         CONF_LOCAL_GATEWAY_CONTROL,
         CONF_LOCAL_GATEWAY_HOST,
         CONF_LOCAL_GATEWAY_PORT,
-        CONF_ANALYTICS_RUNTIME,
     }
     if any(old.get(key) != new.get(key) for key in reload_keys):
         return True

@@ -45,14 +45,12 @@ def _client_capabilities_for_entry(entry):
         "lan_discovery_parser": True,
         "lan_message_contract": True,
         "lan_payload_adapter": True,
-        "analytics_contract": True,
         "push_connection": True,
         "websocket_subscription": True,
         "websocket_event_notifications": True,
         "local_gateway_control": True,
         "lan_control": True,
         "mqtt_subscription": {mqtt_subscription},
-        "analytics_runtime": True,
     }}
 """,
         encoding="utf-8",
@@ -210,8 +208,6 @@ def write_diagnostic_options(
     root.joinpath("diagnostic_options.py").write_text(
         f"""
 CONF_DEVICE_IMPORT_FILTER = "device_import_filter"
-CONF_ANALYTICS_RUNTIME = "analytics_runtime"
-CONF_ANALYTICS_RETENTION_DAYS = "analytics_retention_days"
 
 def option_status_diagnostics(entry, runtime, coordinator):
     entry_options = {{}}
@@ -221,8 +217,6 @@ def option_status_diagnostics(entry, runtime, coordinator):
 {scan_field.rstrip()}
         "live_updates_enabled": False,
         "local_gateway_control_enabled": False,
-        "analytics_runtime_enabled": False,
-        "analytics_retention_days": 30,
         "import_filter_active": bool(entry_options.get(CONF_DEVICE_IMPORT_FILTER)),
     }}
 """,

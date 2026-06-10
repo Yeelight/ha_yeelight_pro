@@ -85,8 +85,6 @@ async def test_diagnostics_reports_aggregate_runtime_data(
         "topology_change_repairs": False,
         "live_updates_enabled": False,
         "local_gateway_control_enabled": False,
-        "analytics_runtime_enabled": False,
-        "analytics_retention_days": 30,
         "import_filter_active": True,
         "import_filter_rule_count": 2,
         "import_filter_ignored_rule_count": 2,

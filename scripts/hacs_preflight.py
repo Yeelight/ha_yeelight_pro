@@ -19,9 +19,6 @@ from scripts.hacs_preflight_core import (  # noqa: E402
     check_release_quality_gates,
     check_user_visible_error_redaction,
 )
-from scripts.hacs_preflight_analytics_contracts import (  # noqa: E402
-    check_analytics_contract_tests,
-)
 from scripts.hacs_preflight_contracts import (  # noqa: E402
     check_forbidden_open_api_runtime,
     check_lan_contract_tests,
@@ -146,11 +143,6 @@ def _check_lan_contract_tests() -> list[str]:
     return check_lan_contract_tests(COMPONENT_ROOT)
 
 
-def _check_analytics_contract_tests() -> list[str]:
-    """Ensure data-analysis contracts stay no-network and explicit."""
-    return check_analytics_contract_tests(COMPONENT_ROOT)
-
-
 def _check_local_ha_verification_contract() -> list[str]:
     """Ensure the local HA validation gate keeps its safety checks."""
     errors: list[str] = []
@@ -213,7 +205,6 @@ def _run_checks() -> list[tuple[str, list[str]]]:
         ("OAuth contract tests", _check_oauth_contract_tests()),
         ("push contract tests", _check_push_contract_tests()),
         ("LAN contract tests", _check_lan_contract_tests()),
-        ("analytics contract tests", _check_analytics_contract_tests()),
         ("local HA verification contract", _check_local_ha_verification_contract()),
         ("release-facing claims", _check_readme_claims()),
     ]

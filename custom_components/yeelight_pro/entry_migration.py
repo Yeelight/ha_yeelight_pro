@@ -11,8 +11,6 @@ from .const import (
     CONF_ACCESS_TOKEN,
     CONF_ACCOUNT_USER_ID,
     CONF_ACCOUNT_USERNAME,
-    CONF_ANALYTICS_RETENTION_DAYS,
-    CONF_ANALYTICS_RUNTIME,
     CONF_CLOUD_DOMAIN,
     CONF_CLOUD_REGION,
     CONF_CONNECTION_MODE,
@@ -37,8 +35,6 @@ from .const import (
     CONNECTION_MODE_PRIVATE,
     DEFAULT_CLOUD_DOMAIN,
     DEFAULT_CLOUD_REGION,
-    DEFAULT_ANALYTICS_RETENTION_DAYS,
-    DEFAULT_ANALYTICS_RUNTIME,
     DEFAULT_DEBUG_MODE,
     DEFAULT_EXPERIMENTAL_PLATFORMS,
     DEFAULT_HIDE_UNKNOWN_ENTITIES,
@@ -49,9 +45,7 @@ from .const import (
     DEFAULT_PRIVATE_DOMAIN,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TOPOLOGY_CHANGE_REPAIRS,
-    MAX_ANALYTICS_RETENTION_DAYS,
     MAX_SCAN_INTERVAL,
-    MIN_ANALYTICS_RETENTION_DAYS,
     MIN_SCAN_INTERVAL,
 )
 from .device_filter_options import (
@@ -190,16 +184,6 @@ def normalize_entry_options(value: Any) -> dict[str, Any]:
             default=DEFAULT_LOCAL_GATEWAY_PORT,
             minimum=1,
             maximum=65535,
-        ),
-        CONF_ANALYTICS_RUNTIME: _coerce_bool(
-            options.get(CONF_ANALYTICS_RUNTIME),
-            default=DEFAULT_ANALYTICS_RUNTIME,
-        ),
-        CONF_ANALYTICS_RETENTION_DAYS: _coerce_int(
-            options.get(CONF_ANALYTICS_RETENTION_DAYS),
-            default=DEFAULT_ANALYTICS_RETENTION_DAYS,
-            minimum=MIN_ANALYTICS_RETENTION_DAYS,
-            maximum=MAX_ANALYTICS_RETENTION_DAYS,
         ),
     }
     filter_config = stored_device_import_filter_options(options)

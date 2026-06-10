@@ -8,18 +8,22 @@ import asyncio
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-import importlib.util
 import json
 import os
 from pathlib import Path
 import sys
-import types
 from typing import Any
 
 import aiohttp
 
 ROOT = Path(__file__).resolve().parents[1]
-COMPONENT_ROOT = ROOT / "custom_components" / "yeelight_pro"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.verify_probe_client import (  # noqa: E402
+    load_scan_login_contract as _load_probe_scan_login_contract,
+    load_yeelight_client as _load_probe_client,
+)
 
 DEFAULT_ACCESS_TOKEN_ENV = "YEELIGHT_PRO_CLOUD_ACCESS_TOKEN"
 DEFAULT_HOUSE_ID_ENV = "YEELIGHT_PRO_CLOUD_HOUSE_ID"
@@ -226,80 +230,12 @@ def _iot_domain_for_region(region: str) -> str:
 
 def _load_scan_login_contract() -> Any:
     """Load region helpers without importing Home Assistant."""
-    _ensure_probe_package()
-    for module_name, path in (
-        ("yeelight_pro_cloud_devices_probe.core.exceptions", COMPONENT_ROOT / "core" / "exceptions.py"),
-        ("yeelight_pro_cloud_devices_probe.core.http_errors", COMPONENT_ROOT / "core" / "http_errors.py"),
-        ("yeelight_pro_cloud_devices_probe.const", COMPONENT_ROOT / "const.py"),
-        ("yeelight_pro_cloud_devices_probe.oauth_contract", COMPONENT_ROOT / "oauth_contract.py"),
-    ):
-        if module_name not in sys.modules:
-            _load_probe_module(module_name, path)
-    return _load_probe_module(
-        "yeelight_pro_cloud_devices_probe.scan_login_contract",
-        COMPONENT_ROOT / "scan_login_contract.py",
-    )
+    return _load_probe_scan_login_contract()
 
 
 def _load_yeelight_client() -> Any:
-    """Load the Yeelight client after safety checks pass."""
-    _ensure_probe_package()
-    modules = (
-        ("yeelight_pro_cloud_devices_probe.const", COMPONENT_ROOT / "const.py"),
-        ("yeelight_pro_cloud_devices_probe.utils", COMPONENT_ROOT / "utils.py"),
-        ("yeelight_pro_cloud_devices_probe.core.exceptions", COMPONENT_ROOT / "core" / "exceptions.py"),
-        ("yeelight_pro_cloud_devices_probe.core.http_errors", COMPONENT_ROOT / "core" / "http_errors.py"),
-        ("yeelight_pro_cloud_devices_probe.core.client_request", COMPONENT_ROOT / "core" / "client_request.py"),
-        ("yeelight_pro_cloud_devices_probe.capabilities.models", COMPONENT_ROOT / "capabilities" / "models.py"),
-        ("yeelight_pro_cloud_devices_probe.capabilities.data", COMPONENT_ROOT / "capabilities" / "data.py"),
-        ("yeelight_pro_cloud_devices_probe.capabilities.registry", COMPONENT_ROOT / "capabilities" / "registry.py"),
-        ("yeelight_pro_cloud_devices_probe.core.schema_cache", COMPONENT_ROOT / "core" / "schema_cache.py"),
-        ("yeelight_pro_cloud_devices_probe.core.client_paths", COMPONENT_ROOT / "core" / "client_paths.py"),
-        ("yeelight_pro_cloud_devices_probe.core.client_helpers", COMPONENT_ROOT / "core" / "client_helpers.py"),
-        ("yeelight_pro_cloud_devices_probe.core.client_node_base", COMPONENT_ROOT / "core" / "client_node_base.py"),
-        ("yeelight_pro_cloud_devices_probe.core.client_analytics", COMPONENT_ROOT / "core" / "client_analytics.py"),
-        ("yeelight_pro_cloud_devices_probe.core.client_node_lists", COMPONENT_ROOT / "core" / "client_node_lists.py"),
-        ("yeelight_pro_cloud_devices_probe.core.client_node_properties", COMPONENT_ROOT / "core" / "client_node_properties.py"),
-        ("yeelight_pro_cloud_devices_probe.core.client_node_api", COMPONENT_ROOT / "core" / "client_node_api.py"),
-        ("yeelight_pro_cloud_devices_probe.oauth_contract", COMPONENT_ROOT / "oauth_contract.py"),
-        ("yeelight_pro_cloud_devices_probe.scan_login_contract", COMPONENT_ROOT / "scan_login_contract.py"),
-        ("yeelight_pro_cloud_devices_probe.core.oauth", COMPONENT_ROOT / "core" / "oauth.py"),
-        ("yeelight_pro_cloud_devices_probe.core.scan_login", COMPONENT_ROOT / "core" / "scan_login.py"),
-        ("yeelight_pro_cloud_devices_probe.core.client", COMPONENT_ROOT / "core" / "client.py"),
-    )
-    for module_name, path in modules:
-        if module_name not in sys.modules:
-            _load_probe_module(module_name, path)
-    return sys.modules["yeelight_pro_cloud_devices_probe.core.client"].YeelightProClient
-
-
-def _ensure_probe_package() -> None:
-    """Create isolated package namespaces for relative client imports."""
-    package = sys.modules.get("yeelight_pro_cloud_devices_probe")
-    if package is None:
-        package = types.ModuleType("yeelight_pro_cloud_devices_probe")
-        package.__path__ = [str(COMPONENT_ROOT)]  # type: ignore[attr-defined]
-        sys.modules["yeelight_pro_cloud_devices_probe"] = package
-    for name, path in (
-        ("capabilities", COMPONENT_ROOT / "capabilities"),
-        ("core", COMPONENT_ROOT / "core"),
-    ):
-        module_name = f"yeelight_pro_cloud_devices_probe.{name}"
-        if module_name not in sys.modules:
-            module = types.ModuleType(module_name)
-            module.__path__ = [str(path)]  # type: ignore[attr-defined]
-            sys.modules[module_name] = module
-
-
-def _load_probe_module(module_name: str, path: Path) -> Any:
-    """Load a Yeelight module inside the isolated probe namespace."""
-    spec = importlib.util.spec_from_file_location(module_name, path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"{path.name} module is unavailable")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
+    """Load the HA-free production probe client after safety checks pass."""
+    return _load_probe_client()
 
 
 def _safe_failure(error: str | None) -> dict[str, Any]:

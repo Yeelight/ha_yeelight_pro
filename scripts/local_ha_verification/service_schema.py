@@ -46,14 +46,6 @@ SERVICE_FIELD_CONTRACTS: dict[str, dict[str, ServiceFieldContract]] = {
         "confirm": ServiceFieldContract(required=False, selector="boolean"),
         "audit_id": ServiceFieldContract(required=False, selector="text"),
     },
-    "refresh_analytics": {
-        "entry_id": ServiceFieldContract(required=False, selector="text"),
-        "endpoint": ServiceFieldContract(required=True, selector="text"),
-        "date_code": ServiceFieldContract(required=False, selector="text"),
-        "start_date": ServiceFieldContract(required=False, selector="text"),
-        "end_date": ServiceFieldContract(required=False, selector="text"),
-        "area_id": ServiceFieldContract(required=False, selector="text"),
-    },
 }
 
 

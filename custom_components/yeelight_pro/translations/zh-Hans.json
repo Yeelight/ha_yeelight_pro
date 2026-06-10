@@ -117,9 +117,7 @@
             "live_updates": "启用 WebSocket 事件通知",
             "local_gateway_control": "启用本地网关控制",
             "local_gateway_host": "本地网关地址",
-            "local_gateway_port": "本地网关端口",
-            "analytics_runtime": "启用数据分析运行时",
-            "analytics_retention_days": "数据分析保留天数"
+            "local_gateway_port": "本地网关端口"
           }
         },
         "confirm_runtime": {
@@ -128,7 +126,7 @@
         },
         "confirm_reload": {
           "title": "确认并重新加载 Yeelight Pro",
-            "description": "将保存 {changed_count} 项可见选项变更。\n\n其中包含会影响平台或实体候选的选项。保存后 Home Assistant 将按 options 更新监听重新加载该集成。确认步骤不会调用额外的 Yeelight API。"
+          "description": "将保存 {changed_count} 项可见选项变更。\n\n其中包含会影响平台或实体候选的选项。保存后 Home Assistant 将按 options 更新监听重新加载该集成。确认步骤不会调用额外的 Yeelight API。"
         },
         "cloud_devices": {
           "title": "调整导入设备",
@@ -218,55 +216,6 @@
           "name": "审计 ID",
           "description": "dry-run 返回的审计 ID；confirm 时必须匹配当前 stale 结果"
         }
-      }
-    },
-    "refresh_analytics": {
-      "name": "刷新数据分析",
-      "description": "显式刷新一个 Yeelight Pro 数据分析接口，并仅保留脱敏聚合结果（管理员服务；需先在选项中启用）",
-      "fields": {
-        "entry_id": {
-          "name": "配置条目 ID",
-          "description": "可选；不填则刷新所有已启用数据分析运行时的 Yeelight Pro 配置条目"
-        },
-        "endpoint": {
-          "name": "数据分析接口",
-          "description": "要刷新的数据分析接口 key"
-        },
-        "date_code": {
-          "name": "日期代码",
-          "description": "日/月/年统计使用的 dateCode，例如 2024-08、2024-08-01 或 2024"
-        },
-        "start_date": {
-          "name": "开始日期",
-          "description": "趋势统计的开始日期，格式为 YYYY-MM-DD"
-        },
-        "end_date": {
-          "name": "结束日期",
-          "description": "趋势统计的结束日期，格式为 YYYY-MM-DD"
-        },
-        "area_id": {
-          "name": "区域 ID",
-          "description": "可选；仅报警和能源接口支持"
-        }
-      }
-    }
-  },
-  "entity": {
-    "sensor": {
-      "analytics_alarm_total": {
-        "name": "数据分析报警总数"
-      },
-      "analytics_alarm_device_count": {
-        "name": "数据分析报警设备数"
-      },
-      "analytics_energy_used_kwh": {
-        "name": "数据分析用电量"
-      },
-      "analytics_energy_saved_kwh": {
-        "name": "数据分析节电量"
-      },
-      "analytics_action_total": {
-        "name": "数据分析操作总数"
       }
     }
   },

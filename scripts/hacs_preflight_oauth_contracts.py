@@ -132,6 +132,9 @@ def check_oauth_contract_tests(component_root: Path) -> list[str]:
             "test_probe_summarizes_created_scanned_login_without_values": (
                 "production scan-login fake-login aggregate coverage"
             ),
+            "test_main_can_show_qrcode_only_after_explicit_confirm": (
+                "production scan-login explicit QR display coverage"
+            ),
         },
         "scripts/verify_scan_login.py": {
             "confirm-production-scan-login": (
@@ -143,6 +146,8 @@ def check_oauth_contract_tests(component_root: Path) -> list[str]:
             "validate_run_request": "production scan-login fail-closed safety gate",
             "ScanLoginProbeSummary": "diagnostics-safe scan-login probe summary",
             "async_probe_scan_login": "explicit production scan-login entrypoint",
+            "show_qrcode": "explicit scan-login QR display switch",
+            "_print_qrcode_event": "manual scan-login QR event output",
             "SCAN_LOGIN_CONTRACT_PATH": (
                 "Home Assistant-free scan-login contract path"
             ),

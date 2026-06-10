@@ -111,7 +111,6 @@ def check_runtime_options_contract_tests(component_root: Path) -> list[str]:
             "CONF_LOCAL_GATEWAY_CONTROL": "reload on local gateway runtime toggle",
             "CONF_LOCAL_GATEWAY_HOST": "reload on local gateway host changes",
             "CONF_LOCAL_GATEWAY_PORT": "reload on local gateway port changes",
-            "CONF_ANALYTICS_RUNTIME": "reload on analytics runtime toggle",
             "apply_options": "runtime-only options apply without reload",
             "async_delete_topology_changed_issues": "clears disabled Repairs issues",
             "async_reload": "falls back to Home Assistant entry reload",
@@ -132,7 +131,6 @@ def check_runtime_options_contract_tests(component_root: Path) -> list[str]:
             "local_gateway_control": "local gateway runtime toggle reload case",
             "local_gateway_host": "local gateway host reload case",
             "local_gateway_port": "local gateway port reload case",
-            "analytics_runtime": "analytics runtime reload case",
         },
         "test_runtime_options.py",
     ))
@@ -146,7 +144,6 @@ def check_runtime_options_contract_tests(component_root: Path) -> list[str]:
             "CONF_LOCAL_GATEWAY_CONTROL": "local gateway toggle is in flow test",
             "CONF_LOCAL_GATEWAY_HOST": "local gateway host is in flow test",
             "CONF_LOCAL_GATEWAY_PORT": "local gateway port is in flow test",
-            "CONF_ANALYTICS_RUNTIME": "analytics runtime is in flow test",
             "confirm_reload": "reload confirmation step is asserted",
         },
         "test_options_flow_contract.py",

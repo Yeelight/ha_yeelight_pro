@@ -159,9 +159,9 @@ def _write_diagnostics_contract_tests(
         "refresh_token_contract refresh_token_runtime push_message_adapter "
         "runtime_payload_bridge websocket_message_contract push_manager_contract "
         "websocket_transport_runtime lan_discovery_parser lan_message_contract "
-        "lan_payload_adapter analytics_contract push_connection "
+        "lan_payload_adapter push_connection "
         "websocket_subscription websocket_event_notifications "
-        "local_gateway_control mqtt_subscription analytics_runtime"
+        "local_gateway_control mqtt_subscription"
     )
     if include_lan_control:
         capability_tokens += " lan_control"
@@ -256,14 +256,12 @@ def _client_capabilities_for_entry(entry):
         "lan_discovery_parser": True,
         "lan_message_contract": True,
         "lan_payload_adapter": True,
-        "analytics_contract": True,
         "push_connection": True,
         "websocket_subscription": True,
         "websocket_event_notifications": True,
         "local_gateway_control": True,
         "lan_control": True,
         "mqtt_subscription": {mqtt_subscription},
-        "analytics_runtime": True,
     }}
 """
     _write_test_file(component_root / "diagnostics.py", content)

@@ -131,6 +131,73 @@ def test_summary_classifies_control_and_data_frames_without_payload_values() -> 
     assert "aa:bb:cc" not in json.dumps(result)
 
 
+def test_summary_classifies_methodless_result_ack_shapes_without_values() -> None:
+    """生产 result-only ACK 只能进入控制 ACK 聚合和字段形态计数."""
+    summary = verify_push_websocket.PushWebSocketProbeSummary()
+
+    verify_push_websocket.update_summary_from_payload(
+        summary,
+        {"result": True, "timestamp": "prod-secret-timestamp"},
+    )
+    verify_push_websocket.update_summary_from_payload(
+        summary,
+        {
+            "data": {"deviceId": "device-secret"},
+            "msgId": "message-secret",
+            "result": {"success": True},
+            "timestamp": "prod-secret-timestamp",
+        },
+    )
+
+    result = summary.as_dict()
+
+    assert result["control_ack_frames"] == 2
+    assert result["control_error_frames"] == 0
+    assert result["other_json_frames"] == 0
+    assert result["control_methods"] == {"result": 2}
+    assert result["json_shapes"] == {
+        "data,msgId,result,timestamp": 1,
+        "result,timestamp": 1,
+    }
+    assert "device-secret" not in json.dumps(result)
+    assert "message-secret" not in json.dumps(result)
+    assert "prod-secret-timestamp" not in json.dumps(result)
+
+
+def test_summary_classifies_methodless_result_error_shapes_without_values() -> None:
+    """生产 result error shape 只保留聚合错误计数，不复制 payload 值."""
+    summary = verify_push_websocket.PushWebSocketProbeSummary()
+
+    verify_push_websocket.update_summary_from_payload(
+        summary,
+        {"result": False, "timestamp": "prod-secret-timestamp"},
+    )
+    verify_push_websocket.update_summary_from_payload(
+        summary,
+        {
+            "data": {"detail": "device-secret"},
+            "msgId": "message-secret",
+            "result": {"code": "401", "message": "token-secret"},
+            "timestamp": "prod-secret-timestamp",
+        },
+    )
+
+    result = summary.as_dict()
+
+    assert result["control_ack_frames"] == 0
+    assert result["control_error_frames"] == 2
+    assert result["other_json_frames"] == 0
+    assert result["control_methods"] == {"result": 2}
+    assert result["json_shapes"] == {
+        "data,msgId,result,timestamp": 1,
+        "result,timestamp": 1,
+    }
+    assert "device-secret" not in json.dumps(result)
+    assert "message-secret" not in json.dumps(result)
+    assert "token-secret" not in json.dumps(result)
+    assert "prod-secret-timestamp" not in json.dumps(result)
+
+
 def test_ws_message_summary_rejects_invalid_or_non_object_json() -> None:
     """非 object JSON 和不可解析 frame 只能进入 parse_error 聚合."""
     summary = verify_push_websocket.PushWebSocketProbeSummary()
@@ -267,3 +334,57 @@ async def test_probe_summarizes_heartbeat_cleanup_error_without_values(
     assert result["last_error_type"] == "RuntimeError"
     assert "secret-token" not in json.dumps(result)
     assert "device-secret" not in json.dumps(result)
+
+
+async def test_probe_treats_bounded_idle_timeout_after_subscribe_as_ok(
+    monkeypatch,
+) -> None:
+    """订阅成功后的有界空闲 timeout 是长连接正常空窗，不写 last_error_type."""
+
+    class IdleWebSocket:
+        def __init__(self):
+            self.sent_json = []
+
+        async def send_json(self, data):
+            self.sent_json.append(data)
+
+        async def receive(self, *, timeout):
+            raise TimeoutError("bounded idle")
+
+    class FakeWebSocketContext:
+        def __init__(self):
+            self.websocket = IdleWebSocket()
+
+        async def __aenter__(self):
+            return self.websocket
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    class FakeSession:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        def ws_connect(self, url):
+            assert "secret-token" in url
+            return FakeWebSocketContext()
+
+    monkeypatch.setattr(verify_push_websocket.aiohttp, "ClientSession", FakeSession)
+
+    summary = await verify_push_websocket.async_probe_push_websocket(
+        token="secret-token",
+        duration_seconds=0.001,
+        max_frames=1,
+    )
+    result = summary.as_dict()
+
+    assert result["ok"] is True
+    assert result["sent_subscribe"] is True
+    assert result["idle_timeouts"] >= 1
+    assert result["last_error_type"] is None
+    assert result["control_error_frames"] == 0
+    assert result["parse_error_frames"] == 0
+    assert "secret-token" not in json.dumps(result)

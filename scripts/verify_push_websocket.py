@@ -75,6 +75,7 @@ class PushWebSocketProbeSummary:
     text_frames: int = 0
     binary_frames: int = 0
     close_frames: int = 0
+    idle_timeouts: int = 0
     sent_subscribe: bool = False
     sent_heartbeats: int = 0
     last_error_type: str | None = None
@@ -96,6 +97,7 @@ class PushWebSocketProbeSummary:
             "text_frames": self.text_frames,
             "binary_frames": self.binary_frames,
             "close_frames": self.close_frames,
+            "idle_timeouts": self.idle_timeouts,
             "sent_subscribe": self.sent_subscribe,
             "sent_heartbeats": self.sent_heartbeats,
             "last_error_type": self.last_error_type,
@@ -170,9 +172,15 @@ def update_summary_from_payload(
     if method in CONTROL_METHODS:
         method_name = str(method)
         summary.control_methods[method_name] += 1
-        success = payload.get("success")
-        code = str(payload.get("code", "")).strip()
-        if success is False or code not in ("", "200"):
+        if _is_control_error_payload(payload):
+            summary.control_error_frames += 1
+        else:
+            summary.control_ack_frames += 1
+        return
+
+    if _is_result_control_payload(payload):
+        summary.control_methods["result"] += 1
+        if _is_control_error_payload(payload):
             summary.control_error_frames += 1
         else:
             summary.control_ack_frames += 1
@@ -208,7 +216,11 @@ async def async_probe_push_websocket(
                 )
                 while time.monotonic() < deadline and summary.frames_seen < max_frames:
                     timeout = max(0.1, min(1.0, deadline - time.monotonic()))
-                    message = await websocket.receive(timeout=timeout)
+                    try:
+                        message = await websocket.receive(timeout=timeout)
+                    except TimeoutError:
+                        summary.idle_timeouts += 1
+                        continue
                     if message.type is WSMsgType.CLOSED:
                         summary.close_frames += 1
                         break
@@ -221,7 +233,12 @@ async def async_probe_push_websocket(
                     _update_summary_from_ws_message(summary, message)
                     if summary.control_error_frames:
                         break
-        summary.ok = summary.last_error_type is None and summary.control_error_frames == 0
+        summary.ok = (
+            summary.sent_subscribe
+            and summary.last_error_type is None
+            and summary.control_error_frames == 0
+            and summary.parse_error_frames == 0
+        )
     except Exception as err:  # pragma: no cover - production network boundary
         summary.last_error_type = type(err).__name__
         summary.ok = False
@@ -282,6 +299,32 @@ def _update_summary_from_ws_message(
         summary.parse_error_frames += 1
         return
     update_summary_from_payload(summary, payload)
+
+
+def _is_result_control_payload(payload: Mapping[str, Any]) -> bool:
+    """Return whether a method-less result frame is a production control ACK."""
+    if "type" in payload or "result" not in payload:
+        return False
+    result = payload.get("result")
+    if isinstance(result, bool) or isinstance(result, Mapping):
+        return True
+    return False
+
+
+def _is_control_error_payload(payload: Mapping[str, Any]) -> bool:
+    """Classify control errors by low-sensitivity flags only."""
+    success = payload.get("success")
+    code = str(payload.get("code", "")).strip()
+    result = payload.get("result")
+    if success is False or code not in ("", "200"):
+        return True
+    if result is False:
+        return True
+    if isinstance(result, Mapping):
+        result_success = result.get("success")
+        result_code = str(result.get("code", "")).strip()
+        return result_success is False or result_code not in ("", "200")
+    return False
 
 
 def _shape_key(payload: Mapping[str, Any]) -> str:

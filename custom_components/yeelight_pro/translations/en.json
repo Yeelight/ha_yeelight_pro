@@ -117,9 +117,7 @@
             "live_updates": "Enable WebSocket event notifications",
             "local_gateway_control": "Enable local gateway control",
             "local_gateway_host": "Local gateway host",
-            "local_gateway_port": "Local gateway port",
-            "analytics_runtime": "Enable analytics runtime",
-            "analytics_retention_days": "Analytics retention days"
+            "local_gateway_port": "Local gateway port"
           }
         },
         "confirm_runtime": {
@@ -128,7 +126,7 @@
         },
         "confirm_reload": {
           "title": "Confirm and reload Yeelight Pro",
-            "description": "{changed_count} visible option changes will be saved.\n\nAt least one changed option affects loaded platforms or entity candidates. After saving, Home Assistant will reload this integration through the options update listener. This confirmation step does not make an extra Yeelight API call."
+          "description": "{changed_count} visible option changes will be saved.\n\nAt least one changed option affects loaded platforms or entity candidates. After saving, Home Assistant will reload this integration through the options update listener. This confirmation step does not make an extra Yeelight API call."
         },
         "cloud_devices": {
           "title": "Adjust imported devices",
@@ -218,55 +216,6 @@
           "name": "Audit ID",
           "description": "Audit ID returned by dry-run; must match the current stale result when confirming"
         }
-      }
-    },
-    "refresh_analytics": {
-      "name": "Refresh Analytics",
-      "description": "Explicitly refresh one Yeelight Pro analytics endpoint and keep only redacted aggregate results (admin service; enable the option first)",
-      "fields": {
-        "entry_id": {
-          "name": "Config entry ID",
-          "description": "Optional; omitted refreshes all loaded Yeelight Pro entries with analytics runtime enabled"
-        },
-        "endpoint": {
-          "name": "Analytics endpoint",
-          "description": "Analytics endpoint key to refresh"
-        },
-        "date_code": {
-          "name": "Date code",
-          "description": "Date code for day, month, or year statistics, such as 2024-08, 2024-08-01, or 2024"
-        },
-        "start_date": {
-          "name": "Start date",
-          "description": "Start date for trend statistics, in YYYY-MM-DD format"
-        },
-        "end_date": {
-          "name": "End date",
-          "description": "End date for trend statistics, in YYYY-MM-DD format"
-        },
-        "area_id": {
-          "name": "Area ID",
-          "description": "Optional; supported only by alarm and energy endpoints"
-        }
-      }
-    }
-  },
-  "entity": {
-    "sensor": {
-      "analytics_alarm_total": {
-        "name": "Analytics alarm total"
-      },
-      "analytics_alarm_device_count": {
-        "name": "Analytics alarm devices"
-      },
-      "analytics_energy_used_kwh": {
-        "name": "Analytics energy used"
-      },
-      "analytics_energy_saved_kwh": {
-        "name": "Analytics energy saved"
-      },
-      "analytics_action_total": {
-        "name": "Analytics action total"
       }
     }
   },

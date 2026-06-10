@@ -10,7 +10,6 @@ from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from .analytics_runtime import ANALYTICS_METRIC_KEYS
 from .const import CONF_DEVICE_IMPORT_FILTER, DEFAULT_HIDE_UNKNOWN_ENTITIES, DOMAIN
 from .device_filter import matches_device_import_filter
 from .projector.binary_sensor import project_binary_sensors
@@ -76,8 +75,6 @@ def iter_entity_candidates(
     yield from _iter_automation_candidates(coordinator.automations)
     yield from _iter_group_candidates(coordinator.groups)
     yield from _iter_house_select_candidates(coordinator.house_id)
-    if bool(getattr(coordinator, "analytics_runtime_enabled", False)):
-        yield from _iter_analytics_candidates(coordinator.house_id)
 
 
 def iter_device_entity_candidates(
@@ -243,21 +240,6 @@ def _iter_house_select_candidates(
             f"{DOMAIN}_{house_id}_select_{selector}",
             "house",
             component_id=selector,
-        )
-
-
-def _iter_analytics_candidates(
-    house_id: int | None,
-) -> Iterator[EntityCandidate]:
-    """Yield aggregate analytics sensor candidates when enabled."""
-    if not house_id:
-        return
-    for metric_key in ANALYTICS_METRIC_KEYS:
-        yield EntityCandidate(
-            "sensor",
-            f"{DOMAIN}_{house_id}_analytics_{metric_key}",
-            "analytics",
-            component_id=metric_key,
         )
 
 

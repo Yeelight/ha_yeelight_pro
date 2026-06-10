@@ -27,7 +27,6 @@ python3 scripts/verify_push_websocket.py
 python3 scripts/verify_scan_login.py
 python3 scripts/verify_cloud_devices.py
 python3 scripts/verify_lan_gateway.py
-python3 scripts/verify_analytics.py
 ```
 
 Optional external checks before public release:

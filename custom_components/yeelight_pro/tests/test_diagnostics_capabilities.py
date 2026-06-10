@@ -61,12 +61,10 @@ async def test_diagnostics_reports_client_capabilities(
         "lan_discovery_parser": True,
         "lan_message_contract": True,
         "lan_payload_adapter": True,
-        "analytics_contract": True,
         "push_connection": True,
         "websocket_subscription": True,
         "websocket_event_notifications": True,
         "local_gateway_control": True,
         "lan_control": True,
         "mqtt_subscription": False,
-        "analytics_runtime": True,
     }

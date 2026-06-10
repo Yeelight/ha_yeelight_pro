@@ -5,19 +5,8 @@ from __future__ import annotations
 LOCAL_HA_PROTOCOL_CONTRACT_TOKENS = {
     "scripts/hacs_preflight_local_ha_protocol_contracts.py": {
         "LOCAL_HA_PROTOCOL_CONTRACT_TOKENS": "protocol contract token registry",
-        "hacs_preflight_analytics_contracts.py": (
-            "analytics contract token split coverage"
-        ),
         "hacs_preflight_oauth_contracts.py": "OAuth contract token split coverage",
         "hacs_preflight_push_contracts.py": "push contract token split coverage",
-    },
-    "scripts/hacs_preflight_analytics_contracts.py": {
-        "check_analytics_contract_tests": "analytics contract preflight helper",
-        "tests/test_analytics_service.py": "analytics service test token guard",
-        "test_refresh_analytics_service_rejects_missing_user_context": (
-            "analytics missing context rejection token guard"
-        ),
-        "GROUP_ID_ADMIN": "analytics admin user token guard",
     },
     "scripts/hacs_preflight_oauth_contracts.py": {
         "check_oauth_contract_tests": "OAuth contract preflight helper",

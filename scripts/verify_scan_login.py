@@ -174,6 +174,14 @@ def build_parser() -> argparse.ArgumentParser:
         default=60,
         help=f"Maximum QR status polls, capped at {MAX_POLLS}.",
     )
+    parser.add_argument(
+        "--show-qrcode",
+        action="store_true",
+        help=(
+            "Print the scan-login QR content after explicit production confirmation. "
+            "This is required for manual APP scanning and is off by default."
+        ),
+    )
     return parser
 
 
@@ -212,6 +220,7 @@ async def async_probe_scan_login(
     duration_seconds: float,
     poll_interval_seconds: float,
     max_polls: int,
+    show_qrcode: bool = False,
 ) -> ScanLoginProbeSummary:
     """Create and poll a production scan-login QR code with redacted output."""
     summary = ScanLoginProbeSummary(network_attempted=True, region=region)
@@ -227,6 +236,8 @@ async def async_probe_scan_login(
             )
             _update_summary_from_state(summary, state)
             summary.created_qrcode = True
+            if show_qrcode:
+                _print_qrcode_event(state)
             while (
                 _state_pollable(state)
                 and summary.polls < max_polls
@@ -250,6 +261,23 @@ async def async_probe_scan_login(
         summary.last_error_type = type(err).__name__
         summary.ok = False
     return summary
+
+
+def _print_qrcode_event(state: Any) -> None:
+    """Print the QR content only for explicit manual production scanning."""
+    print(
+        json.dumps(
+            {
+                "event": "scan_login_qrcode",
+                "qrcode": state.qr_code_content,
+                "remaining_seconds": state.remaining_seconds,
+                "status": str(state.status),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        ),
+        flush=True,
+    )
 
 
 async def _request_scan_login_state(
@@ -314,6 +342,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             duration_seconds=args.duration_seconds,
             poll_interval_seconds=args.poll_interval_seconds,
             max_polls=args.max_polls,
+            show_qrcode=bool(args.show_qrcode),
         )
     )
     print(json.dumps(summary.as_dict(), sort_keys=True))

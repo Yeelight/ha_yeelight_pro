@@ -31,14 +31,6 @@ def test_verify_i18n_contracts_accepts_current_translation_boundary(
     assert metric["service_fields"] == {
         "cleanup_registry": ["audit_id", "confirm", "entry_id"],
         "refresh": ["refresh_product_schemas"],
-        "refresh_analytics": [
-            "area_id",
-            "date_code",
-            "end_date",
-            "endpoint",
-            "entry_id",
-            "start_date",
-        ],
     }
 
 

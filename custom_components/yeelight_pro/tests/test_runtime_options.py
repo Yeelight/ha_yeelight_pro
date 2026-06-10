@@ -10,8 +10,6 @@ import pytest
 from homeassistant.core import HomeAssistant
 
 from custom_components.yeelight_pro.const import (
-    CONF_ANALYTICS_RETENTION_DAYS,
-    CONF_ANALYTICS_RUNTIME,
     CONF_DEBUG_MODE,
     CONF_DEVICE_IMPORT_FILTER,
     CONF_EXPERIMENTAL_PLATFORMS,
@@ -26,8 +24,6 @@ from custom_components.yeelight_pro.const import (
     DEFAULT_LOCAL_GATEWAY_CONTROL,
     DEFAULT_LOCAL_GATEWAY_HOST,
     DEFAULT_LOCAL_GATEWAY_PORT,
-    DEFAULT_ANALYTICS_RETENTION_DAYS,
-    DEFAULT_ANALYTICS_RUNTIME,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
 )
@@ -50,8 +46,6 @@ def _runtime_coordinator(
             CONF_LOCAL_GATEWAY_CONTROL: DEFAULT_LOCAL_GATEWAY_CONTROL,
             CONF_LOCAL_GATEWAY_HOST: DEFAULT_LOCAL_GATEWAY_HOST,
             CONF_LOCAL_GATEWAY_PORT: DEFAULT_LOCAL_GATEWAY_PORT,
-            CONF_ANALYTICS_RUNTIME: DEFAULT_ANALYTICS_RUNTIME,
-            CONF_ANALYTICS_RETENTION_DAYS: DEFAULT_ANALYTICS_RETENTION_DAYS,
         },
         apply_options=apply_options,
     )
@@ -92,8 +86,6 @@ async def test_options_update_applies_runtime_options_without_reload(
         CONF_EXPERIMENTAL_PLATFORMS: False,
         CONF_HIDE_UNKNOWN_ENTITIES: True,
         CONF_TOPOLOGY_CHANGE_REPAIRS: True,
-        CONF_ANALYTICS_RUNTIME: False,
-        CONF_ANALYTICS_RETENTION_DAYS: 30,
     }
     hass.config_entries.async_reload = AsyncMock()
 
@@ -106,8 +98,6 @@ async def test_options_update_applies_runtime_options_without_reload(
         CONF_LOCAL_GATEWAY_CONTROL: DEFAULT_LOCAL_GATEWAY_CONTROL,
         CONF_LOCAL_GATEWAY_HOST: DEFAULT_LOCAL_GATEWAY_HOST,
         CONF_LOCAL_GATEWAY_PORT: DEFAULT_LOCAL_GATEWAY_PORT,
-        CONF_ANALYTICS_RUNTIME: DEFAULT_ANALYTICS_RUNTIME,
-        CONF_ANALYTICS_RETENTION_DAYS: DEFAULT_ANALYTICS_RETENTION_DAYS,
     }
     assert hass.data[DOMAIN][mock_config_entry.entry_id]["entry"] is mock_config_entry
 
@@ -126,7 +116,6 @@ async def test_options_update_reloads_when_entity_projection_changes(
         CONF_EXPERIMENTAL_PLATFORMS: True,
         CONF_HIDE_UNKNOWN_ENTITIES: True,
         CONF_TOPOLOGY_CHANGE_REPAIRS: True,
-        CONF_ANALYTICS_RUNTIME: True,
     }
     hass.config_entries.async_reload = AsyncMock()
 
@@ -143,7 +132,6 @@ async def test_options_update_reloads_when_entity_projection_changes(
         pytest.param(CONF_LOCAL_GATEWAY_CONTROL, True, id="local_gateway_control"),
         pytest.param(CONF_LOCAL_GATEWAY_HOST, "192.168.1.20", id="local_gateway_host"),
         pytest.param(CONF_LOCAL_GATEWAY_PORT, 65444, id="local_gateway_port"),
-        pytest.param(CONF_ANALYTICS_RUNTIME, True, id="analytics_runtime"),
     ],
 )
 @pytest.mark.asyncio
@@ -153,7 +141,7 @@ async def test_options_update_reloads_when_background_runtime_option_changes(
     option_key: str,
     changed_value: Any,
 ) -> None:
-    """WebSocket、LAN、analytics 后台 runtime 开关变化必须 reload entry."""
+    """WebSocket 和 LAN 后台 runtime 配置变化必须 reload entry."""
     coordinator = _runtime_coordinator(apply_options=MagicMock())
     _install_runtime(hass, mock_config_entry, coordinator)
     mock_config_entry.options = {
@@ -166,33 +154,6 @@ async def test_options_update_reloads_when_background_runtime_option_changes(
 
     hass.config_entries.async_reload.assert_awaited_once_with(mock_config_entry.entry_id)
     coordinator.apply_options.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_options_update_applies_analytics_retention_without_reload(
-    hass: HomeAssistant,
-    mock_config_entry,
-) -> None:
-    """analytics retention 不改变实体集合，应原地应用。"""
-    coordinator = _runtime_coordinator(apply_options=MagicMock())
-    coordinator.options[CONF_ANALYTICS_RUNTIME] = True
-    coordinator.options[CONF_ANALYTICS_RETENTION_DAYS] = 30
-    _install_runtime(hass, mock_config_entry, coordinator)
-    mock_config_entry.options = {
-        CONF_SCAN_INTERVAL: 30,
-        CONF_DEBUG_MODE: False,
-        CONF_EXPERIMENTAL_PLATFORMS: False,
-        CONF_HIDE_UNKNOWN_ENTITIES: True,
-        CONF_TOPOLOGY_CHANGE_REPAIRS: True,
-        CONF_ANALYTICS_RUNTIME: True,
-        CONF_ANALYTICS_RETENTION_DAYS: 7,
-    }
-    hass.config_entries.async_reload = AsyncMock()
-
-    await async_options_updated(hass, mock_config_entry)
-
-    hass.config_entries.async_reload.assert_not_awaited()
-    assert coordinator.apply_options.call_args.args[0][CONF_ANALYTICS_RETENTION_DAYS] == 7
 
 
 @pytest.mark.asyncio
@@ -264,8 +225,6 @@ async def test_options_update_does_not_reload_for_equivalent_empty_device_filter
         CONF_LOCAL_GATEWAY_CONTROL: DEFAULT_LOCAL_GATEWAY_CONTROL,
         CONF_LOCAL_GATEWAY_HOST: DEFAULT_LOCAL_GATEWAY_HOST,
         CONF_LOCAL_GATEWAY_PORT: DEFAULT_LOCAL_GATEWAY_PORT,
-        CONF_ANALYTICS_RUNTIME: DEFAULT_ANALYTICS_RUNTIME,
-        CONF_ANALYTICS_RETENTION_DAYS: DEFAULT_ANALYTICS_RETENTION_DAYS,
     })
 
 

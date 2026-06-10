@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from contextlib import suppress
 from typing import Any, Protocol
 
@@ -312,15 +312,37 @@ def _is_push_data_payload(payload: dict[str, Any]) -> bool:
 
 
 def _raise_for_control_error_frame(payload: dict[str, Any]) -> None:
-    """Reject subscribe/heartbeat control errors without exposing vendor text."""
+    """Reject control errors without exposing vendor text or payload values."""
     method = payload.get("method")
-    if method not in PUSH_CONTROL_METHODS:
+    if method not in PUSH_CONTROL_METHODS and not _is_result_control_payload(payload):
         return
 
+    if _is_control_error_payload(payload):
+        raise PushControlFrameError
+
+
+def _is_result_control_payload(payload: Mapping[str, Any]) -> bool:
+    """Return whether a method-less result frame is a production control ACK."""
+    if "type" in payload or "result" not in payload:
+        return False
+    result = payload.get("result")
+    return isinstance(result, bool) or isinstance(result, Mapping)
+
+
+def _is_control_error_payload(payload: Mapping[str, Any]) -> bool:
+    """Classify control errors using aggregate-safe success/code markers."""
     success = payload.get("success")
     code = str(payload.get("code", "")).strip()
+    result = payload.get("result")
     if success is False or code not in ("", "200"):
-        raise PushControlFrameError
+        return True
+    if result is False:
+        return True
+    if isinstance(result, Mapping):
+        result_success = result.get("success")
+        result_code = str(result.get("code", "")).strip()
+        return result_success is False or result_code not in ("", "200")
+    return False
 
 
 async def _cancel_task(task: asyncio.Task[None] | None) -> None:

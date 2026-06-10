@@ -18,7 +18,6 @@ from homeassistant.helpers import (
 )
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .analytics_service import async_register_analytics_service
 from .area_service import async_register_area_services
 from .const import (
     CONF_ACCESS_TOKEN,
@@ -83,7 +82,6 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     async_register_debug_event_service(hass)
     async_register_refresh_service(hass, _async_post_manual_refresh)
     async_register_registry_cleanup_service(hass)
-    async_register_analytics_service(hass)
 
     return True
 

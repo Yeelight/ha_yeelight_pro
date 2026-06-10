@@ -4,8 +4,6 @@ from __future__ import annotations
 import pytest
 
 from custom_components.yeelight_pro.const import (
-    CONF_ANALYTICS_RETENTION_DAYS,
-    CONF_ANALYTICS_RUNTIME,
     CONF_DEBUG_MODE,
     CONF_DEVICE_IMPORT_FILTER,
     CONF_DEVICE_IMPORT_FILTER_ENABLED,
@@ -21,11 +19,8 @@ from custom_components.yeelight_pro.const import (
     CONF_LOCAL_GATEWAY_PORT,
     CONF_SCAN_INTERVAL,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
-    DEFAULT_ANALYTICS_RETENTION_DAYS,
     DEFAULT_SCAN_INTERVAL,
-    MAX_ANALYTICS_RETENTION_DAYS,
     MAX_SCAN_INTERVAL,
-    MIN_ANALYTICS_RETENTION_DAYS,
     MIN_SCAN_INTERVAL,
 )
 from custom_components.yeelight_pro.entry_migration import normalize_entry_options
@@ -42,20 +37,6 @@ def test_normalize_entry_options_clamps_scan_interval() -> None:
     assert normalize_entry_options({CONF_SCAN_INTERVAL: "bad"})[CONF_SCAN_INTERVAL] == (
         DEFAULT_SCAN_INTERVAL
     )
-
-
-def test_normalize_entry_options_clamps_analytics_retention() -> None:
-    """analytics retention 必须保持在可控范围内."""
-    assert normalize_entry_options({
-        CONF_ANALYTICS_RETENTION_DAYS: 0
-    })[CONF_ANALYTICS_RETENTION_DAYS] == MIN_ANALYTICS_RETENTION_DAYS
-    assert normalize_entry_options({
-        CONF_ANALYTICS_RETENTION_DAYS: 999
-    })[CONF_ANALYTICS_RETENTION_DAYS] == MAX_ANALYTICS_RETENTION_DAYS
-    assert normalize_entry_options({
-        CONF_ANALYTICS_RETENTION_DAYS: "bad"
-    })[CONF_ANALYTICS_RETENTION_DAYS] == DEFAULT_ANALYTICS_RETENTION_DAYS
-
 
 def test_normalize_entry_options_canonicalizes_device_import_filter() -> None:
     """迁移不得丢弃有效过滤规则，但必须写回稳定存储形态."""
@@ -145,7 +126,6 @@ def test_normalize_entry_options_parses_string_bools(
         CONF_TOPOLOGY_CHANGE_REPAIRS: raw,
         CONF_LIVE_UPDATES: raw,
         CONF_LOCAL_GATEWAY_CONTROL: raw,
-        CONF_ANALYTICS_RUNTIME: raw,
         CONF_LOCAL_GATEWAY_HOST: " 192.168.1.20 ",
         CONF_LOCAL_GATEWAY_PORT: "65444",
     })
@@ -156,6 +136,5 @@ def test_normalize_entry_options_parses_string_bools(
     assert options[CONF_TOPOLOGY_CHANGE_REPAIRS] is expected
     assert options[CONF_LIVE_UPDATES] is expected
     assert options[CONF_LOCAL_GATEWAY_CONTROL] is expected
-    assert options[CONF_ANALYTICS_RUNTIME] is expected
     assert options[CONF_LOCAL_GATEWAY_HOST] == "192.168.1.20"
     assert options[CONF_LOCAL_GATEWAY_PORT] == 65444

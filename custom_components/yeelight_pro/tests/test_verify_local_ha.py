@@ -88,15 +88,6 @@ def test_required_modules_include_client_node_api_contract() -> None:
     }
     assert expected_modules <= set(REQUIRED_RUNTIME_MODULES)
 
-
-def test_required_modules_include_analytics_contract() -> None:
-    """本地 HA 安装态必须保留数据分析 no-network 合同模块."""
-    assert (
-        "custom_components.yeelight_pro.analytics_contract"
-        in REQUIRED_RUNTIME_MODULES
-    )
-
-
 def test_required_modules_include_spec_correction_normalizers() -> None:
     """本地 HA 安装态必须保留拆分后的 spec correction normalizer."""
     assert (

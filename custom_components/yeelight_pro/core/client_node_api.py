@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from .client_analytics import YeelightProAnalyticsMixin
 from .client_node_lists import YeelightProNodeListMixin
 from .client_node_properties import YeelightProNodePropertyMixin
 
 
 class YeelightProNodeApiMixin(
-    YeelightProAnalyticsMixin,
     YeelightProNodePropertyMixin,
     YeelightProNodeListMixin,
 ):

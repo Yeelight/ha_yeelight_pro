@@ -164,7 +164,6 @@ def _build_runtime_diagnostics(
             coordinator,
             device_import_filter,
         ),
-        "analytics_runtime": _analytics_runtime_diagnostics(coordinator),
         "canonical": {
             "with_product_schema": count_with_key(devices, "product_schema"),
             "with_product_model": count_with_key(devices, "ha_product_model"),
@@ -178,15 +177,6 @@ def _entry_option(runtime: Mapping[str, Any], key: str, default: Any) -> Any:
     entry = runtime.get("entry")
     options = getattr(entry, "options", None)
     return options.get(key, default) if isinstance(options, Mapping) else default
-
-
-def _analytics_runtime_diagnostics(coordinator: Any) -> dict[str, Any]:
-    """Return JSON-safe analytics diagnostics from a coordinator-like object."""
-    summary_func = getattr(coordinator, "analytics_summary", None)
-    if not callable(summary_func):
-        return {}
-    summary = summary_func()
-    return dict(summary) if isinstance(summary, Mapping) else {}
 
 
 def _iot_registry_diagnostics() -> dict[str, Any]:
@@ -241,14 +231,12 @@ def _client_capabilities_for_entry(entry: Any) -> dict[str, Any]:
         "lan_discovery_parser": True,
         "lan_message_contract": True,
         "lan_payload_adapter": True,
-        "analytics_contract": True,
         "push_connection": True,
         "websocket_subscription": True,
         "websocket_event_notifications": True,
         "local_gateway_control": True,
         "lan_control": True,
         "mqtt_subscription": False,
-        "analytics_runtime": True,
     }
 
 

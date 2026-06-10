@@ -45,6 +45,8 @@ PUSH_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
         "_json_payload_from_message": "incoming JSON object filter",
         "_is_push_data_payload": "prop/event payload type filter",
         "_raise_for_control_error_frame": "control frame error classifier",
+        "_is_result_control_payload": "method-less result control-frame classifier",
+        "_is_control_error_payload": "aggregate-only control result error classifier",
         "PushControlFrameError": "aggregate-only control frame error",
         "_cleanup_after_reader_exit": "reader failure cleanup boundary",
     },
@@ -147,7 +149,10 @@ PUSH_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
             "token validation before connect coverage"
         ),
         "test_push_transport_ignores_control_ack_frames": (
-            "control ACK frame ignore coverage"
+            "control ACK and method-less result frame ignore coverage"
+        ),
+        '"data":{"deviceId":"device-secret"}': (
+            "method-less production ACK redaction fixture"
         ),
     },
     "tests/test_push_websocket_contract.py": {
@@ -190,6 +195,9 @@ PUSH_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
         "test_push_transport_control_error_frame_closes_websocket": (
             "control error frame cleanup coverage"
         ),
+        "test_push_transport_methodless_result_error_closes_websocket": (
+            "method-less result error cleanup coverage"
+        ),
     },
     "tests/test_live_runtime.py": {
         "test_live_runtime_routes_only_websocket_prop_and_event_to_coordinator": (
@@ -213,6 +221,15 @@ PUSH_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
         ),
         "test_summary_classifies_control_and_data_frames_without_payload_values": (
             "production WebSocket redacted summary coverage"
+        ),
+        "test_summary_classifies_methodless_result_ack_shapes_without_values": (
+            "production WebSocket method-less result ACK coverage"
+        ),
+        "test_summary_classifies_methodless_result_error_shapes_without_values": (
+            "production WebSocket method-less result error coverage"
+        ),
+        "test_probe_treats_bounded_idle_timeout_after_subscribe_as_ok": (
+            "production WebSocket bounded idle success coverage"
         ),
         "test_main_does_not_probe_network_without_confirm": (
             "production WebSocket default no-network coverage"
@@ -241,6 +258,9 @@ PUSH_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
         "control_error_frames": "production control-frame aggregate counter",
         "data_types": "production data payload aggregate counter",
         "json_shapes": "field-name-only JSON shape summary",
+        "_is_result_control_payload": "method-less production ACK classifier",
+        "_is_control_error_payload": "aggregate-only production result error classifier",
+        "idle_timeouts": "bounded idle timeout aggregate counter",
     },
     "tests/test_verify_cloud_devices.py": {
         "test_validate_run_request_requires_explicit_confirm": (
@@ -267,6 +287,12 @@ PUSH_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
         "test_probe_summarizes_devices_without_values": (
             "production cloud devices fake-device aggregate coverage"
         ),
+        "test_probe_client_loader_is_homeassistant_free": (
+            "production cloud devices HA-free loader coverage"
+        ),
+        "test_probe_client_loader_does_not_need_homeassistant_package": (
+            "production cloud devices no-HA-package loader coverage"
+        ),
     },
     "scripts/verify_cloud_devices.py": {
         "confirm-production-cloud-devices": (
@@ -286,8 +312,19 @@ PUSH_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
             "explicit production cloud devices probe entrypoint"
         ),
         "_load_yeelight_client": "Home Assistant-free client loader",
+        "_load_probe_client": "shared HA-free production probe client",
         "_update_summary_from_devices": "aggregate-only device summary",
         "categories": "device-category aggregate counter",
+    },
+    "scripts/verify_probe_client.py": {
+        "ProbeYeelightClient": "HA-free production probe client class",
+        "load_yeelight_client": "HA-free production probe client loader",
+        "request_json": "shared request_json helper reuse",
+        "build_client_headers": "shared client header helper reuse",
+        "house_devices_path": "shared cloud devices path helper reuse",
+        "paginated_path": "shared paginated path helper reuse",
+        "schema_cache": "schema-cache import regression guard token",
+        "homeassistant": "Home Assistant import regression guard token",
     },
     "tests/test_push_payloads.py": {
         "test_push_property_updates_do_not_fold_message_meta_into_state": (

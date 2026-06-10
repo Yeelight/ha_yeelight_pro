@@ -11,8 +11,6 @@ from homeassistant.data_entry_flow import FlowResultType
 
 from custom_components.yeelight_pro.config_flow import YeelightProOptionsFlow
 from custom_components.yeelight_pro.const import (
-    CONF_ANALYTICS_RETENTION_DAYS,
-    CONF_ANALYTICS_RUNTIME,
     CONF_DEBUG_MODE,
     CONF_DEVICE_IMPORT_FILTER,
     CONF_DEVICE_IMPORT_FILTER_ENABLED,
@@ -31,8 +29,6 @@ from custom_components.yeelight_pro.const import (
     DEFAULT_LOCAL_GATEWAY_CONTROL,
     DEFAULT_LOCAL_GATEWAY_HOST,
     DEFAULT_LOCAL_GATEWAY_PORT,
-    DEFAULT_ANALYTICS_RETENTION_DAYS,
-    DEFAULT_ANALYTICS_RUNTIME,
     DEFAULT_SCAN_INTERVAL,
     EXPERIMENTAL_PLATFORMS,
     PLATFORMS,
@@ -63,8 +59,6 @@ async def test_options_flow_shows_defaults(mock_config_entry) -> None:
     assert defaults[CONF_LOCAL_GATEWAY_CONTROL] is False
     assert defaults[CONF_LOCAL_GATEWAY_HOST] == ""
     assert defaults[CONF_LOCAL_GATEWAY_PORT] == 65443
-    assert defaults[CONF_ANALYTICS_RUNTIME] is DEFAULT_ANALYTICS_RUNTIME
-    assert defaults[CONF_ANALYTICS_RETENTION_DAYS] == DEFAULT_ANALYTICS_RETENTION_DAYS
     assert defaults[CONF_DEVICE_IMPORT_FILTER_ENABLED] is False
     assert defaults[CONF_DEVICE_IMPORT_FILTER_MODE] == "or"
 
@@ -136,8 +130,6 @@ async def test_options_flow_confirms_runtime_only_options(mock_config_entry) -> 
         CONF_LOCAL_GATEWAY_CONTROL: DEFAULT_LOCAL_GATEWAY_CONTROL,
         CONF_LOCAL_GATEWAY_HOST: DEFAULT_LOCAL_GATEWAY_HOST,
         CONF_LOCAL_GATEWAY_PORT: DEFAULT_LOCAL_GATEWAY_PORT,
-        CONF_ANALYTICS_RUNTIME: DEFAULT_ANALYTICS_RUNTIME,
-        CONF_ANALYTICS_RETENTION_DAYS: DEFAULT_ANALYTICS_RETENTION_DAYS,
     }
 
 
@@ -148,7 +140,6 @@ async def test_options_flow_confirms_runtime_only_options(mock_config_entry) -> 
         pytest.param(CONF_LOCAL_GATEWAY_CONTROL, True, id="local_gateway_control"),
         pytest.param(CONF_LOCAL_GATEWAY_HOST, "192.168.1.20", id="local_gateway_host"),
         pytest.param(CONF_LOCAL_GATEWAY_PORT, 65444, id="local_gateway_port"),
-        pytest.param(CONF_ANALYTICS_RUNTIME, True, id="analytics_runtime"),
     ],
 )
 @pytest.mark.asyncio
@@ -157,7 +148,7 @@ async def test_options_flow_background_runtime_options_require_reload(
     option_key: str,
     changed_value,
 ) -> None:
-    """启停 WebSocket/LAN/analytics 后台 runtime 必须进入 reload 确认页."""
+    """启停 WebSocket/LAN 后台 runtime 必须进入 reload 确认页."""
     mock_config_entry.options = {
         CONF_SCAN_INTERVAL: 15,
         CONF_DEBUG_MODE: False,
@@ -168,8 +159,6 @@ async def test_options_flow_background_runtime_options_require_reload(
         CONF_LOCAL_GATEWAY_CONTROL: False,
         CONF_LOCAL_GATEWAY_HOST: "",
         CONF_LOCAL_GATEWAY_PORT: 65443,
-        CONF_ANALYTICS_RUNTIME: False,
-        CONF_ANALYTICS_RETENTION_DAYS: 30,
     }
     flow = YeelightProOptionsFlow(mock_config_entry)
 

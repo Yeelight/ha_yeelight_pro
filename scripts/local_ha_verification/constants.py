@@ -51,13 +51,9 @@ REQUIRED_SERVICES = {
     "cleanup_registry",
     "debug_emit_event",
     "refresh",
-    "refresh_analytics",
 }
 REQUIRED_RUNTIME_MODULES = (
-    "custom_components.yeelight_pro.analytics_runtime",
-    "custom_components.yeelight_pro.analytics_service",
     "custom_components.yeelight_pro.refresh_service",
-    "custom_components.yeelight_pro.analytics_contract",
     "custom_components.yeelight_pro.registry_cleanup_service",
     "custom_components.yeelight_pro.lan_contract",
     "custom_components.yeelight_pro.lan_discovery",
@@ -83,7 +79,6 @@ REQUIRED_RUNTIME_MODULES = (
     "custom_components.yeelight_pro.config_flow_scan_login_region",
     "custom_components.yeelight_pro.core.schema_cache",
     "custom_components.yeelight_pro.core.client",
-    "custom_components.yeelight_pro.core.client_analytics",
     "custom_components.yeelight_pro.core.client_node_base",
     "custom_components.yeelight_pro.core.client_node_api",
     "custom_components.yeelight_pro.core.client_node_lists",

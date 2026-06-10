@@ -9,15 +9,10 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from ..analytics_runtime import AnalyticsRuntimeState, AnalyticsSnapshot
 from ..const import (
-    CONF_ANALYTICS_RETENTION_DAYS,
-    CONF_ANALYTICS_RUNTIME,
     CONF_DEBUG_MODE,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_SCAN_INTERVAL,
-    DEFAULT_ANALYTICS_RETENTION_DAYS,
-    DEFAULT_ANALYTICS_RUNTIME,
     DEFAULT_DEBUG_MODE,
     DEFAULT_HIDE_UNKNOWN_ENTITIES,
     DEFAULT_SCAN_INTERVAL,
@@ -79,9 +74,6 @@ class YeelightProCoordinator(
         self._device_payload_builder = DevicePayloadBuilder()
         self._product_schema_cache = ProductSchemaCache(hass)
         self._force_product_schema_refresh = False
-        self._analytics_runtime = AnalyticsRuntimeState(
-            retention_days=self.analytics_retention_days
-        )
         self._lan_runtime: Any | None = None
 
     @property
@@ -93,7 +85,6 @@ class YeelightProCoordinator(
         """Apply runtime-safe options without reloading the config entry."""
         self.options = dict(options)
         self.update_interval = timedelta(seconds=self.scan_interval)
-        self._analytics_runtime.apply_retention_days(self.analytics_retention_days)
 
     @property
     def debug_mode(self) -> bool:
@@ -110,52 +101,9 @@ class YeelightProCoordinator(
             )
         )
 
-    @property
-    def analytics_runtime_enabled(self) -> bool:
-        """返回是否启用数据分析运行时。"""
-        return bool(
-            self.options.get(CONF_ANALYTICS_RUNTIME, DEFAULT_ANALYTICS_RUNTIME)
-        )
-
-    @property
-    def analytics_retention_days(self) -> int:
-        """返回 analytics 聚合样本的内存保留天数。"""
-        return int(
-            self.options.get(
-                CONF_ANALYTICS_RETENTION_DAYS,
-                DEFAULT_ANALYTICS_RETENTION_DAYS,
-            )
-        )
-
-    def analytics_summary(self) -> dict[str, Any]:
-        """返回脱敏 analytics 聚合摘要。"""
-        return self._analytics_runtime.latest_summary()
-
     def set_lan_runtime(self, lan_runtime: Any | None) -> None:
         """Attach the optional local gateway runtime used for device writes."""
         self._lan_runtime = lan_runtime
-
-    async def async_refresh_analytics(
-        self,
-        *,
-        endpoint_key: str,
-        date_code: str | None = None,
-        start_date: str | None = None,
-        end_date: str | None = None,
-        area_id: int | str | None = None,
-    ) -> AnalyticsSnapshot:
-        """显式刷新一个数据分析 endpoint，并只保留聚合结果。"""
-        response = await self.client.request_analytics(
-            house_id=self.house_id,
-            endpoint_key=endpoint_key,
-            date_code=date_code,
-            start_date=start_date,
-            end_date=end_date,
-            area_id=area_id,
-        )
-        snapshot = self._analytics_runtime.record_response(endpoint_key, response)
-        self.async_update_listeners()
-        return snapshot
 
     async def _async_update_data(self) -> Dict[int, Any]:
         """从 API 获取数据."""

@@ -54,9 +54,6 @@ def _write_local_ha_contract_fixture(
             "tests/test_verify_scan_login.py "
             "scripts/verify_cloud_devices.py "
             "tests/test_verify_cloud_devices.py "
-            "scripts/verify_analytics.py "
-            "scripts/verify_analytics_support.py "
-            "tests/test_verify_analytics.py "
             "hacs_preflight_local_ha_runtime_sources.py "
             "hacs_preflight_local_ha_runtime_verifier_sources.py "
             "hacs_preflight_local_ha_runtime_core_tests.py "
@@ -65,18 +62,9 @@ def _write_local_ha_contract_fixture(
         ),
     )
     _write_test_file(
-        scripts_root / "hacs_preflight_analytics_contracts.py",
-        (
-            "check_analytics_contract_tests "
-            "test_refresh_analytics_service_rejects_missing_user_context "
-            "GROUP_ID_ADMIN"
-        ),
-    )
-    _write_test_file(
         scripts_root / "hacs_preflight_local_ha_protocol_contracts.py",
         (
             "LOCAL_HA_PROTOCOL_CONTRACT_TOKENS "
-            "hacs_preflight_analytics_contracts.py "
             "hacs_preflight_oauth_contracts.py "
             "hacs_preflight_push_contracts.py"
         ),
@@ -98,8 +86,6 @@ def _write_local_ha_contract_fixture(
         "",
     )
     _write_test_file(scripts_root / "hacs_preflight_local_ha_probes.py", "")
-    _write_test_file(scripts_root / "verify_analytics.py", "")
-    _write_test_file(scripts_root / "verify_analytics_support.py", "")
     _write_test_file(scripts_root / "verify_cloud_devices.py", "")
     _write_test_file(scripts_root / "verify_push_websocket.py", "")
     _write_test_file(scripts_root / "verify_scan_login.py", "")
@@ -157,7 +143,6 @@ def _write_local_ha_contract_fixture(
     _write_test_file(tests_root / "test_verify_local_ha_websocket_runtime.py", "")
     _write_test_file(tests_root / "test_verify_local_ha_schema_cache.py", "")
     _write_test_file(tests_root / "test_verify_push_websocket.py", "")
-    _write_test_file(tests_root / "test_verify_analytics.py", "")
     _write_test_file(tests_root / "test_verify_cloud_devices.py", "")
     _write_test_file(tests_root / "test_verify_scan_login.py", "")
     _write_test_file(tests_root / "test_verify_local_ha_recovery.py", "")

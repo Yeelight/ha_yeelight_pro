@@ -252,8 +252,6 @@ RELEASE_QUALITY_GATE_TOKENS = {
             "goal audit non-WebSocket release claim denial"
         ),
         "hostless one-shot UDP fallback": "goal audit LAN discovery boundary",
-        "analytics A": "goal audit analytics decision label",
-        "aggregate-only runtime": "goal audit analytics aggregate-only boundary",
         "真实设备 picker A": "goal audit picker decision label",
         "setup 和 options 均支持真实设备 picker": "goal audit picker setup/options boundary",
         "cleanup B": "goal audit cleanup decision label",
@@ -291,18 +289,6 @@ RELEASE_QUALITY_GATE_TOKENS = {
         ),
         "YEELIGHT_PRO_LAN_GATEWAY_HOST": (
             "goal audit production LAN gateway host env guard"
-        ),
-        "python3 scripts/verify_analytics.py": (
-            "goal audit production analytics probe command"
-        ),
-        "--confirm-production-analytics": (
-            "goal audit production analytics explicit confirm flag"
-        ),
-        "YEELIGHT_PRO_ANALYTICS_ACCESS_TOKEN": (
-            "goal audit production analytics token env guard"
-        ),
-        "YEELIGHT_PRO_ANALYTICS_HOUSE_ID": (
-            "goal audit production analytics house env guard"
         ),
         "未调用真实 Yeelight 云端 API/WebSocket/LAN 硬件": (
             "goal audit external validation boundary"

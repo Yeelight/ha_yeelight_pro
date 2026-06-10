@@ -22,8 +22,6 @@ DIAGNOSTICS_ENABLED_CLIENT_CAPABILITIES = (
     "lan_payload_adapter",
     "local_gateway_control",
     "lan_control",
-    "analytics_contract",
-    "analytics_runtime",
     "websocket_event_notifications",
 )
 DIAGNOSTICS_DISABLED_CLIENT_CAPABILITIES = (
@@ -122,7 +120,6 @@ DIAGNOSTICS_CONTRACT_TEST_TOKENS = {
         "lan_discovery_parser": "LAN discovery parser capability is explicit",
         "lan_message_contract": "LAN message contract capability is explicit",
         "lan_payload_adapter": "LAN received payload adapter capability is explicit",
-        "analytics_contract": "data-analysis contract capability is explicit",
         "push_connection": "live push runtime capability is explicit",
         "websocket_subscription": "live WebSocket subscription capability is explicit",
         "websocket_event_notifications": (
@@ -131,7 +128,6 @@ DIAGNOSTICS_CONTRACT_TEST_TOKENS = {
         "local_gateway_control": "local gateway control capability is explicit",
         "lan_control": "live LAN control capability is explicit",
         "mqtt_subscription": "live MQTT subscription remains explicitly disabled",
-        "analytics_runtime": "opt-in data-analysis runtime is explicit",
     },
     "tests/test_diagnostic_options.py": {
         "option_status_diagnostics": "option status helper is directly covered",

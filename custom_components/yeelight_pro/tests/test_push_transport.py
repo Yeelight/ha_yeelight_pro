@@ -269,6 +269,14 @@ async def test_push_transport_ignores_control_ack_frames() -> None:
     websocket = FakeWebSocket([
         FakeMessage(WSMsgType.TEXT, '{"method":"subscribe","code":"200"}'),
         FakeMessage(WSMsgType.TEXT, '{"method":"heartbeat","success":true}'),
+        FakeMessage(WSMsgType.TEXT, '{"result":true,"timestamp":"secret-time"}'),
+        FakeMessage(
+            WSMsgType.TEXT,
+            (
+                '{"data":{"deviceId":"device-secret"},"msgId":"message-secret",'
+                '"result":{"success":true},"timestamp":"secret-time"}'
+            ),
+        ),
     ])
     session = FakeSession(websocket)
     callback = AsyncMock()

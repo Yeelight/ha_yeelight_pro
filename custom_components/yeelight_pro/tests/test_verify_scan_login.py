@@ -182,10 +182,49 @@ def test_main_runs_probe_only_after_confirm_and_env(monkeypatch, capsys) -> None
         duration_seconds=3.0,
         poll_interval_seconds=1.0,
         max_polls=2,
+        show_qrcode=False,
     )
     output = json.loads(capsys.readouterr().out)
     assert output["ok"] is True
     assert "secret-device" not in json.dumps(output)
+
+
+def test_main_can_show_qrcode_only_after_explicit_confirm(monkeypatch, capsys) -> None:
+    """显式确认并请求显示时，才输出供 APP 扫描的二维码内容。"""
+    qr_state = verify_scan_login.parse_scan_login_response(_scan_payload("CREATED"))
+    monkeypatch.setenv("YEELIGHT_PRO_SCAN_LOGIN_DEVICE", "secret-device")
+
+    async def fake_probe(**kwargs):
+        if kwargs["show_qrcode"]:
+            verify_scan_login._print_qrcode_event(qr_state)
+        return verify_scan_login.ScanLoginProbeSummary(
+            ok=False,
+            network_attempted=True,
+            region=kwargs["region"],
+            created_qrcode=True,
+            last_status="CREATED",
+        )
+
+    monkeypatch.setattr(verify_scan_login, "async_probe_scan_login", fake_probe)
+
+    exit_code = verify_scan_login.main([
+        "--confirm-production-scan-login",
+        "--show-qrcode",
+        "--duration-seconds",
+        "3",
+        "--poll-interval-seconds",
+        "1",
+        "--max-polls",
+        "1",
+    ])
+
+    assert exit_code == 1
+    lines = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+    assert lines[0]["event"] == "scan_login_qrcode"
+    assert lines[0]["qrcode"] == "secret-qr&secret-device"
+    assert lines[0]["remaining_seconds"] > 0
+    assert lines[0]["status"] == "CREATED"
+    assert lines[1]["created_qrcode"] is True
 
 
 async def test_probe_summarizes_created_scanned_login_without_values(monkeypatch) -> None:

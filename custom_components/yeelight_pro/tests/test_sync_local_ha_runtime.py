@@ -43,6 +43,33 @@ def test_sync_script_is_directly_executable() -> None:
     assert "--config-dir" in result.stdout
 
 
+def test_sync_runtime_files_removes_stale_runtime_files(tmp_path: Path) -> None:
+    """源码已删除的运行时文件不能继续残留在本地 HA 安装态."""
+    source = tmp_path / "source" / "custom_components" / "yeelight_pro"
+    config_dir = tmp_path / "config"
+    install_root = config_dir / "custom_components" / "yeelight_pro"
+    source.mkdir(parents=True)
+    install_root.mkdir(parents=True)
+    (source / "__init__.py").write_text("current", encoding="utf-8")
+    (install_root / "__init__.py").write_text("old", encoding="utf-8")
+    (install_root / "stale_runtime.py").write_text("old", encoding="utf-8")
+    (install_root / "__pycache__").mkdir()
+    (install_root / "__pycache__" / "stale_runtime.pyc").write_bytes(b"cache")
+
+    original_source_root = sync_local_ha_runtime.SOURCE_COMPONENT_ROOT
+    sync_local_ha_runtime.SOURCE_COMPONENT_ROOT = source
+    try:
+        count, synced_root = sync_local_ha_runtime.sync_runtime_files(config_dir)
+    finally:
+        sync_local_ha_runtime.SOURCE_COMPONENT_ROOT = original_source_root
+
+    assert count == 1
+    assert synced_root == install_root
+    assert (install_root / "__init__.py").read_text(encoding="utf-8") == "current"
+    assert not (install_root / "stale_runtime.py").exists()
+    assert not (install_root / "__pycache__").exists()
+
+
 def test_sync_script_fails_when_install_target_still_contains_tests(
     tmp_path: Path,
 ) -> None:

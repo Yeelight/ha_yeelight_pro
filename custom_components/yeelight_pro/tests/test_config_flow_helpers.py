@@ -10,8 +10,6 @@ from custom_components.yeelight_pro.config_flow_helpers import (
     visible_option_change_count,
 )
 from custom_components.yeelight_pro.const import (
-    CONF_ANALYTICS_RETENTION_DAYS,
-    CONF_ANALYTICS_RUNTIME,
     CONF_DEBUG_MODE,
     CONF_DEVICE_IMPORT_FILTER,
     CONF_DEVICE_IMPORT_FILTER_ENABLED,
@@ -28,8 +26,6 @@ from custom_components.yeelight_pro.const import (
     CONF_LOCAL_GATEWAY_PORT,
     CONF_SCAN_INTERVAL,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
-    DEFAULT_ANALYTICS_RETENTION_DAYS,
-    DEFAULT_ANALYTICS_RUNTIME,
     DEFAULT_LIVE_UPDATES,
     DEFAULT_LOCAL_GATEWAY_CONTROL,
     DEFAULT_LOCAL_GATEWAY_HOST,
@@ -116,8 +112,6 @@ def test_merge_options_preserves_hidden_advanced_keys() -> None:
         CONF_LOCAL_GATEWAY_CONTROL: DEFAULT_LOCAL_GATEWAY_CONTROL,
         CONF_LOCAL_GATEWAY_HOST: DEFAULT_LOCAL_GATEWAY_HOST,
         CONF_LOCAL_GATEWAY_PORT: DEFAULT_LOCAL_GATEWAY_PORT,
-        CONF_ANALYTICS_RUNTIME: DEFAULT_ANALYTICS_RUNTIME,
-        CONF_ANALYTICS_RETENTION_DAYS: DEFAULT_ANALYTICS_RETENTION_DAYS,
         CONF_DEVICE_IMPORT_FILTER: {
             "enabled": False,
             "mode": "or",

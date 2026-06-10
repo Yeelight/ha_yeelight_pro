@@ -10,7 +10,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .analytics_runtime import ANALYTICS_METRIC_KEYS
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
 from .dynamic_entities import async_track_dynamic_entities
@@ -53,11 +52,6 @@ async def async_setup_entry(
 def _iter_sensor_entities(coordinator: YeelightProCoordinator) -> list["YeelightProSensor"]:
     """按当前拓扑生成 sensor 实体候选."""
     sensors: list[YeelightProSensor] = []
-    if getattr(coordinator, "analytics_runtime_enabled", False):
-        sensors.extend(
-            YeelightProAnalyticsSensor(coordinator, metric_key)
-            for metric_key in ANALYTICS_METRIC_KEYS
-        )
     for device_id, device_data in coordinator.data.items():
         projections = project_sensors(
             device_data,
@@ -73,59 +67,6 @@ def _iter_sensor_entities(coordinator: YeelightProCoordinator) -> list["Yeelight
                 )
             )
     return sensors
-
-
-class YeelightProAnalyticsSensor(CoordinatorEntity, SensorEntity):
-    """Yeelight Pro 数据分析聚合传感器."""
-
-    _attr_has_entity_name = True
-
-    def __init__(
-        self,
-        coordinator: YeelightProCoordinator,
-        metric_key: str,
-    ) -> None:
-        super().__init__(coordinator)
-        self._metric_key = metric_key
-        self._attr_unique_id = f"{DOMAIN}_{coordinator.house_id}_analytics_{metric_key}"
-        self._attr_translation_key = f"analytics_{metric_key}"
-
-    @property
-    def native_value(self) -> Any:
-        """返回最新聚合指标值."""
-        return self.coordinator.analytics_summary().get(self._metric_key)
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """返回脱敏刷新元数据."""
-        summary = self.coordinator.analytics_summary()
-        return {
-            "last_endpoint": summary.get("last_endpoint"),
-            "last_refreshed_at": summary.get("last_refreshed_at"),
-            "retention_days": summary.get("retention_days"),
-            "history_size": summary.get("history_size"),
-        }
-
-    @property
-    def native_unit_of_measurement(self) -> str | None:
-        """返回聚合指标单位."""
-        if self._metric_key in {"energy_used_kwh", "energy_saved_kwh"}:
-            return "kWh"
-        return None
-
-    @property
-    def state_class(self) -> SensorStateClass | None:
-        """数据分析聚合值作为测量值展示."""
-        return SensorStateClass.MEASUREMENT
-
-    @property
-    def icon(self) -> str | None:
-        """返回指标图标."""
-        if self._metric_key.startswith("alarm_"):
-            return "mdi:alert-outline"
-        if self._metric_key.startswith("energy_"):
-            return "mdi:lightning-bolt-outline"
-        return "mdi:gesture-tap"
 
 
 class YeelightProSensor(CoordinatorEntity, SensorEntity):

@@ -104,14 +104,6 @@ def test_translations_are_valid_and_key_aligned() -> None:
         ("services", "cleanup_registry", "fields", "confirm", "description"),
         ("services", "cleanup_registry", "fields", "audit_id", "name"),
         ("services", "cleanup_registry", "fields", "audit_id", "description"),
-        ("services", "refresh_analytics", "description"),
-        ("services", "refresh_analytics", "fields", "endpoint", "name"),
-        ("services", "refresh_analytics", "fields", "endpoint", "description"),
-        ("entity", "sensor", "analytics_alarm_total", "name"),
-        ("entity", "sensor", "analytics_alarm_device_count", "name"),
-        ("entity", "sensor", "analytics_energy_used_kwh", "name"),
-        ("entity", "sensor", "analytics_energy_saved_kwh", "name"),
-        ("entity", "sensor", "analytics_action_total", "name"),
     }
 
     for payload in (strings, english, chinese):

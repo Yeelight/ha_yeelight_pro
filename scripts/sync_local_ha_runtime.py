@@ -39,8 +39,16 @@ def sync_runtime_files(config_dir: Path) -> tuple[int, Path]:
     install_root = config_dir / "custom_components" / DOMAIN
     install_root.mkdir(parents=True, exist_ok=True)
 
+    source_files = _iter_runtime_files(SOURCE_COMPONENT_ROOT)
+    expected_files = {
+        path.relative_to(SOURCE_COMPONENT_ROOT).as_posix()
+        for path in source_files
+    }
+    _remove_stale_runtime_files(install_root, expected_files)
+    _remove_generated_runtime_caches(install_root)
+
     count = 0
-    for source_path in _iter_runtime_files(SOURCE_COMPONENT_ROOT):
+    for source_path in source_files:
         relative_path = source_path.relative_to(SOURCE_COMPONENT_ROOT)
         target_path = install_root / relative_path
         target_path.parent.mkdir(parents=True, exist_ok=True)
@@ -64,6 +72,39 @@ def _iter_runtime_files(source_root: Path) -> list[Path]:
             continue
         files.append(path)
     return sorted(files)
+
+
+def _remove_stale_runtime_files(
+    install_root: Path,
+    expected_files: set[str],
+) -> None:
+    """Remove installed runtime files that no longer exist in source."""
+    for path in sorted(install_root.rglob("*"), reverse=True):
+        if not path.is_file():
+            continue
+        relative_path = path.relative_to(install_root)
+        if any(part in EXCLUDED_COMPARE_PARTS for part in relative_path.parts):
+            continue
+        if path.suffix in EXCLUDED_COMPARE_SUFFIXES:
+            continue
+        if relative_path.as_posix() not in expected_files:
+            path.unlink()
+    for path in sorted(install_root.rglob("*"), reverse=True):
+        if path.is_dir() and not any(path.iterdir()):
+            path.rmdir()
+
+
+def _remove_generated_runtime_caches(install_root: Path) -> None:
+    """Remove Python caches from the installed runtime mirror."""
+    for path in sorted(install_root.rglob("*"), reverse=True):
+        if path.is_file() and (
+            "__pycache__" in path.parts
+            or path.suffix in EXCLUDED_COMPARE_SUFFIXES
+        ):
+            path.unlink()
+    for path in sorted(install_root.rglob("*"), reverse=True):
+        if path.is_dir() and path.name == "__pycache__":
+            path.rmdir()
 
 
 def _default_config_dir() -> Path:
