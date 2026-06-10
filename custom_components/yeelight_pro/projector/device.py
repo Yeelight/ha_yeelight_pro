@@ -1,4 +1,4 @@
-"""将设备信息从 canonical 模型投影为 Home Assistant 结构."""
+"""将设备信息从 canonical 或运行时载荷投影为 Home Assistant 结构."""
 
 from __future__ import annotations
 
@@ -10,6 +10,22 @@ from ..canonical.models import DeviceInfoModel, HADeviceInstanceModel
 def project_device_info(instance: HADeviceInstanceModel) -> dict[str, Any] | None:
     """将 canonical 设备信息投影为 Home Assistant `DeviceInfo` 格式."""
     return project_device_info_model(instance.device_info)
+
+
+def project_payload_device_info(
+    device_payload: Mapping[str, Any],
+    instance: HADeviceInstanceModel | None = None,
+) -> dict[str, Any] | None:
+    """从 canonical 实例或顶层 fallback 载荷投影 HA device_info."""
+    if instance is not None:
+        projected = project_device_info(instance)
+        if projected is not None:
+            return projected
+
+    payload = device_payload.get("device_info")
+    if not isinstance(payload, Mapping):
+        return None
+    return _project_mapping_device_info(payload)
 
 
 def project_device_info_model(device_info: DeviceInfoModel | None) -> dict[str, Any] | None:
@@ -47,20 +63,58 @@ def project_device_info_model(device_info: DeviceInfoModel | None) -> dict[str, 
         "hw_version",
         "configuration_url",
         "entry_type",
-        "suggested_area",
-        "default_manufacturer",
-        "default_model",
-        "default_name",
-        "translation_key",
     ):
         value = getattr(device_info, key)
         if value is not None:
             projected[key] = value
 
-    if device_info.translation_placeholders:
-        projected["translation_placeholders"] = dict(device_info.translation_placeholders)
+    return projected or None
+
+
+def _project_mapping_device_info(device_info: Mapping[str, Any]) -> dict[str, Any] | None:
+    """将 JSON 风格 device_info fallback 规范化为 HA DeviceInfo 结构."""
+    projected: dict[str, Any] = {}
+
+    if identifiers := _project_pair_set(device_info.get("identifiers")):
+        projected["identifiers"] = identifiers
+    if connections := _project_pair_set(device_info.get("connections")):
+        projected["connections"] = connections
+    if via_device := _project_pair(device_info.get("via_device")):
+        projected["via_device"] = via_device
+
+    for key in (
+        "manufacturer",
+        "model",
+        "model_id",
+        "name",
+        "serial_number",
+        "sw_version",
+        "hw_version",
+        "configuration_url",
+        "entry_type",
+    ):
+        value = device_info.get(key)
+        if value is not None:
+            projected[key] = value
 
     return projected or None
+
+
+def _project_pair_set(value: Any) -> set[tuple[str, str]]:
+    """将 JSON pair list 转为 HA registry tuple set."""
+    pairs: set[tuple[str, str]] = set()
+    for item in value or []:
+        pair = _project_pair(item)
+        if pair is not None:
+            pairs.add(pair)
+    return pairs
+
+
+def _project_pair(value: Any) -> tuple[str, str] | None:
+    """将 JSON pair 转为 HA registry tuple."""
+    if isinstance(value, (list, tuple)) and len(value) == 2:
+        return (str(value[0]), str(value[1]))
+    return None
 
 
 def flatten_instance_state(instance: HADeviceInstanceModel | None) -> dict[str, Any]:

@@ -65,6 +65,52 @@ def test_light_sensor_projects_luminance_sensor() -> None:
     assert projections[0].native_unit_of_measurement == "lx"
 
 
+def test_state_projectors_use_top_level_fallback_device_info() -> None:
+    """无 canonical 实例时，sensor/switch 仍应归属到源设备 metadata。"""
+    sensor_payload = {
+        "device_id": "304784334",
+        "type": "light_sensor",
+        "category": "light_sensor",
+        "online": True,
+        "params": {"luminance": 321},
+        "device_info": {
+            "identifiers": [[DOMAIN, "304784334"]],
+            "manufacturer": "Yeelight",
+            "model": "light_sensor",
+            "model_id": "YL-202",
+            "name": "门厅照度",
+            "suggested_area": "门厅",
+        },
+    }
+    switch_payload = {
+        "device_id": "304784336",
+        "type": "switch",
+        "category": "relay_switch",
+        "online": True,
+        "params": {"p": True},
+        "device_info": {
+            "identifiers": [[DOMAIN, "304784336"]],
+            "manufacturer": "Yeelight",
+            "model": "relay_switch",
+            "model_id": "YL-201",
+            "name": "墙壁开关1",
+            "suggested_area": "客厅",
+        },
+    }
+
+    sensor = project_sensors(sensor_payload, domain=DOMAIN)[0]
+    switch = project_switches(switch_payload, domain=DOMAIN)[0]
+
+    assert sensor.device_info is not None
+    assert sensor.device_info["name"] == "门厅照度"
+    assert sensor.device_info["identifiers"] == {(DOMAIN, "304784334")}
+    assert "suggested_area" not in sensor.device_info
+    assert switch.device_info is not None
+    assert switch.device_info["name"] == "墙壁开关1"
+    assert switch.device_info["identifiers"] == {(DOMAIN, "304784336")}
+    assert "suggested_area" not in switch.device_info
+
+
 def test_power_meter_projects_power_and_energy_sensors() -> None:
     """电量组件应投影为只读功率和电量 sensor。"""
     device = projection_payload(

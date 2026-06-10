@@ -17,7 +17,7 @@ from .common import (
     load_product_model as _load_product_model,
     product_component as _product_component,
 )
-from .device import project_device_info
+from .device import project_payload_device_info
 from .fan_helpers import (
     _direction_key,
     _direction_support,
@@ -74,7 +74,7 @@ def project_fans(device_payload: Mapping[str, Any], *, domain: str) -> list[HAFa
 
     product_model = _load_product_model(device_payload)
     params = _params(device_payload)
-    device_info = project_device_info(instance)
+    device_info = project_payload_device_info(device_payload, instance)
     projections: list[HAFanProjection] = []
 
     for component in instance.components:
@@ -190,6 +190,6 @@ def _project_legacy_fan(
         direction_key=direction_key,
         speed_range=speed_range,
         direction_values=direction_values,
-        device_info=None,
+        device_info=project_payload_device_info(device_payload),
         icon="mdi:fan",
     )

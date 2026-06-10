@@ -161,7 +161,7 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         "runtime_inference_helpers.py": (
             "runtime inference helper zip required file guard"
         ),
-        "oauth_contract.py": "OAuth contract zip required file guard",
+        "scan_login_contract.py": "scan-login contract zip required file guard",
         "projector/event_helpers.py": "event projector helper zip required file guard",
         "projector/sensor_helpers.py": "sensor projector helper zip required file guard",
         "name.endswith(\"/\")": "release zip directory entry guard",
@@ -311,8 +311,8 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         ),
     },
     "custom_components/yeelight_pro/tests/test_hacs_preflight_protocol_contracts.py": {
-        "test_oauth_contract_check_requires_runtime_coverage_tokens": (
-            "OAuth protocol preflight coverage"
+        "test_scan_login_contract_check_requires_runtime_coverage_tokens": (
+            "scan-login protocol preflight coverage"
         ),
         "test_push_contract_check_requires_coverage_tokens": (
             "push protocol preflight coverage"

@@ -20,18 +20,18 @@ def test_release_zip_required_files_include_runtime_contracts() -> None:
         "custom_components/yeelight_pro/core/client_node_lists.py",
         "custom_components/yeelight_pro/core/client_node_properties.py",
         "custom_components/yeelight_pro/core/coordinator_controls.py",
+        "custom_components/yeelight_pro/core/device_metadata.py",
         "custom_components/yeelight_pro/core/lan_control.py",
-        "custom_components/yeelight_pro/core/oauth.py",
         "custom_components/yeelight_pro/core/scan_login.py",
         "custom_components/yeelight_pro/core/runtime_bridge.py",
         "custom_components/yeelight_pro/debug_service.py",
         "custom_components/yeelight_pro/diagnostics.py",
+        "custom_components/yeelight_pro/entry_title.py",
         "custom_components/yeelight_pro/lan_contract.py",
         "custom_components/yeelight_pro/lan_methods.py",
         "custom_components/yeelight_pro/lan_payload.py",
         "custom_components/yeelight_pro/lan_runtime.py",
         "custom_components/yeelight_pro/live_runtime.py",
-        "custom_components/yeelight_pro/oauth_contract.py",
         "custom_components/yeelight_pro/scan_login_contract.py",
         "custom_components/yeelight_pro/projector/event_helpers.py",
         "custom_components/yeelight_pro/projector/sensor_helpers.py",
@@ -44,7 +44,7 @@ def test_release_zip_required_files_include_runtime_contracts() -> None:
 def test_validate_existing_zip_rejects_missing_protocol_contract(tmp_path: Path) -> None:
     """已有 zip 缺少新增 runtime contract 文件时不能通过发布结构校验。"""
     zip_path = tmp_path / "yeelight_pro.zip"
-    missing_file = "custom_components/yeelight_pro/oauth_contract.py"
+    missing_file = "custom_components/yeelight_pro/scan_login_contract.py"
     with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for name in check_release_zip.REQUIRED_FILES - {missing_file}:
             archive.writestr(name, "")

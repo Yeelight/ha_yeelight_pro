@@ -21,7 +21,6 @@ LOCAL_HA_RUNTIME_VERIFIER_TEST_TOKENS = {
         "test_required_modules_include_protocol_contract_modules": (
             "protocol modules install-state coverage"
         ),
-        "oauth_contract": "OAuth contract install-state coverage",
         "scan_login_contract": "scan-login contract install-state coverage",
         "push_contract": "push contract install-state coverage",
         "lan_contract": "LAN contract install-state coverage",
@@ -46,7 +45,7 @@ LOCAL_HA_RUNTIME_VERIFIER_TEST_TOKENS = {
         "test_verify_storage_reports_missing_config_entry_keys_without_values": (
             "config entry required key redaction coverage"
         ),
-        "test_verify_storage_allows_missing_optional_oauth_client_id": (
+        "test_verify_storage_allows_missing_optional_open_api_client_id": (
             "manual token optional client id coverage"
         ),
         "test_verify_storage_rejects_missing_required_option_keys": (
@@ -201,8 +200,8 @@ LOCAL_HA_RUNTIME_VERIFIER_TEST_TOKENS = {
         "test_verify_diagnostics_capabilities_rejects_enabled_live_flag": (
             "disabled live capability verifier coverage"
         ),
-        "test_verify_diagnostics_capabilities_rejects_ambiguous_oauth_flow_flag": (
-            "ambiguous OAuth flow flag verifier coverage"
+        "test_verify_diagnostics_capabilities_rejects_removed_oauth_flag": (
+            "removed OAuth flag verifier coverage"
         ),
         "test_verify_diagnostics_capabilities_requires_literal_flags": (
             "literal diagnostics capability parser coverage"

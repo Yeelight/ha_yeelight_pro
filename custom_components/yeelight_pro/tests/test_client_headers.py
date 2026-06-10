@@ -31,7 +31,7 @@ def test_client_headers_include_bearer_token_by_default() -> None:
 
 
 def test_client_headers_include_open_api_client_id_when_available() -> None:
-    """OAuth 授权码路径拿到 client_id 后，Open API 请求应带 clientId 头."""
+    """账号元数据包含 client_id 后，Open API 请求应带 clientId 头."""
     headers = _client(client_id=" client-1 ")._get_headers()
 
     assert headers["Authorization"] == "Bearer test-token"

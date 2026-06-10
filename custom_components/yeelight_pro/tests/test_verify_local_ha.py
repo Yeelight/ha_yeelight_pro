@@ -139,9 +139,7 @@ def test_required_modules_include_sensor_projector_helper() -> None:
 def test_required_modules_include_protocol_contract_modules() -> None:
     """本地 HA 安装态必须保留 no-network 协议合同模块."""
     expected_modules = {
-        "custom_components.yeelight_pro.oauth_contract",
         "custom_components.yeelight_pro.scan_login_contract",
-        "custom_components.yeelight_pro.core.oauth",
         "custom_components.yeelight_pro.core.scan_login",
         "custom_components.yeelight_pro.push_contract",
         "custom_components.yeelight_pro.push_manager",

@@ -36,7 +36,7 @@ async def test_client_creates_scan_login_qrcode_with_documented_post() -> None:
     state = await client.create_scan_login_qrcode(region="sg", device="ha-device-1")
 
     assert state.status == ScanLoginStatus.CREATED
-    assert state.qrcode_content == "qr-1&ha-device-1"
+    assert state.qrcode_content == "cli&ha-device-1&qr-1"
     assert session.calls == [
         {
             "url": (

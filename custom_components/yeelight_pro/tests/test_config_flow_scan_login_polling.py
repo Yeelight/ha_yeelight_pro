@@ -34,8 +34,8 @@ def test_scan_login_description_placeholders_expose_pollable_state() -> None:
     )
 
     assert placeholders == {
-        "qrcode": "qr-1&ha-device-1",
-        "qr_code": "qr-1&ha-device-1",
+        "qrcode": "cli&ha-device-1&qr-1",
+        "qr_code": "cli&ha-device-1&qr-1",
         "status": "CREATED",
         "remaining_seconds": "300",
         "poll_count": "2",

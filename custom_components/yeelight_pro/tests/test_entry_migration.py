@@ -24,7 +24,7 @@ from custom_components.yeelight_pro.const import (
     CONF_LOCAL_GATEWAY_CONTROL,
     CONF_LOCAL_GATEWAY_HOST,
     CONF_LOCAL_GATEWAY_PORT,
-    CONF_OAUTH_CLIENT_ID,
+    CONF_OPEN_API_CLIENT_ID,
     CONF_PRIVATE_DOMAIN,
     CONF_REFRESH_TOKEN,
     CONF_SCAN_INTERVAL,
@@ -114,6 +114,7 @@ async def test_migrate_cloud_entry_aliases_and_option_defaults(
         minor_version=1,
         unique_id="yeelight_pro_cloud",
     )
+    entry.title = "Yeelight Pro Cloud"
     hass.config_entries.async_update_entry = MagicMock()
 
     assert await async_migrate_entry(hass, entry) is True
@@ -121,13 +122,13 @@ async def test_migrate_cloud_entry_aliases_and_option_defaults(
     hass.config_entries.async_update_entry.assert_called_once_with(
         entry,
         data={
-                "domain": "https://api.yeelight.com/apis/iot",
-                "accessToken": "token-1",
-                "refreshToken": "refresh-1",
-                "houseId": "429392",
-                "region": "CN",
-                "username": "user-1",
-                CONF_CONNECTION_MODE: CONNECTION_MODE_CLOUD,
+            "domain": "https://api.yeelight.com/apis/iot",
+            "accessToken": "token-1",
+            "refreshToken": "refresh-1",
+            "houseId": "429392",
+            "region": "CN",
+            "username": "user-1",
+            CONF_CONNECTION_MODE: CONNECTION_MODE_CLOUD,
             CONF_CLOUD_DOMAIN: "https://api.yeelight.com/apis/iot",
             CONF_PRIVATE_DOMAIN: "",
             CONF_ACCESS_TOKEN: "token-1",
@@ -136,7 +137,7 @@ async def test_migrate_cloud_entry_aliases_and_option_defaults(
             CONF_TOKEN_TYPE: "",
             CONF_HOUSE_ID: 429392,
             CONF_CLOUD_REGION: "cn",
-            CONF_OAUTH_CLIENT_ID: "",
+            CONF_OPEN_API_CLIENT_ID: "",
             CONF_ACCOUNT_USER_ID: None,
             CONF_ACCOUNT_USERNAME: "user-1",
             CONF_SCAN_LOGIN_DEVICE: "",
@@ -153,6 +154,7 @@ async def test_migrate_cloud_entry_aliases_and_option_defaults(
             CONF_LOCAL_GATEWAY_HOST: DEFAULT_LOCAL_GATEWAY_HOST,
             CONF_LOCAL_GATEWAY_PORT: DEFAULT_LOCAL_GATEWAY_PORT,
         },
+        title="Yeelight Pro Cloud (user-1 · CN · House 429392)",
         unique_id="cloud:cn:user-1:429392",
         version=ENTRY_VERSION,
         minor_version=ENTRY_MINOR_VERSION,
@@ -173,6 +175,7 @@ async def test_migrate_private_entry_fills_domains_and_default_options(
         },
         options=None,
     )
+    entry.title = "Yeelight Pro Private"
     hass.config_entries.async_update_entry = MagicMock()
 
     assert await async_migrate_entry(hass, entry) is True
@@ -190,12 +193,13 @@ async def test_migrate_private_entry_fills_domains_and_default_options(
         CONF_TOKEN_TYPE: "",
         CONF_HOUSE_ID: 1001,
         CONF_CLOUD_REGION: "cn",
-        CONF_OAUTH_CLIENT_ID: "",
+        CONF_OPEN_API_CLIENT_ID: "",
         CONF_ACCOUNT_USER_ID: None,
         CONF_ACCOUNT_USERNAME: "",
         CONF_SCAN_LOGIN_DEVICE: "",
     }
     assert update["options"] == _expected_default_options()
+    assert update["title"] == "Yeelight Pro Private (10.0.0.10:8080 · House 1001)"
     assert update["unique_id"] == "private:10.0.0.10:8080:1001"
     assert update["version"] == ENTRY_VERSION
     assert update["minor_version"] == ENTRY_MINOR_VERSION
@@ -215,7 +219,7 @@ async def test_migrate_current_entry_is_noop(hass: HomeAssistant) -> None:
             CONF_TOKEN_TYPE: "",
             CONF_HOUSE_ID: 429392,
             CONF_CLOUD_REGION: "cn",
-            CONF_OAUTH_CLIENT_ID: "",
+            CONF_OPEN_API_CLIENT_ID: "",
             CONF_ACCOUNT_USER_ID: None,
             CONF_ACCOUNT_USERNAME: "",
             CONF_SCAN_LOGIN_DEVICE: "",
@@ -235,6 +239,7 @@ async def test_migrate_current_entry_is_noop(hass: HomeAssistant) -> None:
         minor_version=ENTRY_MINOR_VERSION,
         unique_id="cloud:cn:token-a2f2b0b588bcc84f:429392",
     )
+    entry.title = "Yeelight Pro Cloud (CN · House 429392)"
     hass.config_entries.async_update_entry = MagicMock()
 
     assert await async_migrate_entry(hass, entry) is True
@@ -250,7 +255,7 @@ def test_normalize_entry_data_preserves_open_api_client_id_alias() -> None:
         "clientId": "client-1",
     })
 
-    assert data[CONF_OAUTH_CLIENT_ID] == "client-1"
+    assert data[CONF_OPEN_API_CLIENT_ID] == "client-1"
 
 
 def test_normalize_entry_data_detects_region_from_cloud_domain() -> None:
@@ -342,4 +347,41 @@ async def test_migrate_legacy_cloud_entry_updates_region_account_unique_id(
 
     update = hass.config_entries.async_update_entry.call_args.kwargs
     assert update["unique_id"] == "cloud:us:122349:9"
+    assert update["title"] == "Yeelight Pro Cloud (UID 122349 · US · House 9)"
     assert update["minor_version"] == ENTRY_MINOR_VERSION
+
+
+@pytest.mark.asyncio
+async def test_migrate_current_data_updates_legacy_title(
+    hass: HomeAssistant,
+) -> None:
+    """当前 data/options 但旧标题仍应迁移到账号/区域/家庭可辨识标题."""
+    entry = _entry(
+        data=normalize_entry_data({
+            CONF_CONNECTION_MODE: CONNECTION_MODE_CLOUD,
+            CONF_CLOUD_DOMAIN: DEFAULT_CLOUD_DOMAIN,
+            CONF_PRIVATE_DOMAIN: "",
+            CONF_ACCESS_TOKEN: "token-3",
+            CONF_REFRESH_TOKEN: "",
+            CONF_TOKEN_EXPIRES_IN: None,
+            CONF_TOKEN_TYPE: "",
+            CONF_HOUSE_ID: 429392,
+            CONF_CLOUD_REGION: "cn",
+            CONF_OPEN_API_CLIENT_ID: "",
+            CONF_ACCOUNT_USER_ID: None,
+            CONF_ACCOUNT_USERNAME: "",
+            CONF_SCAN_LOGIN_DEVICE: "",
+        }),
+        options=_expected_default_options(),
+        version=ENTRY_VERSION,
+        minor_version=ENTRY_MINOR_VERSION,
+        unique_id="cloud:cn:token-a2f2b0b588bcc84f:429392",
+    )
+    entry.title = "Yeelight Pro Cloud"
+    hass.config_entries.async_update_entry = MagicMock()
+
+    assert await async_migrate_entry(hass, entry) is True
+
+    update = hass.config_entries.async_update_entry.call_args.kwargs
+    assert update["title"] == "Yeelight Pro Cloud (CN · House 429392)"
+    assert update["unique_id"] == "cloud:cn:token-a2f2b0b588bcc84f:429392"

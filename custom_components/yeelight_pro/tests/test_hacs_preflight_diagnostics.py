@@ -42,22 +42,22 @@ def test_diagnostics_contract_check_rejects_enabled_live_capability(
     assert "diagnostics.py live capability must remain false: mqtt_subscription" in errors
 
 
-def test_diagnostics_contract_check_rejects_ambiguous_oauth_flow_flag(
+def test_diagnostics_contract_check_rejects_removed_oauth_flag(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """preflight 应拒绝恢复容易误解的 OAuth flow capability key."""
+    """preflight 应拒绝恢复已删除的 OAuth capability key."""
     component_root = _build_component_root(tmp_path)
     _write_client_capability_diagnostics(
         component_root,
-        include_ambiguous_oauth=True,
+        include_removed_oauth=True,
     )
     _write_diagnostics_contract_tests(component_root)
     monkeypatch.setattr(hacs_preflight, "COMPONENT_ROOT", component_root)
 
     errors = hacs_preflight._check_diagnostics_redaction_contract_tests()
 
-    assert any("oauth_authorization_code_flow" in error for error in errors)
+    assert any("oauth_flow" in error for error in errors)
 
 
 def test_diagnostics_contract_check_rejects_legacy_websocket_skeleton_flag(
@@ -153,10 +153,8 @@ def _write_diagnostics_contract_tests(
         "component-secret-light secret_device_action"
     )
     capability_tokens = (
-        "client_capabilities oauth_contract oauth_token_runtime "
-        "manual_oauth_authorization_code_exchange oauth_flow "
         "scan_login_contract scan_login_runtime "
-        "refresh_token_contract refresh_token_runtime push_message_adapter "
+        "push_message_adapter "
         "runtime_payload_bridge websocket_message_contract push_manager_contract "
         "websocket_transport_runtime lan_discovery_parser lan_message_contract "
         "lan_payload_adapter push_connection "
@@ -208,15 +206,15 @@ def _write_client_capability_diagnostics(
     component_root: Path,
     *,
     mqtt_subscription: bool = False,
-    include_ambiguous_oauth: bool = False,
+    include_removed_oauth: bool = False,
     include_legacy_websocket_skeleton: bool = False,
     include_sse_subscription: bool = False,
     include_eventsource_subscription: bool = False,
 ) -> None:
     """Write a minimal diagnostics module with literal capability flags."""
-    ambiguous_oauth = (
-        '        "oauth_authorization_code_flow": True,\n'
-        if include_ambiguous_oauth
+    removed_oauth = (
+        '        "oauth_flow": False,\n'
+        if include_removed_oauth
         else ""
     )
     legacy_websocket = (
@@ -236,15 +234,9 @@ def _write_client_capability_diagnostics(
     content = f"""
 def _client_capabilities_for_entry(entry):
     return {{
-        "oauth_contract": True,
-        "oauth_token_runtime": True,
-        "manual_oauth_authorization_code_exchange": True,
         "scan_login_contract": True,
         "scan_login_runtime": True,
-{ambiguous_oauth.rstrip()}
-        "oauth_flow": False,
-        "refresh_token_contract": True,
-        "refresh_token_runtime": True,
+{removed_oauth.rstrip()}
         "push_message_adapter": True,
         "runtime_payload_bridge": True,
         "websocket_message_contract": True,

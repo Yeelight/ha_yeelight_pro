@@ -6,7 +6,7 @@
 - Use sanitized fixtures for device samples.
 - Keep Yeelight IoT categories separate from Home Assistant entity platforms in docs and tests.
 - Treat `vacuum` as experimental unless real Yeelight payloads prove the mapping.
-- Do not document Home Assistant OAuth, local gateway discovery, multi-account-in-one-entry UX, or full rules/spec filters as implemented until code and tests exist.
+- Do not document local gateway discovery, multi-account-in-one-entry UX, or full rules/spec filters as implemented until code and tests exist.
 
 ## Test Commands
 

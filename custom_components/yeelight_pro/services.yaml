@@ -90,7 +90,7 @@ refresh:
 
 cleanup_registry:
   name: 注册表清理预检
-  description: 对 stale Yeelight Pro 实体执行 dry-run；二次确认后仅禁用 stale entities，不删除实体或设备注册表条目（管理员服务）
+  description: 对 stale Yeelight Pro 实体执行 dry-run；二次确认后通过 Home Assistant registry 禁用 stale entities（管理员服务）
   fields:
     entry_id:
       name: 配置条目 ID

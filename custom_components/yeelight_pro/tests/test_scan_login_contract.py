@@ -49,7 +49,7 @@ def test_scan_login_paths_and_qrcode_content_match_openapi_contract() -> None:
     )
     assert (
         build_scan_login_qrcode_content("qr-1", "AA:BB:CC:DD:EE:FF")
-        == "qr-1&AA:BB:CC:DD:EE:FF"
+        == "cli&AA:BB:CC:DD:EE:FF&qr-1"
     )
 
 
@@ -63,7 +63,7 @@ def test_parse_scan_login_created_response_returns_pollable_qrcode() -> None:
     assert state.pollable is True
     assert state.expire_in_ms == SCAN_LOGIN_QRCODE_TTL_MS
     assert state.expires_in_seconds == 300
-    assert state.qrcode_content == "qr-1&ha-device-1"
+    assert state.qrcode_content == "cli&ha-device-1&qr-1"
     assert state.token is None
 
 
@@ -85,7 +85,7 @@ def test_parse_scan_login_created_response_accepts_snake_case_aliases() -> None:
 
     assert state.qr_code_id == "qr-2"
     assert state.device == "ha-device-2"
-    assert state.qrcode_content == "qr-2&ha-device-2"
+    assert state.qrcode_content == "cli&ha-device-2&qr-2"
     assert state.expire_in_ms == SCAN_LOGIN_QRCODE_TTL_MS
     assert state.expire_at_ms == now_ms + SCAN_LOGIN_QRCODE_TTL_MS
 
@@ -118,7 +118,7 @@ def test_expired_scan_login_qrcode_is_not_pollable() -> None:
 
 
 def test_parse_scan_login_login_response_returns_token_model() -> None:
-    """LOGIN 响应中的 token 应复用 OAuth token 模型并保留账号元数据."""
+    """LOGIN 响应中的 token 应解析为扫码登录账号模型并保留账号元数据."""
     state = parse_scan_login_response(scan_login_login_payload())
 
     assert state.status == ScanLoginStatus.LOGIN

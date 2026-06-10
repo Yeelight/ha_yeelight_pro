@@ -119,7 +119,7 @@ async def test_setup_entry_passes_open_api_client_id_to_client(
     mock_config_entry: MagicMock,
     mock_client: AsyncMock,
 ) -> None:
-    """Setup 应把 OAuth 获取的 Open API clientId 传给 HTTP client."""
+    """Setup 应把账号元数据中的 Open API clientId 传给 HTTP client."""
     hass.data.setdefault(DOMAIN, {})
 
     with patch(

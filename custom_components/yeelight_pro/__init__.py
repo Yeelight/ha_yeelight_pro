@@ -24,7 +24,7 @@ from .const import (
     CONF_CONNECTION_MODE,
     CONF_CLOUD_DOMAIN,
     CONF_HOUSE_ID,
-    CONF_OAUTH_CLIENT_ID,
+    CONF_OPEN_API_CLIENT_ID,
     CONF_PRIVATE_DOMAIN,
     CONNECTION_MODE_CLOUD,
     DOMAIN,
@@ -117,7 +117,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry_data = normalize_entry_data(entry.data)
     connection_mode = entry_data[CONF_CONNECTION_MODE]
     access_token = entry_data[CONF_ACCESS_TOKEN]
-    client_id = entry_data.get(CONF_OAUTH_CLIENT_ID, "")
+    client_id = entry_data.get(CONF_OPEN_API_CLIENT_ID, "")
     house_id = entry_data[CONF_HOUSE_ID]
 
     # 确定域名

@@ -119,7 +119,6 @@ def load_scan_login_contract() -> Any:
         (f"{PROBE_PACKAGE}.core.exceptions", COMPONENT_ROOT / "core" / "exceptions.py"),
         (f"{PROBE_PACKAGE}.core.http_errors", COMPONENT_ROOT / "core" / "http_errors.py"),
         (f"{PROBE_PACKAGE}.const", COMPONENT_ROOT / "const.py"),
-        (f"{PROBE_PACKAGE}.oauth_contract", COMPONENT_ROOT / "oauth_contract.py"),
     ):
         if module_name not in sys.modules:
             _load_probe_module(module_name, path)

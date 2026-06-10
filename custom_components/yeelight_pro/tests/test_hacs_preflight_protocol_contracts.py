@@ -8,11 +8,11 @@ import pytest
 from scripts import hacs_preflight
 
 
-def test_oauth_contract_check_requires_runtime_coverage_tokens(
+def test_scan_login_contract_check_requires_runtime_coverage_tokens(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """preflight 应拒绝空文件冒充 OAuth token runtime 覆盖."""
+    """preflight 应拒绝空文件冒充扫码登录 runtime 覆盖."""
     component_root = tmp_path / "custom_components" / "yeelight_pro"
     core_root = component_root / "core"
     tests_root = component_root / "tests"
@@ -21,24 +21,12 @@ def test_oauth_contract_check_requires_runtime_coverage_tokens(
     monkeypatch.setattr(hacs_preflight, "COMPONENT_ROOT", component_root)
 
     _write_test_file(
-        component_root / "oauth_contract.py",
-        (
-            "DEFAULT_OAUTH_AUTHORIZE_URL DEFAULT_OAUTH_TOKEN_URL "
-            "build_authorization_url build_authorization_code_token_body "
-            "build_refresh_token_body parse_oauth_token_response raise_for_body_error"
-        ),
-    )
-    _write_test_file(
         component_root / "scan_login_contract.py",
         (
             "CLOUD_REGION_BASE_DOMAINS SCAN_LOGIN_QRCODE_TTL_MS "
             "build_scan_login_qrcode_path build_scan_login_status_path "
-            "build_scan_login_qrcode_content parse_scan_login_response"
+            "build_scan_login_qrcode_content parse_scan_login_response cli&"
         ),
-    )
-    _write_test_file(
-        core_root / "oauth.py",
-        "DEFAULT_OAUTH_TOKEN_URL exchange_authorization_code",
     )
     _write_test_file(
         core_root / "scan_login.py",
@@ -53,24 +41,21 @@ def test_oauth_contract_check_requires_runtime_coverage_tokens(
         "async_show_progress",
     )
     _write_test_file(
-        tests_root / "test_oauth_contract.py",
-        "build_authorization_url OAUTH_GRANT_AUTHORIZATION_CODE",
+        tests_root / "test_scan_login_contract.py",
+        "SCAN_LOGIN_QRCODE_TTL_MS cli&AA:BB:CC:DD:EE:FF&qr-1",
     )
-    _write_test_file(tests_root / "test_scan_login_contract.py", "SCAN_LOGIN_QRCODE_TTL_MS")
-    _write_test_file(tests_root / "test_p0_oauth_runtime.py", "refresh_oauth_token")
     _write_test_file(tests_root / "test_scan_login_runtime.py", "FakeScanLoginSession")
     _write_test_file(tests_root / "test_config_flow_scan_login_device.py", "")
+    _write_test_file(tests_root / "test_config_flow_scan_login.py", "")
     scripts_root = component_root.parent.parent / "scripts"
     scripts_root.mkdir()
     _write_test_file(tests_root / "test_verify_scan_login.py", "")
     _write_test_file(scripts_root / "verify_scan_login.py", "")
 
-    errors = hacs_preflight._check_oauth_contract_tests()
+    errors = hacs_preflight._check_scan_login_contract_tests()
 
-    assert any("refresh-token runtime method" in error for error in errors)
-    assert any("shared OAuth token parser use" in error for error in errors)
-    assert any("OAuth error classifier coverage" in error for error in errors)
-    assert any("authorization-code client coverage" in error for error in errors)
+    assert any("scan-login token model" in error for error in errors)
+    assert any("scan-login refresh-token field alias coverage" in error for error in errors)
     assert any("QR countdown expiry derivation helper" in error for error in errors)
     assert any("QR countdown expiry derivation coverage" in error for error in errors)
     assert any("scan-login HA instance device helper" in error for error in errors)
@@ -80,8 +65,11 @@ def test_oauth_contract_check_requires_runtime_coverage_tokens(
     assert any("scan-login device id privacy coverage" in error for error in errors)
     assert any("scan-login device id uniqueness coverage" in error for error in errors)
     assert any("raw HA instance id leakage regression marker" in error for error in errors)
-    assert any("documented refresh error coverage" in error for error in errors)
     assert any("scan-login polling coverage" in error for error in errors)
+    assert any("scan-login qrcode creation coverage" in error for error in errors)
+    assert any("native Home Assistant QR selector coverage" in error for error in errors)
+    assert any("scan-login progress polling coverage" in error for error in errors)
+    assert any("scan-login LOGIN token flow coverage" in error for error in errors)
     assert any("production scan-login confirm guard coverage" in error for error in errors)
     assert any("production scan-login device env guard coverage" in error for error in errors)
     assert any("production scan-login bounded-run guard coverage" in error for error in errors)

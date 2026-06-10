@@ -17,7 +17,7 @@ from .const import (
     CONF_CLOUD_REGION,
     CONF_DEVICE_IMPORT_FILTER,
     CONF_HOUSE_ID,
-    CONF_OAUTH_CLIENT_ID,
+    CONF_OPEN_API_CLIENT_ID,
     CONF_PRIVATE_DOMAIN,
     CONF_REFRESH_TOKEN,
     CONF_SCAN_LOGIN_DEVICE,
@@ -62,6 +62,7 @@ from .entry_migration import (
     ENTRY_MINOR_VERSION,
     ENTRY_VERSION,
 )
+from .entry_title import config_entry_title
 from .options_flow import YeelightProOptionsFlow
 
 
@@ -285,32 +286,28 @@ class YeelightProConfigFlow(
         await self.async_set_unique_id(unique_id)
         self._abort_if_unique_id_configured()
 
-        # 创建条目
-        title = f"Yeelight Pro ({self._domain})"
-        if self._connection_mode == CONNECTION_MODE_PRIVATE:
-            title = f"Yeelight Pro Private ({self._domain})"
-
+        data = {
+            CONF_CONNECTION_MODE: self._connection_mode,
+            CONF_CLOUD_DOMAIN: self._domain if self._connection_mode == CONNECTION_MODE_CLOUD else "",
+            CONF_CLOUD_REGION: (
+                self._cloud_region
+                if self._connection_mode == CONNECTION_MODE_CLOUD
+                else ""
+            ),
+            CONF_PRIVATE_DOMAIN: self._domain if self._connection_mode == CONNECTION_MODE_PRIVATE else "",
+            CONF_ACCESS_TOKEN: self._access_token,
+            CONF_REFRESH_TOKEN: self._refresh_token,
+            CONF_TOKEN_EXPIRES_IN: self._token_expires_in,
+            CONF_TOKEN_TYPE: self._token_type,
+            CONF_HOUSE_ID: self._house_id,
+            CONF_OPEN_API_CLIENT_ID: self._open_api_client_id,
+            CONF_ACCOUNT_USER_ID: self._account_user_id,
+            CONF_ACCOUNT_USERNAME: self._account_username,
+            CONF_SCAN_LOGIN_DEVICE: self._scan_login_device,
+        }
         return self.async_create_entry(
-            title=title,
-            data={
-                CONF_CONNECTION_MODE: self._connection_mode,
-                CONF_CLOUD_DOMAIN: self._domain if self._connection_mode == CONNECTION_MODE_CLOUD else "",
-                CONF_CLOUD_REGION: (
-                    self._cloud_region
-                    if self._connection_mode == CONNECTION_MODE_CLOUD
-                    else ""
-                ),
-                CONF_PRIVATE_DOMAIN: self._domain if self._connection_mode == CONNECTION_MODE_PRIVATE else "",
-                CONF_ACCESS_TOKEN: self._access_token,
-                CONF_REFRESH_TOKEN: self._refresh_token,
-                CONF_TOKEN_EXPIRES_IN: self._token_expires_in,
-                CONF_TOKEN_TYPE: self._token_type,
-                CONF_HOUSE_ID: self._house_id,
-                CONF_OAUTH_CLIENT_ID: self._open_api_client_id,
-                CONF_ACCOUNT_USER_ID: self._account_user_id,
-                CONF_ACCOUNT_USERNAME: self._account_username,
-                CONF_SCAN_LOGIN_DEVICE: self._scan_login_device,
-            },
+            title=config_entry_title(data),
+            data=data,
             options=self._entry_options(),
         )
 

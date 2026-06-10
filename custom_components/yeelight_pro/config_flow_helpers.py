@@ -16,11 +16,6 @@ from .const import (
     CONF_CLOUD_REGION,
     CONF_CONNECTION_MODE,
     CONF_HOUSE_ID,
-    CONF_OAUTH_CLIENT_ID,
-    CONF_OAUTH_CLIENT_SECRET,
-    CONF_OAUTH_CODE,
-    CONF_OAUTH_DEVICE,
-    CONF_OAUTH_REDIRECT_URI,
     CONF_PRIVATE_DOMAIN,
     CLOUD_AUTH_METHOD_ACCESS_TOKEN,
     CLOUD_AUTH_METHOD_SCAN_LOGIN,
@@ -28,7 +23,6 @@ from .const import (
     CONNECTION_MODE_CLOUD,
     CONNECTION_MODE_PRIVATE,
     DEFAULT_CLOUD_REGION,
-    DEFAULT_OAUTH_DEVICE,
     DEFAULT_PRIVATE_DOMAIN,
 )
 from .config_flow_options import (
@@ -44,7 +38,6 @@ from .config_flow_options import (
 )
 from .core.client import YeelightProClient
 from .core.exceptions import AuthenticationError, ConnectionError
-from .oauth_contract import YeelightOAuthToken, build_authorization_url
 from .scan_login_contract import iot_base_url
 
 _LOGGER = logging.getLogger(__name__)
@@ -129,21 +122,6 @@ def cloud_auth_schema() -> vol.Schema:
     return vol.Schema({vol.Required(CONF_ACCESS_TOKEN): str})
 
 
-def cloud_oauth_app_schema() -> vol.Schema:
-    """返回 Yeelight OAuth 应用信息表单 schema."""
-    return vol.Schema({
-        vol.Required(CONF_OAUTH_CLIENT_ID): _required_text,
-        vol.Required(CONF_OAUTH_CLIENT_SECRET): _required_text,
-        vol.Required(CONF_OAUTH_REDIRECT_URI): _required_text,
-        vol.Required(CONF_OAUTH_DEVICE, default=DEFAULT_OAUTH_DEVICE): _required_text,
-    })
-
-
-def cloud_oauth_code_schema() -> vol.Schema:
-    """返回 Yeelight OAuth 授权码表单 schema."""
-    return vol.Schema({vol.Required(CONF_OAUTH_CODE): _required_text})
-
-
 def cloud_houses_schema(choices: Mapping[Any, str]) -> vol.Schema:
     """返回云端家庭选择表单 schema."""
     return vol.Schema({vol.Required(CONF_HOUSE_ID): vol.In(dict(choices))})
@@ -164,18 +142,6 @@ def private_config_schema() -> vol.Schema:
 def reauth_confirm_schema() -> vol.Schema:
     """返回重新认证 token 表单 schema."""
     return cloud_auth_schema()
-
-
-def cloud_oauth_authorization_url(
-    *,
-    client_id: str,
-    redirect_uri: str,
-) -> str:
-    """生成不携带 secret/token 的 Yeelight OAuth 授权 URL."""
-    return build_authorization_url(
-        client_id=client_id,
-        redirect_uri=redirect_uri,
-    )
 
 
 async def async_validate_auth(
@@ -210,27 +176,6 @@ async def async_load_house_choices(
         client_id=client_id,
     )
     return house_choices(await client.get_houses())
-
-
-async def async_exchange_oauth_code(
-    hass: HomeAssistant,
-    *,
-    domain: str,
-    client_id: str,
-    client_secret: str,
-    redirect_uri: str,
-    code: str,
-    device: str,
-) -> YeelightOAuthToken:
-    """用用户提供的授权码换取 Yeelight OAuth token."""
-    client = _client(hass, domain=domain, access_token="")
-    return await client.exchange_authorization_code(
-        client_id=client_id,
-        client_secret=client_secret,
-        redirect_uri=redirect_uri,
-        code=code,
-        device=device,
-    )
 
 
 def _client(

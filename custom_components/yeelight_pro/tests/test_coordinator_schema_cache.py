@@ -40,9 +40,13 @@ async def test_update_data_attaches_schema_aware_canonical_models(
 
     assert device["ha_product_model"]["product"]["model_id"] == "YL-100"
     assert device["ha_device_instance"]["product_ref"] == {"model_id": "YL-100"}
-    assert device["ha_device_instance"]["device_info"]["identifiers"] == [
-        ["yeelight_pro", "device:1"]
+    device_info = device["ha_device_instance"]["device_info"]
+    assert device_info["identifiers"] == [
+        ["yeelight_pro", "1"],
+        ["yeelight_pro", "device:1"],
     ]
+    assert device_info["name"] == "Schema Lamp"
+    assert device_info["model"] == "Schema Lamp Product"
     assert device["ha_device_instance"]["components"] == [
         {
             "component_id": "light",
@@ -96,3 +100,41 @@ async def test_runtime_overrides_update_schema_aware_canonical_state(
         "p": True,
         "l": 80,
     }
+
+
+@pytest.mark.asyncio
+async def test_update_data_infers_device_info_when_product_schema_missing(
+    hass: HomeAssistant,
+) -> None:
+    """无官方 schema 的真实轮询设备也必须进入 HA device registry。"""
+    client = _client_with_payloads(
+        devices=[
+            [
+                {
+                    "id": 304784333,
+                    "name": "客厅筒灯 1",
+                    "category": "light",
+                    "pid": 200,
+                    "roomId": 397,
+                    "properties": [
+                        {"propId": "p", "value": True},
+                        {"propId": "l", "value": 80},
+                    ],
+                }
+            ]
+        ],
+        product_schemas={},
+        rooms=[{"id": "397", "name": "客厅"}],
+    )
+    coordinator = YeelightProCoordinator(hass, client, house_id=12345)
+
+    data = await coordinator._async_update_data()
+    device = data[304784333]
+
+    assert device["ha_product_model"]["schema_version"] == "runtime-v1"
+    assert device["ha_device_instance"]["device_info"]["identifiers"] == [
+        ["yeelight_pro", "304784333"],
+        ["yeelight_pro", "device:304784333"],
+    ]
+    assert device["ha_device_instance"]["device_info"]["name"] == "客厅筒灯 1"
+    assert device["ha_device_instance"]["device_info"]["suggested_area"] == "客厅"

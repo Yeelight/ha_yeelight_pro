@@ -10,7 +10,7 @@ from homeassistant.components.event import EventDeviceClass
 from ..utils import to_bool
 from .common import load_instance as _load_instance
 from .common import load_product_model as _load_product_model
-from .device import project_device_info
+from .device import project_payload_device_info
 from .event_helpers import component_available as _component_available
 from .event_helpers import event_components as _event_components
 from .event_helpers import event_device_class as _event_device_class
@@ -62,7 +62,7 @@ def project_events(device_payload: Mapping[str, Any], *, domain: str) -> list[HA
         component.component_id: component for component in (instance.components if instance else [])
     }
     event_components = _event_components(product_model, device_payload)
-    device_info = project_device_info(instance) if instance is not None else None
+    device_info = project_payload_device_info(device_payload, instance)
 
     projections: list[HAEventProjection] = []
     total = len(event_components)

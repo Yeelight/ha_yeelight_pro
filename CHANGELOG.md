@@ -9,13 +9,12 @@ All notable changes to the Yeelight Pro integration will be documented in this f
 - Fixed write APIs that referenced an implicit `client.house_id`; control, toggle, scene, and group commands now receive `house_id` explicitly.
 - Preserved authentication failures as `ConfigEntryAuthFailed` so Home Assistant can trigger reauthentication.
 - Made `pytest -q` reproducible from the integration root through local `pyproject.toml` settings.
-- Removed the stale `text.py` platform implementation; `text` remains a non-category Home Assistant platform concept and is not part of this release.
+- Aligned the runtime platform set, release package, and documentation around the current Home Assistant projection surface.
 - Fixed entity-registry reconciliation so scene buttons and scene entities with the same scene id are tracked separately.
 - Connected official Yeelight product schemas to the coordinator's canonical product and runtime device-instance payloads, so projector layers consume the same schema-aware path in production and tests.
 - Hardened diagnostics redaction for device-import filter form-only fields so room, gateway, product, and device identifiers cannot leak if those fields reach diagnostics.
-- Classified documented Yeelight OAuth errors such as insufficient scope, unauthorized clients, invalid scopes, redirect URI mismatches, and invalid requests without exposing vendor payload text.
 - Rejected malformed WebSocket push node lists consistently for both `prop` and `event` payload adapters instead of partially swallowing bad frames.
-- Preserved and sent the documented Open API `clientId` header when an OAuth-derived or migrated non-secret client id is available, while keeping the manual access-token path compatible.
+- Preserved and sent the documented Open API `clientId` header when scan-login or migrated account metadata provides a non-secret client id, while keeping the manual access-token path compatible.
 
 ### Added
 
@@ -51,12 +50,16 @@ All notable changes to the Yeelight Pro integration will be documented in this f
 
 Use the latest local command output as the source of truth. This changelog intentionally does not freeze historical test counts, coverage percentages, or release zip file counts.
 
-### Known Gaps
+### Runtime Model
 
-- Yeelight OAuth protocol helpers are covered as no-network contracts; APP
-  scan-login is the cloud setup path. Home Assistant OAuth login/runtime
-  refresh, multi-account-in-one-entry UX, local gateway discovery, and full
-  rules/spec filter engines remain roadmap items.
+- Cloud accounts, regions, and houses are isolated through separate config entries.
+- Cloud event notifications use the explicit `live_updates` WebSocket runtime.
+- Local gateway control uses the explicit `local_gateway_control` LAN runtime,
+  including one UDP discovery fallback when the option is enabled and no host is
+  configured.
+- Device import filtering uses diagnostics preview, manual option rules,
+  setup/options real device picker selections, and the conservative new-entity
+  gate.
 
 ## [0.1.0] - 2026-06-03
 

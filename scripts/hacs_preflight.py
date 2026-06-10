@@ -35,8 +35,8 @@ from scripts.hacs_preflight_local_ha import (  # noqa: E402
     VERIFY_LOCAL_HA_CONTRACT_TOKENS,
 )
 from scripts.hacs_preflight_lifecycle import check_lifecycle_contracts  # noqa: E402
-from scripts.hacs_preflight_oauth_contracts import (  # noqa: E402
-    check_oauth_contract_tests,
+from scripts.hacs_preflight_scan_login_contracts import (  # noqa: E402
+    check_scan_login_contract_tests,
 )
 from scripts.hacs_preflight_runtime_options import (  # noqa: E402
     check_automation_contract_tests,
@@ -133,9 +133,9 @@ def _check_push_contract_tests() -> list[str]:
     return check_push_contract_tests(COMPONENT_ROOT)
 
 
-def _check_oauth_contract_tests() -> list[str]:
-    """Ensure OAuth protocol contracts stay explicit before release."""
-    return check_oauth_contract_tests(COMPONENT_ROOT)
+def _check_scan_login_contract_tests() -> list[str]:
+    """Ensure APP scan-login contracts stay explicit before release."""
+    return check_scan_login_contract_tests(COMPONENT_ROOT)
 
 
 def _check_lan_contract_tests() -> list[str]:
@@ -202,7 +202,7 @@ def _run_checks() -> list[tuple[str, list[str]]]:
         ),
         ("user-visible error redaction", _check_user_visible_error_redaction()),
         ("forbidden Open API runtime", _check_forbidden_open_api_runtime()),
-        ("OAuth contract tests", _check_oauth_contract_tests()),
+        ("scan-login contract tests", _check_scan_login_contract_tests()),
         ("push contract tests", _check_push_contract_tests()),
         ("LAN contract tests", _check_lan_contract_tests()),
         ("local HA verification contract", _check_local_ha_verification_contract()),

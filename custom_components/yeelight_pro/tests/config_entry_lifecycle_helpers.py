@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant
 from custom_components.yeelight_pro.const import (
     CONF_CONNECTION_MODE,
     CONF_HOUSE_ID,
-    CONF_OAUTH_CLIENT_ID,
+    CONF_OPEN_API_CLIENT_ID,
     CONNECTION_MODE_CLOUD,
     DOMAIN,
 )
@@ -28,7 +28,7 @@ def make_config_entry() -> MagicMock:
         CONF_CONNECTION_MODE: CONNECTION_MODE_CLOUD,
         CONF_ACCESS_TOKEN: "test_token",
         CONF_HOUSE_ID: 12345,
-        CONF_OAUTH_CLIENT_ID: "client-1",
+        CONF_OPEN_API_CLIENT_ID: "client-1",
         "cloud_domain": "api.yeelight.com",
     }
     entry.options = {}

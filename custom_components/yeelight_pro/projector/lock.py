@@ -10,7 +10,7 @@ from typing import Any, Mapping
 
 from ..canonical.models import ComponentInstanceModel, HADeviceInstanceModel
 from ..utils import to_bool, to_category, matches_category
-from .device import flatten_instance_state, project_device_info
+from .device import flatten_instance_state, project_payload_device_info
 
 LOCK_CATEGORY_TOKENS = ("lock", "door lock", "smart lock", "门锁", "智能锁")
 LOCK_STATE_KEYS = ("lock", "locked", "lck")
@@ -53,7 +53,7 @@ def project_lock(device_payload: Mapping[str, Any], *, domain: str) -> HALockPro
         available=available,
         is_locked=to_bool(params.get(control_key), default=False),
         control_key=control_key,
-        device_info=project_device_info(instance) if instance is not None else None,
+        device_info=project_payload_device_info(device_payload, instance),
         icon="mdi:lock",
     )
 

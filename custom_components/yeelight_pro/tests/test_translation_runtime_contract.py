@@ -36,15 +36,14 @@ def test_translations_are_valid_and_key_aligned() -> None:
     """英文、简中翻译和 strings.json 的关键配置路径必须对齐."""
     strings, english, chinese = _translation_payloads()
     required_paths = {
-        ("config", "options", "step", "init", "data", CONF_SCAN_INTERVAL),
-        ("config", "options", "step", "init", "data", CONF_DEBUG_MODE),
-        ("config", "options", "step", "init", "data", CONF_EXPERIMENTAL_PLATFORMS),
-        ("config", "options", "step", "init", "data", CONF_HIDE_UNKNOWN_ENTITIES),
-        ("config", "options", "step", "init", "data", CONF_TOPOLOGY_CHANGE_REPAIRS),
-        ("config", "options", "step", "init", "data", CONF_DEVICE_IMPORT_FILTER_ENABLED),
-        ("config", "options", "step", "init", "data", CONF_DEVICE_IMPORT_FILTER_MODE),
+        ("options", "step", "init", "data", CONF_SCAN_INTERVAL),
+        ("options", "step", "init", "data", CONF_DEBUG_MODE),
+        ("options", "step", "init", "data", CONF_EXPERIMENTAL_PLATFORMS),
+        ("options", "step", "init", "data", CONF_HIDE_UNKNOWN_ENTITIES),
+        ("options", "step", "init", "data", CONF_TOPOLOGY_CHANGE_REPAIRS),
+        ("options", "step", "init", "data", CONF_DEVICE_IMPORT_FILTER_ENABLED),
+        ("options", "step", "init", "data", CONF_DEVICE_IMPORT_FILTER_MODE),
         (
-            "config",
             "options",
             "step",
             "init",
@@ -52,7 +51,6 @@ def test_translations_are_valid_and_key_aligned() -> None:
             CONF_DEVICE_IMPORT_FILTER_INCLUDE_CATEGORIES,
         ),
         (
-            "config",
             "options",
             "step",
             "init",
@@ -60,7 +58,6 @@ def test_translations_are_valid_and_key_aligned() -> None:
             CONF_DEVICE_IMPORT_FILTER_EXCLUDE_CATEGORIES,
         ),
         (
-            "config",
             "options",
             "step",
             "init",
@@ -68,17 +65,16 @@ def test_translations_are_valid_and_key_aligned() -> None:
             CONF_DEVICE_IMPORT_FILTER_PICKER,
         ),
         (
-            "config",
             "options",
             "step",
             "cloud_devices",
             "data",
             CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES,
         ),
-        ("config", "options", "step", "confirm_runtime", "title"),
-        ("config", "options", "step", "confirm_runtime", "description"),
-        ("config", "options", "step", "confirm_reload", "title"),
-        ("config", "options", "step", "confirm_reload", "description"),
+        ("options", "step", "confirm_runtime", "title"),
+        ("options", "step", "confirm_runtime", "description"),
+        ("options", "step", "confirm_reload", "title"),
+        ("options", "step", "confirm_reload", "description"),
         ("config", "step", "cloud_region", "data", "cloud_region"),
         ("config", "step", "cloud_auth_method", "data", "cloud_auth_method"),
         ("config", "step", "cloud_scan_login", "data", CONF_SCAN_LOGIN_QRCODE),
@@ -109,6 +105,8 @@ def test_translations_are_valid_and_key_aligned() -> None:
     for payload in (strings, english, chinese):
         paths = leaf_paths(payload)
         assert required_paths.issubset(paths)
+        assert "options" in payload
+        assert "options" not in payload["config"]
 
     assert leaf_paths(strings) == leaf_paths(chinese)
     assert leaf_paths(strings) == leaf_paths(english)

@@ -221,7 +221,7 @@ def test_main_can_show_qrcode_only_after_explicit_confirm(monkeypatch, capsys) -
     assert exit_code == 1
     lines = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
     assert lines[0]["event"] == "scan_login_qrcode"
-    assert lines[0]["qrcode"] == "secret-qr&secret-device"
+    assert lines[0]["qrcode"] == "cli&secret-device&secret-qr"
     assert lines[0]["remaining_seconds"] > 0
     assert lines[0]["status"] == "CREATED"
     assert lines[1]["created_qrcode"] is True

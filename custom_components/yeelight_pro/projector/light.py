@@ -13,7 +13,7 @@ from homeassistant.components.light import ColorMode
 from ..canonical.models import ComponentInstanceModel, HADeviceInstanceModel
 from ..utils import matches_category, to_bool, to_category
 from .common import NumericRange, load_instance, load_product_model, product_component
-from .device import project_device_info
+from .device import project_payload_device_info
 from .light_helpers import (
     DEFAULT_BRIGHTNESS_RANGE,
     DEFAULT_COLOR_TEMP_RANGE_KELVIN,
@@ -115,7 +115,7 @@ def project_light(device_payload: Mapping[str, Any], *, domain: str) -> HALightP
         max_mireds=_project_max_mireds(color_temp_range),
         brightness_range=brightness_range,
         color_temp_range_kelvin=color_temp_range,
-        device_info=project_device_info(instance),
+        device_info=project_payload_device_info(device_payload, instance),
         icon=_project_icon(device_payload, supported_color_modes),
     )
 
@@ -169,7 +169,7 @@ def _project_legacy_light(
         max_mireds=_project_max_mireds(color_temp_range),
         brightness_range=brightness_range,
         color_temp_range_kelvin=color_temp_range,
-        device_info=None,
+        device_info=project_payload_device_info(device_payload),
         icon=_project_icon(device_payload, supported_color_modes),
     )
 

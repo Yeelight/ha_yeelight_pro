@@ -1,12 +1,11 @@
 """Shared region guard for Yeelight APP scan-login config flows."""
 from __future__ import annotations
 
-from .oauth_contract import YeelightOAuthToken
-from .scan_login_contract import normalize_cloud_region
+from .scan_login_contract import YeelightAccountToken, normalize_cloud_region
 
 
 def scan_login_token_matches_region(
-    token: YeelightOAuthToken | None,
+    token: YeelightAccountToken | None,
     selected_region: str,
 ) -> bool:
     """Return whether a scan-login token can be used for the selected region."""

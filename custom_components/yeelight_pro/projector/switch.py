@@ -12,7 +12,7 @@ from typing import Any, Mapping
 from ..canonical.models import HADeviceInstanceModel
 from ..utils import to_bool, to_str
 from .common import load_instance as _load_instance
-from .device import project_device_info
+from .device import project_payload_device_info
 from .switch_helpers import (
     _allows_raw_switch_fallback,
     _build_switch_name,
@@ -70,7 +70,7 @@ def _project_instance_switches(
         return []
 
     base_name = instance.name or to_str(device_payload.get("name"))
-    device_info = project_device_info(instance)
+    device_info = project_payload_device_info(device_payload, instance)
     params = _params(device_payload)
     key_map = _component_state_key_map(instance)
     projections: list[HASwitchProjection] = []
@@ -122,7 +122,7 @@ def _project_raw_switches(
     params = _params(device_payload)
     device_id = str(device_payload.get("device_id", "unknown"))
     base_name = to_str(device_payload.get("name")) or device_id
-    device_info = project_device_info(instance) if instance is not None else None
+    device_info = project_payload_device_info(device_payload, instance)
     available = to_bool(device_payload.get("online"), default=False)
 
     if not _allows_raw_switch_fallback(device_payload):

@@ -6,7 +6,12 @@
 from .binary_sensor import HABinarySensorProjection, project_binary_sensors
 from .climate import HAClimateProjection, project_climate
 from .cover import HACoverProjection, project_cover
-from .device import flatten_instance_state, project_device_info, project_device_info_model
+from .device import (
+    flatten_instance_state,
+    project_device_info,
+    project_device_info_model,
+    project_payload_device_info,
+)
 from .event import HAEventProjection, HADeviceTriggerProjection, project_device_triggers, project_events
 from .fan import HAFanProjection, project_fans
 from .light import HALightProjection, LIGHT_COLOR_MODE_HINT_KEY, project_light
@@ -34,6 +39,7 @@ __all__ = [
     "project_cover",
     "project_device_info",
     "project_device_info_model",
+    "project_payload_device_info",
     "project_device_triggers",
     "project_events",
     "project_fans",

@@ -53,6 +53,34 @@ def test_light_projection_preserves_gateway_via_device_info() -> None:
     assert projection.device_info["via_device"] == (DOMAIN, "gateway-1")
 
 
+def test_light_projection_uses_top_level_fallback_device_info() -> None:
+    """旧版扁平 light payload 也必须带设备名称和型号 metadata。"""
+    device = {
+        "device_id": "304784333",
+        "type": "light",
+        "online": True,
+        "params": {"p": True, "l": 80},
+        "device_info": {
+            "identifiers": [[DOMAIN, "304784333"]],
+            "manufacturer": "Yeelight",
+            "model": "light",
+            "model_id": "YL-200",
+            "name": "客厅筒灯 1",
+            "suggested_area": "客厅",
+        },
+    }
+
+    projection = project_light(device, domain=DOMAIN)
+
+    assert projection is not None
+    assert projection.device_info is not None
+    assert projection.device_info["identifiers"] == {(DOMAIN, "304784333")}
+    assert projection.device_info["name"] == "客厅筒灯 1"
+    assert projection.device_info["model"] == "light"
+    assert projection.device_info["model_id"] == "YL-200"
+    assert "suggested_area" not in projection.device_info
+
+
 def test_color_light_without_temperature_projects_rgb_without_color_temp() -> None:
     """无色温彩光灯应投影 RGB 能力，但不能暴露色温能力。"""
     device = projection_payload(

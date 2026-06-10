@@ -16,27 +16,21 @@ def write_diagnostics(
     root: Path,
     *,
     mqtt_subscription: bool = False,
-    include_ambiguous_oauth: bool = False,
+    include_removed_oauth: bool = False,
 ) -> None:
     """Write minimal diagnostics.py capability flags."""
-    ambiguous_oauth = (
-        '        "oauth_authorization_code_flow": True,\n'
-        if include_ambiguous_oauth
+    removed_oauth = (
+        '        "oauth_flow": False,\n'
+        if include_removed_oauth
         else ""
     )
     root.joinpath("diagnostics.py").write_text(
         f"""
 def _client_capabilities_for_entry(entry):
     return {{
-        "oauth_contract": True,
-        "oauth_token_runtime": True,
-        "manual_oauth_authorization_code_exchange": True,
         "scan_login_contract": True,
         "scan_login_runtime": True,
-{ambiguous_oauth.rstrip()}
-        "oauth_flow": False,
-        "refresh_token_contract": True,
-        "refresh_token_runtime": True,
+{removed_oauth.rstrip()}
         "push_message_adapter": True,
         "runtime_payload_bridge": True,
         "websocket_message_contract": True,

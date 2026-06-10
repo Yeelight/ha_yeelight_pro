@@ -123,15 +123,15 @@ async def test_client_request_redacts_open_api_body_error_message() -> None:
         pytest.param(
             {"error": "unsupported_grant_type", "error_description": "device=67890"},
             CommandError,
-            id="unknown-oauth-error",
+            id="unknown-openapi-error",
         ),
     ],
 )
-async def test_client_request_maps_oauth_style_body_errors_without_code(
+async def test_client_request_maps_openapi_body_errors_without_code(
     payload: dict[str, str],
     expected_error: type[Exception],
 ) -> None:
-    """无 code 的 OAuth/OpenAPI error 响应也不能被误判为成功."""
+    """无 code 的 OpenAPI error 响应也不能被误判为成功."""
     with pytest.raises(expected_error) as exc_info:
         await _client(payload)._request("GET", "/v1/open/node/house/r/list")
 

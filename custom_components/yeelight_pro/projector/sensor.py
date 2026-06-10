@@ -15,7 +15,7 @@ from ..capabilities.filter import (
 )
 from ..const import DEFAULT_HIDE_UNKNOWN_ENTITIES
 from .common import load_instance
-from .device import project_device_info
+from .device import project_payload_device_info
 from .sensor_helpers import (
     bool_value,
     component_for_prop,
@@ -62,7 +62,7 @@ def project_sensors(
 
     instance = load_instance(device_payload)
     params = runtime_state(device_payload, instance)
-    device_info = project_device_info(instance) if instance is not None else None
+    device_info = project_payload_device_info(device_payload, instance)
     base_name = device_name(device_payload, instance)
     device_id = str(device_payload.get("device_id", "unknown"))
     base_available = bool_value(device_payload.get("online"), default=False)

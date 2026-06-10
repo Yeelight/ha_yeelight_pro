@@ -18,7 +18,7 @@ from custom_components.yeelight_pro.const import (
     CONF_CLOUD_REGION,
     CONF_CONNECTION_MODE,
     CONF_HOUSE_ID,
-    CONF_OAUTH_CLIENT_ID,
+    CONF_OPEN_API_CLIENT_ID,
     CONF_PRIVATE_DOMAIN,
     CONF_REFRESH_TOKEN,
     CONF_SCAN_LOGIN_DEVICE,
@@ -70,7 +70,7 @@ async def test_cloud_reauth_routes_to_scan_login_qrcode(config_flow) -> None:
 
     assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "cloud_scan_login"
-    assert result["description_placeholders"]["qrcode"] == "qr-1&ha-device-1"
+    assert result["description_placeholders"]["qrcode"] == "cli&ha-device-1&qr-1"
     assert config_flow._reauth_in_progress is True
     client.create_scan_login_qrcode.assert_awaited_once_with(
         region="us",
@@ -94,7 +94,7 @@ async def test_cloud_reauth_scan_login_updates_token_metadata(config_flow) -> No
         CONF_HOUSE_ID: 7,
         CONF_ACCOUNT_USER_ID: 122349,
         CONF_ACCOUNT_USERNAME: "old-name",
-        CONF_OAUTH_CLIENT_ID: "old-client",
+        CONF_OPEN_API_CLIENT_ID: "old-client",
         CONF_SCAN_LOGIN_DEVICE: "ha-device-1",
     }
     config_flow._scan_login_device = "ha-device-1"
@@ -123,7 +123,7 @@ async def test_cloud_reauth_scan_login_updates_token_metadata(config_flow) -> No
     assert new_data[CONF_TOKEN_EXPIRES_IN] == 7775999
     assert new_data[CONF_ACCOUNT_USER_ID] == 122349
     assert new_data[CONF_ACCOUNT_USERNAME] == "user-1"
-    assert new_data[CONF_OAUTH_CLIENT_ID] == "client-1"
+    assert new_data[CONF_OPEN_API_CLIENT_ID] == "client-1"
     assert new_data[CONF_SCAN_LOGIN_DEVICE] == "ha-device-1"
     assert config_flow._reauth_in_progress is False
 
@@ -242,7 +242,7 @@ async def test_reauth_update_normalizes_entry_data_and_preserves_client_id(
         CONF_PRIVATE_DOMAIN: "10.0.0.10:8080",
         CONF_ACCESS_TOKEN: "old-token",
         CONF_HOUSE_ID: 1001,
-        CONF_OAUTH_CLIENT_ID: expected_client_id,
+        CONF_OPEN_API_CLIENT_ID: expected_client_id,
     }
     entry = MagicMock()
     entry.data = entry_data
@@ -267,7 +267,7 @@ async def test_reauth_update_normalizes_entry_data_and_preserves_client_id(
     assert new_data[CONF_CONNECTION_MODE] == CONNECTION_MODE_PRIVATE
     assert new_data[CONF_PRIVATE_DOMAIN] == "10.0.0.10:8080"
     assert new_data[CONF_HOUSE_ID] == 1001
-    assert new_data[CONF_OAUTH_CLIENT_ID] == expected_client_id
+    assert new_data[CONF_OPEN_API_CLIENT_ID] == expected_client_id
     mock_client_class.assert_called_once()
     assert mock_client_class.call_args.kwargs["client_id"] == expected_client_id
 

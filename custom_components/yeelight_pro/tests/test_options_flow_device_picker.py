@@ -17,7 +17,7 @@ from custom_components.yeelight_pro.const import (
     CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES,
     CONF_DEVICE_IMPORT_FILTER_PICKER,
     CONF_HOUSE_ID,
-    CONF_OAUTH_CLIENT_ID,
+    CONF_OPEN_API_CLIENT_ID,
     CONNECTION_MODE_CLOUD,
     CONNECTION_MODE_PRIVATE,
 )
@@ -187,5 +187,5 @@ def _cloud_entry_data() -> dict[str, object]:
         CONF_CLOUD_DOMAIN: "https://api.yeelight.com",
         CONF_ACCESS_TOKEN: "test-token",
         CONF_HOUSE_ID: 12345,
-        CONF_OAUTH_CLIENT_ID: "client-from-token",
+        CONF_OPEN_API_CLIENT_ID: "client-from-token",
     }

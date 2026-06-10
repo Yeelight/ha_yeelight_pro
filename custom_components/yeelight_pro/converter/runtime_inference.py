@@ -21,7 +21,7 @@ class RuntimeInferredProductModelBuilder:
 
     def build(self, payload: Mapping[str, Any]) -> HAProductModel | None:
         """从运行时载荷推断并构建产品模型。"""
-        model_id = string_value(payload.get("model_id"))
+        model_id = string_value(payload.get("model_id")) or _runtime_model_id(payload)
         if not model_id:
             return None
 
@@ -133,3 +133,14 @@ class RuntimeInferredProductModelBuilder:
             if item not in out:
                 out.append(item)
         return out
+
+
+def _runtime_model_id(payload: Mapping[str, Any]) -> str | None:
+    """为缺少官方 schema 的运行时设备生成稳定型号标识."""
+    pid = string_value(payload.get("pid"))
+    if pid:
+        return f"YL-{pid}"
+    category = string_value(payload.get("category")) or string_value(payload.get("type"))
+    if category:
+        return f"runtime-{category}"
+    return None

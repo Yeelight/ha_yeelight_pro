@@ -1,8 +1,4 @@
-"""Config-flow scan-login path tests.
-
-The file name is kept for release guard compatibility; the user-facing OAuth
-authorization-code UI is intentionally replaced by Yeelight APP scan login.
-"""
+"""Config-flow scan-login path tests."""
 
 from __future__ import annotations
 
@@ -20,10 +16,8 @@ from custom_components.yeelight_pro.config_flow_scan_login import (
     ScanLoginFlowState,
 )
 from custom_components.yeelight_pro.const import (
-    CONF_CLOUD_AUTH_METHOD,
     CONF_SCAN_LOGIN_QRCODE,
     CONF_SCAN_LOGIN_REFRESH,
-    CLOUD_AUTH_METHOD_OAUTH_CODE,
     CLOUD_AUTH_METHOD_SCAN_LOGIN,
     CONNECTION_MODE_CLOUD,
 )
@@ -36,23 +30,8 @@ from .p0_client_helpers import (
 
 
 @pytest.mark.asyncio
-async def test_cloud_auth_method_no_longer_routes_to_oauth_app(config_flow) -> None:
-    """旧授权码认证方式不再作为云端主 UX 暴露。"""
-    config_flow._connection_mode = CONNECTION_MODE_CLOUD
-    config_flow._domain = "https://api.yeelight.com/apis/iot"
-
-    result = await config_flow.async_step_cloud_auth_method({
-        CONF_CLOUD_AUTH_METHOD: CLOUD_AUTH_METHOD_OAUTH_CODE
-    })
-
-    assert result["type"] == FlowResultType.FORM
-    assert result["step_id"] == "cloud_auth"
-    assert not hasattr(config_flow, "async_step_cloud_oauth_app")
-
-
-@pytest.mark.asyncio
 async def test_cloud_scan_login_initial_step_creates_qrcode(config_flow) -> None:
-    """进入扫码登录步骤时应立即生成 qrcodeid&device 内容."""
+    """进入扫码登录步骤时应立即生成 cli&{device}&{qrcodeId} 内容."""
     qr_code = parse_scan_login_response(scan_login_created_payload())
     client = MagicMock()
     client.create_scan_login_qrcode = AsyncMock(return_value=qr_code)
@@ -69,12 +48,12 @@ async def test_cloud_scan_login_initial_step_creates_qrcode(config_flow) -> None
 
     assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "cloud_scan_login"
-    assert result["description_placeholders"]["qrcode"] == "qr-1&ha-device-1"
+    assert result["description_placeholders"]["qrcode"] == "cli&ha-device-1&qr-1"
     assert result["description_placeholders"]["remaining_seconds"] == "300"
     schema = result["data_schema"].schema
     qr_field = next(key for key in schema if key.schema == CONF_SCAN_LOGIN_QRCODE)
     assert schema[qr_field].selector_type == "qr_code"
-    assert schema[qr_field].config["data"] == "qr-1&ha-device-1"
+    assert schema[qr_field].config["data"] == "cli&ha-device-1&qr-1"
     assert schema[qr_field].config["scale"] == 5
     assert schema[qr_field].config["error_correction_level"] == "quartile"
     client.create_scan_login_qrcode.assert_awaited_once_with(
@@ -204,10 +183,10 @@ async def test_cloud_scan_login_refresh_recreates_qrcode(config_flow) -> None:
         })
 
     assert result["type"] == FlowResultType.FORM
-    assert result["description_placeholders"]["qrcode"] == "qr-2&ha-device-1"
+    assert result["description_placeholders"]["qrcode"] == "cli&ha-device-1&qr-2"
     schema = result["data_schema"].schema
     qr_field = next(key for key in schema if key.schema == CONF_SCAN_LOGIN_QRCODE)
-    assert schema[qr_field].config["data"] == "qr-2&ha-device-1"
+    assert schema[qr_field].config["data"] == "cli&ha-device-1&qr-2"
     client.create_scan_login_qrcode.assert_awaited_once_with(
         region="cn",
         device="ha-device-1",
@@ -243,7 +222,7 @@ async def test_cloud_scan_login_expired_qrcode_requires_manual_refresh(
     assert result["step_id"] == "cloud_scan_login"
     assert result["errors"] == {"base": "scan_login_expired"}
     assert result["description_placeholders"]["remaining_seconds"] == "0"
-    assert result["description_placeholders"]["qrcode"] == "qr-1&ha-device-1"
+    assert result["description_placeholders"]["qrcode"] == "cli&ha-device-1&qr-1"
     assert config_flow._scan_login_poll_task_ref is None
     client.create_scan_login_qrcode.assert_not_awaited()
 

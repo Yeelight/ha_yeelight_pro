@@ -55,12 +55,12 @@ def test_verify_diagnostics_capabilities_rejects_enabled_live_flag(
     assert any("mqtt_subscription" in failure for failure in report.failures)
 
 
-def test_verify_diagnostics_capabilities_rejects_ambiguous_oauth_flow_flag(
+def test_verify_diagnostics_capabilities_rejects_removed_oauth_flag(
     tmp_path: Path,
 ) -> None:
-    """安装态 diagnostics 不应恢复容易误解的 OAuth flow capability key."""
+    """安装态 diagnostics 不应恢复已删除的 OAuth capability key."""
     install_root = _install_root(tmp_path)
-    _write_diagnostics(install_root, include_ambiguous_oauth=True)
+    _write_diagnostics(install_root, include_removed_oauth=True)
     _write_diagnostic_options(install_root)
     _write_diagnostic_payloads(install_root)
     _write_websocket_event_runtime(install_root)
@@ -69,7 +69,7 @@ def test_verify_diagnostics_capabilities_rejects_ambiguous_oauth_flow_flag(
     verify_diagnostics_capabilities(tmp_path, report)
 
     assert not report.ok
-    assert any("oauth_authorization_code_flow" in failure for failure in report.failures)
+    assert any("oauth_flow" in failure for failure in report.failures)
 
 
 def test_verify_diagnostics_capabilities_requires_literal_flags(tmp_path: Path) -> None:

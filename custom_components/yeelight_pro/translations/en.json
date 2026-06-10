@@ -22,23 +22,6 @@
           "cloud_auth_method": "Authentication method"
         }
       },
-      "cloud_oauth_app": {
-        "title": "OAuth application",
-        "description": "Enter the Yeelight Open Platform application credentials.\n\nDomain: {domain}",
-        "data": {
-          "oauth_client_id": "Client ID",
-          "oauth_client_secret": "Client Secret",
-          "oauth_redirect_uri": "Redirect URI",
-          "oauth_device": "Device identifier"
-        }
-      },
-      "cloud_oauth_code": {
-        "title": "OAuth authorization code",
-        "description": "Open the authorization link, complete authorization, and enter the code from the callback URL. This step exchanges it for an Access Token and continues to house selection.\n\nAuthorization link: {authorization_url}\n\nDomain: {domain}",
-        "data": {
-          "oauth_code": "Authorization code"
-        }
-      },
       "cloud_houses": {
         "title": "Select House",
         "description": "Please select the house to configure.",
@@ -88,55 +71,6 @@
     "progress": {
       "cloud_scan_login_wait": "Waiting for Yeelight APP scan authorization.\n\nStatus: {status}\nRemaining seconds: {remaining_seconds}\nPoll count: {poll_count}"
     },
-    "options": {
-      "step": {
-        "init": {
-          "title": "Yeelight Pro Options",
-          "description": "Adjust runtime refresh, debug, and experimental capabilities.",
-          "data": {
-            "scan_interval": "Polling interval (seconds)",
-            "debug_mode": "Enable debug services",
-            "experimental_platforms": "Enable experimental platforms",
-            "hide_unknown_entities": "Hide unknown capability entities",
-            "topology_change_repairs": "Create Repairs issue on device topology changes",
-            "device_import_filter_enabled": "Enable device import filter",
-            "device_import_filter_mode": "Filter rule matching mode",
-            "device_import_filter_include_categories": "Include device categories (comma-separated)",
-            "device_import_filter_exclude_categories": "Exclude device categories (comma-separated)",
-            "device_import_filter_include_types": "Include nodeType/type values (comma-separated)",
-            "device_import_filter_exclude_types": "Exclude nodeType/type values (comma-separated)",
-            "device_import_filter_include_rooms": "Include room IDs (comma-separated)",
-            "device_import_filter_exclude_rooms": "Exclude room IDs (comma-separated)",
-            "device_import_filter_include_gateways": "Include gateway IDs (comma-separated)",
-            "device_import_filter_exclude_gateways": "Exclude gateway IDs (comma-separated)",
-            "device_import_filter_include_product_ids": "Include product IDs (comma-separated)",
-            "device_import_filter_exclude_product_ids": "Exclude product IDs (comma-separated)",
-            "device_import_filter_include_devices": "Include device IDs (comma-separated)",
-            "device_import_filter_exclude_devices": "Exclude device IDs (comma-separated)",
-            "device_import_filter_picker": "Open real device picker",
-            "live_updates": "Enable WebSocket event notifications",
-            "local_gateway_control": "Enable local gateway control",
-            "local_gateway_host": "Local gateway host",
-            "local_gateway_port": "Local gateway port"
-          }
-        },
-        "confirm_runtime": {
-          "title": "Confirm Yeelight Pro options",
-          "description": "{changed_count} visible option changes will be saved.\n\nThese changes can be applied to the current runtime without reloading the integration. This confirmation step does not make an extra Yeelight API call."
-        },
-        "confirm_reload": {
-          "title": "Confirm and reload Yeelight Pro",
-          "description": "{changed_count} visible option changes will be saved.\n\nAt least one changed option affects loaded platforms or entity candidates. After saving, Home Assistant will reload this integration through the options update listener. This confirmation step does not make an extra Yeelight API call."
-        },
-        "cloud_devices": {
-          "title": "Adjust imported devices",
-          "description": "Reload real devices from the current cloud house and select which devices to import into Home Assistant. Saving stores only device ID filter rules, not device names, room names, or raw device lists.",
-          "data": {
-            "device_import_filter_include_devices": "Devices"
-          }
-        }
-      }
-    },
     "error": {
       "cannot_connect": "Failed to connect to server",
       "invalid_auth": "Authentication failed, please check Access Token",
@@ -147,6 +81,55 @@
       "already_configured": "This server is already configured",
       "no_houses_found": "No houses found",
       "reauth_successful": "Reauthentication successful"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Yeelight Pro Options",
+        "description": "Adjust runtime refresh, debug, and experimental capabilities.",
+        "data": {
+          "scan_interval": "Polling interval (seconds)",
+          "debug_mode": "Enable debug services",
+          "experimental_platforms": "Enable experimental platforms",
+          "hide_unknown_entities": "Hide unknown capability entities",
+          "topology_change_repairs": "Create Repairs issue on device topology changes",
+          "device_import_filter_enabled": "Enable device import filter",
+          "device_import_filter_mode": "Filter rule matching mode",
+          "device_import_filter_include_categories": "Include device categories (comma-separated)",
+          "device_import_filter_exclude_categories": "Exclude device categories (comma-separated)",
+          "device_import_filter_include_types": "Include nodeType/type values (comma-separated)",
+          "device_import_filter_exclude_types": "Exclude nodeType/type values (comma-separated)",
+          "device_import_filter_include_rooms": "Include room IDs (comma-separated)",
+          "device_import_filter_exclude_rooms": "Exclude room IDs (comma-separated)",
+          "device_import_filter_include_gateways": "Include gateway IDs (comma-separated)",
+          "device_import_filter_exclude_gateways": "Exclude gateway IDs (comma-separated)",
+          "device_import_filter_include_product_ids": "Include product IDs (comma-separated)",
+          "device_import_filter_exclude_product_ids": "Exclude product IDs (comma-separated)",
+          "device_import_filter_include_devices": "Include device IDs (comma-separated)",
+          "device_import_filter_exclude_devices": "Exclude device IDs (comma-separated)",
+          "device_import_filter_picker": "Open real device picker",
+          "live_updates": "Enable WebSocket event notifications",
+          "local_gateway_control": "Enable local gateway control",
+          "local_gateway_host": "Local gateway host",
+          "local_gateway_port": "Local gateway port"
+        }
+      },
+      "confirm_runtime": {
+        "title": "Confirm Yeelight Pro options",
+        "description": "{changed_count} visible option changes will be saved.\n\nThese changes can be applied to the current runtime without reloading the integration. This confirmation step does not make an extra Yeelight API call."
+      },
+      "confirm_reload": {
+        "title": "Confirm and reload Yeelight Pro",
+        "description": "{changed_count} visible option changes will be saved.\n\nAt least one changed option affects loaded platforms or entity candidates. After saving, Home Assistant will reload this integration through the options update listener. This confirmation step does not make an extra Yeelight API call."
+      },
+      "cloud_devices": {
+        "title": "Adjust imported devices",
+        "description": "Reload real devices from the current cloud house and select which devices to import into Home Assistant. Saving stores only device ID filter rules, not device names, room names, or raw device lists.",
+        "data": {
+          "device_import_filter_include_devices": "Devices"
+        }
+      }
     }
   },
   "selector": {
@@ -202,7 +185,7 @@
     },
     "cleanup_registry": {
       "name": "Registry cleanup dry-run",
-      "description": "Dry-run stale Yeelight Pro entities; after confirmation, only disable stale entities and never delete entity or device registry entries (admin service)",
+      "description": "Dry-run stale Yeelight Pro entities; after confirmation, disable stale entities through the Home Assistant registry (admin service)",
       "fields": {
         "entry_id": {
           "name": "Config entry ID",

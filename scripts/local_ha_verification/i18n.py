@@ -67,13 +67,12 @@ REQUIRED_I18N_LEAF_PATHS: set[tuple[str, ...]] = {
     ("config", "step", "private_config", "data", "access_token"),
     ("config", "step", "private_config", "data", "house_id"),
     ("config", "step", "reauth_confirm", "data", "access_token"),
-    ("config", "options", "step", "init", "data", "scan_interval"),
-    ("config", "options", "step", "init", "data", "debug_mode"),
-    ("config", "options", "step", "init", "data", "experimental_platforms"),
-    ("config", "options", "step", "init", "data", "hide_unknown_entities"),
-    ("config", "options", "step", "init", "data", "topology_change_repairs"),
+    ("options", "step", "init", "data", "scan_interval"),
+    ("options", "step", "init", "data", "debug_mode"),
+    ("options", "step", "init", "data", "experimental_platforms"),
+    ("options", "step", "init", "data", "hide_unknown_entities"),
+    ("options", "step", "init", "data", "topology_change_repairs"),
     (
-        "config",
         "options",
         "step",
         "init",
@@ -81,17 +80,16 @@ REQUIRED_I18N_LEAF_PATHS: set[tuple[str, ...]] = {
         "device_import_filter_enabled",
     ),
     (
-        "config",
         "options",
         "step",
         "init",
         "data",
         "device_import_filter_mode",
     ),
-    ("config", "options", "step", "confirm_runtime", "title"),
-    ("config", "options", "step", "confirm_runtime", "description"),
-    ("config", "options", "step", "confirm_reload", "title"),
-    ("config", "options", "step", "confirm_reload", "description"),
+    ("options", "step", "confirm_runtime", "title"),
+    ("options", "step", "confirm_runtime", "description"),
+    ("options", "step", "confirm_reload", "title"),
+    ("options", "step", "confirm_reload", "description"),
     ("config", "error", "cannot_connect"),
     ("config", "error", "invalid_auth"),
     ("config", "error", "unknown"),
@@ -119,6 +117,7 @@ def verify_i18n_contracts(install_root: Path, report: VerificationReport) -> Non
     service_fields = documented_service_field_contracts(services_content)
 
     _verify_leaf_paths(payloads, report)
+    _verify_home_assistant_options_paths(payloads, report)
     _verify_required_paths(
         payloads,
         installed_option_translation_keys(install_root),
@@ -176,6 +175,21 @@ def _verify_leaf_paths(
             )
 
 
+def _verify_home_assistant_options_paths(
+    payloads: Mapping[str, dict[str, Any]],
+    report: VerificationReport,
+) -> None:
+    """Verify options-flow translations live at Home Assistant's top-level path."""
+    for name, payload in payloads.items():
+        if mapping_at(payload, ("config", "options")):
+            report.fail(
+                "options flow translations must use top-level options path in "
+                f"{name}, not config.options"
+            )
+        if not mapping_at(payload, ("options", "step", "init", "data")):
+            report.fail(f"options flow translations missing in {name}: options.step.init.data")
+
+
 def _verify_required_paths(
     payloads: Mapping[str, dict[str, Any]],
     option_keys: set[str],
@@ -186,7 +200,7 @@ def _verify_required_paths(
     required_paths = set(REQUIRED_I18N_LEAF_PATHS)
     required_paths.update(selector_option_paths)
     for option_key in option_keys:
-        required_paths.add(("config", "options", "step", "init", "data", option_key))
+        required_paths.add(("options", "step", "init", "data", option_key))
     for service in REQUIRED_SERVICES:
         required_paths.add(("services", service, "name"))
         required_paths.add(("services", service, "description"))

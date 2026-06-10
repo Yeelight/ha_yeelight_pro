@@ -5,9 +5,7 @@ from __future__ import annotations
 SPLIT_CLIENT_CONTRACT_TEST_TOKENS = {
     "tests/p0_client_helpers.py": {
         "FakeSession": "shared HTTP client fake coverage",
-        "FakeOAuthSession": "shared OAuth client fake coverage",
         "FakeScanLoginSession": "shared scan-login client fake coverage",
-        "oauth_success_payload": "documented OAuth response fixture coverage",
         "scan_login_login_payload": "documented scan-login response fixture coverage",
     },
     "tests/test_client_helpers.py": {
@@ -158,7 +156,7 @@ SPLIT_CLIENT_CONTRACT_TEST_TOKENS = {
     "tests/config_entry_lifecycle_helpers.py": {
         "make_config_entry": "shared config-entry fixture coverage",
         "make_setup_coordinator": "setup coordinator fixture coverage",
-        "CONF_OAUTH_CLIENT_ID": "Open API client id runtime fixture coverage",
+        "CONF_OPEN_API_CLIENT_ID": "Open API client id runtime fixture coverage",
     },
     "tests/test_config_entry_unload.py": {
         "test_unload_entry": "config-entry unload cleanup coverage",

@@ -1,10 +1,7 @@
 """Config flow helper regression tests."""
 from __future__ import annotations
 
-from urllib.parse import parse_qs, urlparse
-
 from custom_components.yeelight_pro.config_flow_helpers import (
-    cloud_oauth_authorization_url,
     merge_options,
     options_schema,
     visible_option_change_count,
@@ -218,23 +215,3 @@ def test_visible_option_change_count_counts_effective_device_filter_once() -> No
             },
         },
     ) == 1
-
-
-def test_cloud_oauth_authorization_url_contains_no_secret_material() -> None:
-    """配置流授权链接只携带开放平台授权页必需字段."""
-    url = cloud_oauth_authorization_url(
-        client_id="client-1",
-        redirect_uri="https://ha.example.test/auth/external/callback",
-    )
-
-    parsed = urlparse(url)
-    assert f"{parsed.scheme}://{parsed.netloc}{parsed.path}" == (
-        "https://api.yeelight.com/apis/account/oauth/authorize"
-    )
-    assert parse_qs(parsed.query) == {
-        "client_id": ["client-1"],
-        "redirect_uri": ["https://ha.example.test/auth/external/callback"],
-        "response_type": ["code"],
-        "skip_confirm": ["true"],
-    }
-    assert "secret" not in url.lower()

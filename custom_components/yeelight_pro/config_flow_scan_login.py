@@ -11,7 +11,7 @@ from .const import (
     CONF_ACCESS_TOKEN,
     CONF_ACCOUNT_USER_ID,
     CONF_ACCOUNT_USERNAME,
-    CONF_OAUTH_CLIENT_ID,
+    CONF_OPEN_API_CLIENT_ID,
     CONF_REFRESH_TOKEN,
     CONF_SCAN_LOGIN_REFRESH,
     CONF_TOKEN_EXPIRES_IN,
@@ -230,7 +230,7 @@ class ScanLoginConfigFlowMixin:
         flow._refresh_token = data.get(CONF_REFRESH_TOKEN, "")
         flow._token_expires_in = data.get(CONF_TOKEN_EXPIRES_IN)
         flow._token_type = data.get(CONF_TOKEN_TYPE, "")
-        flow._open_api_client_id = data.get(CONF_OAUTH_CLIENT_ID, "")
+        flow._open_api_client_id = data.get(CONF_OPEN_API_CLIENT_ID, "")
         flow._account_user_id = data.get(CONF_ACCOUNT_USER_ID)
         flow._account_username = data.get(CONF_ACCOUNT_USERNAME, "")
         flow._scan_login_account_key = scan_login_account_key(token)

@@ -7,7 +7,7 @@ from typing import Any, Mapping
 
 from ..canonical.models import ComponentInstanceModel, HADeviceInstanceModel
 from ..utils import to_bool, to_category, to_int, to_str, matches_category
-from .device import flatten_instance_state, project_device_info
+from .device import flatten_instance_state, project_payload_device_info
 
 # 事件型产品类型集合（仅暴露防拆状态的设备）
 EVENT_STYLE_PRODUCT_TYPES = {128, 132}
@@ -72,7 +72,7 @@ def project_binary_sensors(
 
     instance = _load_instance(device_payload)
     params = _runtime_state(device_payload, instance)
-    device_info = project_device_info(instance) if instance is not None else None
+    device_info = project_payload_device_info(device_payload, instance)
     base_name = _device_name(device_payload, instance)
     device_id = str(device_payload.get("device_id", "unknown"))
     base_available = to_bool(device_payload.get("online"), default=False)

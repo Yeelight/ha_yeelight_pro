@@ -3,13 +3,8 @@
 from __future__ import annotations
 
 DIAGNOSTICS_ENABLED_CLIENT_CAPABILITIES = (
-    "oauth_contract",
-    "oauth_token_runtime",
-    "manual_oauth_authorization_code_exchange",
     "scan_login_contract",
     "scan_login_runtime",
-    "refresh_token_contract",
-    "refresh_token_runtime",
     "push_message_adapter",
     "runtime_payload_bridge",
     "websocket_message_contract",
@@ -25,14 +20,18 @@ DIAGNOSTICS_ENABLED_CLIENT_CAPABILITIES = (
     "websocket_event_notifications",
 )
 DIAGNOSTICS_DISABLED_CLIENT_CAPABILITIES = (
-    "oauth_flow",
     "mqtt_subscription",
 )
 DIAGNOSTICS_FORBIDDEN_CLIENT_CAPABILITIES = {
-    "oauth_authorization_code_flow": (
-        "ambiguous OAuth flow label must stay renamed to "
-        "manual_oauth_authorization_code_exchange"
+    "oauth_contract": "Yeelight cloud login is APP scan-login; remove OAuth contract flags",
+    "oauth_token_runtime": "Yeelight cloud login is APP scan-login; remove OAuth runtime flags",
+    "manual_oauth_authorization_code_exchange": (
+        "authorization-code login path has been removed"
     ),
+    "oauth_flow": "Home Assistant OAuth flow has been removed",
+    "oauth_authorization_code_flow": "authorization-code login path has been removed",
+    "refresh_token_contract": "refresh token is scan-login metadata, not a runtime capability",
+    "refresh_token_runtime": "refresh token is scan-login metadata, not a runtime capability",
     "websocket_transport_skeleton": (
         "WebSocket transport must be represented as a tested runtime capability"
     ),
@@ -102,16 +101,8 @@ DIAGNOSTICS_CONTRACT_TEST_TOKENS = {
     },
     "tests/test_diagnostics_capabilities.py": {
         "client_capabilities": "client capability diagnostics are covered",
-        "oauth_contract": "OAuth contract capability is explicit",
-        "oauth_token_runtime": "OAuth token endpoint runtime is explicit",
-        "manual_oauth_authorization_code_exchange": (
-            "manual authorization-code exchange is explicit"
-        ),
         "scan_login_contract": "scan-login no-network contract is explicit",
         "scan_login_runtime": "scan-login runtime helper is explicit",
-        "oauth_flow": "OAuth Home Assistant flow remains explicitly disabled",
-        "refresh_token_contract": "refresh-token contract capability is explicit",
-        "refresh_token_runtime": "refresh-token runtime capability is explicit",
         "push_message_adapter": "push payload adapter capability is explicit",
         "runtime_payload_bridge": "received payload bridge capability is explicit",
         "websocket_message_contract": "WebSocket message contract is explicit",

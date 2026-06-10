@@ -11,7 +11,7 @@ from typing import Any, Mapping
 from homeassistant.components.climate import ClimateEntityFeature, HVACMode
 
 from ..canonical.models import ComponentInstanceModel, HADeviceInstanceModel
-from .device import flatten_instance_state, project_device_info
+from .device import flatten_instance_state, project_payload_device_info
 
 
 @dataclass(slots=True)
@@ -59,7 +59,7 @@ def project_climate(
         hvac_mode=HVACMode.AUTO if power else HVACMode.OFF,
         hvac_modes=[HVACMode.OFF, HVACMode.AUTO],
         supported_features=ClimateEntityFeature.TARGET_TEMPERATURE,
-        device_info=project_device_info(instance) if instance is not None else None,
+        device_info=project_payload_device_info(device_payload, instance),
         icon="mdi:air-conditioner",
     )
 

@@ -54,6 +54,13 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "async_execute_scene_command": "cloud fallback scene route",
         "async_request_refresh": "toggle post-write refresh boundary",
     },
+    "custom_components/yeelight_pro/core/device_metadata.py": {
+        "build_device_info": "HA device metadata builder",
+        "enrich_payload_metadata": "runtime payload metadata enrichment",
+        "_device_identifiers": "legacy and fallback device identifier guard",
+        "_room_name": "room and area suggested_area resolver",
+        "_area_name_by_room_id": "area roomIds fallback resolver",
+    },
     "custom_components/yeelight_pro/__init__.py": {
         "_async_start_optional_lan_runtime": "optional LAN runtime startup boundary",
         "_OptionalRuntimeStartupFailure": "optional LAN startup failure diagnostics",

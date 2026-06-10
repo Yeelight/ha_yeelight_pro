@@ -19,6 +19,10 @@ REQUIRED_CONFIG_ENTRY_OPTION_KEYS = {
     "topology_change_repairs",
 }
 OPTIONAL_CONFIG_ENTRY_OPTION_KEYS = {"device_import_filter"}
+FORBIDDEN_CONFIG_ENTRY_OPTION_KEYS = {
+    "analytics_retention_days",
+    "analytics_runtime",
+}
 
 
 def verify_config_entry_options(
@@ -56,6 +60,13 @@ def verify_config_entry_options(
             f"scan_interval {option_defaults['min_scan_interval']}-"
             f"{option_defaults['max_scan_interval']}"
         )
+
+    forbidden_by_key = _present_option_keys(
+        entry_list,
+        forbidden_keys=FORBIDDEN_CONFIG_ENTRY_OPTION_KEYS,
+    )
+    if forbidden_by_key:
+        report.fail(f"config entry options contain removed keys: {forbidden_by_key}")
 
     optional_missing_by_key = _missing_option_keys(
         entry_list,
@@ -105,6 +116,23 @@ def _missing_option_keys(
             if key not in options:
                 missing_counter[key] += 1
     return dict(sorted(missing_counter.items()))
+
+
+def _present_option_keys(
+    entries: Iterable[Mapping[str, Any]],
+    *,
+    forbidden_keys: set[str],
+) -> dict[str, int]:
+    """Return forbidden option keys present in enabled entries."""
+    present_counter: Counter[str] = Counter()
+    for entry in entries:
+        options = entry.get("options")
+        if not isinstance(options, Mapping):
+            continue
+        for key in forbidden_keys:
+            if key in options:
+                present_counter[key] += 1
+    return dict(sorted(present_counter.items()))
 
 
 def _invalid_option_values(

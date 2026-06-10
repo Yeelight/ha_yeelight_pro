@@ -38,7 +38,7 @@ def test_verify_i18n_contracts_rejects_leaf_key_drift(tmp_path: Path) -> None:
     """任一翻译文件少一个叶子 key 都应阻断本地 HA 验证."""
     install_root = tmp_path / "custom_components" / "yeelight_pro"
     payload = translation_payload()
-    del payload["config"]["options"]["step"]["init"]["data"]["debug_mode"]
+    del payload["options"]["step"]["init"]["data"]["debug_mode"]
     write_installed_i18n(install_root, english=payload)
     report = VerificationReport()
 
@@ -47,6 +47,23 @@ def test_verify_i18n_contracts_rejects_leaf_key_drift(tmp_path: Path) -> None:
     assert not report.ok
     assert any("translation leaf paths mismatch" in failure for failure in report.failures)
     assert any("debug_mode" in failure for failure in report.failures)
+
+
+def test_verify_i18n_contracts_rejects_options_under_config_path(
+    tmp_path: Path,
+) -> None:
+    """options flow 翻译放在 config.options 时浏览器会显示原始字段名，必须阻断."""
+    install_root = tmp_path / "custom_components" / "yeelight_pro"
+    payload = translation_payload()
+    payload["config"]["options"] = payload.pop("options")
+    write_installed_i18n(install_root, strings=payload, english=payload, chinese=payload)
+    report = VerificationReport()
+
+    verify_i18n_contracts(install_root, report)
+
+    assert not report.ok
+    assert any("not config.options" in failure for failure in report.failures)
+    assert any("options.step.init.data" in failure for failure in report.failures)
 
 
 def test_verify_i18n_contracts_rejects_missing_required_service_translation(

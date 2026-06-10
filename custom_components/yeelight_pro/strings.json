@@ -22,23 +22,6 @@
           "cloud_auth_method": "认证方式"
         }
       },
-      "cloud_oauth_app": {
-        "title": "OAuth 应用信息",
-        "description": "请输入 Yeelight 开放平台分配的应用信息。\n\n域名：{domain}",
-        "data": {
-          "oauth_client_id": "Client ID",
-          "oauth_client_secret": "Client Secret",
-          "oauth_redirect_uri": "Redirect URI",
-          "oauth_device": "设备标识"
-        }
-      },
-      "cloud_oauth_code": {
-        "title": "OAuth 授权码",
-        "description": "打开授权链接完成授权，然后输入回调 URL 中的 code。此步骤会换取 Access Token 并继续选择家庭。\n\n授权链接：{authorization_url}\n\n域名：{domain}",
-        "data": {
-          "oauth_code": "授权码"
-        }
-      },
       "cloud_houses": {
         "title": "选择家庭",
         "description": "请选择要配置的家庭。",
@@ -88,55 +71,6 @@
     "progress": {
       "cloud_scan_login_wait": "正在等待易来 APP 扫码授权。\n\n当前状态：{status}\n剩余秒数：{remaining_seconds}\n轮询次数：{poll_count}"
     },
-    "options": {
-      "step": {
-        "init": {
-          "title": "Yeelight Pro 选项",
-          "description": "调整运行时刷新、调试和实验能力。",
-          "data": {
-            "scan_interval": "轮询间隔（秒）",
-            "debug_mode": "启用调试服务",
-            "experimental_platforms": "启用实验平台",
-            "hide_unknown_entities": "隐藏未知能力实体",
-            "topology_change_repairs": "设备拓扑变化时创建 Repairs 提示",
-            "device_import_filter_enabled": "启用设备导入过滤",
-            "device_import_filter_mode": "过滤规则匹配方式",
-            "device_import_filter_include_categories": "包含设备品类（逗号分隔）",
-            "device_import_filter_exclude_categories": "排除设备品类（逗号分隔）",
-            "device_import_filter_include_types": "包含 nodeType/type（逗号分隔）",
-            "device_import_filter_exclude_types": "排除 nodeType/type（逗号分隔）",
-            "device_import_filter_include_rooms": "包含房间 ID（逗号分隔）",
-            "device_import_filter_exclude_rooms": "排除房间 ID（逗号分隔）",
-            "device_import_filter_include_gateways": "包含网关 ID（逗号分隔）",
-            "device_import_filter_exclude_gateways": "排除网关 ID（逗号分隔）",
-            "device_import_filter_include_product_ids": "包含产品 ID（逗号分隔）",
-            "device_import_filter_exclude_product_ids": "排除产品 ID（逗号分隔）",
-            "device_import_filter_include_devices": "包含设备 ID（逗号分隔）",
-            "device_import_filter_exclude_devices": "排除设备 ID（逗号分隔）",
-            "device_import_filter_picker": "打开真实设备选择器",
-            "live_updates": "启用 WebSocket 事件通知",
-            "local_gateway_control": "启用本地网关控制",
-            "local_gateway_host": "本地网关地址",
-            "local_gateway_port": "本地网关端口"
-          }
-        },
-        "confirm_runtime": {
-          "title": "确认 Yeelight Pro 选项",
-          "description": "将保存 {changed_count} 项可见选项变更。\n\n这些变更可在当前运行态直接生效，不需要重新加载集成。确认步骤不会调用额外的 Yeelight API。"
-        },
-        "confirm_reload": {
-          "title": "确认并重新加载 Yeelight Pro",
-          "description": "将保存 {changed_count} 项可见选项变更。\n\n其中包含会影响平台或实体候选的选项。保存后 Home Assistant 将按 options 更新监听重新加载该集成。确认步骤不会调用额外的 Yeelight API。"
-        },
-        "cloud_devices": {
-          "title": "调整导入设备",
-          "description": "从当前云端家庭重新加载真实设备，并选择要导入 Home Assistant 的设备。保存后只会写入设备 ID 过滤规则，不会保存设备名称、房间名称或原始设备列表。",
-          "data": {
-            "device_import_filter_include_devices": "设备"
-          }
-        }
-      }
-    },
     "error": {
       "cannot_connect": "无法连接到服务器",
       "invalid_auth": "认证失败，请检查 Access Token",
@@ -147,6 +81,55 @@
       "already_configured": "该服务器已配置",
       "no_houses_found": "未找到家庭",
       "reauth_successful": "重新认证成功"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Yeelight Pro 选项",
+        "description": "调整运行时刷新、调试和实验能力。",
+        "data": {
+          "scan_interval": "轮询间隔（秒）",
+          "debug_mode": "启用调试服务",
+          "experimental_platforms": "启用实验平台",
+          "hide_unknown_entities": "隐藏未知能力实体",
+          "topology_change_repairs": "设备拓扑变化时创建 Repairs 提示",
+          "device_import_filter_enabled": "启用设备导入过滤",
+          "device_import_filter_mode": "过滤规则匹配方式",
+          "device_import_filter_include_categories": "包含设备品类（逗号分隔）",
+          "device_import_filter_exclude_categories": "排除设备品类（逗号分隔）",
+          "device_import_filter_include_types": "包含 nodeType/type（逗号分隔）",
+          "device_import_filter_exclude_types": "排除 nodeType/type（逗号分隔）",
+          "device_import_filter_include_rooms": "包含房间 ID（逗号分隔）",
+          "device_import_filter_exclude_rooms": "排除房间 ID（逗号分隔）",
+          "device_import_filter_include_gateways": "包含网关 ID（逗号分隔）",
+          "device_import_filter_exclude_gateways": "排除网关 ID（逗号分隔）",
+          "device_import_filter_include_product_ids": "包含产品 ID（逗号分隔）",
+          "device_import_filter_exclude_product_ids": "排除产品 ID（逗号分隔）",
+          "device_import_filter_include_devices": "包含设备 ID（逗号分隔）",
+          "device_import_filter_exclude_devices": "排除设备 ID（逗号分隔）",
+          "device_import_filter_picker": "打开真实设备选择器",
+          "live_updates": "启用 WebSocket 事件通知",
+          "local_gateway_control": "启用本地网关控制",
+          "local_gateway_host": "本地网关地址",
+          "local_gateway_port": "本地网关端口"
+        }
+      },
+      "confirm_runtime": {
+        "title": "确认 Yeelight Pro 选项",
+        "description": "将保存 {changed_count} 项可见选项变更。\n\n这些变更可在当前运行态直接生效，不需要重新加载集成。确认步骤不会调用额外的 Yeelight API。"
+      },
+      "confirm_reload": {
+        "title": "确认并重新加载 Yeelight Pro",
+        "description": "将保存 {changed_count} 项可见选项变更。\n\n其中包含会影响平台或实体候选的选项。保存后 Home Assistant 将按 options 更新监听重新加载该集成。确认步骤不会调用额外的 Yeelight API。"
+      },
+      "cloud_devices": {
+        "title": "调整导入设备",
+        "description": "从当前云端家庭重新加载真实设备，并选择要导入 Home Assistant 的设备。保存后只会写入设备 ID 过滤规则，不会保存设备名称、房间名称或原始设备列表。",
+        "data": {
+          "device_import_filter_include_devices": "设备"
+        }
+      }
     }
   },
   "selector": {
@@ -202,7 +185,7 @@
     },
     "cleanup_registry": {
       "name": "注册表清理预检",
-      "description": "对 stale Yeelight Pro 实体执行 dry-run；二次确认后仅禁用 stale entities，不删除实体或设备注册表条目（管理员服务）",
+      "description": "对 stale Yeelight Pro 实体执行 dry-run；二次确认后通过 Home Assistant registry 禁用 stale entities（管理员服务）",
       "fields": {
         "entry_id": {
           "name": "配置条目 ID",

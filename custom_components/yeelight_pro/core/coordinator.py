@@ -123,6 +123,8 @@ class YeelightProCoordinator(
                 gateways=gateways,
                 product_schemas=product_schemas,
                 apply_runtime_overrides=self._runtime_state.apply_to_device,
+                rooms=self.rooms,
+                areas=self.areas,
             )
 
             self.devices = data

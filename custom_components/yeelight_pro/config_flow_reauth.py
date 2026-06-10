@@ -22,7 +22,7 @@ from .const import (
     CONF_CLOUD_DOMAIN,
     CONF_CLOUD_REGION,
     CONF_CONNECTION_MODE,
-    CONF_OAUTH_CLIENT_ID,
+    CONF_OPEN_API_CLIENT_ID,
     CONF_PRIVATE_DOMAIN,
     CONF_REFRESH_TOKEN,
     CONF_SCAN_LOGIN_DEVICE,
@@ -122,7 +122,7 @@ class ReauthConfigFlowMixin:
                     flow.hass,
                     domain=flow._domain or "",
                     access_token=new_token,
-                    client_id=flow._reauth_entry_data.get(CONF_OAUTH_CLIENT_ID, ""),
+                    client_id=flow._reauth_entry_data.get(CONF_OPEN_API_CLIENT_ID, ""),
                 )
             except Exception as err:
                 errors["base"] = flow_error_from_exception("reauth", err)
@@ -172,7 +172,7 @@ class ReauthConfigFlowMixin:
             CONF_REFRESH_TOKEN: flow._refresh_token,
             CONF_TOKEN_EXPIRES_IN: flow._token_expires_in,
             CONF_TOKEN_TYPE: flow._token_type,
-            CONF_OAUTH_CLIENT_ID: flow._open_api_client_id,
+            CONF_OPEN_API_CLIENT_ID: flow._open_api_client_id,
             CONF_ACCOUNT_USER_ID: flow._account_user_id,
             CONF_ACCOUNT_USERNAME: flow._account_username,
             CONF_SCAN_LOGIN_DEVICE: flow._scan_login_device,
@@ -221,7 +221,7 @@ def _entry_account_identity(entry_data: dict[str, Any]) -> tuple[str, str] | Non
     return _account_identity(
         account_user_id=entry_data.get(CONF_ACCOUNT_USER_ID),
         username=entry_data.get(CONF_ACCOUNT_USERNAME, ""),
-        client_id=entry_data.get(CONF_OAUTH_CLIENT_ID, ""),
+        client_id=entry_data.get(CONF_OPEN_API_CLIENT_ID, ""),
         access_token=entry_data.get(CONF_ACCESS_TOKEN, ""),
     )
 

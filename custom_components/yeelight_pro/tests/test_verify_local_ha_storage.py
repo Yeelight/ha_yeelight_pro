@@ -35,7 +35,8 @@ def test_verify_storage_checks_counts_without_raw_ids(tmp_path: Path) -> None:
 
     assert report.ok
     assert any("entity registry entries: 140" in fact for fact in report.facts)
-    assert any("config entry versions: 1.4 x 1" in fact for fact in report.facts)
+    assert any("config entry versions: 1.6 x 1" in fact for fact in report.facts)
+    assert any("config entry titles" in fact for fact in report.facts)
     assert any("config entry unique_id isolation" in fact for fact in report.facts)
     assert any("config entry required data keys present" in fact for fact in report.facts)
     assert any("config entry required option keys present" in fact for fact in report.facts)
@@ -79,6 +80,64 @@ def test_verify_storage_reports_platform_options_alignment(tmp_path: Path) -> No
     platform_options = report.metrics["platform_options"]
     assert isinstance(platform_options, dict)
     assert platform_options["per_entry_expected_counts"] == [(13, 1)]
+
+
+def test_verify_storage_rejects_source_devices_missing_registry_metadata(
+    tmp_path: Path,
+) -> None:
+    """源设备缺名称、型号或区域时应阻断，避免前端设备页退化."""
+    devices = _yeelight_devices()
+    devices[0].pop("name", None)
+    devices[0].pop("model", None)
+    devices[0].pop("area_id", None)
+    _write_storage(tmp_path, "core.config_entries", {"entries": [_config_entry()]})
+    _write_storage(tmp_path, "core.device_registry", {"devices": devices})
+    _write_storage(tmp_path, "core.entity_registry", {"entities": _yeelight_entities()})
+    report = VerificationReport()
+
+    verify_storage(
+        tmp_path,
+        report,
+        expected_config_entries=1,
+        expected_devices=2,
+        expected_entities=sum(DEFAULT_ENTITY_COUNTS.values()),
+        expected_entity_counts=DEFAULT_ENTITY_COUNTS,
+    )
+
+    assert not report.ok
+    assert any("missing friendly names" in failure for failure in report.failures)
+    assert any("missing model metadata" in failure for failure in report.failures)
+    assert any("missing area metadata" in failure for failure in report.failures)
+
+
+def test_verify_storage_rejects_device_backed_entities_without_device_id(
+    tmp_path: Path,
+) -> None:
+    """设备来源实体必须挂到 HA device registry."""
+    entities = _yeelight_entities()
+    for entity in entities:
+        if entity.get("unique_id") == "yeelight_pro_304784333_light_0":
+            entity["device_id"] = None
+            break
+    _write_storage(tmp_path, "core.config_entries", {"entries": [_config_entry()]})
+    _write_storage(tmp_path, "core.device_registry", {"devices": _yeelight_devices()})
+    _write_storage(tmp_path, "core.entity_registry", {"entities": entities})
+    report = VerificationReport()
+
+    verify_storage(
+        tmp_path,
+        report,
+        expected_config_entries=1,
+        expected_devices=2,
+        expected_entities=sum(DEFAULT_ENTITY_COUNTS.values()),
+        expected_entity_counts=DEFAULT_ENTITY_COUNTS,
+    )
+
+    assert not report.ok
+    assert any(
+        "device-backed entity registry entries missing device_id" in failure
+        for failure in report.failures
+    )
 
 
 def test_verify_storage_rejects_experimental_domain_without_opt_in(
@@ -156,6 +215,30 @@ def test_verify_storage_rejects_legacy_cloud_unique_id(tmp_path: Path) -> None:
     assert all("122349" not in failure for failure in report.failures)
 
 
+def test_verify_storage_rejects_legacy_config_entry_title(tmp_path: Path) -> None:
+    """安装态 verifier 应阻断无法区分账号/区域/家庭的旧标题."""
+    entry = _config_entry()
+    entry["title"] = "Yeelight Pro Cloud"
+    _write_storage(tmp_path, "core.config_entries", {"entries": [entry]})
+    _write_storage(tmp_path, "core.device_registry", {"devices": _yeelight_devices()})
+    _write_storage(tmp_path, "core.entity_registry", {"entities": _yeelight_entities()})
+    report = VerificationReport()
+
+    verify_storage(
+        tmp_path,
+        report,
+        expected_config_entries=1,
+        expected_devices=2,
+        expected_entities=sum(DEFAULT_ENTITY_COUNTS.values()),
+        expected_entity_counts=DEFAULT_ENTITY_COUNTS,
+    )
+
+    assert not report.ok
+    assert any("config entry title mismatch" in failure for failure in report.failures)
+    assert all("secret-user" not in failure for failure in report.failures)
+    assert all("secret-token" not in failure for failure in report.failures)
+
+
 def test_verify_storage_reports_missing_config_entry_keys_without_values(
     tmp_path: Path,
 ) -> None:
@@ -184,13 +267,13 @@ def test_verify_storage_reports_missing_config_entry_keys_without_values(
     assert all("secret-token" not in failure for failure in report.failures)
 
 
-def test_verify_storage_allows_missing_optional_oauth_client_id(
+def test_verify_storage_allows_missing_optional_open_api_client_id(
     tmp_path: Path,
 ) -> None:
-    """手动 token 旧 entry 可缺少 oauth_client_id，但 verifier 应记录聚合事实."""
+    """手动 token 旧 entry 可缺少 open_api_client_id，但 verifier 应记录聚合事实."""
     entry = _config_entry()
     data = dict(entry["data"])
-    data.pop("oauth_client_id")
+    data.pop("open_api_client_id")
     entry["data"] = data
     _write_storage(tmp_path, "core.config_entries", {"entries": [entry]})
     _write_storage(tmp_path, "core.device_registry", {"devices": _yeelight_devices()})
@@ -257,6 +340,33 @@ def test_verify_storage_rejects_invalid_option_values(tmp_path: Path) -> None:
     assert not report.ok
     assert any("options outside allowed bounds" in failure for failure in report.failures)
     assert all("yes" not in failure for failure in report.failures)
+
+
+def test_verify_storage_rejects_removed_analytics_options(tmp_path: Path) -> None:
+    """安装态 options 不应残留已删除的 analytics runtime 配置键."""
+    entry = _config_entry()
+    options = dict(entry["options"])
+    options["analytics_runtime"] = True
+    options["analytics_retention_days"] = 90
+    entry["options"] = options
+    _write_storage(tmp_path, "core.config_entries", {"entries": [entry]})
+    _write_storage(tmp_path, "core.device_registry", {"devices": _yeelight_devices()})
+    _write_storage(tmp_path, "core.entity_registry", {"entities": _yeelight_entities()})
+    report = VerificationReport()
+
+    verify_storage(
+        tmp_path,
+        report,
+        expected_config_entries=1,
+        expected_devices=2,
+        expected_entities=sum(DEFAULT_ENTITY_COUNTS.values()),
+        expected_entity_counts=DEFAULT_ENTITY_COUNTS,
+    )
+
+    assert not report.ok
+    assert any("options contain removed keys" in failure for failure in report.failures)
+    assert all("True" not in failure for failure in report.failures)
+    assert all("90" not in failure for failure in report.failures)
 
 
 def test_verify_storage_reports_missing_files_without_raw_payload(tmp_path: Path) -> None:

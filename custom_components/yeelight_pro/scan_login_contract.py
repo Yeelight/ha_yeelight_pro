@@ -17,7 +17,6 @@ from .const import (
 )
 from .core.exceptions import ProtocolError
 from .core.http_errors import raise_for_body_error
-from .oauth_contract import YeelightOAuthToken, parse_oauth_token_response
 
 SCAN_LOGIN_STATUS_CREATED = "CREATED"
 SCAN_LOGIN_STATUS_SCANNED = "SCANNED"
@@ -70,6 +69,23 @@ class ScanLoginStatus:
 
 
 @dataclass(frozen=True, slots=True)
+class YeelightAccountToken:
+    """Parsed Yeelight APP scan-login token without raw vendor payload."""
+
+    access_token: str
+    token_type: str
+    refresh_token: str
+    expires_in: int
+    scope: str
+    user_id: int | None
+    region: str
+    device: str
+    client_id: str
+    username: str
+    jti: str
+
+
+@dataclass(frozen=True, slots=True)
 class YeelightScanLoginQrCode:
     """Parsed scan-login qrcode state without raw vendor payload."""
 
@@ -80,7 +96,7 @@ class YeelightScanLoginQrCode:
     expire_in_ms: int | None
     expire_at_ms: int | None
     source: str
-    token: YeelightOAuthToken | None
+    token: YeelightAccountToken | None
 
     @property
     def qrcode_content(self) -> str:
@@ -164,10 +180,10 @@ def scan_login_check_path(qr_code_id: str) -> str:
 
 
 def build_scan_login_qrcode_content(qr_code_id: str, device: str) -> str:
-    """Build qrcode content in the documented ``qrcodeid&device`` shape."""
+    """Build qrcode content in the APP-supported ``cli&{device}&{qrcodeId}`` shape."""
     return (
-        f"{_required_text(qr_code_id, 'qr_code_id')}"
-        f"&{_required_text(device, 'device')}"
+        f"cli&{_required_text(device, 'device')}"
+        f"&{_required_text(qr_code_id, 'qr_code_id')}"
     )
 
 
@@ -211,22 +227,29 @@ def parse_scan_login_status(payload: Mapping[str, Any]) -> YeelightScanLoginQrCo
     return parse_scan_login_response(payload)
 
 
-def _parse_scan_login_token(value: Any) -> YeelightOAuthToken:
-    """Parse scan-login token field aliases through the shared token model."""
+def _parse_scan_login_token(value: Any) -> YeelightAccountToken:
+    """Parse scan-login token field aliases."""
     if not isinstance(value, Mapping):
         raise ProtocolError("Invalid Yeelight scan-login token response")
-    return parse_oauth_token_response({
+    token_payload = {
         "access_token": _first_value(value, *_ACCESS_TOKEN_FIELDS),
         "token_type": _first_value(value, *_TOKEN_TYPE_FIELDS),
         "refresh_token": _first_value(value, *_REFRESH_TOKEN_FIELDS),
         "expires_in": _first_value(value, *_EXPIRES_IN_FIELDS),
-        "id": _first_value(value, *_USER_ID_FIELDS),
-        "region": value.get("region"),
-        "device": value.get("device"),
-        "client_id": _first_value(value, *_CLIENT_ID_FIELDS),
-        "username": value.get("username"),
-        "scope": value.get("scope"),
-    })
+    }
+    return YeelightAccountToken(
+        access_token=_required_token_text(token_payload, "access_token"),
+        token_type=_required_token_text(token_payload, "token_type"),
+        refresh_token=_required_token_text(token_payload, "refresh_token"),
+        expires_in=_required_token_int(token_payload, "expires_in"),
+        scope=_optional_text(value.get("scope")),
+        user_id=_optional_int(_first_value(value, *_USER_ID_FIELDS)),
+        region=_optional_text(value.get("region")),
+        device=_optional_text(value.get("device")),
+        client_id=_optional_text(_first_value(value, *_CLIENT_ID_FIELDS)),
+        username=_optional_text(value.get("username")),
+        jti=_optional_text(value.get("jti")),
+    )
 
 
 def _normalize_region(value: str) -> str:
@@ -243,6 +266,28 @@ def _required_text(value: Any, field: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ProtocolError(f"Yeelight scan-login {field} is required")
     return value.strip()
+
+
+def _required_token_text(payload: Mapping[str, Any], field: str) -> str:
+    """Return a required token string without echoing token payload values."""
+    value = payload.get(field)
+    if not isinstance(value, str) or not value.strip():
+        raise ProtocolError("Invalid Yeelight scan-login token response")
+    return value.strip()
+
+
+def _required_token_int(payload: Mapping[str, Any], field: str) -> int:
+    """Return a required positive token integer without exposing raw values."""
+    value = payload.get(field)
+    if value is None:
+        raise ProtocolError("Invalid Yeelight scan-login token response")
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        raise ProtocolError("Invalid Yeelight scan-login token response") from None
+    if parsed <= 0:
+        raise ProtocolError("Invalid Yeelight scan-login token response")
+    return parsed
 
 
 def _optional_text(value: Any) -> str:
@@ -291,6 +336,7 @@ __all__ = [
     "SCAN_LOGIN_STATUS_LOGIN",
     "SCAN_LOGIN_STATUS_SCANNED",
     "ScanLoginStatus",
+    "YeelightAccountToken",
     "YeelightScanLoginQrCode",
     "account_base_url",
     "build_scan_login_qrcode_content",

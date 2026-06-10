@@ -29,7 +29,7 @@ def test_local_ha_contract_tokens_are_split_by_release_and_runtime() -> None:
         "scripts/hacs_preflight_local_ha_runtime_verifier_sources.py",
         "scripts/hacs_preflight_local_ha_runtime_verifier_tests.py",
         "scripts/hacs_preflight_local_ha_protocol_contracts.py",
-        "scripts/hacs_preflight_oauth_contracts.py",
+        "scripts/hacs_preflight_scan_login_contracts.py",
         "scripts/hacs_preflight_push_contracts.py",
         "scripts/hacs_preflight_local_ha_probes.py",
         "scripts/verify_push_websocket.py",
@@ -182,7 +182,7 @@ def test_local_ha_verification_contract_requires_safety_tokens(
     assert any("automation contract preflight helper" in error for error in errors)
     assert any("device trigger event payload fixture" in error for error in errors)
     assert any("matches Yeelight Pro runtime event bus payload" in error for error in errors)
-    assert any("config-flow OAuth split test guard" in error for error in errors)
+    assert any("config-flow scan-login split test guard" in error for error in errors)
     assert any("P0 client helper split test guard" in error for error in errors)
     assert any("push payload split test guard" in error for error in errors)
     assert any("config-entry unload split test guard" in error for error in errors)

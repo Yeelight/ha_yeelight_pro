@@ -23,7 +23,7 @@ from .const import (
     CONF_LOCAL_GATEWAY_CONTROL,
     CONF_LOCAL_GATEWAY_HOST,
     CONF_LOCAL_GATEWAY_PORT,
-    CONF_OAUTH_CLIENT_ID,
+    CONF_OPEN_API_CLIENT_ID,
     CONF_PRIVATE_DOMAIN,
     CONF_REFRESH_TOKEN,
     CONF_SCAN_INTERVAL,
@@ -52,9 +52,14 @@ from .device_filter_options import (
     device_filter_form_keys,
     stored_device_import_filter_options,
 )
+from .entry_title import config_entry_title
 
 ENTRY_VERSION = 1
-ENTRY_MINOR_VERSION = 4
+ENTRY_MINOR_VERSION = 6
+REMOVED_OPTION_KEYS = frozenset({
+    "analytics_retention_days",
+    "analytics_runtime",
+})
 
 
 async def async_migrate_config_entry(
@@ -65,10 +70,12 @@ async def async_migrate_config_entry(
     data = normalize_entry_data(entry.data)
     options = normalize_entry_options(getattr(entry, "options", None))
     unique_id = config_entry_unique_id(data)
+    title = config_entry_title(data)
     if (
         data == dict(entry.data)
         and options == _mapping_or_empty(getattr(entry, "options", None))
         and getattr(entry, "unique_id", None) == unique_id
+        and getattr(entry, "title", None) == title
         and entry.version == ENTRY_VERSION
         and entry.minor_version == ENTRY_MINOR_VERSION
     ):
@@ -78,6 +85,7 @@ async def async_migrate_config_entry(
         entry,
         data=data,
         options=options,
+        title=title,
         unique_id=unique_id,
         version=ENTRY_VERSION,
         minor_version=ENTRY_MINOR_VERSION,
@@ -126,8 +134,8 @@ def normalize_entry_data(value: Mapping[str, Any]) -> dict[str, Any]:
             _first_value(source, CONF_HOUSE_ID, "houseId", "house_id", "home_id")
         ),
         CONF_CLOUD_REGION: _cloud_region(source, cloud_domain),
-        CONF_OAUTH_CLIENT_ID: _string(
-            _first_value(source, CONF_OAUTH_CLIENT_ID, "clientId", "client_id")
+        CONF_OPEN_API_CLIENT_ID: _string(
+            _first_value(source, CONF_OPEN_API_CLIENT_ID, "clientId", "client_id")
         ),
         CONF_ACCOUNT_USER_ID: _optional_int(
             _first_value(source, CONF_ACCOUNT_USER_ID, "id", "user_id")
@@ -186,6 +194,8 @@ def normalize_entry_options(value: Any) -> dict[str, Any]:
             maximum=65535,
         ),
     }
+    for key in REMOVED_OPTION_KEYS:
+        data.pop(key, None)
     filter_config = stored_device_import_filter_options(options)
     for key in device_filter_form_keys():
         data.pop(key, None)

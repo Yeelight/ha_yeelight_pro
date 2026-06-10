@@ -208,4 +208,9 @@ async def test_product_schema_cache_falls_back_to_cached_schema_on_fetch_error(
         "l": 80,
     }
     assert "product_schema" not in uncached_device
-    assert "ha_device_instance" not in uncached_device
+    assert uncached_device["ha_product_model"]["schema_version"] == "runtime-v1"
+    assert uncached_device["ha_device_instance"]["device_info"]["name"] == "New Lamp"
+    assert uncached_device["ha_device_instance"]["components"][0]["state"] == {
+        "p": True,
+        "l": 40,
+    }

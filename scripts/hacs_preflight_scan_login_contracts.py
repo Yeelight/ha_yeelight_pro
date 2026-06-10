@@ -1,4 +1,4 @@
-"""OAuth and APP scan-login release-preflight contract tokens."""
+"""APP scan-login release-preflight contract tokens."""
 
 from __future__ import annotations
 
@@ -7,28 +7,22 @@ from pathlib import Path
 from scripts.hacs_preflight_contracts import _check_no_network, _require_tokens
 
 
-def check_oauth_contract_tests(component_root: Path) -> list[str]:
-    """Ensure OAuth and APP scan-login helpers stay no-network and explicit."""
+def check_scan_login_contract_tests(component_root: Path) -> list[str]:
+    """Ensure APP scan-login helpers stay no-network and explicit."""
     errors: list[str] = []
     required_files = {
-        "oauth_contract.py": {
-            "DEFAULT_OAUTH_AUTHORIZE_URL": "authorization endpoint constant",
-            "DEFAULT_OAUTH_TOKEN_URL": "token endpoint constant",
-            "build_authorization_url": "authorization URL builder",
-            "build_authorization_code_token_body": "authorization-code body builder",
-            "build_refresh_token_body": "refresh-token body builder",
-            "parse_oauth_token_response": "token response parser",
-            "raise_for_body_error": "shared Open API error classification",
-        },
         "scan_login_contract.py": {
             "CLOUD_REGION_BASE_DOMAINS": "scan-login regional account domains",
             "SCAN_LOGIN_QRCODE_TTL_MS": "documented QR code TTL",
+            "YeelightAccountToken": "scan-login token model",
             "_QR_CODE_ID_FIELDS": "scan-login QR field alias coverage",
             "_ACCESS_TOKEN_FIELDS": "scan-login token field alias coverage",
+            "_REFRESH_TOKEN_FIELDS": "scan-login refresh-token field alias coverage",
             "_first_value": "scan-login field alias helper",
             "build_scan_login_qrcode_path": "QR-code creation path builder",
             "build_scan_login_status_path": "QR-code polling path builder",
             "build_scan_login_qrcode_content": "APP QR content builder",
+            "cli&": "APP-supported QR payload prefix",
             "parse_scan_login_response": "scan-login response parser",
             "_expire_at_ms": "QR countdown expiry derivation helper",
         },
@@ -51,19 +45,12 @@ def check_oauth_contract_tests(component_root: Path) -> list[str]:
             "CONF_SCAN_LOGIN_QRCODE": "scan-login QR-code form field",
             "cloud_scan_login_schema_for_qrcode": "QR-code schema builder",
         },
-        "tests/test_oauth_contract.py": {
-            "build_authorization_url": "authorization URL coverage",
-            "OAUTH_GRANT_AUTHORIZATION_CODE": "authorization-code grant coverage",
-            "OAUTH_GRANT_REFRESH_TOKEN": "refresh-token grant coverage",
-            "parse_oauth_token_response": "token parser coverage",
-            "raise_for_oauth_error": "OAuth error classifier coverage",
-            "secret-refresh-token": "redaction regression marker",
-        },
         "tests/test_scan_login_contract.py": {
             "test_account_base_url_matches_documented_regions": (
                 "regional domain coverage"
             ),
             "build_scan_login_qrcode_content": "QR content coverage",
+            "cli&AA:BB:CC:DD:EE:FF&qr-1": "APP QR payload order coverage",
             "SCAN_LOGIN_QRCODE_TTL_MS": "5-minute QR TTL coverage",
             "parse_scan_login_response": "scan-login parser coverage",
             "test_parse_scan_login_response_derives_expire_at_for_countdown": (
@@ -77,23 +64,11 @@ def check_oauth_contract_tests(component_root: Path) -> list[str]:
             ),
             "secret-scan-token": "scan-login redaction marker",
         },
-        "core/oauth.py": {
-            "DEFAULT_OAUTH_TOKEN_URL": "OAuth token endpoint runtime",
-            "exchange_authorization_code": "authorization-code runtime method",
-            "refresh_oauth_token": "refresh-token runtime method",
-            "parse_oauth_token_response": "shared OAuth token parser use",
-        },
         "core/scan_login.py": {
             "account_base_url": "scan-login account endpoint runtime",
             "create_scan_login_qrcode": "QR-code creation runtime method",
             "check_scan_login_qrcode": "QR-code polling runtime method",
             "parse_scan_login_response": "shared scan-login parser use",
-        },
-        "tests/test_p0_oauth_runtime.py": {
-            "exchange_authorization_code": "authorization-code client coverage",
-            "refresh_oauth_token": "refresh-token client coverage",
-            "Invalid refresh token": "documented refresh error coverage",
-            "secret-refresh": "OAuth redaction regression marker",
         },
         "tests/test_scan_login_runtime.py": {
             "create_scan_login_qrcode": "scan-login QR runtime coverage",
@@ -109,6 +84,29 @@ def check_oauth_contract_tests(component_root: Path) -> list[str]:
                 "scan-login device id uniqueness coverage"
             ),
             "raw-instance-secret": "raw HA instance id leakage regression marker",
+        },
+        "tests/test_config_flow_scan_login.py": {
+            "test_cloud_scan_login_initial_step_creates_qrcode": (
+                "scan-login qrcode creation coverage"
+            ),
+            'selector_type == "qr_code"': "native Home Assistant QR selector coverage",
+            "CONF_SCAN_LOGIN_QRCODE": "scan-login QR selector field coverage",
+            "test_cloud_scan_login_submit_starts_continuous_progress_poll": (
+                "scan-login progress polling coverage"
+            ),
+            "test_cloud_scan_login_progress_done_loads_houses": (
+                "scan-login LOGIN token flow coverage"
+            ),
+            "test_cloud_scan_login_rejects_different_region": (
+                "initial scan-login region isolation coverage"
+            ),
+            "test_cloud_scan_login_expired_qrcode_requires_manual_refresh": (
+                "scan-login expired QR manual refresh coverage"
+            ),
+            "test_cloud_scan_login_poll_timeout_returns_expired_error": (
+                "scan-login polling timeout UX coverage"
+            ),
+            "CONF_SCAN_LOGIN_REFRESH": "scan-login qrcode refresh form coverage",
         },
         "tests/test_verify_scan_login.py": {
             "test_validate_run_request_requires_explicit_confirm": (
@@ -162,9 +160,9 @@ def check_oauth_contract_tests(component_root: Path) -> list[str]:
         },
     }
 
-    _require_tokens(component_root, required_files, errors, "OAuth contract requires")
-    _check_no_network(component_root, ("oauth_contract.py", "scan_login_contract.py"), errors)
+    _require_tokens(component_root, required_files, errors, "scan-login contract requires")
+    _check_no_network(component_root, ("scan_login_contract.py",), errors)
     return errors
 
 
-__all__ = ["check_oauth_contract_tests"]
+__all__ = ["check_scan_login_contract_tests"]

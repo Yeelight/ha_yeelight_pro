@@ -9,7 +9,7 @@ from ..canonical.models import ComponentInstanceModel
 from homeassistant.components.cover import CoverDeviceClass
 
 from ..canonical.models import HADeviceInstanceModel
-from .device import flatten_instance_state, project_device_info
+from .device import flatten_instance_state, project_payload_device_info
 
 
 @dataclass(slots=True)
@@ -58,7 +58,7 @@ def project_cover(device_payload: Mapping[str, Any], *, domain: str) -> HACoverP
         is_opening=_is_opening(current_position, target_position),
         is_closing=_is_closing(current_position, target_position),
         device_class=CoverDeviceClass.CURTAIN,
-        device_info=project_device_info(instance) if instance is not None else None,
+        device_info=project_payload_device_info(device_payload, instance),
         icon=None,
     )
 

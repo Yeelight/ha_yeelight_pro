@@ -65,7 +65,7 @@ def _write_local_ha_contract_fixture(
         scripts_root / "hacs_preflight_local_ha_protocol_contracts.py",
         (
             "LOCAL_HA_PROTOCOL_CONTRACT_TOKENS "
-            "hacs_preflight_oauth_contracts.py "
+            "hacs_preflight_scan_login_contracts.py "
             "hacs_preflight_push_contracts.py"
         ),
     )
@@ -74,8 +74,8 @@ def _write_local_ha_contract_fixture(
         "check_push_contract_tests",
     )
     _write_test_file(
-        scripts_root / "hacs_preflight_oauth_contracts.py",
-        "check_oauth_contract_tests",
+        scripts_root / "hacs_preflight_scan_login_contracts.py",
+        "check_scan_login_contract_tests",
     )
     _write_test_file(
         scripts_root / "hacs_preflight_push_contracts.py",
@@ -132,7 +132,7 @@ def _write_local_ha_contract_fixture(
         (
             "test_verify_diagnostics_capabilities_accepts_release_boundaries "
             "test_verify_diagnostics_capabilities_rejects_enabled_live_flag "
-            "test_verify_diagnostics_capabilities_rejects_ambiguous_oauth_flow_flag "
+            "test_verify_diagnostics_capabilities_rejects_removed_oauth_flag "
             "test_verify_diagnostics_capabilities_requires_literal_flags"
         ),
     )

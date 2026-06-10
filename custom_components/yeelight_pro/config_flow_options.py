@@ -18,7 +18,7 @@ from .const import (
     CONF_LOCAL_GATEWAY_CONTROL,
     CONF_LOCAL_GATEWAY_HOST,
     CONF_LOCAL_GATEWAY_PORT,
-    CONF_OAUTH_CLIENT_ID,
+    CONF_OPEN_API_CLIENT_ID,
     CONF_SCAN_INTERVAL,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
     CONNECTION_MODE_CLOUD,
@@ -249,7 +249,7 @@ def device_picker_context(entry: object) -> tuple[str, int, str | None]:
         house_id = int(str(data.get(CONF_HOUSE_ID, "")).strip())
     except (TypeError, ValueError) as err:
         raise ValueError("cloud house id is required for device picker") from err
-    client_id = str(data.get(CONF_OAUTH_CLIENT_ID, "")).strip() or None
+    client_id = str(data.get(CONF_OPEN_API_CLIENT_ID, "")).strip() or None
     if not domain:
         raise ValueError("cloud domain is required for device picker")
     return domain, house_id, client_id

@@ -38,7 +38,6 @@ def _load_scan_login_contract() -> Any:
         ("yeelight_pro_scan_login_probe.core.exceptions", COMPONENT_ROOT / "core" / "exceptions.py"),
         ("yeelight_pro_scan_login_probe.core.http_errors", COMPONENT_ROOT / "core" / "http_errors.py"),
         ("yeelight_pro_scan_login_probe.const", COMPONENT_ROOT / "const.py"),
-        ("yeelight_pro_scan_login_probe.oauth_contract", COMPONENT_ROOT / "oauth_contract.py"),
     ):
         if module_name not in sys.modules:
             _load_probe_module(module_name, path)

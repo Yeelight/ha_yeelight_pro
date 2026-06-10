@@ -190,7 +190,7 @@ _SPLIT_CONFIG_FLOW_CONTRACT_TEST_TOKENS = {
         "selected_device_ids_from_options": "options picker current selection helper",
         "confirm_reload": "options picker reload confirmation boundary",
     },
-    "tests/test_config_flow_oauth.py": {
+    "tests/test_config_flow_scan_login.py": {
         "test_cloud_scan_login_initial_step_creates_qrcode": (
             "scan-login qrcode creation coverage"
         ),
@@ -210,9 +210,6 @@ _SPLIT_CONFIG_FLOW_CONTRACT_TEST_TOKENS = {
         ),
         "test_cloud_scan_login_poll_timeout_returns_expired_error": (
             "scan-login polling timeout UX coverage"
-        ),
-        "test_cloud_auth_method_no_longer_routes_to_oauth_app": (
-            "authorization-code UI downgrade coverage"
         ),
         "CONF_SCAN_LOGIN_REFRESH": "scan-login qrcode refresh form coverage",
     },

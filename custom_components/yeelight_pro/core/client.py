@@ -9,7 +9,6 @@ from typing import Any
 from aiohttp import ClientSession, ClientTimeout
 
 from ..const import DEFAULT_REQUEST_TIMEOUT
-from ..oauth_contract import YeelightOAuthToken
 from ..scan_login_contract import YeelightScanLoginQrCode
 from .client_node_api import YeelightProNodeApiMixin
 from .client_request import build_client_headers, request_json
@@ -17,10 +16,6 @@ from .exceptions import (
     AuthenticationError,
     ConnectionError,
     safe_error_summary,
-)
-from .oauth import (
-    exchange_authorization_code as _exchange_authorization_code,
-    refresh_oauth_token as _refresh_oauth_token,
 )
 from .scan_login import (
     check_scan_login_qrcode as _check_scan_login_qrcode,
@@ -80,42 +75,6 @@ class YeelightProClient(YeelightProNodeApiMixin):
             url,
             headers=self._get_headers(with_auth=with_auth),
             **kwargs,
-        )
-
-    async def exchange_authorization_code(
-        self,
-        *,
-        client_id: str,
-        client_secret: str,
-        redirect_uri: str,
-        code: str,
-        device: str | None = "home-assistant",
-    ) -> YeelightOAuthToken:
-        """Exchange an OAuth authorization code for Yeelight access tokens."""
-        return await _exchange_authorization_code(
-            self.session,
-            self.timeout,
-            client_id=client_id,
-            client_secret=client_secret,
-            redirect_uri=redirect_uri,
-            code=code,
-            device=device,
-        )
-
-    async def refresh_oauth_token(
-        self,
-        *,
-        client_id: str,
-        client_secret: str,
-        refresh_token: str,
-    ) -> YeelightOAuthToken:
-        """Refresh Yeelight OAuth tokens with the documented single-use token."""
-        return await _refresh_oauth_token(
-            self.session,
-            self.timeout,
-            client_id=client_id,
-            client_secret=client_secret,
-            refresh_token=refresh_token,
         )
 
     async def create_scan_login_qrcode(

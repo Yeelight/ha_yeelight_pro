@@ -82,7 +82,7 @@ Use `python3 scripts/check_release_zip.py --write dist/yeelight_pro.zip` to crea
 - Verify `hacs.json` points to the same release zip filename.
 - Confirm no real token, password, house ID, or raw device payload is committed.
 - Confirm README and changelog only describe implemented and tested behavior.
-- Confirm `custom_components/yeelight_pro/text.py` remains absent unless a real writable TextEntity API and tests are added in a future release.
+- Confirm the release package contains only the current runtime platform modules and documented services.
 - Confirm `.github/ISSUE_TEMPLATE/bug_report.yml`,
   `.github/ISSUE_TEMPLATE/feature_request.yml`, and
   `.github/ISSUE_TEMPLATE/support.yml` are present and still require sanitized

@@ -9,7 +9,7 @@ from .const import (
     CONF_ACCESS_TOKEN,
     CONF_ACCOUNT_USER_ID,
     CONF_ACCOUNT_USERNAME,
-    CONF_OAUTH_CLIENT_ID,
+    CONF_OPEN_API_CLIENT_ID,
 )
 
 UNKNOWN_ACCOUNT_KEY = "unknown"
@@ -53,7 +53,7 @@ def account_key_from_entry_data(entry_data: dict[str, Any]) -> str:
     return account_key_from_identity(account_identity(
         account_user_id=entry_data.get(CONF_ACCOUNT_USER_ID),
         username=entry_data.get(CONF_ACCOUNT_USERNAME, ""),
-        client_id=entry_data.get(CONF_OAUTH_CLIENT_ID, ""),
+        client_id=entry_data.get(CONF_OPEN_API_CLIENT_ID, ""),
         access_token=entry_data.get(CONF_ACCESS_TOKEN, ""),
     ))
 

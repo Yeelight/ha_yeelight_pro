@@ -9,7 +9,7 @@ from homeassistant.components.vacuum import VacuumEntityFeature
 
 from ..canonical.models import ComponentInstanceModel, HADeviceInstanceModel
 from ..utils import to_bool, to_int, to_str, to_category, matches_category
-from .device import project_device_info
+from .device import project_payload_device_info
 
 # 扫地机器人相关类别标识
 VACUUM_TOKENS = ("vacuum", "robot", "扫地", "吸尘", "roborock", "dreame")
@@ -122,7 +122,7 @@ def _project_instance_vacuum(
         fan_speed=fan_speed,
         fan_speed_list=["low", "medium", "high", "max"],
         supported_features=_default_supported_features(),
-        device_info=project_device_info(instance),
+        device_info=project_payload_device_info(device_payload, instance),
         icon="mdi:robot-vacuum",
     )
 
@@ -169,7 +169,7 @@ def _project_raw_vacuum(
         fan_speed=fan_speed,
         fan_speed_list=["low", "medium", "high", "max"],
         supported_features=_default_supported_features(),
-        device_info=project_device_info(instance) if instance is not None else None,
+        device_info=project_payload_device_info(device_payload, instance),
         icon="mdi:robot-vacuum",
     )
 

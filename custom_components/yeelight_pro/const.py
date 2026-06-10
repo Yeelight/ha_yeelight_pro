@@ -21,19 +21,13 @@ CONF_HOUSE_ID = "house_id"
 CONF_ACCOUNT_USER_ID = "account_user_id"
 CONF_ACCOUNT_USERNAME = "account_username"
 CONF_CLOUD_AUTH_METHOD = "cloud_auth_method"
-CONF_OAUTH_CLIENT_ID = "oauth_client_id"
-CONF_OAUTH_CLIENT_SECRET = "oauth_client_secret"
-CONF_OAUTH_REDIRECT_URI = "oauth_redirect_uri"
-CONF_OAUTH_CODE = "oauth_code"
-CONF_OAUTH_DEVICE = "oauth_device"
+CONF_OPEN_API_CLIENT_ID = "open_api_client_id"
 CONF_SCAN_LOGIN_DEVICE = "scan_login_device"
 CONF_SCAN_LOGIN_QRCODE = "scan_login_qrcode"
 CONF_SCAN_LOGIN_REFRESH = "scan_login_refresh"
 
 CLOUD_AUTH_METHOD_ACCESS_TOKEN = "access_token"
-CLOUD_AUTH_METHOD_OAUTH_CODE = "oauth_code"
 CLOUD_AUTH_METHOD_SCAN_LOGIN = "scan_login"
-DEFAULT_OAUTH_DEVICE = "home-assistant"
 
 CLOUD_REGION_CN = "cn"
 CLOUD_REGION_SG = "sg"
@@ -104,7 +98,7 @@ DEFAULT_REQUEST_TIMEOUT = 10  # 秒
 DEFAULT_THING_MANAGE_PAGE_SIZE = 200
 DEFAULT_PRODUCT_SCHEMA_BATCH_SIZE = 50
 
-# 支持的平台（text 不包含：API 不支持写入，实体仅作只读展示时按需从其他平台挂载）
+# Home Assistant platforms loaded by the current Yeelight Pro integration.
 PLATFORMS = [
     "binary_sensor",
     "button",

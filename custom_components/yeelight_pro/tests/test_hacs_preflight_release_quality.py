@@ -89,7 +89,7 @@ def test_release_quality_gate_check_requires_lint_and_type_check(
         for error in errors
     )
     assert any(
-        "test report external validation boundary" in error
+        "test report guarded production probe boundary" in error
         for error in errors
     )
     assert any(

@@ -18,8 +18,7 @@ from custom_components.yeelight_pro.const import (
     CONF_DEVICE_IMPORT_FILTER,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_HOUSE_ID,
-    CONF_OAUTH_CLIENT_ID,
-    CONF_OAUTH_CLIENT_SECRET,
+    CONF_OPEN_API_CLIENT_ID,
     CONF_SCAN_INTERVAL,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
     CONNECTION_MODE_CLOUD,
@@ -54,14 +53,8 @@ async def test_diagnostics_returns_sane_unloaded_entry(
         "supported_connection_modes": ["cloud", "private"],
         "cloud_http_polling": True,
         "private_http_polling": False,
-        "oauth_contract": True,
-        "oauth_token_runtime": True,
-        "manual_oauth_authorization_code_exchange": True,
         "scan_login_contract": True,
         "scan_login_runtime": True,
-        "oauth_flow": False,
-        "refresh_token_contract": True,
-        "refresh_token_runtime": True,
         "push_message_adapter": True,
         "runtime_payload_bridge": True,
         "websocket_message_contract": True,
@@ -115,9 +108,8 @@ async def test_diagnostics_allowlists_config_entry_data_and_options(
         "token-secret https://api.yeelight.com/apis/iot/house/429392"
     )
     diagnostics_entry.data["authorization"] = "Bearer token-secret"
-    diagnostics_entry.data[CONF_CLOUD_AUTH_METHOD] = "oauth_code"
-    diagnostics_entry.data[CONF_OAUTH_CLIENT_ID] = "client-secret-id"
-    diagnostics_entry.data[CONF_OAUTH_CLIENT_SECRET] = "client-secret-value"
+    diagnostics_entry.data[CONF_CLOUD_AUTH_METHOD] = "scan_login"
+    diagnostics_entry.data[CONF_OPEN_API_CLIENT_ID] = "client-secret-id"
     diagnostics_entry.options["payload"] = {
         "body": "device-secret-1",
         "url": "https://api.yeelight.com/apis/iot",
@@ -133,9 +125,9 @@ async def test_diagnostics_allowlists_config_entry_data_and_options(
         CONF_CLOUD_AUTH_METHOD,
         CONF_HOUSE_ID,
         CONF_CLOUD_DOMAIN,
-        CONF_OAUTH_CLIENT_ID,
+        CONF_OPEN_API_CLIENT_ID,
     }
-    assert data["config_entry"]["data"][CONF_OAUTH_CLIENT_ID] == "**REDACTED**"
+    assert data["config_entry"]["data"][CONF_OPEN_API_CLIENT_ID] == "**REDACTED**"
     assert set(data["config_entry"]["options"]) == {
         CONF_SCAN_INTERVAL,
         CONF_DEBUG_MODE,
@@ -147,7 +139,6 @@ async def test_diagnostics_allowlists_config_entry_data_and_options(
     assert "raw_error" not in dumped
     assert '"authorization"' not in dumped
     assert "client-secret-id" not in dumped
-    assert "client-secret-value" not in dumped
     assert '"payload"' not in dumped
     assert "scene_id" not in dumped
     assert "device-secret-1" not in dumped

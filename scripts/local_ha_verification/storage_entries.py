@@ -25,7 +25,7 @@ REQUIRED_CONFIG_ENTRY_DATA_KEYS = {
 OPTIONAL_CONFIG_ENTRY_DATA_KEYS = {
     "account_user_id",
     "account_username",
-    "oauth_client_id",
+    "open_api_client_id",
     "refresh_token",
     "scan_login_device",
     "token_expires_in",
@@ -128,6 +128,73 @@ def verify_config_entry_unique_ids(
     )
 
 
+def verify_config_entry_titles(
+    entries: Iterable[Mapping[str, Any]],
+    report: VerificationReport,
+) -> None:
+    """Verify stored entry titles are descriptive without exposing secrets."""
+    invalid_count = 0
+    cloud_count = 0
+    private_count = 0
+    for entry in entries:
+        expected_title = _expected_config_entry_title(entry)
+        if expected_title is None:
+            invalid_count += 1
+            continue
+        if expected_title.startswith("Yeelight Pro Cloud"):
+            cloud_count += 1
+        if expected_title.startswith("Yeelight Pro Private"):
+            private_count += 1
+        if entry.get("title") != expected_title:
+            invalid_count += 1
+
+    if invalid_count:
+        report.fail(
+            "config entry title mismatch: "
+            f"{invalid_count} enabled entry/entries"
+        )
+    else:
+        report.fact(
+            "config entry titles: "
+            f"cloud={cloud_count}, private={private_count}"
+        )
+    report.metric(
+        "config_entry_titles",
+        {
+            "cloud": cloud_count,
+            "private": private_count,
+            "invalid": invalid_count,
+        },
+    )
+
+
+def _expected_config_entry_title(entry: Mapping[str, Any]) -> str | None:
+    """Return expected user-visible title without exposing token or device values."""
+    data = entry.get("data")
+    if not isinstance(data, Mapping):
+        return None
+    connection_mode = data.get("connection_mode")
+    house_id = data.get("house_id")
+    if connection_mode == CONNECTION_MODE_CLOUD:
+        cloud_region = data.get("cloud_region")
+        if not _has_value(cloud_region) or not _has_value(house_id):
+            return None
+        account_label = _account_title_label(data)
+        region_label = _region_title_label(cloud_region)
+        parts = [
+            part
+            for part in (account_label, region_label, f"House {house_id}")
+            if part
+        ]
+        return f"Yeelight Pro Cloud ({' · '.join(parts)})"
+    if connection_mode == CONNECTION_MODE_PRIVATE:
+        private_domain = data.get("private_domain")
+        if not _has_value(private_domain) or not _has_value(house_id):
+            return None
+        return f"Yeelight Pro Private ({private_domain} · House {house_id})"
+    return None
+
+
 def _expected_config_entry_unique_id(entry: Mapping[str, Any]) -> str | None:
     """Return expected unique id without exposing account or house values."""
     data = entry.get("data")
@@ -151,7 +218,7 @@ def _expected_config_entry_unique_id(entry: Mapping[str, Any]) -> str | None:
 
 def _account_key(data: Mapping[str, Any]) -> str | None:
     """Return strongest non-sensitive account key from stored entry data."""
-    for key in ("account_user_id", "account_username", "oauth_client_id"):
+    for key in ("account_user_id", "account_username", "open_api_client_id"):
         value = data.get(key)
         if _has_value(value):
             return str(value).strip()
@@ -160,6 +227,25 @@ def _account_key(data: Mapping[str, Any]) -> str | None:
         digest = hashlib.sha256(access_token.strip().encode("utf-8")).hexdigest()[:16]
         return f"token-{digest}"
     return None
+
+
+def _account_title_label(data: Mapping[str, Any]) -> str:
+    """Return user-facing account label without exposing token fingerprints."""
+    username = data.get("account_username")
+    if _has_value(username):
+        return str(username).strip()
+    account_user_id = data.get("account_user_id")
+    if _has_value(account_user_id):
+        return f"UID {str(account_user_id).strip()}"
+    return ""
+
+
+def _region_title_label(value: Any) -> str:
+    """Return a compact user-facing region label."""
+    region = str(value).strip().lower()
+    if region == "de":
+        return "EU"
+    return region.upper() or "CN"
 
 
 def _has_value(value: Any) -> bool:

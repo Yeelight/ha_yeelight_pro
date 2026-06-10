@@ -86,6 +86,19 @@ def test_normalize_entry_options_migrates_legacy_device_filter_form_keys() -> No
     assert CONF_DEVICE_IMPORT_FILTER_EXCLUDE_CATEGORIES not in options
 
 
+def test_normalize_entry_options_removes_legacy_analytics_options() -> None:
+    """已移除的 analytics options 不应继续留在 config entry 存储中."""
+    options = normalize_entry_options({
+        "analytics_retention_days": 30,
+        "analytics_runtime": True,
+        CONF_SCAN_INTERVAL: 30,
+    })
+
+    assert "analytics_retention_days" not in options
+    assert "analytics_runtime" not in options
+    assert options[CONF_SCAN_INTERVAL] == 30
+
+
 def test_normalize_entry_options_disables_filter_without_effective_rules() -> None:
     """只有无效维度或空值时不应保存启用态过滤."""
     options = normalize_entry_options({

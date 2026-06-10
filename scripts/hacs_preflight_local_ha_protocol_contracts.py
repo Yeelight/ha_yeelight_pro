@@ -5,11 +5,11 @@ from __future__ import annotations
 LOCAL_HA_PROTOCOL_CONTRACT_TOKENS = {
     "scripts/hacs_preflight_local_ha_protocol_contracts.py": {
         "LOCAL_HA_PROTOCOL_CONTRACT_TOKENS": "protocol contract token registry",
-        "hacs_preflight_oauth_contracts.py": "OAuth contract token split coverage",
+        "hacs_preflight_scan_login_contracts.py": "scan-login contract token split coverage",
         "hacs_preflight_push_contracts.py": "push contract token split coverage",
     },
-    "scripts/hacs_preflight_oauth_contracts.py": {
-        "check_oauth_contract_tests": "OAuth contract preflight helper",
+    "scripts/hacs_preflight_scan_login_contracts.py": {
+        "check_scan_login_contract_tests": "scan-login contract preflight helper",
         "tests/test_verify_scan_login.py": "scan-login production test token guard",
         "scripts/verify_scan_login.py": "scan-login production probe script guard",
         "Home Assistant-free scan-login contract path": (

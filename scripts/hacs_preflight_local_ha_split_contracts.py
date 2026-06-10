@@ -23,7 +23,7 @@ LOCAL_HA_SPLIT_CONTRACT_TOKENS = {
         "test_config_flow_entry_creation.py": (
             "config-flow entry creation split test guard"
         ),
-        "test_config_flow_oauth.py": "config-flow OAuth split test guard",
+        "test_config_flow_scan_login.py": "config-flow scan-login split test guard",
         "test_config_flow_scan_login_device.py": (
             "scan-login device id split test guard"
         ),
@@ -56,7 +56,7 @@ LOCAL_HA_SPLIT_CONTRACT_TOKENS = {
         "test_push_payloads.py": "push payload split test guard",
         "config_entry_lifecycle_helpers.py": "config-entry helper split test guard",
         "test_config_entry_unload.py": "config-entry unload split test guard",
-        "shared OAuth client fake coverage": "OAuth fake helper coverage reason",
+        "shared scan-login client fake coverage": "scan-login fake helper coverage reason",
         "push property payload normalization coverage": (
             "push payload adapter coverage reason"
         ),

@@ -17,7 +17,7 @@ from .const import (
     CONF_ACCESS_TOKEN,
     CONF_ACCOUNT_USER_ID,
     CONF_ACCOUNT_USERNAME,
-    CONF_OAUTH_CLIENT_ID,
+    CONF_OPEN_API_CLIENT_ID,
     CONF_REFRESH_TOKEN,
     CONF_SCAN_LOGIN_DEVICE,
     CONF_SCAN_LOGIN_QRCODE,
@@ -29,8 +29,11 @@ from .config_flow_account import (
     account_identity,
     account_key_from_identity,
 )
-from .oauth_contract import YeelightOAuthToken
-from .scan_login_contract import ScanLoginStatus, YeelightScanLoginQrCode
+from .scan_login_contract import (
+    ScanLoginStatus,
+    YeelightAccountToken,
+    YeelightScanLoginQrCode,
+)
 
 SCAN_LOGIN_POLL_INTERVAL_SECONDS = 2.0
 
@@ -95,7 +98,7 @@ def scan_login_description_placeholders(
 
 
 def scan_login_entry_data(
-    token: YeelightOAuthToken,
+    token: YeelightAccountToken,
     *,
     device: str,
 ) -> dict[str, Any]:
@@ -108,7 +111,7 @@ def scan_login_entry_data(
         CONF_SCAN_LOGIN_DEVICE: device,
     }
     if token.client_id:
-        data[CONF_OAUTH_CLIENT_ID] = token.client_id
+        data[CONF_OPEN_API_CLIENT_ID] = token.client_id
     if token.user_id is not None:
         data[CONF_ACCOUNT_USER_ID] = token.user_id
     if token.username:
@@ -116,7 +119,7 @@ def scan_login_entry_data(
     return data
 
 
-def scan_login_account_key(token: YeelightOAuthToken) -> str:
+def scan_login_account_key(token: YeelightAccountToken) -> str:
     """返回用于多账号 unique_id 的稳定账号片段。"""
     return account_key_from_identity(account_identity(
         account_user_id=token.user_id,

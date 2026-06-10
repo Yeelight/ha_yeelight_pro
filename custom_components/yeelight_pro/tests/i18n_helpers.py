@@ -131,23 +131,6 @@ def translation_payload() -> dict[str, Any]:
                     "Poll count: {poll_count}."
                 ),
             },
-            "options": {
-                "step": {
-                    "init": {
-                        "title": "Options",
-                        "description": "Adjust options.",
-                        "data": option_data,
-                    },
-                    "confirm_runtime": {
-                        "title": "Confirm runtime",
-                        "description": "Save runtime options.",
-                    },
-                    "confirm_reload": {
-                        "title": "Confirm reload",
-                        "description": "Save reload options.",
-                    },
-                }
-            },
             "error": {
                 "cannot_connect": "Cannot connect",
                 "invalid_auth": "Invalid auth",
@@ -158,6 +141,23 @@ def translation_payload() -> dict[str, Any]:
                 "no_houses_found": "No houses found",
                 "reauth_successful": "Reauth successful",
             },
+        },
+        "options": {
+            "step": {
+                "init": {
+                    "title": "Options",
+                    "description": "Adjust options.",
+                    "data": option_data,
+                },
+                "confirm_runtime": {
+                    "title": "Confirm runtime",
+                    "description": "Save runtime options.",
+                },
+                "confirm_reload": {
+                    "title": "Confirm reload",
+                    "description": "Save reload options.",
+                },
+            }
         },
         "selector": {
             "connection_mode": {

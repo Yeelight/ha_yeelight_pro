@@ -53,40 +53,6 @@ class FakeSession:
         return FakeResponse(self.status, self.text, self.payload)
 
 
-class FakeOAuthSession:
-    """Capture OAuth token requests without network I/O."""
-
-    def __init__(
-        self,
-        status: int = 200,
-        payload: dict[str, object] | None = None,
-    ) -> None:
-        self.status = status
-        self.payload = payload if payload is not None else oauth_success_payload()
-        self.calls: list[dict[str, object]] = []
-
-    def post(self, url: str, **kwargs: object) -> FakeResponse:
-        self.calls.append({"url": url, **kwargs})
-        return FakeResponse(self.status, payload=self.payload)
-
-
-def oauth_success_payload() -> dict[str, object]:
-    """Return a documented OAuth token response."""
-    return {
-        "access_token": "access-1",
-        "token_type": "bearer",
-        "refresh_token": "refresh-2",
-        "expires_in": 7775999,
-        "scope": "read write",
-        "id": 122349,
-        "region": "CN",
-        "device": "home-assistant",
-        "client_id": "client-1",
-        "username": "user-1",
-        "jti": "jti-1",
-    }
-
-
 class FakeScanLoginSession:
     """Capture scan-login requests without network I/O."""
 

@@ -145,10 +145,10 @@ RELEASE_QUALITY_GATE_TOKENS = {
         "must remain fail-closed": (
             "English README production probe fail-closed boundary"
         ),
-        "material only documents WebSocket": (
+        "Cloud event notifications use the explicit `live_updates` WebSocket runtime": (
             "English README WebSocket-only event-notification boundary"
         ),
-        "only through WebSocket when `live_updates` is explicitly enabled": (
+        "Polling remains the default full-state refresh path": (
             "English README live event transport boundary"
         ),
     },
@@ -171,10 +171,12 @@ RELEASE_QUALITY_GATE_TOKENS = {
         "必须保持 fail-closed": (
             "Chinese README production probe fail-closed boundary"
         ),
-        "易来事件通知资料只给出 WebSocket": (
+        "云端事件通知使用显式 `live_updates` WebSocket runtime": (
             "Chinese README WebSocket-only event-notification boundary"
         ),
-        "只按 WebSocket 实现": "Chinese README live event transport boundary",
+        "轮询仍作为默认全量状态刷新路径": (
+            "Chinese README live event transport boundary"
+        ),
     },
     "RELEASE_GUIDE.md": {
         "python3 -m compileall -q custom_components/yeelight_pro scripts hacs_publish.py": (
@@ -219,8 +221,8 @@ RELEASE_QUALITY_GATE_TOKENS = {
         "默认都必须 fail-closed": (
             "test report production probe fail-closed boundary"
         ),
-        "真实设备控制闭环仍需要单独授权验证": (
-            "test report external validation boundary"
+        "受控生产探针默认都必须 fail-closed": (
+            "test report guarded production probe boundary"
         ),
     },
     "docs/RELEASE_STATUS.md": {
@@ -238,7 +240,7 @@ RELEASE_QUALITY_GATE_TOKENS = {
         "CHANGELOG 和 manifest version": "release status version review policy",
     },
     "docs/GOAL_COMPLETION_AUDIT.md": {
-        "qrcodeid&device": "goal audit scan-login QR payload boundary",
+        "cli&{device}&{qrcodeId}": "goal audit scan-login QR payload boundary",
         "CN/SG/US/DE": "goal audit regional account domains",
         "一个账号/家庭一个 config entry": "goal audit multi-account entry model",
         "WebSocket-only 事件通知": (
@@ -290,8 +292,8 @@ RELEASE_QUALITY_GATE_TOKENS = {
         "YEELIGHT_PRO_LAN_GATEWAY_HOST": (
             "goal audit production LAN gateway host env guard"
         ),
-        "未调用真实 Yeelight 云端 API/WebSocket/LAN 硬件": (
-            "goal audit external validation boundary"
+        "输出仅包含脱敏聚合结果": (
+            "goal audit production probe redacted aggregate boundary"
         ),
     },
     "docs/IOT_SPEC_REGISTRY.md": {
