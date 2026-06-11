@@ -20,7 +20,7 @@ from .fan_value_helpers import (
     to_ha_direction as _to_ha_direction,
 )
 
-FAN_CATEGORY_TOKENS = ("fan", "ceiling fan", "风扇", "吊扇")
+FAN_CATEGORY_TOKENS = ("fan", "ceiling fan", "fresh air", "风扇", "吊扇", "新风")
 LIGHT_CATEGORY_TOKENS = ("light", "lamp", "灯", "灯带", "彩光", "色温")
 
 
@@ -52,15 +52,15 @@ def _looks_like_fan_component(
     prop_ids = set(component.state.keys())
     if product_component is not None:
         prop_ids.update(prop.prop_id for prop in product_component.properties)
-    return bool({"lv", "dir"} & {str(item) for item in prop_ids})
+    return bool({"vmcp", "vmcf", "lv", "dir"} & {str(item) for item in prop_ids})
 
 
 def _power_key(state: Mapping[str, Any], product_component: ComponentModel | None) -> str | None:
-    return _first_control_key(state, product_component, ("p", "on"))
+    return _first_control_key(state, product_component, ("vmcp", "p", "on"))
 
 
 def _speed_key(state: Mapping[str, Any], product_component: ComponentModel | None) -> str | None:
-    return _first_control_key(state, product_component, ("lv", "speed", "percentage"))
+    return _first_control_key(state, product_component, ("vmcf", "lv", "speed", "percentage"))
 
 
 def _mode_key(state: Mapping[str, Any], product_component: ComponentModel | None) -> str | None:
@@ -86,9 +86,15 @@ def _resolve_control_key(
     component_id: str,
     prop_id: str | None,
     params: Mapping[str, Any],
+    *,
+    key_map: Mapping[str, Mapping[str, str]] | None = None,
 ) -> str | None:
     if prop_id is None:
         return None
+
+    mapped = (key_map or {}).get(component_id, {}).get(prop_id)
+    if mapped:
+        return mapped
 
     index = component_index(component_id)
     if index is not None:
@@ -114,7 +120,11 @@ def _speed_range(
         if resolved is not None:
             return resolved
 
-    prop = _product_prop(product_component, "lv") or _product_prop(product_component, "speed")
+    prop = (
+        _product_prop(product_component, "vmcf")
+        or _product_prop(product_component, "lv")
+        or _product_prop(product_component, "speed")
+    )
     if prop is not None and prop.value_range is not None:
         return NumericRange(
             min=to_int(prop.value_range.min),
@@ -126,7 +136,9 @@ def _speed_range(
 
 
 def _fallback_speed_range(state: Mapping[str, Any]) -> NumericRange | None:
-    raw_speed = to_int(state.get("lv", state.get("speed", state.get("percentage"))))
+    raw_speed = to_int(
+        state.get("vmcf", state.get("lv", state.get("speed", state.get("percentage"))))
+    )
     if raw_speed is None:
         return None
     if 0 <= raw_speed <= 100:
@@ -279,6 +291,8 @@ def _project_fan_name(component: ComponentInstanceModel) -> str | None:
     lowered = component.component_id.lower()
     if lowered in {"fan", "main_fan", "fan_main"}:
         return None
+    if text := to_str(component.name):
+        return text
     if lowered.startswith("fan_"):
         text = lowered.removeprefix("fan_").replace("_", " ").strip()
         return text or None

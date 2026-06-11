@@ -161,7 +161,7 @@ def test_power_meter_specs_match_iot_csv_access_boundary() -> None:
 
 
 def test_dali_energy_specs_match_iot_csv_boundary() -> None:
-    """dali能量组件来自本地 CSV：首版只消费明确的 ap/ae 遥测。"""
+    """dali能量组件来自本地 CSV：access 必须跟随本地资料。"""
     registry = iot_registry()
 
     component = registry.component_map["dali energy"]
@@ -190,35 +190,49 @@ def test_dali_energy_specs_match_iot_csv_boundary() -> None:
     assert active_power is not None
     assert active_power.full_name == "active power"
     assert active_power.readable is True
-    assert active_power.writable is False
+    assert active_power.writable is True
     assert active_power.components == ("dali energy",)
     assert active_energy is not None
     assert active_energy.full_name == "active energy"
     assert active_energy.readable is True
-    assert active_energy.writable is False
+    assert active_energy.writable is True
     assert active_energy.components == ("dali energy",)
 
     for prop_name in ("ot", "sys_s", "esv", "esvf", "ocp", "lsot", "lsv", "lsc", "pf"):
         prop = registry.property_spec(prop_name)
         assert prop is not None
         assert prop.readable is True
+        assert prop.writable is True
         assert "dali energy" in prop.components
         assert registry.property_capability(prop_name) is None
 
     temperature = registry.property_spec("temp")
     assert temperature is not None
     assert temperature.readable is True
+    assert temperature.writable is True
 
 
 def test_color_light_without_temperature_matches_iot_csv_boundary() -> None:
-    """无色温彩光灯来自本地 CSV：只有开关、亮度和 RGB，不应关联 ct。"""
+    """无色温彩光灯来自本地 CSV：保留配置属性但不关联 ct。"""
     registry = iot_registry()
 
     component = registry.component_map["color light without temperature"]
     assert component.component_id == 72
     assert component.category == "light"
     assert component.platform_hint == "light"
-    assert component.properties == ("p", "l", "c")
+    assert component.properties == (
+        "p",
+        "l",
+        "c",
+        "bp",
+        "dd",
+        "slisaon",
+        "slisaon_rdy",
+        "name",
+        "icon",
+        "3rdPartySyncBitmask",
+        "io",
+    )
 
     for prop_name in ("p", "l", "c"):
         prop = registry.property_spec(prop_name)

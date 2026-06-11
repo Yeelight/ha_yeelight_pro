@@ -15,6 +15,12 @@ _CHANNEL_LABELS = {
     4: "第 4 键",
     5: "第 5 键",
     6: "第 6 键",
+    7: "第 7 键",
+    8: "第 8 键",
+    9: "第 9 键",
+    10: "第 10 键",
+    11: "第 11 键",
+    12: "第 12 键",
 }
 _POSITIONAL_CHANNEL_LABELS = {
     2: {
@@ -34,6 +40,12 @@ _CHANNEL_NUMERAL_LABELS = {
     4: ("四键", "4键"),
     5: ("五键", "5键"),
     6: ("六键", "6键"),
+    7: ("七键", "7键"),
+    8: ("八键", "8键"),
+    9: ("九键", "9键"),
+    10: ("十键", "10键"),
+    11: ("十一键", "11键"),
+    12: ("十二键", "12键"),
 }
 _CHANNEL_NAME_KEYS = ("desc", "componentName", "component_name", "name")
 _MODEL_NAME_KEYS = (
@@ -54,18 +66,38 @@ _CHANNEL_COUNT_TOKENS = (
     ("四键", 4),
     ("五键", 5),
     ("六键", 6),
+    ("七键", 7),
+    ("八键", 8),
+    ("九键", 9),
+    ("十键", 10),
+    ("十一键", 11),
+    ("十二键", 12),
+    ("12情景", 12),
+    ("十二情景", 12),
     ("1键", 1),
     ("2键", 2),
     ("3键", 3),
     ("4键", 4),
     ("5键", 5),
     ("6键", 6),
+    ("7键", 7),
+    ("8键", 8),
+    ("9键", 9),
+    ("10键", 10),
+    ("11键", 11),
+    ("12键", 12),
     ("1-gang", 1),
     ("2-gang", 2),
     ("3-gang", 3),
     ("4-gang", 4),
     ("5-gang", 5),
     ("6-gang", 6),
+    ("7-gang", 7),
+    ("8-gang", 8),
+    ("9-gang", 9),
+    ("10-gang", 10),
+    ("11-gang", 11),
+    ("12-gang", 12),
 )
 
 
@@ -138,7 +170,7 @@ def _runtime_switch_channel_count(payload: Mapping[str, Any]) -> int | None:
     ordered = sorted(indexes)
     if ordered != list(range(1, len(ordered) + 1)):
         return None
-    return len(ordered) if len(ordered) <= 6 else None
+    return len(ordered) if len(ordered) <= 12 else None
 
 
 def _looks_like_positionable_switch(text: str) -> bool:

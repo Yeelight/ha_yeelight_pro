@@ -16,6 +16,7 @@ from custom_components.yeelight_pro.const import (
     CLOUD_REGIONS,
     CONF_CLOUD_REGION,
     CONNECTION_MODE_CLOUD,
+    CONNECTION_MODE_LAN,
     CONNECTION_MODE_PRIVATE,
     CONF_CONNECTION_MODE,
     DEFAULT_CLOUD_REGION,
@@ -73,6 +74,7 @@ def test_user_schema_uses_localized_connection_mode_selector() -> None:
     assert mode_selector.config["options"] == [
         CONNECTION_MODE_CLOUD,
         CONNECTION_MODE_PRIVATE,
+        CONNECTION_MODE_LAN,
     ]
 
 

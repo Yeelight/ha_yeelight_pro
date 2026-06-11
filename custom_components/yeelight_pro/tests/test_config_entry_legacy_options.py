@@ -88,7 +88,7 @@ async def test_setup_entry_normalizes_legacy_options(
         "homeassistant.config_entries.ConfigEntries.async_forward_entry_setups",
         new_callable=AsyncMock,
     ) as forward_setups, patch(
-        "custom_components.yeelight_pro.async_create_topology_changed_issue",
+        "custom_components.yeelight_pro.entry_setup.async_create_topology_changed_issue",
     ) as create_issue:
         coordinator = _coordinator_for_setup()
         listener_holder = {}

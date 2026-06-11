@@ -96,7 +96,7 @@ async def test_coordinator_keeps_name_only_smoke_alarm_on_push_event_component(
             "device_id": 311931214,
             "name": "厨房烟雾传感器",
             "category": "light",
-            "iot_category": "light",
+            "iot_category": "other",
             "ha_product_model": {"components": []},
         }
     }

@@ -18,10 +18,17 @@ from custom_components.yeelight_pro.capabilities.registry import normalize_event
         ("motion.false", "motion_undetected"),
         ("panel.click", "click"),
         ("panel.hold", "hold"),
+        ("传感器已接触", "sensor_contacted"),
+        ("传感器未接触", "sensor_not_contacted"),
         ("power.alarm", "power_alarm"),
+        ("单旋转（未按压旋转）", "single_spin"),
+        ("handwave", "handwave"),
         ("human enter", "human_enter"),
         ("有人进入", "human_enter"),
         (8, "motion_detected"),
+        (12, "sensor_contacted"),
+        (13, "sensor_not_contacted"),
+        (21, "single_spin"),
     ],
 )
 def test_event_aliases_cover_backend_events(source: object, expected: str) -> None:
@@ -54,6 +61,17 @@ def test_release_after_hold_remains_unassigned_until_docs_confirm_components() -
     events = {event.normalized: event for event in registry.events}
 
     assert events["release_after_hold"].components == ()
+
+
+def test_csv_unscoped_events_remain_unassigned_until_docs_confirm_components() -> None:
+    """事件类型 CSV 未给组件归属的新增事件不能提前扩大投影面。"""
+    registry = iot_registry()
+    events = {event.normalized: event for event in registry.events}
+
+    assert events["sensor_contacted"].components == ()
+    assert events["sensor_not_contacted"].components == ()
+    assert events["single_spin"].components == ()
+    assert events["handwave"].components == ()
 
 
 def test_dali_knob_spin_remains_unassigned_until_docs_confirm_components() -> None:

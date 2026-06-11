@@ -12,6 +12,7 @@ from .platform_contract_data import (
     CLIMATE_CANDIDATE_PROPS,
     COVER_TARGET_PROPS,
     DEFAULT_UNSUPPORTED_EVIDENCE,
+    FAN_CANDIDATE_PROPS,
     LIGHT_CONTROL_PROPS,
     PLATFORM_ORDER,
     PRIMARY_CATEGORY_CANDIDATES,
@@ -19,7 +20,6 @@ from .platform_contract_data import (
     READ_ONLY_BOOL_BINARY_PROPS,
     READ_ONLY_SENSOR_PROPS,
     RELAY_SWITCH_CONTROL_PROPS,
-    WRITABLE_NUMERIC_FORMATS,
 )
 from .registry import parse_component_property_key, property_spec
 
@@ -87,6 +87,8 @@ def platform_candidates_for_payload(payload: Mapping[str, Any]) -> tuple[str, ..
             _extend(candidates, ("cover",))
         elif prop in CLIMATE_CANDIDATE_PROPS:
             _extend(candidates, ("climate",))
+        elif prop in FAN_CANDIDATE_PROPS:
+            _extend(candidates, ("fan",))
         elif prop in RELAY_SWITCH_CONTROL_PROPS and category == "relay_switch":
             _extend(candidates, ("switch",))
         elif prop in LIGHT_CONTROL_PROPS and category == "light":
@@ -99,7 +101,7 @@ def platform_candidates_for_payload(payload: Mapping[str, Any]) -> tuple[str, ..
     if has_events:
         _extend(candidates, ("event",))
 
-    return tuple(platform for platform in PLATFORM_ORDER if platform in candidates)
+    return _ordered_candidates(category, candidates)
 
 
 def primary_platform_for_payload(payload: Mapping[str, Any]) -> str | None:
@@ -133,12 +135,48 @@ def _should_use_category_fallback(
     props: Mapping[str, PropertyEvidence],
     has_events: bool,
 ) -> bool:
-    """Return true when category identity is the best available platform evidence."""
-    if category == "light":
-        return not props and not has_events
-    if category in {"relay_switch", "switch"}:
-        return not props and not has_events
-    return True
+    """Return true when category identity is safe evidence for entity projection."""
+    if props or has_events:
+        if category == "temp_control" and _has_fan_without_climate_props(props):
+            return False
+        return category in {
+            "contact_sensor",
+            "curtain",
+            "human_sensor",
+            "knob_switch",
+            "light_sensor",
+            "scene_panel",
+            "temp_control",
+        }
+    return category in {
+        "contact_sensor",
+        "curtain",
+        "human_sensor",
+        "knob_switch",
+        "light_sensor",
+        "scene_panel",
+        "temp_control",
+    }
+
+
+def _ordered_candidates(category: str, candidates: list[str]) -> tuple[str, ...]:
+    """Return candidates with the documented category platform first."""
+    ordered: list[str] = []
+    primary = PRIMARY_CATEGORY_CANDIDATES.get(category, ())
+    for platform in primary:
+        if platform in candidates:
+            _extend(ordered, (platform,))
+    for platform in PLATFORM_ORDER:
+        if platform in candidates:
+            _extend(ordered, (platform,))
+    return tuple(ordered)
+
+
+def _has_fan_without_climate_props(props: Mapping[str, PropertyEvidence]) -> bool:
+    prop_ids = set(props)
+    return bool(prop_ids & FAN_CANDIDATE_PROPS) and not bool(
+        prop_ids & CLIMATE_CANDIDATE_PROPS
+    )
 
 
 def _payload_category(payload: Mapping[str, Any]) -> str:
@@ -261,15 +299,8 @@ def _raw_access(raw: Mapping[str, Any]) -> tuple[bool, bool]:
     return readable, writable
 
 
-def _has_light_property_evidence(props: Mapping[str, PropertyEvidence]) -> bool:
-    return any(
-        prop in LIGHT_CONTROL_PROPS and evidence.writable
-        for prop, evidence in props.items()
-    )
-
-
 def _numeric_property(evidence: PropertyEvidence) -> bool:
-    return evidence.has_value_range or evidence.value_format in WRITABLE_NUMERIC_FORMATS
+    return evidence.has_value_range
 
 
 def _int_value(value: Any) -> int | None:

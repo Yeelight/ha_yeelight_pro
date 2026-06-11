@@ -69,6 +69,70 @@ def test_openapi_broad_light_human_sensor_does_not_project_light() -> None:
     } <= candidates
 
 
+def test_documented_light_sensor_component_with_motion_stays_light_sensor() -> None:
+    """CSV 中光照/雷达光感组件可含 mv，但 category 优先决定主类型是 light_sensor."""
+    device = _build_device(
+        {
+            "id": 9017,
+            "name": "走廊光感雷达",
+            "category": "light",
+            "subDeviceList": [
+                {
+                    "index": 1,
+                    "category": "light_sensor",
+                    "name": "zonalShieldIlluminanceRadarSensor",
+                    "properties": [
+                        _prop("mv", True, "人体移动", "boolean"),
+                        _prop("luminance", 188, "照度", "uint16", unit="lx"),
+                        _prop("bl", 91, "电量", "uint8", unit="%"),
+                    ],
+                }
+            ],
+        }
+    )
+
+    candidates = _candidate_platform_components(device)
+
+    assert device["iot_category"] == "light_sensor"
+    assert device["ha_platform"] == "sensor"
+    assert device["ha_platform_candidates"] == ["sensor", "binary_sensor"]
+    assert not any(platform == "light" for platform, _component in candidates)
+    assert {
+        ("binary_sensor", "motion"),
+        ("sensor", "illuminance"),
+        ("sensor", "battery"),
+    } <= candidates
+
+
+def test_documented_light_sensor_property_bundle_overrides_broad_light() -> None:
+    """光照传感器2的配置属性组合应按 light_sensor 处理，不被 mv 抢成 human_sensor."""
+    device = _build_device(
+        {
+            "id": 9018,
+            "name": "厨房烟雾传感器",
+            "category": "light",
+            "properties": [
+                _prop("mv", True, "人体移动", "boolean"),
+                _prop("luminance", 188, "照度", "uint16", unit="lx"),
+                _prop("sens_range", 3, "感应范围", "uint8", operators=["set"]),
+                _prop("lumi_setting", 120, "照度设置", "uint16", operators=["set"]),
+                _prop("delay_time", 30, "延时时间", "uint16", operators=["set"]),
+            ],
+        }
+    )
+
+    candidates = _candidate_platform_components(device)
+
+    assert device["iot_category"] == "light_sensor"
+    assert device["ha_platform"] == "sensor"
+    assert device["ha_platform_candidates"] == ["sensor", "binary_sensor"]
+    assert not any(platform == "light" for platform, _component in candidates)
+    assert {
+        ("binary_sensor", "motion"),
+        ("sensor", "illuminance"),
+    } <= candidates
+
+
 def test_openapi_broad_light_temperature_humidity_does_not_project_light() -> None:
     """OpenAPI 粗 category=light 的温湿度设备只能生成 sensor 候选。"""
     device = _build_device(
@@ -141,8 +205,37 @@ def test_openapi_light_payload_still_projects_light() -> None:
     assert candidates == {("light", "light")}
 
 
-def test_openapi_light_named_smoke_without_capabilities_uses_light_fallback() -> None:
-    """名称不能生成安全能力；无能力证据时仅按粗 light 兜底。"""
+def test_openapi_broad_light_fresh_air_projects_fan_from_documented_props() -> None:
+    """粗 light 遇到 CSV 新风属性时，按 temp_control/fan 能力覆盖品类。"""
+    device = _build_device(
+        {
+            "id": 9030,
+            "name": "新风",
+            "category": "light",
+            "properties": [
+                _prop("vmcp", True, "新风开关", "boolean", operators=["set"]),
+                _prop(
+                    "vmcf",
+                    30,
+                    "新风风速",
+                    "uint8",
+                    range_={"min": 1, "max": 100, "step": 1},
+                    operators=["set"],
+                ),
+            ],
+        }
+    )
+
+    candidates = _candidate_platform_components(device)
+
+    assert device["iot_category"] == "temp_control"
+    assert device["ha_platform"] == "fan"
+    assert device["ha_platform_candidates"] == ["fan"]
+    assert candidates == {("fan", "fresh_air")}
+
+
+def test_openapi_light_named_smoke_without_capabilities_is_device_only() -> None:
+    """名称不能生成安全能力；无能力证据时不能按粗 light 生成假实体。"""
     device = _build_device(
         {
             "id": 9020,
@@ -155,13 +248,13 @@ def test_openapi_light_named_smoke_without_capabilities_uses_light_fallback() ->
     candidates = _candidate_platform_components(device)
 
     assert device["iot_category"] == "light"
-    assert device["ha_platform"] == "light"
-    assert device["ha_platform_candidates"] == ["light"]
-    assert candidates == {("light", "light")}
+    assert "ha_platform" not in device
+    assert "ha_platform_candidates" not in device
+    assert candidates == set()
 
 
 def test_openapi_light_named_smoke_with_events_projects_event_only() -> None:
-    """显式 OpenAPI events 只生成 event 候选，不反推 light 能力。"""
+    """显式 OpenAPI events 只生成 event 候选，并按能力覆盖粗 light。"""
     device = _build_device(
         {
             "id": 9021,
@@ -177,14 +270,14 @@ def test_openapi_light_named_smoke_with_events_projects_event_only() -> None:
 
     candidates = _candidate_platform_components(device)
 
-    assert device["iot_category"] == "light"
+    assert device["iot_category"] == "other"
     assert device["ha_platform"] == "event"
     assert device["ha_platform_candidates"] == ["event"]
-    assert candidates == {("event", "light")}
+    assert candidates == {("event", "safety_alarm")}
 
 
 def test_openapi_light_named_smoke_with_product_schema_events_projects_event() -> None:
-    """产品 schema 明确声明 events 时生成 event 候选。"""
+    """产品 schema 明确声明 events 时生成 event 候选并覆盖粗 light。"""
     from custom_components.yeelight_pro.core.device_payload import DevicePayloadBuilder
 
     builder = DevicePayloadBuilder()
@@ -221,7 +314,7 @@ def test_openapi_light_named_smoke_with_product_schema_events_projects_event() -
     )
     device = data[9022]
 
-    assert device["iot_category"] == "light"
+    assert device["iot_category"] == "other"
     assert device["ha_platform_candidates"] == ["event"]
     assert _candidate_platform_components(device) == {("event", "vendor_power_alarm")}
 

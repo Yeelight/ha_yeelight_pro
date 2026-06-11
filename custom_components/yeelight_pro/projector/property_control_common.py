@@ -33,8 +33,6 @@ MAIN_ENTITY_PROPS = frozenset({
     "l",
     "ct",
     "c",
-    "c_waf",
-    "c_xy",
     "cp",
     "tp",
     "rs",
@@ -47,7 +45,6 @@ MAIN_ENTITY_PROPS = frozenset({
     "tgt",
     "vmcp",
     "vmcf",
-    "lv",
     "m",
     "dir",
     "lock",
@@ -77,9 +74,12 @@ def schema_properties(
     return list(product.properties) if product is not None else []
 
 
-def is_writable_auxiliary_property(prop: PropertyModel) -> bool:
+def is_writable_auxiliary_property(
+    prop: PropertyModel,
+    component: ComponentInstanceModel | None = None,
+) -> bool:
     """Return true for writable range/enum properties owned by helper entities."""
-    if prop.prop_id in MAIN_ENTITY_PROPS:
+    if _is_main_entity_property(prop.prop_id, component):
         return False
     if looks_bool(prop):
         return False
@@ -91,9 +91,12 @@ def is_writable_auxiliary_property(prop: PropertyModel) -> bool:
     return True
 
 
-def is_writable_auxiliary_bool_property(prop: PropertyModel) -> bool:
+def is_writable_auxiliary_bool_property(
+    prop: PropertyModel,
+    component: ComponentInstanceModel | None = None,
+) -> bool:
     """Return true for documented writable bool helper properties."""
-    if prop.prop_id in MAIN_ENTITY_PROPS:
+    if _is_main_entity_property(prop.prop_id, component):
         return False
     if not looks_bool(prop):
         return False
@@ -128,6 +131,28 @@ def looks_bool(prop: PropertyModel) -> bool:
         return True
     spec = property_spec(prop.prop_id)
     return bool(spec is not None and spec.data_type.lower() in BOOL_FORMATS)
+
+
+def _is_main_entity_property(
+    prop_id: str,
+    component: ComponentInstanceModel | None,
+) -> bool:
+    """Return whether a property is already owned by the component's main entity."""
+    if component is None:
+        return prop_id in MAIN_ENTITY_PROPS
+
+    category = (component.category or "").lower()
+    if any(token in category for token in ("relay_switch", "switch", "开关")):
+        return prop_id in {"p", "sp", "on"}
+    if any(token in category for token in ("light", "灯", "彩光", "色温")):
+        return prop_id in {"p", "on", "l", "ct", "c", "m"}
+    if any(token in category for token in ("curtain", "blind", "窗帘")):
+        return prop_id in {"cp", "tp", "rs"}
+    if any(token in category for token in ("fresh air", "fan", "新风")):
+        return prop_id in {"vmcp", "vmcf"}
+    if any(token in category for token in ("temp_control", "climate", "空调", "地暖")):
+        return prop_id in {"acp", "actt", "acct", "rfhp", "rfhct", "rfhtt", "tgt"}
+    return prop_id in MAIN_ENTITY_PROPS
 
 
 def control_value_range(prop: PropertyModel) -> ValueRangeModel | None:

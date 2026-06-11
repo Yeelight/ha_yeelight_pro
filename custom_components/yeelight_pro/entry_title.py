@@ -9,7 +9,10 @@ from .const import (
     CONF_ACCOUNT_USERNAME,
     CONF_CLOUD_REGION,
     CONF_CONNECTION_MODE,
+    CONF_LAN_GATEWAY_IP,
+    CONF_LAN_GATEWAY_PORT,
     CONF_PRIVATE_DOMAIN,
+    CONNECTION_MODE_LAN,
     CONNECTION_MODE_PRIVATE,
 )
 from .house_metadata import house_name_from_data
@@ -27,6 +30,8 @@ def config_entry_title(entry_data: Mapping[str, Any]) -> str:
     mode = str(entry_data.get(CONF_CONNECTION_MODE) or "").strip()
     if mode == CONNECTION_MODE_PRIVATE:
         return _private_title(entry_data)
+    if mode == CONNECTION_MODE_LAN:
+        return _lan_title(entry_data)
     return _cloud_title(entry_data)
 
 
@@ -45,6 +50,12 @@ def _private_title(entry_data: Mapping[str, Any]) -> str:
     private_domain = _required_text(entry_data.get(CONF_PRIVATE_DOMAIN), "Private")
     house_name = house_name_from_data(entry_data)
     return f"Yeelight Pro Private ({private_domain} · {house_name})"
+
+
+def _lan_title(entry_data: Mapping[str, Any]) -> str:
+    ip = _required_text(entry_data.get(CONF_LAN_GATEWAY_IP), "LAN")
+    port = entry_data.get(CONF_LAN_GATEWAY_PORT, 65443)
+    return f"Yeelight Pro LAN ({ip}:{port})"
 
 
 def _cloud_account_label(entry_data: Mapping[str, Any]) -> str:

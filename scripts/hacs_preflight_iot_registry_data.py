@@ -17,8 +17,41 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
             "broad cloud light sensor mapping guard"
         ),
     },
+    "test_openapi_broad_category_projection.py": {
+        "test_documented_light_sensor_component_with_motion_stays_light_sensor": (
+            "CSV light-sensor component with mv category guard"
+        ),
+        "test_documented_light_sensor_property_bundle_overrides_broad_light": (
+            "documented light-sensor property bundle guard"
+        ),
+        "zonalShieldIlluminanceRadarSensor": (
+            "documented light-sensor radar component guard"
+        ),
+        "test_openapi_light_payload_still_projects_light": (
+            "documented light property projection guard"
+        ),
+        "test_openapi_light_named_smoke_without_capabilities_is_device_only": (
+            "name-only capability rejection guard"
+        ),
+    },
+    "test_device_payload_iot_capabilities.py": {
+        "test_runtime_payload_light_sensor_bundle_ignores_user_device_name": (
+            "device name cannot override documented IoT capabilities"
+        ),
+        "sens_range": "documented light-sensor configuration property guard",
+    },
+    "test_openapi_broad_schema_conflicts.py": {
+        "test_conflicting_light_product_schema_does_not_override_sensor_evidence": (
+            "runtime sensor evidence overrides conflicting broad light schema"
+        ),
+        "test_conflicting_light_schema_respects_runtime_temp_control_category": (
+            "runtime temp-control category overrides conflicting broad light schema"
+        ),
+    },
     "test_iot_registry_events.py": {
         "normalize_event_type": "runtime event alias normalization",
+        "sensor_contacted": "CSV sensor-contact event normalization coverage",
+        "single_spin": "CSV single-spin event normalization coverage",
         "test_panel_click_and_hold_event_component_matrix_matches_iot_docs": (
             "panel event component-scope coverage"
         ),
@@ -30,6 +63,24 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         ),
         "test_approach_events_are_scoped_to_infrared_sensor_docs": (
             "approach event component-scope coverage"
+        ),
+        "test_csv_unscoped_events_remain_unassigned_until_docs_confirm_components": (
+            "unscoped CSV event component boundary"
+        ),
+    },
+    "test_iot_registry_csv_contract.py": {
+        "test_registry_categories_match_iot_category_csv": (
+            "CSV category parity coverage"
+        ),
+        "test_registry_covers_iot_event_type_csv": (
+            "CSV event type id parity coverage"
+        ),
+        "基础信息_事件类型.csv": "vendor event type CSV coverage",
+        "test_registry_covers_all_documented_categorized_components": (
+            "CSV component category coverage"
+        ),
+        "test_registry_uses_csv_access_for_documented_properties": (
+            "CSV property access coverage"
         ),
     },
     "test_iot_registry_protocols.py": {
@@ -180,8 +231,8 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         ),
     },
     "test_device_payload_empty_values.py": {
-        "test_runtime_payloads_restore_empty_category_schema_and_metadata": (
-            "empty value control category schema restoration coverage"
+        "test_runtime_payloads_keep_empty_control_category_metadata_only": (
+            "empty value control category metadata-only coverage"
         ),
         "test_runtime_payloads_keep_documented_sensor_entities_when_values_are_missing": (
             "empty value documented sensor entity retention coverage"

@@ -93,12 +93,12 @@ def test_release_quality_gate_check_requires_lint_and_type_check(
         for error in errors
     )
     assert any(
-        "IoT registry WebSocket-only runtime boundary" in error
+        "IoT registry WebSocket runtime boundary" in error
         for error in errors
     )
-    assert any("goal audit WebSocket-only runtime chain" in error for error in errors)
+    assert any("goal audit WebSocket runtime chain" in error for error in errors)
     assert any(
-        "goal audit WebSocket-only event-notification status" in error
+        "goal audit WebSocket event-notification status" in error
         for error in errors
     )
     assert any("goal audit production scan-login probe command" in error for error in errors)

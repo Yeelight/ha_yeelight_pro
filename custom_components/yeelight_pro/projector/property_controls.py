@@ -158,7 +158,7 @@ def _project_number(
     *,
     domain: str,
 ) -> HANumberControlProjection | None:
-    if not is_writable_auxiliary_property(prop):
+    if not is_writable_auxiliary_property(prop, component):
         return None
     value_range = control_value_range(prop)
     if value_range is None or control_value_list(prop):
@@ -193,7 +193,7 @@ def _project_select(
     *,
     domain: str,
 ) -> HASelectControlProjection | None:
-    if not is_writable_auxiliary_property(prop):
+    if not is_writable_auxiliary_property(prop, component):
         return None
     value_list = control_value_list(prop)
     if not value_list:
@@ -225,7 +225,7 @@ def _project_switch(
     *,
     domain: str,
 ) -> HASwitchControlProjection | None:
-    if not is_writable_auxiliary_bool_property(prop):
+    if not is_writable_auxiliary_bool_property(prop, component):
         return None
 
     on_value, off_value = switch_command_values(prop)

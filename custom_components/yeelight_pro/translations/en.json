@@ -59,6 +59,21 @@
           "cloud_region": "Region"
         }
       },
+      "lan_config": {
+        "title": "Select LAN Gateway",
+        "description": "The system has discovered the following gateways. Select one to connect, or choose the last option to enter manually.",
+        "data": {
+          "lan_gateway_ip": "Gateway"
+        }
+      },
+      "lan_manual": {
+        "title": "Enter Gateway Address Manually",
+        "description": "Enter the local network address of your Yeelight Pro gateway.\n\nNote: The gateway must have LAN control enabled in the Yeelight APP.",
+        "data": {
+          "lan_gateway_ip": "Gateway IP Address",
+          "lan_gateway_port": "Gateway Port"
+        }
+      },
       "cloud_scan_login": {
         "title": "Yeelight APP scan login",
         "description": "Open Yeelight APP 1.5.0 or later, go to the scan page, and scan the QR code below to authorize Home Assistant. If scanning fails, enter this content manually: {qrcode}\n\nStatus: {status}\nRemaining seconds: {remaining_seconds}\nPoll count: {poll_count}\n\nAfter you submit, Home Assistant will continuously poll the scan authorization status. Select refresh after the QR code expires.",
@@ -135,7 +150,8 @@
     "connection_mode": {
       "options": {
         "cloud": "Yeelight Pro cloud (recommended)",
-        "private": "Private deployment (Lucore)"
+        "private": "Private deployment (Lucore)",
+        "lan": "LAN control (no login required)"
       }
     },
     "cloud_auth_method": {

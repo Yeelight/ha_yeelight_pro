@@ -18,10 +18,10 @@ from custom_components.yeelight_pro.const import (
     DOMAIN,
     PLATFORMS,
 )
-from custom_components.yeelight_pro import _OptionalRuntimeStartupFailure
 from custom_components.yeelight_pro.diagnostics import (
     async_get_config_entry_diagnostics,
 )
+from custom_components.yeelight_pro.entry_setup import OptionalRuntimeStartupFailure
 from .diagnostics_helpers import (
     aggregate_runtime_secret_markers,
     build_aggregate_runtime_coordinator,
@@ -302,7 +302,7 @@ async def test_diagnostics_reports_optional_lan_start_failure_without_details(
     coordinator = build_empty_diagnostics_coordinator()
     install_runtime_entry(hass, diagnostics_entry, coordinator, platforms=["light"])
     hass.data[DOMAIN][diagnostics_entry.entry_id]["lan_runtime"] = (
-        _OptionalRuntimeStartupFailure(
+        OptionalRuntimeStartupFailure(
             OSError("192.168.1.20 token=secret gateway-secret")
         )
     )

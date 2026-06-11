@@ -9,6 +9,7 @@ import pytest
 from homeassistant.core import HomeAssistant
 
 from custom_components.yeelight_pro.const import CONF_TOPOLOGY_CHANGE_REPAIRS
+from custom_components.yeelight_pro.entry_setup import async_post_manual_refresh
 
 from .refresh_service_helpers import refresh_coordinator, refresh_entry
 
@@ -18,8 +19,6 @@ async def test_post_manual_refresh_runs_registry_maintenance(
     hass: HomeAssistant,
 ) -> None:
     """Post-refresh hook should sync devices and reconcile entity registry."""
-    from custom_components.yeelight_pro import _async_post_manual_refresh
-
     entry = refresh_entry("entry-1")
     coordinator = refresh_coordinator(hass)
 
@@ -27,15 +26,15 @@ async def test_post_manual_refresh_runs_registry_maintenance(
         sync_devices = AsyncMock()
         reconcile = AsyncMock()
         monkeypatch.setattr(
-            "custom_components.yeelight_pro._async_sync_gateway_devices",
+            "custom_components.yeelight_pro.entry_setup.async_sync_gateway_devices",
             sync_devices,
         )
         monkeypatch.setattr(
-            "custom_components.yeelight_pro.async_reconcile_entity_registry",
+            "custom_components.yeelight_pro.entry_setup.async_reconcile_entity_registry",
             reconcile,
         )
 
-        await _async_post_manual_refresh(entry, coordinator)
+        await async_post_manual_refresh(entry, coordinator)
 
     sync_devices.assert_awaited_once_with(hass, entry, coordinator)
     reconcile.assert_awaited_once_with(hass, entry, coordinator)
@@ -46,8 +45,6 @@ async def test_post_manual_refresh_creates_repair_issue_on_topology_change(
     hass: HomeAssistant,
 ) -> None:
     """手动刷新后如果拓扑变化，默认创建 Repairs 提示。"""
-    from custom_components.yeelight_pro import _async_post_manual_refresh
-
     entry = refresh_entry("entry-1")
     entry.options = {}
     coordinator = refresh_coordinator(hass)
@@ -57,20 +54,20 @@ async def test_post_manual_refresh_creates_repair_issue_on_topology_change(
 
     with pytest.MonkeyPatch.context() as monkeypatch:
         monkeypatch.setattr(
-            "custom_components.yeelight_pro._async_sync_gateway_devices",
+            "custom_components.yeelight_pro.entry_setup.async_sync_gateway_devices",
             AsyncMock(side_effect=_sync_devices),
         )
         monkeypatch.setattr(
-            "custom_components.yeelight_pro.async_reconcile_entity_registry",
+            "custom_components.yeelight_pro.entry_setup.async_reconcile_entity_registry",
             AsyncMock(),
         )
         create_issue = MagicMock()
         monkeypatch.setattr(
-            "custom_components.yeelight_pro.async_create_topology_changed_issue",
+            "custom_components.yeelight_pro.entry_setup.async_create_topology_changed_issue",
             create_issue,
         )
 
-        await _async_post_manual_refresh(entry, coordinator)
+        await async_post_manual_refresh(entry, coordinator)
 
     create_issue.assert_called_once_with(
         hass,
@@ -85,8 +82,6 @@ async def test_post_manual_refresh_respects_disabled_topology_repairs_option(
     hass: HomeAssistant,
 ) -> None:
     """手动刷新后拓扑变化也必须尊重 Repairs 提示开关。"""
-    from custom_components.yeelight_pro import _async_post_manual_refresh
-
     entry = refresh_entry("entry-1")
     entry.options = {CONF_TOPOLOGY_CHANGE_REPAIRS: False}
     coordinator = refresh_coordinator(hass)
@@ -96,19 +91,19 @@ async def test_post_manual_refresh_respects_disabled_topology_repairs_option(
 
     with pytest.MonkeyPatch.context() as monkeypatch:
         monkeypatch.setattr(
-            "custom_components.yeelight_pro._async_sync_gateway_devices",
+            "custom_components.yeelight_pro.entry_setup.async_sync_gateway_devices",
             AsyncMock(side_effect=_sync_devices),
         )
         monkeypatch.setattr(
-            "custom_components.yeelight_pro.async_reconcile_entity_registry",
+            "custom_components.yeelight_pro.entry_setup.async_reconcile_entity_registry",
             AsyncMock(),
         )
         create_issue = MagicMock()
         monkeypatch.setattr(
-            "custom_components.yeelight_pro.async_create_topology_changed_issue",
+            "custom_components.yeelight_pro.entry_setup.async_create_topology_changed_issue",
             create_issue,
         )
 
-        await _async_post_manual_refresh(entry, coordinator)
+        await async_post_manual_refresh(entry, coordinator)
 
     create_issue.assert_not_called()

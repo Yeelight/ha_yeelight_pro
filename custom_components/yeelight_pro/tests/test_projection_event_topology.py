@@ -127,8 +127,8 @@ def test_knob_switch_projects_event_only_and_not_sensors() -> None:
         component_category="knob_switch",
         product_events=[
             {"event_id": 10, "name": "knob spin"},
-            {"event_id": 11, "name": "multi spin"},
-            {"event_id": 12, "name": "absolut spin"},
+            {"name": "multi spin"},
+            {"name": "absolut spin"},
         ],
     )
     events = project_events(device, domain=DOMAIN)

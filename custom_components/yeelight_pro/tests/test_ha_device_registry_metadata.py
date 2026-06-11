@@ -147,6 +147,47 @@ async def test_sync_gateway_devices_normalizes_canonical_generic_model(
     assert device.model == "易来开关设备"
 
 
+async def test_sync_gateway_devices_prefers_capability_specific_model(
+    hass: HomeAssistant,
+) -> None:
+    """设备详情型号应来自能力证据，覆盖旧的粗 light/relay_switch 大类。"""
+    entry = _entry()
+    entry.add_to_hass(hass)
+    coordinator = DeviceRegistryCoordinator({
+        "contact": device_payload(
+            identifier="311930423",
+            name="玄关门磁传感器",
+            model="门磁传感器",
+            suggested_area="玄关",
+        ),
+        "curtain": device_payload(
+            identifier="311930424",
+            name="客厅窗帘电机",
+            model="窗帘",
+            suggested_area="客厅",
+        ),
+        "light": device_payload(
+            identifier="311930425",
+            name="餐厅吊灯",
+            model="色温灯",
+            suggested_area="餐厅",
+        ),
+    })
+
+    await async_sync_gateway_devices(hass, entry, coordinator)
+
+    registry = dr.async_get(hass)
+    models = {
+        identifier: registry.async_get_device(identifiers={(DOMAIN, identifier)}).model
+        for identifier in ("311930423", "311930424", "311930425")
+    }
+    assert models == {
+        "311930423": "门磁传感器",
+        "311930424": "窗帘",
+        "311930425": "色温灯",
+    }
+
+
 class _ModelIdDeviceRegistry:
     """Focused registry double whose update API supports model_id."""
 

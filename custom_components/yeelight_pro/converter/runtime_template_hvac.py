@@ -5,6 +5,23 @@ from __future__ import annotations
 from typing import Any, Final
 
 RUNTIME_HVAC_TEMPLATES: Final[dict[str, dict[str, dict[str, Any]]]] = {
+    "fresh_air": {
+        "vmcp": {
+            "name": "新风开关",
+            "kind": "control",
+            "property_type": "apply",
+            "format": "boolean",
+            "access": "read_write",
+        },
+        "vmcf": {
+            "name": "新风风速",
+            "kind": "control",
+            "property_type": "apply",
+            "format": "uint8",
+            "access": "read_write",
+            "value_range": (1, 100, 1),
+        },
+    },
     "climate": {
         "acm": {
             "name": "模式",

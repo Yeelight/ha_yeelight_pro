@@ -66,10 +66,10 @@ _FILTER_FORM_KEYS = tuple(
 
 
 def device_filter_schema_fields(options: Mapping[str, Any]) -> dict[Any, Any]:
-    """Return advanced manual device filter fields for the options form."""
+    """Return manual device filter fields for the options form."""
     filter_config = _filter_config(options)
     normalized = normalize_device_import_filter(filter_config)
-    return {
+    fields: dict[Any, Any] = {
         vol.Required(
             CONF_DEVICE_IMPORT_FILTER_ENABLED,
             default=normalized.enabled,
@@ -84,21 +84,17 @@ def device_filter_schema_fields(options: Mapping[str, Any]) -> dict[Any, Any]:
                 translation_key="device_import_filter_mode",
             )
         ),
-        **{
-            vol.Optional(
-                include_key,
-                default=_rules_text(filter_config, "include", dimension),
-            ): str
-            for dimension, include_key, _ in _FILTER_DIMENSION_FIELDS
-        },
-        **{
-            vol.Optional(
-                exclude_key,
-                default=_rules_text(filter_config, "exclude", dimension),
-            ): str
-            for dimension, _, exclude_key in _FILTER_DIMENSION_FIELDS
-        },
     }
+    for _dimension, include_key, exclude_key in _FILTER_DIMENSION_FIELDS:
+        fields[vol.Optional(
+            include_key,
+            default=_rules_text(filter_config, "include", _dimension),
+        )] = str
+        fields[vol.Optional(
+            exclude_key,
+            default=_rules_text(filter_config, "exclude", _dimension),
+        )] = str
+    return fields
 
 
 def merge_device_import_filter(

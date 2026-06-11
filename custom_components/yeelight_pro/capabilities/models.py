@@ -99,6 +99,19 @@ class IoTProtocolSpec:
 
 
 @dataclass(frozen=True, slots=True)
+class IoTProductSpec:
+    """Yeelight IoT 产品构成定义."""
+
+    pid: int
+    name: str
+    global_components: tuple[str, ...]
+    normal_components: tuple[str, ...]
+    normal_component_count: str | None
+    protocol: str | None
+    bridge_protocols: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class ControlKey:
     """组件属性控制 key 解析结果."""
 

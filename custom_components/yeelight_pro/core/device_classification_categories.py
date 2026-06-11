@@ -11,6 +11,10 @@ BROAD_CATEGORIES = frozenset({
     "switch",
     "other",
 })
+GENERIC_PLATFORM_CATEGORIES = frozenset({
+    "binary_sensor",
+    "sensor",
+})
 
 CATEGORY_ALIASES = {
     "binary_sensor": "binary_sensor",
@@ -58,4 +62,4 @@ CATEGORY_ALIASES = {
     "门磁传感器": "contact_sensor",
 }
 
-__all__ = ["BROAD_CATEGORIES", "CATEGORY_ALIASES"]
+__all__ = ["BROAD_CATEGORIES", "CATEGORY_ALIASES", "GENERIC_PLATFORM_CATEGORIES"]

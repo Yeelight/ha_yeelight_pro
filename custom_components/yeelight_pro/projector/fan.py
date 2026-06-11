@@ -40,6 +40,7 @@ from .fan_helpers import (
     _state_text,
     _supported_features,
 )
+from .switch_helpers import _component_state_key_map
 
 
 @dataclass(slots=True)
@@ -77,6 +78,7 @@ def project_fans(device_payload: Mapping[str, Any], *, domain: str) -> list[HAFa
     product_model = _load_product_model(device_payload)
     params = _params(device_payload)
     device_info = project_payload_device_info(device_payload, instance)
+    key_map = _component_state_key_map(instance)
     projections: list[HAFanProjection] = []
 
     for component in instance.components:
@@ -89,21 +91,25 @@ def project_fans(device_payload: Mapping[str, Any], *, domain: str) -> list[HAFa
             component.component_id,
             _power_key(state, product_component),
             params,
+            key_map=key_map,
         )
         speed_key = _resolve_control_key(
             component.component_id,
             _speed_key(state, product_component),
             params,
+            key_map=key_map,
         )
         mode_key = _resolve_control_key(
             component.component_id,
             _mode_key(state, product_component),
             params,
+            key_map=key_map,
         )
         direction_key = _resolve_control_key(
             component.component_id,
             _direction_key(state, product_component),
             params,
+            key_map=key_map,
         )
 
         speed_range = _speed_range(component, product_component, state)

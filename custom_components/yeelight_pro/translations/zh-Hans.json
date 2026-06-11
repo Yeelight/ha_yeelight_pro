@@ -59,6 +59,21 @@
           "cloud_region": "区域"
         }
       },
+      "lan_config": {
+        "title": "选择局域网网关",
+        "description": "系统已发现以下网关，请选择要连接的网关。如需手动输入，请选择最后一项。",
+        "data": {
+          "lan_gateway_ip": "网关"
+        }
+      },
+      "lan_manual": {
+        "title": "手动输入网关地址",
+        "description": "请输入 Yeelight Pro 网关的局域网地址。\n\n注意：网关需在易来 APP 中开启局域网控制模式。",
+        "data": {
+          "lan_gateway_ip": "网关 IP 地址",
+          "lan_gateway_port": "网关端口"
+        }
+      },
       "cloud_scan_login": {
         "title": "易来 APP 扫码登录",
         "description": "请打开易来 APP 1.5.0 或以上版本，进入扫码页面，扫描下方二维码完成授权。若扫码失败，可手动输入：{qrcode}\n\n当前状态：{status}\n剩余秒数：{remaining_seconds}\n轮询次数：{poll_count}\n\n提交后 Home Assistant 会持续轮询扫码授权状态。二维码过期后勾选刷新重新生成。",
@@ -135,7 +150,8 @@
     "connection_mode": {
       "options": {
         "cloud": "Yeelight Pro 云端（推荐）",
-        "private": "私有部署（Lucore）"
+        "private": "私有部署（Lucore）",
+        "lan": "局域网控制（无需登录）"
       }
     },
     "cloud_auth_method": {

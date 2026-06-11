@@ -227,6 +227,49 @@ async def test_hydration_preserves_indexed_property_values_for_subdevice_project
 
 
 @pytest.mark.asyncio
+async def test_hydration_ignores_conflicting_light_schema_for_sensor_runtime() -> None:
+    """运行时已有传感器属性时，补拉不能被错误 light schema 收窄。"""
+    client = AsyncMock()
+    product_schema = {
+        "pid": 904,
+        "category": "light",
+        "components": [
+            {
+                "category": "light",
+                "properties": [
+                    {"propId": "p", "operators": ["set"]},
+                    {"propId": "l", "operators": ["set"]},
+                    {"propId": "ct", "operators": ["set"]},
+                ],
+            }
+        ],
+    }
+    client.read_nodes_properties.return_value = {"code": "200", "data": {}}
+
+    await async_hydrate_device_properties(
+        client,
+        house_id=429392,
+        devices=[
+            {
+                "id": 9041,
+                "name": "人体设备",
+                "category": "light",
+                "pid": 904,
+                "properties": [
+                    {"propId": "mv", "value": True},
+                    {"propId": "luminance", "value": 120},
+                ],
+            }
+        ],
+        product_schemas={904: product_schema},
+    )
+
+    kwargs = client.read_nodes_properties.await_args.kwargs
+    assert {"mv", "luminance", "bl", "bc", "bcg"}.issubset(kwargs["properties"])
+    assert "ct" not in kwargs["properties"]
+
+
+@pytest.mark.asyncio
 async def test_hydration_authentication_errors_propagate() -> None:
     """认证错误必须继续触发 HA reauth，不能降级为空属性."""
     client = AsyncMock()
@@ -257,8 +300,8 @@ async def test_hydration_plain_failures_keep_original_rows() -> None:
     assert hydrated is not devices
 
 
-def test_broad_light_temperature_sensor_name_without_properties_uses_light_fallback() -> None:
-    """属性读取失败时不能凭设备名生成传感器，只能按粗 light 兜底。"""
+def test_broad_light_temperature_sensor_name_without_properties_is_device_only() -> None:
+    """属性读取失败时不能凭设备名或粗 light 生成实体。"""
     data, _gateways = DevicePayloadBuilder().build_runtime_payloads(
         devices=[
             {
@@ -275,12 +318,12 @@ def test_broad_light_temperature_sensor_name_without_properties_uses_light_fallb
     device = data[311930425]
 
     assert device["iot_category"] == "light"
-    assert device["ha_platform"] == "light"
-    assert device["ha_platform_candidates"] == ["light"]
+    assert "ha_platform" not in device
+    assert "ha_platform_candidates" not in device
     assert [
         (item.platform, item.component_id)
         for item in iter_device_entity_candidates(device)
-    ] == [("light", "light")]
+    ] == []
 
 
 @pytest.mark.asyncio
@@ -343,4 +386,4 @@ async def test_hydration_keeps_successful_property_groups_when_one_group_fails()
     assert [
         (item.platform, item.component_id)
         for item in iter_device_entity_candidates(data[311930425])
-    ] == [("light", "light")]
+    ] == []

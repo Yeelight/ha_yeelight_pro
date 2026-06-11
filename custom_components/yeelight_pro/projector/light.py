@@ -11,6 +11,7 @@ from typing import Any, Mapping
 from homeassistant.components.light import ColorMode
 
 from ..canonical.models import ComponentInstanceModel, HADeviceInstanceModel
+from ..core.device_runtime_capabilities import state_blocks_light_projection
 from ..utils import matches_category, to_bool, to_category
 from .common import (
     NumericRange,
@@ -276,10 +277,17 @@ def _light_component_score(
         device_payload,
         product,
     )
+    category = to_category(component.category)
+    if not matches_category(category, LIGHT_CATEGORY_TOKENS):
+        if matches_category(category, SWITCH_CATEGORY_TOKENS):
+            return 0
+        if not _payload_can_project_light(device_payload, state):
+            return 0
+    if not features and state_blocks_light_projection(device_payload, state):
+        return 0
     if not features and not _state_has_light_property(state):
         return 0
     score = 0
-    category = to_category(component.category)
     component_id = component.component_id.lower()
 
     if matches_category(category, LIGHT_CATEGORY_TOKENS):
@@ -318,6 +326,8 @@ def _payload_can_project_light(
     state: Mapping[str, Any],
 ) -> bool:
     """Avoid projecting broad cloud ``type=light`` rows as real lights."""
+    if state_blocks_light_projection(device_payload, state):
+        return False
     if not {"p", "l", "ct", "c", "on", "brightness", "color_temp_kelvin", "rgb"} & set(state):
         return False
 

@@ -243,15 +243,11 @@ RELEASE_QUALITY_GATE_TOKENS = {
         "cli&{device}&{qrcodeId}": "goal audit scan-login QR payload boundary",
         "CN/SG/US/DE": "goal audit regional account domains",
         "一个账号/家庭一个 config entry": "goal audit multi-account entry model",
-        "WebSocket-only 事件通知": (
-            "goal audit WebSocket-only event-notification status"
+        "WebSocket 事件通知": (
+            "goal audit WebSocket event-notification status"
         ),
         "live_runtime.py -> YeelightPushWebSocketTransport -> push_transport.py ws_connect -> subscribe/heartbeat -> prop/event -> coordinator_runtime.py async_handle_push_payload": (
-            "goal audit WebSocket-only runtime chain"
-        ),
-        "非 WebSocket runtime": "goal audit non-WebSocket denial boundary",
-        "不得把非 WebSocket 实时协议写成 runtime 能力": (
-            "goal audit non-WebSocket release claim denial"
+            "goal audit WebSocket runtime chain"
         ),
         "hostless one-shot UDP fallback": "goal audit LAN discovery boundary",
         "真实设备 picker A": "goal audit picker decision label",
@@ -298,12 +294,12 @@ RELEASE_QUALITY_GATE_TOKENS = {
     },
     "docs/IOT_SPEC_REGISTRY.md": {
         "The open platform event-notification material documents WebSocket": (
-            "IoT registry WebSocket-only source-material boundary"
+            "IoT registry WebSocket source-material boundary"
         ),
-        "Cloud event notifications are WebSocket-only": (
-            "IoT registry WebSocket-only runtime boundary"
+        "Cloud event notifications use the WebSocket runtime": (
+            "IoT registry WebSocket runtime boundary"
         ),
-        "Received `prop` and `event` payloads are the only WebSocket objects": (
+        "Received `prop` and `event` payloads are dispatched to the coordinator": (
             "IoT registry WebSocket data-frame boundary"
         ),
     },

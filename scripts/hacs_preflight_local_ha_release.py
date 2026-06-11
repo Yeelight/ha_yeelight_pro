@@ -168,6 +168,7 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         "runtime_inference_helpers.py": (
             "runtime inference helper zip required file guard"
         ),
+        "openapi_properties.py": "OpenAPI property helper zip required file guard",
         "runtime_template_controls.py": (
             "runtime control template zip required file guard"
         ),
@@ -179,6 +180,12 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         ),
         "runtime_templates.py": "runtime template facade zip required file guard",
         "runtime_subdevices.py": "OpenAPI sub-device helper zip required file guard",
+        "device_registry_classification.py": (
+            "registry classification helper zip required file guard"
+        ),
+        "device_runtime_constants.py": (
+            "runtime constants helper zip required file guard"
+        ),
         "scan_login_contract.py": "scan-login contract zip required file guard",
         "event_identity.py": "event identity helper zip required file guard",
         "device_select.py": "device select helper zip required file guard",

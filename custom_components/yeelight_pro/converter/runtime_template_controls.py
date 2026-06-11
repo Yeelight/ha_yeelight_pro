@@ -135,6 +135,42 @@ RUNTIME_CONTROL_TEMPLATES: Final[dict[str, dict[str, dict[str, Any]]]] = {
             "access": "read_write",
             "value_range": DEFAULT_BRIGHTNESS_RANGE,
         },
+        "slisaon": {
+            "name": "是否开启闪断",
+            "kind": "config",
+            "property_type": "config",
+            "format": "uint8",
+            "access": "read_write",
+        },
+        "slisaon_rdy": {
+            "name": "是否支持闪断",
+            "kind": "state",
+            "property_type": "config",
+            "format": "boolean",
+            "access": "read_only",
+        },
+        "run_speed": {
+            "name": "运行速度",
+            "kind": "config",
+            "property_type": "config",
+            "format": "uint8",
+            "access": "read_write",
+            "value_range": DEFAULT_BRIGHTNESS_RANGE,
+        },
+        "run_speed_rdy": {
+            "name": "是否支持运行速度",
+            "kind": "state",
+            "property_type": "config",
+            "format": "boolean",
+            "access": "read_only",
+        },
+        "li": {
+            "name": "指示灯",
+            "kind": "config",
+            "property_type": "config",
+            "format": "uint8",
+            "access": "read_write",
+        },
     },
     "cover": {
         "cp": {
@@ -188,4 +224,3 @@ RUNTIME_CONTROL_TEMPLATES: Final[dict[str, dict[str, dict[str, Any]]]] = {
         },
     },
 }
-

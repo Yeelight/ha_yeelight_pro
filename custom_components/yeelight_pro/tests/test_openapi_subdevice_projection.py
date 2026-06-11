@@ -292,6 +292,56 @@ def test_openapi_subdevice_scene_panel_events_are_scoped_by_key_index() -> None:
     assert set(by_component) == {"scene_panel_1", "scene_panel_2"}
     assert by_component["scene_panel_1"].event_types == ["click", "hold"]
     assert by_component["scene_panel_2"].event_types == ["click"]
+    assert by_component["scene_panel_1"].name == "第 1 键事件"
+    assert by_component["scene_panel_2"].name == "第 2 键事件"
+
+
+def test_openapi_eight_key_scene_panel_uses_friendly_event_names() -> None:
+    """开放平台八键面板示例应显示第 N 键事件，不暴露裸数字或组件英文名."""
+    device = _build_device(
+        {
+            "id": 9008,
+            "name": "Yeelight Pro S20系列8键情景开关",
+            "category": "scene_panel",
+            "subDeviceList": [
+                {
+                    "index": index,
+                    "name": "scene control button",
+                    "desc": "情景按键",
+                    "category": "scene_panel",
+                }
+                for index in range(1, 9)
+            ],
+            "events": [
+                *(
+                    {
+                        "id": str(65537 + index * 256),
+                        "name": f"key{index} click",
+                        "desc": f"按钮{index}点击事件",
+                    }
+                    for index in range(1, 9)
+                ),
+                *(
+                    {
+                        "id": str(index * 256 + 2),
+                        "name": f"key{index} hold",
+                        "desc": f"按钮{index}长按事件",
+                    }
+                    for index in range(1, 9)
+                ),
+            ],
+        }
+    )
+
+    events = project_events(device, domain=DOMAIN)
+
+    assert [event.component_id for event in events] == [
+        f"scene_panel_{index}" for index in range(1, 9)
+    ]
+    assert [event.name for event in events] == [
+        f"第 {index} 键事件" for index in range(1, 9)
+    ]
+    assert all(event.event_types == ["click", "hold"] for event in events)
 
 
 def test_openapi_subdevice_sensor_properties_create_sensor_entities() -> None:

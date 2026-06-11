@@ -95,6 +95,35 @@ def test_documented_event_payload_adds_event_candidate() -> None:
     )
 
 
+def test_event_only_payload_does_not_use_broad_light_fallback() -> None:
+    """只有事件能力时不能凭云端粗 light 生成 light 候选。"""
+    payload = {
+        "category": "other",
+        "type": "light",
+        "events": [
+            {"id": 14, "name": "power.alarm"},
+            {"id": 15, "name": "power.normal"},
+        ],
+    }
+
+    assert primary_platform_for_payload(payload) == "event"
+    assert platform_candidates_for_payload(payload) == ("event",)
+
+
+def test_light_sensor_category_keeps_sensor_as_primary_with_motion_property() -> None:
+    """光感/雷达光感组件可携带 mv，但主平台仍应按 light_sensor 归为 sensor."""
+    payload = {
+        "category": "light_sensor",
+        "params": {"mv": True, "luminance": 120, "bl": 87},
+    }
+
+    assert primary_platform_for_payload(payload) == "sensor"
+    assert platform_candidates_for_payload(payload) == (
+        "sensor",
+        "binary_sensor",
+    )
+
+
 def test_openapi_property_access_projects_select_and_number_candidates() -> None:
     """OpenAPI access/operators/valueRange/valueList 应生成合理 HA 候选."""
     payload = {
@@ -139,3 +168,37 @@ def test_acrc_config_property_does_not_claim_remote_platform() -> None:
 
     assert "remote" not in platform_candidates_for_payload(payload)
     assert platform_candidates_for_payload(payload) == ("climate",)
+
+
+def test_temp_control_category_keeps_climate_primary_with_telemetry() -> None:
+    """温控设备的温湿度/在线等遥测不能把主平台抢成 sensor/binary_sensor."""
+    payload = {
+        "category": "temp_control",
+        "params": {"p": True, "t": 25, "h": 58, "tgt": 28, "o": True},
+    }
+
+    assert primary_platform_for_payload(payload) == "climate"
+    assert platform_candidates_for_payload(payload) == (
+        "climate",
+        "sensor",
+    )
+
+
+def test_fresh_air_properties_project_fan_without_climate_or_number() -> None:
+    """新风 vmcp/vmcf 属于温控大类下的 fan 能力，不能降级为 climate/number."""
+    payload = {
+        "category": "temp_control",
+        "properties": [
+            {"propId": "vmcp", "format": "boolean", "value": True, "operators": ["set"]},
+            {
+                "propId": "vmcf",
+                "format": "uint8",
+                "value": 30,
+                "valueRange": {"min": 1, "max": 100, "step": 1},
+                "operators": ["set"],
+            },
+        ],
+    }
+
+    assert primary_platform_for_payload(payload) == "fan"
+    assert platform_candidates_for_payload(payload) == ("fan",)

@@ -19,6 +19,8 @@ from .const import (
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_HOUSE_ID,
     CONF_HOUSE_NAME,
+    CONF_LAN_GATEWAY_IP,
+    CONF_LAN_GATEWAY_PORT,
     CONF_LIVE_UPDATES,
     CONF_LOCAL_GATEWAY_CONTROL,
     CONF_LOCAL_GATEWAY_HOST,
@@ -32,12 +34,14 @@ from .const import (
     CONF_TOKEN_TYPE,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
     CONNECTION_MODE_CLOUD,
+    CONNECTION_MODE_LAN,
     CONNECTION_MODE_PRIVATE,
     DEFAULT_CLOUD_DOMAIN,
     DEFAULT_CLOUD_REGION,
     DEFAULT_DEBUG_MODE,
     DEFAULT_HIDE_UNKNOWN_ENTITIES,
     DEFAULT_HOUSE_NAME,
+    DEFAULT_LAN_GATEWAY_PORT,
     DEFAULT_LIVE_UPDATES,
     DEFAULT_LOCAL_GATEWAY_CONTROL,
     DEFAULT_LOCAL_GATEWAY_HOST,
@@ -100,6 +104,36 @@ def normalize_entry_data(value: Mapping[str, Any]) -> dict[str, Any]:
     private_domain = _string(
         _first_value(source, CONF_PRIVATE_DOMAIN, "privateDomain", "server")
     )
+
+    # LAN 模式：不依赖云端域名和认证信息
+    if connection_mode == CONNECTION_MODE_LAN:
+        return {
+            **source,
+            CONF_CONNECTION_MODE: connection_mode,
+            CONF_CLOUD_DOMAIN: "",
+            CONF_PRIVATE_DOMAIN: "",
+            CONF_ACCESS_TOKEN: "",
+            CONF_REFRESH_TOKEN: "",
+            CONF_TOKEN_EXPIRES_IN: None,
+            CONF_TOKEN_TYPE: "",
+            CONF_HOUSE_ID: 0,
+            CONF_HOUSE_NAME: "",
+            CONF_CLOUD_REGION: "",
+            CONF_OPEN_API_CLIENT_ID: "",
+            CONF_ACCOUNT_USER_ID: None,
+            CONF_ACCOUNT_USERNAME: "",
+            CONF_SCAN_LOGIN_DEVICE: "",
+            CONF_LAN_GATEWAY_IP: _string(
+                source.get(CONF_LAN_GATEWAY_IP)
+            ).strip(),
+            CONF_LAN_GATEWAY_PORT: _coerce_int(
+                source.get(CONF_LAN_GATEWAY_PORT),
+                default=DEFAULT_LAN_GATEWAY_PORT,
+                minimum=1,
+                maximum=65535,
+            ),
+        }
+
     domain = private_domain if connection_mode == CONNECTION_MODE_PRIVATE else cloud_domain
 
     return {
@@ -217,12 +251,21 @@ def config_entry_unique_id(entry_data: Mapping[str, Any]) -> str:
             f"{CONNECTION_MODE_CLOUD}:{data[CONF_CLOUD_REGION]}:"
             f"{account_key_from_entry_data(data)}:{house_id}"
         )
+    if connection_mode == CONNECTION_MODE_LAN:
+        ip = _string(data.get(CONF_LAN_GATEWAY_IP)).strip()
+        port = _coerce_int(
+            data.get(CONF_LAN_GATEWAY_PORT),
+            default=DEFAULT_LAN_GATEWAY_PORT,
+            minimum=1,
+            maximum=65535,
+        )
+        return f"lan:{ip}:{port}"
     return f"{CONNECTION_MODE_PRIVATE}:{data[CONF_PRIVATE_DOMAIN]}:{house_id}"
 
 
 def _connection_mode(value: Mapping[str, Any]) -> str:
     mode = _string(value.get(CONF_CONNECTION_MODE)).lower()
-    if mode in {CONNECTION_MODE_CLOUD, CONNECTION_MODE_PRIVATE}:
+    if mode in {CONNECTION_MODE_CLOUD, CONNECTION_MODE_PRIVATE, CONNECTION_MODE_LAN}:
         return mode
     if _string(_first_value(value, CONF_PRIVATE_DOMAIN, "privateDomain", "server")):
         return CONNECTION_MODE_PRIVATE

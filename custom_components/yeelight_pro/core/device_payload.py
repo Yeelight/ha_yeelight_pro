@@ -17,6 +17,7 @@ from ..capabilities.platform_contract import (
 )
 from ..capabilities.registry import format_component_property_key
 from .device_classification import infer_iot_category
+from .device_runtime_capabilities import schema_conflicts_with_runtime_category
 from .device_metadata import attach_fallback_payload_metadata, enrich_payload_metadata
 from .exceptions import safe_error_summary
 from ..utils import to_bool, to_int
@@ -250,12 +251,11 @@ class DevicePayloadBuilder:
             or payload.get("category")
             or ""
         )
-        if category not in {"curtain", "temp_control", "scene_panel", "knob_switch"}:
-            return False
-        schema_categories = _schema_categories(product_schema)
-        if not schema_categories or category in schema_categories:
-            return False
-        return bool(schema_categories & {"relay_switch", "switch", "light", "other"})
+        return schema_conflicts_with_runtime_category(
+            payload,
+            product_schema,
+            runtime_category=category or None,
+        )
 
 
 def _property_id(prop: Mapping[str, Any]) -> Any:
@@ -284,22 +284,6 @@ def _properties(value: Any) -> list[Mapping[str, Any]]:
 def _subdevices(value: Any) -> list[Mapping[str, Any]]:
     """Return sub-device mappings from Open API device-list rows."""
     return [item for item in value or [] if isinstance(item, Mapping)]
-
-
-def _schema_categories(schema: Mapping[str, Any]) -> set[str]:
-    """Return category labels declared by a product schema."""
-    categories = {
-        str(category)
-        for category in (schema.get("category"),)
-        if category is not None and str(category)
-    }
-    for key in ("components", "customComponents"):
-        categories.update(
-            str(component["category"])
-            for component in _subdevices(schema.get(key))
-            if component.get("category") is not None and str(component.get("category"))
-        )
-    return categories
 
 
 def _attach_platform_metadata(payload: dict[str, Any]) -> None:

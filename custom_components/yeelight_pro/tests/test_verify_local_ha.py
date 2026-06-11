@@ -112,10 +112,34 @@ def test_required_modules_include_runtime_inference_helper() -> None:
     )
 
 
+def test_required_modules_include_openapi_property_helper() -> None:
+    """本地 HA 安装态必须保留 OpenAPI 属性元数据转换 helper."""
+    assert (
+        "custom_components.yeelight_pro.converter.openapi_properties"
+        in REQUIRED_RUNTIME_MODULES
+    )
+
+
 def test_required_modules_include_device_classification_categories() -> None:
     """本地 HA 安装态必须保留设备分类别名词表."""
     assert (
         "custom_components.yeelight_pro.core.device_classification_categories"
+        in REQUIRED_RUNTIME_MODULES
+    )
+
+
+def test_required_modules_include_device_runtime_capabilities() -> None:
+    """本地 HA 安装态必须保留运行时能力分类 helper."""
+    assert (
+        "custom_components.yeelight_pro.core.device_runtime_capabilities"
+        in REQUIRED_RUNTIME_MODULES
+    )
+    assert (
+        "custom_components.yeelight_pro.core.device_registry_classification"
+        in REQUIRED_RUNTIME_MODULES
+    )
+    assert (
+        "custom_components.yeelight_pro.core.device_runtime_constants"
         in REQUIRED_RUNTIME_MODULES
     )
 

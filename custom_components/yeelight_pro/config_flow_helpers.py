@@ -16,13 +16,17 @@ from .const import (
     CONF_CLOUD_REGION,
     CONF_CONNECTION_MODE,
     CONF_HOUSE_ID,
+    CONF_LAN_GATEWAY_IP,
+    CONF_LAN_GATEWAY_PORT,
     CONF_PRIVATE_DOMAIN,
     CLOUD_AUTH_METHOD_ACCESS_TOKEN,
     CLOUD_AUTH_METHOD_SCAN_LOGIN,
     CLOUD_REGIONS,
     CONNECTION_MODE_CLOUD,
+    CONNECTION_MODE_LAN,
     CONNECTION_MODE_PRIVATE,
     DEFAULT_CLOUD_REGION,
+    DEFAULT_LAN_GATEWAY_PORT,
     DEFAULT_PRIVATE_DOMAIN,
 )
 from .config_flow_options import (
@@ -89,7 +93,11 @@ def user_schema() -> vol.Schema:
     return vol.Schema({
         vol.Required(CONF_CONNECTION_MODE): selector.SelectSelector(
             selector.SelectSelectorConfig(
-                options=[CONNECTION_MODE_CLOUD, CONNECTION_MODE_PRIVATE],
+                options=[
+                    CONNECTION_MODE_CLOUD,
+                    CONNECTION_MODE_PRIVATE,
+                    CONNECTION_MODE_LAN,
+                ],
                 mode=selector.SelectSelectorMode.DROPDOWN,
                 translation_key="connection_mode",
             )
@@ -218,3 +226,56 @@ def _required_text(value: Any) -> str:
     if not isinstance(value, str) or not value.strip():
         raise vol.Invalid("required")
     return value.strip()
+
+
+def lan_config_schema(discovered_ip: str | None = None) -> vol.Schema:
+    """返回局域网网关配置表单 schema（手动输入模式）."""
+    return vol.Schema({
+        vol.Required(
+            CONF_LAN_GATEWAY_IP,
+            default=discovered_ip or "",
+        ): str,
+        vol.Optional(
+            CONF_LAN_GATEWAY_PORT,
+            default=DEFAULT_LAN_GATEWAY_PORT,
+        ): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
+    })
+
+
+def lan_discovered_schema(
+    discovered_gateways: list[tuple[str, int, str]],
+) -> vol.Schema:
+    """返回已发现网关的选择表单 schema。
+
+    discovered_gateways: [(ip, port, display_label), ...]
+    """
+    # 构建选项列表：已发现网关 + "手动输入"
+    options = [ip for ip, _port, _label in discovered_gateways]
+    options.append("_manual")
+    return vol.Schema({
+        vol.Required(CONF_LAN_GATEWAY_IP): vol.In({
+            ip: label for ip, _port, label in discovered_gateways
+        } | {"_manual": "手动输入网关地址"}),
+    })
+
+
+async def async_validate_lan_connection(
+    host: str,
+    port: int,
+    *,
+    timeout: float = 5.0,
+) -> None:
+    """验证能否与局域网网关建立 TCP 连接."""
+    import asyncio
+
+    try:
+        _, writer = await asyncio.wait_for(
+            asyncio.open_connection(host, port),
+            timeout=timeout,
+        )
+        writer.close()
+        wait_closed = getattr(writer, "wait_closed", None)
+        if callable(wait_closed):
+            await wait_closed() # pyright: ignore[reportGeneralTypeIssues]
+    except (OSError, asyncio.TimeoutError) as err:
+        raise ConnectionError(f"无法连接到局域网网关 {host}:{port}") from err

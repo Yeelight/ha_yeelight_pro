@@ -18,6 +18,7 @@ from .const import (
     CONF_SCAN_INTERVAL,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
     CONNECTION_MODE_CLOUD,
+    CONNECTION_MODE_LAN,
     CONNECTION_MODE_PRIVATE,
     DEFAULT_TOPOLOGY_CHANGE_REPAIRS,
     DOMAIN,
@@ -200,7 +201,7 @@ def _client_capabilities_for_entry(entry: Any) -> dict[str, Any]:
     if isinstance(data, Mapping):
         raw_mode = data.get(CONF_CONNECTION_MODE)
         connection_mode = raw_mode if isinstance(raw_mode, str) else None
-    supported_modes = (CONNECTION_MODE_CLOUD, CONNECTION_MODE_PRIVATE)
+    supported_modes = (CONNECTION_MODE_CLOUD, CONNECTION_MODE_PRIVATE, CONNECTION_MODE_LAN)
     return {
         "connection_mode": (
             connection_mode if connection_mode in supported_modes else "unknown"
@@ -208,6 +209,7 @@ def _client_capabilities_for_entry(entry: Any) -> dict[str, Any]:
         "supported_connection_modes": list(supported_modes),
         "cloud_http_polling": connection_mode == CONNECTION_MODE_CLOUD,
         "private_http_polling": connection_mode == CONNECTION_MODE_PRIVATE,
+        "lan_direct_control": connection_mode == CONNECTION_MODE_LAN,
         "scan_login_contract": True,
         "scan_login_runtime": True,
         "push_message_adapter": True,

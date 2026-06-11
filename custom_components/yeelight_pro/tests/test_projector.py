@@ -140,6 +140,22 @@ class TestProjectFans:
         assert projection.preset_modes == ["natural"]
         assert projection.current_direction == DIRECTION_FORWARD
 
+    def test_project_fans_uses_documented_fresh_air_properties(self):
+        """新风组件应使用易来 vmcp/vmcf 属性，而不是旧 fan lv 规则."""
+        result = project_fans(_fresh_air_payload(), domain="yeelight_pro")
+
+        assert len(result) == 1
+        projection = result[0]
+        assert projection.component_id == "fresh_air"
+        assert projection.power_key == "1-vmcp"
+        assert projection.speed_key == "1-vmcf"
+        assert projection.is_on is True
+        assert projection.percentage == 3
+        assert projection.speed_range is not None
+        assert projection.speed_range.min == 1
+        assert projection.speed_range.max == 100
+        assert projection.supported_features & FanEntityFeature.SET_SPEED
+
 
 class TestProjectSwitches:
     """project_switches 测试."""
@@ -269,6 +285,70 @@ def _canonical_fan_payload():
                                 {"code": 0, "desc": "forward"},
                                 {"code": 1, "desc": "reverse"},
                             ],
+                        },
+                    ],
+                    "events": [],
+                }
+            ],
+        },
+    }
+
+
+def _fresh_air_payload():
+    """构造易来新风组件载荷，覆盖 vmcp/vmcf 控制键."""
+    return {
+        "device_id": "fresh-air-1",
+        "category": "temp_control",
+        "type": "temp_control",
+        "online": True,
+        "params": {
+            "1-vmcp": True,
+            "1-vmcf": 3,
+        },
+        "ha_device_instance": {
+            "device_id": "fresh-air-1",
+            "name": "新风",
+            "online": True,
+            "device_info": {
+                "identifiers": [["yeelight_pro", "fresh-air-1"]],
+                "manufacturer": "Yeelight",
+                "model": "fresh-air",
+                "name": "新风",
+            },
+            "extensions": {
+                "component_state_keys": {
+                    "fresh_air": {"vmcp": "1-vmcp", "vmcf": "1-vmcf"}
+                }
+            },
+            "components": [
+                {
+                    "component_id": "fresh_air",
+                    "category": "fresh air",
+                    "available": True,
+                    "state": {
+                        "vmcp": True,
+                        "vmcf": 3,
+                    },
+                }
+            ],
+        },
+        "ha_product_model": {
+            "schema_version": "v1",
+            "product": {
+                "model_id": "fresh-air-model",
+                "manufacturer": "Yeelight",
+                "model": "fresh-air",
+                "category": "temp_control",
+            },
+            "components": [
+                {
+                    "component_id": "fresh_air",
+                    "category": "fresh air",
+                    "properties": [
+                        {"prop_id": "vmcp"},
+                        {
+                            "prop_id": "vmcf",
+                            "value_range": {"min": 1, "max": 100, "step": 1},
                         },
                     ],
                     "events": [],

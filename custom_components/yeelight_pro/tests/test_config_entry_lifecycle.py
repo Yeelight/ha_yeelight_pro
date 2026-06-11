@@ -204,7 +204,7 @@ async def test_setup_entry_creates_repair_issue_on_topology_change(
         "homeassistant.config_entries.ConfigEntries.async_forward_entry_setups",
         new_callable=AsyncMock,
     ), patch(
-        "custom_components.yeelight_pro.async_create_topology_changed_issue",
+        "custom_components.yeelight_pro.entry_setup.async_create_topology_changed_issue",
     ) as create_issue:
         listener_holder = {}
         coordinator = make_setup_coordinator()
@@ -255,7 +255,7 @@ async def test_setup_entry_respects_disabled_topology_repairs_option(
         "homeassistant.config_entries.ConfigEntries.async_forward_entry_setups",
         new_callable=AsyncMock,
     ), patch(
-        "custom_components.yeelight_pro.async_create_topology_changed_issue",
+        "custom_components.yeelight_pro.entry_setup.async_create_topology_changed_issue",
     ) as create_issue:
         listener_holder = {}
         coordinator = make_setup_coordinator()
@@ -307,7 +307,7 @@ async def test_setup_entry_keeps_cloud_runtime_when_lan_start_fails(
         "custom_components.yeelight_pro.async_start_live_runtime",
         AsyncMock(return_value=push_manager),
     ), patch(
-        "custom_components.yeelight_pro.async_start_lan_runtime",
+        "custom_components.yeelight_pro.entry_setup.async_start_lan_runtime",
         AsyncMock(side_effect=OSError("gateway-secret")),
     ):
         coordinator = make_setup_coordinator()

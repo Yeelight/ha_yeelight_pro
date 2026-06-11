@@ -105,7 +105,7 @@ def test_build_runtime_payloads_infers_canonical_device_info_without_schema() ->
     assert device["ha_product_model"]["schema_version"] == "runtime-v1"
     assert device["model_id"] == "YL-200"
     assert device_info["name"] == "客厅筒灯 1"
-    assert device_info["model"] == "易来照明设备"
+    assert device_info["model"] == "亮度灯"
     assert device_info["suggested_area"] == "客厅"
     assert device_info["identifiers"] == [
         ["yeelight_pro", "304784333"],
@@ -154,7 +154,7 @@ def test_runtime_metadata_replaces_generic_cloud_model_labels() -> None:
 
     light_info = data[304784337]["ha_device_instance"]["device_info"]
     switch_info = data[304784338]["device_info"]
-    assert light_info["model"] == "易来照明设备"
+    assert light_info["model"] == "色温灯"
     assert light_info["model_id"] == "YL-202"
     assert switch_info["model"] == "易来开关设备"
     assert switch_info["model_id"] == "YL-203"
@@ -183,7 +183,7 @@ def test_runtime_metadata_does_not_expose_internal_runtime_model_id() -> None:
 
     device_info = data[304784339]["ha_device_instance"]["device_info"]
     assert data[304784339]["ha_product_model"]["product"]["model_id"] == "runtime-light"
-    assert device_info["model"] == "易来照明设备"
+    assert device_info["model"] == "亮度灯"
     assert "model_id" not in device_info
 
 
@@ -368,7 +368,7 @@ def test_runtime_payloads_project_entities_from_each_supported_property() -> Non
 
 
 def test_runtime_payloads_do_not_infer_capabilities_from_safety_name() -> None:
-    """云端粗 light 且无细分证据时，设备名不能生成安全事件实体。"""
+    """云端粗 light 且无细分证据时，设备名不能生成任何实体。"""
     builder = DevicePayloadBuilder()
 
     data, _gateways = builder.build_runtime_payloads(
@@ -391,10 +391,7 @@ def test_runtime_payloads_do_not_infer_capabilities_from_safety_name() -> None:
     device = data[405]
 
     assert device["iot_category"] == "light"
-    assert device["ha_platform"] == "light"
-    assert device["ha_platform_candidates"] == ["light"]
+    assert "ha_platform" not in device
+    assert "ha_platform_candidates" not in device
     assert device["device_info"]["model"] == "易来照明设备"
-    assert [
-        (item.platform, item.component_id)
-        for item in iter_device_entity_candidates(device)
-    ] == [("light", "light")]
+    assert [(item.platform, item.component_id) for item in iter_device_entity_candidates(device)] == []

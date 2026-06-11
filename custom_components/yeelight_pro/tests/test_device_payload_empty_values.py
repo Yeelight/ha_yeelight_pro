@@ -6,8 +6,8 @@ from custom_components.yeelight_pro.core.device_payload import DevicePayloadBuil
 from custom_components.yeelight_pro.entity_candidates import iter_device_entity_candidates
 
 
-def test_runtime_payloads_restore_empty_category_schema_and_metadata() -> None:
-    """粗开关品类无细分证据时仍保留大类 switch 实体。"""
+def test_runtime_payloads_keep_empty_control_category_metadata_only() -> None:
+    """粗可控品类无属性或组件证据时只保留设备元数据。"""
     builder = DevicePayloadBuilder()
 
     data, _gateways = builder.build_runtime_payloads(
@@ -28,11 +28,13 @@ def test_runtime_payloads_restore_empty_category_schema_and_metadata() -> None:
     )
 
     device = data[304784336]
-    device_info = device["ha_device_instance"]["device_info"]
+    device_info = device["device_info"]
     candidates = list(iter_device_entity_candidates(device))
 
-    assert device["ha_product_model"]["schema_version"] == "runtime-v1"
-    assert device["ha_device_instance"]["components"][0]["state"] == {}
+    assert "ha_product_model" not in device
+    assert "ha_device_instance" not in device
+    assert "ha_platform" not in device
+    assert "ha_platform_candidates" not in device
     assert device["name"] == "墙壁开关1"
     assert device["model_id"] == "YL-201"
     assert device["room_name"] == "客厅"
@@ -43,10 +45,7 @@ def test_runtime_payloads_restore_empty_category_schema_and_metadata() -> None:
         ["yeelight_pro", "304784336"],
         ["yeelight_pro", "device:304784336"],
     ]
-    assert [(item.platform, item.component_id) for item in candidates] == [
-        ("switch", "switch")
-    ]
-    assert candidates[0].available is True
+    assert candidates == []
 
 
 def test_runtime_payloads_keep_documented_sensor_entities_when_values_are_missing() -> None:
@@ -82,7 +81,7 @@ def test_runtime_payloads_keep_documented_sensor_entities_when_values_are_missin
     temp_candidates = list(iter_device_entity_candidates(data[502]))
 
     assert data[501]["iot_category"] == "human_sensor"
-    assert data[502]["iot_category"] == "sensor"
+    assert "iot_category" not in data[502]
     assert {(item.platform, item.component_id, item.available) for item in human_candidates} == {
         ("binary_sensor", "motion", True),
         ("binary_sensor", "tamper", True),
@@ -117,11 +116,9 @@ def test_runtime_payloads_do_not_project_named_temperature_humidity_without_valu
     candidates = list(iter_device_entity_candidates(device))
 
     assert device["iot_category"] == "light"
-    assert device["ha_platform"] == "light"
-    assert device["ha_platform_candidates"] == ["light"]
-    assert [(item.platform, item.component_id) for item in candidates] == [
-        ("light", "light")
-    ]
+    assert "ha_platform" not in device
+    assert "ha_platform_candidates" not in device
+    assert candidates == []
 
 
 def test_runtime_payloads_do_not_use_conflicting_switch_schema_for_curtain() -> None:

@@ -48,8 +48,8 @@ class YeelightProCoordinator(
     def __init__(
         self,
         hass: HomeAssistant,
-        client: YeelightProClient,
-        house_id: int,
+        client: YeelightProClient | None = None,
+        house_id: int = 0,
         options: Mapping[str, Any] | None = None,
         entry_data: Mapping[str, Any] | None = None,
     ):
@@ -108,17 +108,23 @@ class YeelightProCoordinator(
         self._lan_runtime = lan_runtime
 
     async def _async_update_data(self) -> Dict[int, Any]:
-        """从 API 获取数据."""
-        try:
-            devices = await self.client.get_devices(self.house_id)
+        """从 API 获取数据（LAN-only 模式下跳过云端轮询）."""
+        if self.client is None:
+            # LAN-only 模式：数据由 LAN 拓扑推送驱动，不做云端轮询
+            return self.devices
+        client = self.client
 
-            gateways = await self._async_get_gateways()
+        try:
+            devices = await client.get_devices(self.house_id)
+
+            gateways = await self._async_get_gateways(client)
 
             product_schemas = await self._async_get_product_schemas(
+                client,
                 [*devices, *gateways]
             )
             devices = await async_hydrate_device_properties(
-                self.client,
+                client,
                 house_id=self.house_id,
                 devices=devices,
                 product_schemas=product_schemas,
@@ -161,6 +167,8 @@ class YeelightProCoordinator(
 
     async def _async_fetch_auxiliary_data(self) -> None:
         """获取 areas/rooms/groups/scenes 辅助数据."""
+        if self.client is None:
+            return
         auxiliary = await async_fetch_auxiliary_data(
             self.client,
             self.house_id,
@@ -176,10 +184,13 @@ class YeelightProCoordinator(
         self.groups = auxiliary.groups
         self.scenes = auxiliary.scenes
 
-    async def _async_get_gateways(self) -> list[dict[str, Any]]:
+    async def _async_get_gateways(
+        self,
+        client: YeelightProClient,
+    ) -> list[dict[str, Any]]:
         """获取网关列表，普通失败降级为空列表."""
         try:
-            return await self.client.get_gateways(self.house_id)
+            return await client.get_gateways(self.house_id)
         except AuthenticationError:
             raise
         except Exception as err:
@@ -194,13 +205,14 @@ class YeelightProCoordinator(
 
     async def _async_get_product_schemas(
         self,
+        client: YeelightProClient,
         items: list[dict[str, Any]],
     ) -> dict[int, dict[str, Any]]:
         """获取产品 schema，优先复用缓存以稳定实体投影."""
         product_ids = product_ids_from_items(items)
         return await self._product_schema_cache.async_get_with_fallback(
             product_ids,
-            self.client.get_product_schemas,
+            client.get_product_schemas,
             force_refresh=self._force_product_schema_refresh,
         )
 

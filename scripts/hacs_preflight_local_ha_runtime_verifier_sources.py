@@ -281,6 +281,9 @@ LOCAL_HA_RUNTIME_VERIFIER_SOURCE_TOKENS = {
         "converter.runtime_inference_helpers": (
             "runtime inference helper module presence check"
         ),
+        "converter.openapi_properties": (
+            "OpenAPI property helper module presence check"
+        ),
         "converter.runtime_template_controls": (
             "runtime control template module presence check"
         ),
@@ -295,6 +298,12 @@ LOCAL_HA_RUNTIME_VERIFIER_SOURCE_TOKENS = {
         ),
         "converter.runtime_subdevices": (
             "OpenAPI sub-device helper module presence check"
+        ),
+        "core.device_registry_classification": (
+            "registry-backed classification helper module presence check"
+        ),
+        "core.device_runtime_constants": (
+            "runtime capability constants module presence check"
         ),
         "lan_contract": "LAN contract module presence check",
         "lan_methods": "LAN method constants module presence check",

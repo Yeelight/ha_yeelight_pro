@@ -29,6 +29,7 @@ from .const import (
     CONF_TOKEN_EXPIRES_IN,
     CONF_TOKEN_TYPE,
     CONNECTION_MODE_CLOUD,
+    CONNECTION_MODE_LAN,
     DEFAULT_CLOUD_REGION,
 )
 from .entry_migration import normalize_entry_data
@@ -71,6 +72,9 @@ class _ReauthFlowProtocol(Protocol):
     def async_show_progress_done(self, **kwargs: Any) -> FlowResult:
         """Return a Home Assistant config-flow progress-done result."""
 
+    def async_abort(self, **kwargs: Any) -> FlowResult:
+        """Return a Home Assistant config-flow abort result."""
+
     def async_update_reload_and_abort(self, *args: Any, **kwargs: Any) -> FlowResult:
         """Update the config entry and abort the flow."""
 
@@ -89,6 +93,11 @@ class ReauthConfigFlowMixin:
         flow = _reauth_flow(self)
         flow._reauth_entry_data = normalize_entry_data(entry_data)
         flow._connection_mode = flow._reauth_entry_data[CONF_CONNECTION_MODE]
+
+        # LAN 模式无需认证，直接 abort
+        if flow._connection_mode == CONNECTION_MODE_LAN:
+            return flow.async_abort(reason="reauth_successful")
+
         flow._cloud_region = flow._reauth_entry_data.get(
             CONF_CLOUD_REGION,
             DEFAULT_CLOUD_REGION,

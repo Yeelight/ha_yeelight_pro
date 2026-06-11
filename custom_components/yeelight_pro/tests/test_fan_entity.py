@@ -112,6 +112,71 @@ def _fan_payload() -> dict:
     }
 
 
+def _fresh_air_payload() -> dict:
+    """构造易来新风 payload，覆盖官方 vmcp/vmcf 控制属性."""
+    return {
+        "id": "fresh-air-1",
+        "device_id": "fresh-air-1",
+        "name": "新风",
+        "category": "temp_control",
+        "type": "temp_control",
+        "online": True,
+        "params": {
+            "1-vmcp": True,
+            "1-vmcf": 20,
+        },
+        "ha_device_instance": {
+            "device_id": "fresh-air-1",
+            "name": "新风",
+            "online": True,
+            "device_info": {
+                "identifiers": [[DOMAIN, "fresh-air-1"]],
+                "manufacturer": "Yeelight",
+                "model": "fresh-air",
+                "name": "新风",
+            },
+            "extensions": {
+                "component_state_keys": {
+                    "fresh_air": {"vmcp": "1-vmcp", "vmcf": "1-vmcf"}
+                }
+            },
+            "components": [
+                {
+                    "component_id": "fresh_air",
+                    "category": "fresh air",
+                    "available": True,
+                    "state": {
+                        "vmcp": True,
+                        "vmcf": 20,
+                    },
+                }
+            ],
+        },
+        "ha_product_model": {
+            "schema_version": "v1",
+            "product": {
+                "model_id": "fresh-air-model",
+                "manufacturer": "Yeelight",
+                "model": "fresh-air",
+                "category": "temp_control",
+            },
+            "components": [
+                {
+                    "component_id": "fresh_air",
+                    "category": "fresh air",
+                    "properties": [
+                        {"prop_id": "vmcp"},
+                        {
+                            "prop_id": "vmcf",
+                            "value_range": {"min": 1, "max": 100, "step": 1},
+                        },
+                    ],
+                }
+            ],
+        },
+    }
+
+
 def _assert_not_echoed(
     error: HomeAssistantError,
     *,
@@ -183,6 +248,23 @@ async def test_set_percentage_turns_on_and_maps_range(mock_coordinator) -> None:
         "12345",
         {"1-lv": 6, "1-p": True},
     )
+
+
+@pytest.mark.asyncio
+async def test_fresh_air_uses_documented_vmcp_vmcf_control_keys(
+    mock_coordinator,
+) -> None:
+    """新风 fan 实体必须下发易来官方 vmcp/vmcf 属性."""
+    mock_coordinator.get_device.return_value = _fresh_air_payload()
+    fan = YeelightProFan(mock_coordinator, "fresh-air-1", component_id="fresh_air")
+
+    await fan.async_set_percentage(55)
+    await fan.async_turn_off()
+
+    assert mock_coordinator.async_control_device.await_args_list == [
+        (("fresh-air-1", {"1-vmcf": 55, "1-vmcp": True}),),
+        (("fresh-air-1", {"1-vmcp": False}),),
+    ]
 
 
 @pytest.mark.asyncio

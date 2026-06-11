@@ -171,7 +171,30 @@ def _payload_is_climate(device_payload: Mapping[str, Any]) -> bool:
         or device_payload.get("category")
         or device_payload.get("type")
     )
+    if category == "temp_control" and _params_are_fresh_air_only(device_payload):
+        return False
     return category in {"climate", "temp_control", "air_conditioner", "bath_heater"}
+
+
+def _params_are_fresh_air_only(device_payload: Mapping[str, Any]) -> bool:
+    prop_ids = {str(key).split("-", 1)[-1] for key in _params(device_payload)}
+    return bool(prop_ids & {"vmcp", "vmcf"}) and not bool(
+        prop_ids
+        & {
+            "acp",
+            "aco",
+            "acm",
+            "actt",
+            "acct",
+            "acf",
+            "rfhp",
+            "rfhct",
+            "rfhtt",
+            "p",
+            "t",
+            "tgt",
+        }
+    )
 
 
 def _runtime_state(

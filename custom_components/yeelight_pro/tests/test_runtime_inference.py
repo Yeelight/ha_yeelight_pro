@@ -118,8 +118,8 @@ def test_runtime_inferred_product_model_keeps_category_template_without_params()
     ]
 
 
-def test_runtime_inferred_product_model_keeps_empty_light_fallback() -> None:
-    """粗 light 缺少能力证据时仍应按 category 生成最小灯 schema。"""
+def test_runtime_inferred_product_model_blocks_empty_light_fallback() -> None:
+    """粗 light 缺少能力证据时不能凭 category 生成假灯 schema。"""
     payload = {
         "model_id": "runtime-light-empty",
         "type": "light",
@@ -130,10 +130,32 @@ def test_runtime_inferred_product_model_keeps_empty_light_fallback() -> None:
 
     product = RuntimeInferredProductModelBuilder().build(payload)
 
+    assert product is None
+
+
+def test_runtime_inferred_product_model_uses_safety_event_component_id() -> None:
+    """明确告警事件能力应生成稳定事件组件，不依赖设备名称。"""
+    payload = {
+        "model_id": "runtime-event-only",
+        "type": "light",
+        "category": "other",
+        "iot_category": "other",
+        "params": {},
+        "events": [
+            {"id": 14, "name": "power.alarm"},
+            {"id": 15, "name": "power.normal"},
+        ],
+    }
+
+    product = RuntimeInferredProductModelBuilder().build(payload)
+
     assert product is not None
-    assert product.product.category == "light"
-    assert product.components[0].component_id == "light"
-    assert [prop.prop_id for prop in product.components[0].properties] == ["p"]
+    assert product.product.category == "other"
+    assert product.components[0].component_id == "safety_alarm"
+    assert [event.semantic for event in product.components[0].events] == [
+        "power_alarm",
+        "power_normal",
+    ]
 
 
 def test_runtime_inferred_light_template_ranges_are_stable() -> None:
@@ -161,3 +183,21 @@ def test_runtime_inferred_light_template_ranges_are_stable() -> None:
     assert props["ct"].value_range.min == 2700
     assert props["ct"].value_range.max == 6500
     assert props["ct"].value_range.step is None
+
+
+def test_runtime_builder_infers_fresh_air_component_from_documented_props() -> None:
+    """vmcp/vmcf 应生成易来新风组件，而不是粗 temp_control/climate 组件."""
+    product = RuntimeInferredProductModelBuilder().build({
+        "device_id": "fresh-air-runtime",
+        "category": "temp_control",
+        "params": {"vmcp": True, "vmcf": 30},
+    })
+
+    assert product is not None
+    assert product.product.category == "temp_control"
+    [component] = product.components
+    assert component.component_id == "fresh_air"
+    assert component.name == "新风"
+    assert component.category == "fresh air"
+    assert component.capabilities == ["onoff", "speed"]
+    assert {prop.prop_id for prop in component.properties} == {"vmcp", "vmcf"}

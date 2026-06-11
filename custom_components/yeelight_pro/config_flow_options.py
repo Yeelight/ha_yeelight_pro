@@ -21,6 +21,7 @@ from .const import (
     CONF_SCAN_INTERVAL,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
     CONNECTION_MODE_CLOUD,
+    CONNECTION_MODE_LAN,
     DEFAULT_DEBUG_MODE,
     DEFAULT_HIDE_UNKNOWN_ENTITIES,
     DEFAULT_LIVE_UPDATES,
@@ -65,6 +66,14 @@ def entry_options(entry: object) -> dict[str, Any]:
 def options_schema(options: Mapping[str, Any], entry: object | None = None) -> vol.Schema:
     """使用归一化默认值返回运行时 options 表单 schema."""
     normalized = normalize_entry_options(options)
+
+    # 判断连接模式
+    is_lan_mode = False
+    if entry is not None:
+        data = getattr(entry, "data", None)
+        if isinstance(data, Mapping):
+            is_lan_mode = data.get(CONF_CONNECTION_MODE) == CONNECTION_MODE_LAN
+
     fields = {
         vol.Required(
             CONF_SCAN_INTERVAL,
@@ -91,35 +100,41 @@ def options_schema(options: Mapping[str, Any], entry: object | None = None) -> v
                 DEFAULT_TOPOLOGY_CHANGE_REPAIRS,
             ),
         ): bool,
-        vol.Required(
+    }
+
+    if not is_lan_mode:
+        # 云端/私有部署模式：显示 WebSocket 选项
+        fields[vol.Required(
             CONF_LIVE_UPDATES,
             default=normalized.get(CONF_LIVE_UPDATES, DEFAULT_LIVE_UPDATES),
-        ): bool,
-        vol.Required(
+        )] = bool
+        fields[vol.Required(
             CONF_LOCAL_GATEWAY_CONTROL,
             default=normalized.get(
                 CONF_LOCAL_GATEWAY_CONTROL,
                 DEFAULT_LOCAL_GATEWAY_CONTROL,
             ),
-        ): bool,
-        vol.Optional(
+        )] = bool
+        fields[vol.Optional(
             CONF_LOCAL_GATEWAY_HOST,
             default=normalized.get(
                 CONF_LOCAL_GATEWAY_HOST,
                 DEFAULT_LOCAL_GATEWAY_HOST,
             ),
-        ): str,
-        vol.Optional(
+        )] = str
+        fields[vol.Optional(
             CONF_LOCAL_GATEWAY_PORT,
             default=normalized.get(
                 CONF_LOCAL_GATEWAY_PORT,
                 DEFAULT_LOCAL_GATEWAY_PORT,
             ),
-        ): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
-    }
-    fields.update(device_filter_schema_fields(normalized))
-    if entry is not None:
-        fields.update(device_picker_schema_fields(entry))
+        )] = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
+
+    # 设备导入过滤仅对云端模式有意义（LAN 模式自动发现设备）
+    if not is_lan_mode:
+        fields.update(device_filter_schema_fields(normalized))
+        if entry is not None:
+            fields.update(device_picker_schema_fields(entry))
     return vol.Schema(fields)
 
 

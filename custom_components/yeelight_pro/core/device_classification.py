@@ -8,7 +8,14 @@ from typing import Any
 from ..capabilities.platform_contract import primary_platform_for_payload
 from ..capabilities.registry import is_iot_category, parse_component_property_key
 from ..utils import to_str
-from .device_classification_categories import BROAD_CATEGORIES, CATEGORY_ALIASES
+from .device_classification_categories import BROAD_CATEGORIES, GENERIC_PLATFORM_CATEGORIES
+from .device_runtime_capabilities import (
+    LIGHT_SENSOR_CONFIG_PROPS,
+    category_from_property_keys,
+    infer_runtime_iot_category,
+    normalize_iot_category,
+    runtime_property_keys,
+)
 
 GENERIC_MODEL_LABELS = frozenset({
     "",
@@ -89,6 +96,10 @@ _BROAD_CATEGORY_MODEL_LABELS = frozenset({
 def infer_iot_category(payload: Mapping[str, Any]) -> str | None:
     """Infer a Yeelight IoT category from documented category/property evidence."""
     current = _category_text(payload.get("category")) or _category_text(payload.get("type"))
+    runtime_category = infer_runtime_iot_category(payload)
+    if runtime_category is not None:
+        return runtime_category
+
     prop_category = _category_from_props(_property_keys(payload))
     if prop_category is not None:
         return prop_category
@@ -100,6 +111,8 @@ def infer_iot_category(payload: Mapping[str, Any]) -> str | None:
     if current and current not in BROAD_CATEGORIES:
         return current
 
+    if current in GENERIC_PLATFORM_CATEGORIES:
+        return None
     if current == "switch":
         return "relay_switch"
     if current in BROAD_CATEGORIES:
@@ -133,11 +146,15 @@ def friendly_model_name(payload: Mapping[str, Any]) -> str:
     if explicit and not is_generic_model_label(explicit):
         return explicit
 
+    property_label = _property_model_label(payload, runtime_property_keys(payload))
+    if property_label is not None:
+        return property_label
+
     schema_name = _schema_model_name(payload)
     if schema_name:
         return schema_name
 
-    property_label = _property_model_label(_property_keys(payload))
+    property_label = _property_model_label(payload, _property_keys(payload))
     if property_label is not None:
         return property_label
 
@@ -183,31 +200,18 @@ def is_generic_model_label(value: Any) -> bool:
 
 
 def _category_from_props(keys: set[str]) -> str | None:
-    if keys & {"mv"}:
-        return "human_sensor"
-    if keys & {"dc"}:
-        return "contact_sensor"
-    if keys & {"cp", "tp", "rd"}:
-        return "curtain"
-    if keys & {"acp", "acm", "actt", "acct", "acf", "aco", "rfhp", "rfhct", "rfhtt"}:
-        return "temp_control"
-    if keys & {"tgt", "fa", "he"}:
-        return "temp_control"
-    if (
-        keys <= {"luminance", "level", "o", "bl", "bc", "bcg"}
-        and keys & {"luminance", "level"}
-    ):
-        return "light_sensor"
-    if keys & {"curp", "iec", "ap", "ae", "t", "h", "temp", "bl", "bc", "bcg"}:
-        if not keys & {"p", "sp", "l", "ct", "c"}:
-            return "other"
-    if keys & {"alm"}:
-        return "contact_sensor"
-    return None
+    return category_from_property_keys(keys)
 
 
-def _property_model_label(keys: set[str]) -> str | None:
+def _property_model_label(payload: Mapping[str, Any], keys: set[str]) -> str | None:
     """Return a concrete model label only from property evidence."""
+    category = (
+        _category_from_props(runtime_property_keys(payload)) or _category_from_props(keys)
+        or _category_text(payload.get("category"))
+        or _category_text(payload.get("type"))
+    )
+    if keys & LIGHT_SENSOR_CONFIG_PROPS and keys & {"luminance", "mv"}:
+        return "照度传感器"
     if keys & {"dc"}:
         return "门磁传感器"
     if keys & {"mv"}:
@@ -216,6 +220,8 @@ def _property_model_label(keys: set[str]) -> str | None:
         return "窗帘"
     if keys & {"acp", "acm", "actt", "acct", "acf", "aco", "rfhp", "rfhct", "rfhtt"}:
         return "温控设备"
+    if keys & {"vmcp", "vmcf"}:
+        return "新风"
     if keys & {"tgt", "fa", "he"}:
         return "温控设备"
     if (keys & {"t", "temp"}) and keys & {"h"}:
@@ -226,6 +232,17 @@ def _property_model_label(keys: set[str]) -> str | None:
         return "湿度传感器"
     if keys & {"luminance", "level"}:
         return "照度传感器"
+    if category == "light":
+        if keys & {"c"}:
+            return "彩光灯"
+        if keys & {"ct"}:
+            return "色温灯"
+        if keys & {"l"}:
+            return "亮度灯"
+        if keys & {"p"}:
+            return "开关灯"
+    if category in {"relay_switch", "switch"} and keys & {"p", "sp"}:
+        return "继电器开关"
     return None
 
 
@@ -347,11 +364,7 @@ def _text(value: Any) -> str | None:
 
 
 def _category_text(value: Any) -> str | None:
-    text = _text(value)
-    if text is None:
-        return None
-    normalized = text.strip().lower().replace("_", " ").replace("-", " ")
-    return CATEGORY_ALIASES.get(normalized, normalized.replace(" ", "_"))
+    return normalize_iot_category(value)
 
 
 __all__ = [

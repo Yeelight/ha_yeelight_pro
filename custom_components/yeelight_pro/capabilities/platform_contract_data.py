@@ -89,7 +89,16 @@ PLATFORM_ORDER = (
     "text",
 )
 LIGHT_CONTROL_PROPS = frozenset({"p", "l", "ct", "c"})
-RELAY_SWITCH_CONTROL_PROPS = frozenset({"p", "sp"})
+RELAY_SWITCH_CONTROL_PROPS = frozenset({
+    "l",
+    "li",
+    "mock",
+    "p",
+    "run_speed",
+    "sbp",
+    "slisaon",
+    "sp",
+})
 COVER_TARGET_PROPS = frozenset({"tp"})
 CLIMATE_CANDIDATE_PROPS = frozenset({
     "acp",
@@ -109,6 +118,7 @@ CLIMATE_CANDIDATE_PROPS = frozenset({
     "tgt",
     "ve",
 })
+FAN_CANDIDATE_PROPS = frozenset({"vmcp", "vmcf"})
 
 PRIMARY_PLATFORM_CONTRACT_ROWS: tuple[
     tuple[str, PlatformSupportStatusValue, str],
@@ -159,6 +169,7 @@ __all__ = [
     "CLIMATE_CANDIDATE_PROPS",
     "COVER_TARGET_PROPS",
     "DEFAULT_UNSUPPORTED_EVIDENCE",
+    "FAN_CANDIDATE_PROPS",
     "LIGHT_CONTROL_PROPS",
     "PLATFORM_ORDER",
     "PRIMARY_CATEGORY_CANDIDATES",

@@ -67,6 +67,36 @@ class LanDiscoveryProtocol(asyncio.DatagramProtocol):
             self.response.set_exception(exc)
 
 
+@dataclass(slots=True)
+class LanDiscoveryMultiProtocol(asyncio.DatagramProtocol):
+    """Collect multiple Yeelight Pro discovery responses within a timeout."""
+
+    responses: list[LanDiscoveryResponse] = field(default_factory=list)
+    transport: LanDatagramTransport | None = None
+
+    def connection_made(self, transport: Any) -> None:
+        """Keep the UDP transport and send the documented broadcast request."""
+        self.transport = transport
+        transport.sendto(
+            LAN_DISCOVERY_MESSAGE.encode("utf-8"),
+            (LAN_DISCOVERY_BROADCAST_HOST, LAN_DISCOVERY_PORT),
+        )
+
+    def datagram_received(self, data: bytes, addr: tuple[str, int]) -> None:
+        """Parse and collect one discovery response datagram."""
+        try:
+            payload = data.decode("utf-8")
+            discovered = parse_discovery_response(payload)
+        except (UnicodeDecodeError, ValueError):
+            return
+        # 按 IP 去重
+        if not any(r.ip == discovered.ip for r in self.responses):
+            self.responses.append(discovered)
+
+    def error_received(self, exc: Exception) -> None:
+        """Ignore UDP errors during multi-discovery."""
+
+
 async def async_discover_lan_gateway(
     *,
     timeout_seconds: float = LAN_DISCOVERY_TIMEOUT_SECONDS,
@@ -92,11 +122,36 @@ async def async_discover_lan_gateway(
             active_transport.close()
 
 
+async def async_discover_all_lan_gateways(
+    *,
+    timeout_seconds: float = LAN_DISCOVERY_TIMEOUT_SECONDS,
+    open_datagram_endpoint: OpenDatagramEndpoint | None = None,
+) -> list[LanDiscoveryResponse]:
+    """Discover all local gateways via the documented UDP broadcast."""
+    loop = asyncio.get_running_loop()
+    endpoint = open_datagram_endpoint or loop.create_datagram_endpoint
+    protocol = LanDiscoveryMultiProtocol()
+    transport: LanDatagramTransport | None = None
+    try:
+        transport, _ = await endpoint(
+            lambda: protocol,
+            local_addr=("0.0.0.0", 0),
+            allow_broadcast=True,
+        )
+        await asyncio.sleep(timeout_seconds)
+        return list(protocol.responses)
+    finally:
+        active_transport = transport or protocol.transport
+        if active_transport is not None:
+            active_transport.close()
+
+
 __all__ = [
     "LAN_DISCOVERY_BROADCAST_HOST",
     "LAN_DISCOVERY_TIMEOUT_SECONDS",
     "LanDatagramTransport",
     "LanDiscoveryProtocol",
     "OpenDatagramEndpoint",
+    "async_discover_all_lan_gateways",
     "async_discover_lan_gateway",
 ]

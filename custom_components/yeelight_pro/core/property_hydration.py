@@ -8,6 +8,7 @@ from typing import Any, Protocol
 
 from ..utils import to_int, to_str
 from .device_classification import infer_iot_category
+from .device_runtime_capabilities import schema_conflicts_with_runtime_category
 from .exceptions import AuthenticationError, safe_error_summary
 
 _LOGGER = logging.getLogger(__name__)
@@ -185,7 +186,11 @@ def _device_hydration_properties(
     category = infer_iot_category(device)
     schema_props: set[str] = set()
     if schema := product_schemas.get(to_int(device.get("pid")) or -1):
-        if not _schema_conflicts_with_runtime_category(category, schema):
+        if not schema_conflicts_with_runtime_category(
+            device,
+            schema,
+            runtime_category=category,
+        ):
             schema_props = _schema_property_ids(schema)
             props.update(schema_props)
     if category:
@@ -210,26 +215,13 @@ def _needs_broad_property_discovery(
     """Return true when a broad cloud category needs read-side disambiguation."""
     if (existing_props | schema_props) - {"o"}:
         return False
-    if inferred_category not in {None, "light", "relay_switch", "switch", "sensor", "other"}:
+    if inferred_category not in {None, "light", "relay_switch", "switch", "other"}:
         return False
     raw_category = to_str(device.get("category", device.get("type")))
     if raw_category is None:
         return True
     category = raw_category.strip().lower().replace("_", " ").replace("-", " ")
     return category in {"", "light", "relay switch", "relay_switch", "switch", "sensor"}
-
-
-def _schema_conflicts_with_runtime_category(
-    category: str | None,
-    schema: Mapping[str, Any],
-) -> bool:
-    """Return true when a broad schema should not drive property reads."""
-    if category not in {"curtain", "temp_control", "scene_panel", "knob_switch"}:
-        return False
-    schema_categories = _schema_categories(schema)
-    if not schema_categories or category in schema_categories:
-        return False
-    return bool(schema_categories & {"relay_switch", "switch", "light", "other"})
 
 
 def _merge_property_values(
@@ -308,22 +300,6 @@ def _schema_property_ids(schema: Mapping[str, Any]) -> set[str]:
                 if prop
             )
     return props
-
-
-def _schema_categories(schema: Mapping[str, Any]) -> set[str]:
-    """Return category labels declared by a product schema."""
-    categories = {
-        str(category)
-        for category in (schema.get("category"),)
-        if category is not None and str(category)
-    }
-    for key in ("components", "customComponents"):
-        categories.update(
-            str(component["category"])
-            for component in _property_list(schema.get(key))
-            if component.get("category") is not None and str(component.get("category"))
-        )
-    return categories
 
 
 def _device_id(device: Mapping[str, Any]) -> int | str | None:

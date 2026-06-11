@@ -26,8 +26,10 @@ from .const import (
     CONF_TOKEN_TYPE,
     CLOUD_AUTH_METHOD_SCAN_LOGIN,
     CONNECTION_MODE_CLOUD,
+    CONNECTION_MODE_LAN,
     CONNECTION_MODE_PRIVATE,
     DEFAULT_CLOUD_REGION,
+    DEFAULT_LAN_GATEWAY_PORT,
     DOMAIN,
 )
 from .config_flow_account import (
@@ -58,6 +60,7 @@ from .config_flow_scan_login import (
     ScanLoginConfigFlowMixin,
     ScanLoginFlowState,
 )
+from .config_flow_lan import LanConfigFlowMixin
 from .config_flow_reauth import ReauthConfigFlowMixin
 from .entry_migration import (
     ENTRY_MINOR_VERSION,
@@ -71,6 +74,7 @@ from .options_flow import YeelightProOptionsFlow
 class YeelightProConfigFlow(
     ReauthConfigFlowMixin,
     ScanLoginConfigFlowMixin,
+    LanConfigFlowMixin,
     config_entries.ConfigFlow,
     domain=DOMAIN,
 ):  # type: ignore[call-arg]
@@ -103,6 +107,11 @@ class YeelightProConfigFlow(
         self._selected_device_ids: list[str] = []
         self._reauth_entry_data: dict[str, Any] = {}
         self._reauth_in_progress = False
+        # LAN 模式字段
+        self._lan_gateway_ip = ""
+        self._lan_gateway_port = DEFAULT_LAN_GATEWAY_PORT
+        self._lan_discovered_list: list[tuple[str, int, str]] = []
+        self._lan_discovered_map: dict[str, tuple[str, int]] = {}
 
     async def async_step_user(
         self,
@@ -114,8 +123,9 @@ class YeelightProConfigFlow(
 
             if self._connection_mode == CONNECTION_MODE_CLOUD:
                 return await self.async_step_cloud_region()
-            else:
-                return await self.async_step_private_config()
+            if self._connection_mode == CONNECTION_MODE_LAN:
+                return await self.async_step_lan_config()
+            return await self.async_step_private_config()
 
         return self.async_show_form(
             step_id="user",

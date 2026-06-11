@@ -119,13 +119,20 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "_safe_house_identifiers": "duplicate house helper identifier guard",
         "is_house_placeholder_name": "placeholder house device name cleanup guard",
     },
-    "custom_components/yeelight_pro/__init__.py": {
-        "_async_start_optional_lan_runtime": "optional LAN runtime startup boundary",
-        "_OptionalRuntimeStartupFailure": "optional LAN startup failure diagnostics",
+    "custom_components/yeelight_pro/entry_setup.py": {
+        "async_start_optional_lan_runtime": "optional LAN runtime startup boundary",
+        "OptionalRuntimeStartupFailure": "optional LAN startup failure diagnostics",
         "coordinator.set_lan_runtime(None)": (
             "failed optional LAN runtime not attached for writes"
         ),
         "safe_error_summary(err)": "optional LAN startup log redaction",
+    },
+    "custom_components/yeelight_pro/config_flow_lan.py": {
+        "LanConfigFlowMixin": "LAN config-flow split mixin",
+        "async_step_lan_config": "LAN config-flow step",
+        "_create_lan_entry": "LAN config-entry creation helper",
+        "async_validate_lan_connection": "LAN config validation boundary",
+        "CONF_LOCAL_GATEWAY_CONTROL": "LAN-only entry enables local gateway runtime",
     },
     "custom_components/yeelight_pro/entry_migration.py": {
         "stored_device_import_filter_options": "stored import filter migration",
@@ -204,6 +211,14 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "MAIN_ENTITY_PROPS": "main entity property exclusion registry",
         "AUXILIARY_BOOL_CONFIG_PROPS": "documented bool config property registry",
     },
+    "custom_components/yeelight_pro/converter/openapi_properties.py": {
+        "openapi_property_model": "OpenAPI property metadata conversion helper",
+        "property_spec": "CSV registry-backed property metadata fallback",
+        "openapi_property_access": "OpenAPI operators/access parser",
+        "openapi_runtime_properties": "top-level OpenAPI properties parser",
+        "openapi_value_range": "OpenAPI valueRange parser",
+        "openapi_value_list": "OpenAPI valueList parser",
+    },
     "custom_components/yeelight_pro/converter/runtime_inference_helpers.py": {
         "infer_runtime_components": "runtime component inference helper",
         "infer_subdevice_components": "OpenAPI sub-device inference facade",
@@ -211,6 +226,7 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "build_runtime_property_model": "runtime template property builder",
         "infer_openapi_events": "explicit OpenAPI runtime event inference helper",
         "infer_runtime_capabilities": "runtime capability inference helper",
+        "openapi_runtime_properties": "top-level OpenAPI property metadata reuse",
         "RUNTIME_PROPERTY_TEMPLATES": "runtime inference template registry use",
     },
     "custom_components/yeelight_pro/converter/runtime_templates.py": {
@@ -239,6 +255,14 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "infer_subdevice_components": "OpenAPI sub-device component builder",
         "_events_by_subdevice_index": "OpenAPI keyN event component scoping",
         "_component_id": "OpenAPI indexed component id builder",
-        "_property_from_openapi": "OpenAPI property metadata preservation",
+        "openapi_property_model": "OpenAPI property metadata preservation",
+    },
+    "custom_components/yeelight_pro/core/device_registry_classification.py": {
+        "registry_category_from_property_keys": "CSV registry-backed category classifier",
+        "categories_for_property": "property-to-category registry index helper",
+    },
+    "custom_components/yeelight_pro/core/device_runtime_constants.py": {
+        "TEMP_CONTROL_STRONG_PROPS": "runtime temp-control evidence constants",
+        "LIGHT_SENSOR_CONFIG_PROPS": "runtime light-sensor config evidence constants",
     },
 }

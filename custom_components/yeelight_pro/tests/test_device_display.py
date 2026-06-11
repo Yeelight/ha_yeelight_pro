@@ -88,10 +88,13 @@ def test_chinese_generic_model_labels_fall_back_to_category() -> None:
 
 def test_generic_ha_platform_category_does_not_become_iot_category() -> None:
     """HA 平台词 sensor 不能被当作易来 IoT 设备品类展示."""
-    payload = {"category": "sensor", "name": "主卧温湿度传感器"}
-
-    assert infer_iot_category(payload) == "sensor"
-    assert device_type_label(payload) == "易来传感设备"
+    for payload in (
+        {"category": "sensor", "name": "主卧温湿度传感器"},
+        {"category": "binary_sensor", "name": "主卧人体传感器"},
+        {"category": "传感器", "name": "主卧人体传感器"},
+    ):
+        assert infer_iot_category(payload) is None
+        assert device_type_label(payload) is None
 
 
 def test_safety_sensor_name_does_not_affect_display_type() -> None:
@@ -113,6 +116,8 @@ def test_channel_name_label_humanizes_indexed_switch_channels() -> None:
     assert channel_name_label(index=1) == "第 1 键"
     assert channel_name_label(index=2) == "第 2 键"
     assert channel_name_label(index=7) == "第 7 键"
+    assert channel_name_label(index=8) == "第 8 键"
+    assert channel_name_label(index=12) == "第 12 键"
 
 
 def test_channel_name_label_uses_positional_names_for_known_switches() -> None:
@@ -309,4 +314,6 @@ def test_switch_channel_count_hint_from_friendly_product_name() -> None:
     """设备名/型号里的双键三键应作为通道路数约束."""
     assert switch_channel_count_hint({"name": "厨房双键开关"}) == 2
     assert switch_channel_count_hint({"productName": "三键智能开关"}) == 3
+    assert switch_channel_count_hint({"name": "Yeelight Pro S20系列8键情景开关"}) == 8
+    assert switch_channel_count_hint({"name": "S系列情景开关", "model": "4开关，12情景按键"}) == 12
     assert switch_channel_count_hint({"name": "普通继电器"}) is None

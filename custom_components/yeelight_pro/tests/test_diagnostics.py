@@ -51,9 +51,10 @@ async def test_diagnostics_returns_sane_unloaded_entry(
     assert data["runtime"]["loaded"] is False
     assert data["runtime"]["client_capabilities"] == {
         "connection_mode": CONNECTION_MODE_CLOUD,
-        "supported_connection_modes": ["cloud", "private"],
+        "supported_connection_modes": ["cloud", "private", "lan"],
         "cloud_http_polling": True,
         "private_http_polling": False,
+        "lan_direct_control": False,
         "scan_login_contract": True,
         "scan_login_runtime": True,
         "push_message_adapter": True,
