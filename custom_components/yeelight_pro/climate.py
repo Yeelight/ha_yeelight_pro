@@ -15,7 +15,9 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
 from .core.exceptions import YeelightProError
+from .device_display import suggested_entity_object_id
 from .dynamic_entities import async_track_dynamic_entities
+from .entity_device_id import source_device_id
 from .entity_errors import raise_service_error
 from .projector.climate import HAClimateProjection, project_climate
 
@@ -46,7 +48,8 @@ async def async_setup_entry(
 def _iter_climate_entities(coordinator: YeelightProCoordinator) -> list["YeelightProClimate"]:
     """按当前拓扑生成 climate 实体候选。"""
     climates: list[YeelightProClimate] = []
-    for device_id, device_data in coordinator.data.items():
+    for device_key, device_data in coordinator.data.items():
+        device_id = source_device_id(device_key, device_data)
         if project_climate(device_data, domain=DOMAIN) is not None:
             climates.append(YeelightProClimate(coordinator, device_id))
     return climates
@@ -55,7 +58,7 @@ def _iter_climate_entities(coordinator: YeelightProCoordinator) -> list["Yeeligh
 class YeelightProClimate(CoordinatorEntity, ClimateEntity):
     """Yeelight Pro 空调实体。"""
 
-    def __init__(self, coordinator: YeelightProCoordinator, device_id: str):
+    def __init__(self, coordinator: YeelightProCoordinator, device_id: int | str):
         """初始化空调实体。"""
         super().__init__(coordinator)
         self._device_id = device_id
@@ -69,7 +72,10 @@ class YeelightProClimate(CoordinatorEntity, ClimateEntity):
     @property
     def _projection(self) -> HAClimateProjection | None:
         """返回最新的空调投影视图。"""
-        return project_climate(self.coordinator.get_device(self._device_id), domain=DOMAIN)
+        device = self.coordinator.get_device(self._device_id)
+        if device is None:
+            return None
+        return project_climate(device, domain=DOMAIN)
 
     @property
     def name(self) -> str | None:
@@ -78,6 +84,15 @@ class YeelightProClimate(CoordinatorEntity, ClimateEntity):
         if projection is not None:
             return projection.name
         return "温控"
+
+    @property
+    def suggested_object_id(self) -> str | None:
+        """返回 HA 首次注册时使用的友好实体 ID 建议。"""
+        return suggested_entity_object_id(
+            self.coordinator.get_device(self._device_id),
+            entity_name=self.name,
+            fallback_id=self._device_id,
+        )
 
     @property
     def available(self) -> bool:

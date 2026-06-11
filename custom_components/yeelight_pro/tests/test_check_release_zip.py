@@ -23,6 +23,7 @@ def test_release_zip_required_files_include_runtime_contracts() -> None:
         "custom_components/yeelight_pro/config_flow_device_picker.py",
         "custom_components/yeelight_pro/config_flow_options.py",
         "custom_components/yeelight_pro/device_display.py",
+        "custom_components/yeelight_pro/device_select.py",
         "custom_components/yeelight_pro/core/client_node_base.py",
         "custom_components/yeelight_pro/core/client_node_api.py",
         "custom_components/yeelight_pro/core/client_node_lists.py",

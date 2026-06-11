@@ -367,3 +367,4 @@ def test_schema_writable_auxiliary_properties_create_control_candidates() -> Non
     assert ("switch", "yeelight_pro_aux-device-1_main_light_li_switch") in candidates
     assert ("select", "yeelight_pro_aux-device-1_main_light_rd_select") in candidates
     assert not any(unique_id.endswith("_l_number") for _platform, unique_id in candidates)
+

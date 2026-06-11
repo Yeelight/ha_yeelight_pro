@@ -212,6 +212,11 @@ class YeelightProCoordinator(
         finally:
             self._force_product_schema_refresh = False
 
+    async def _async_refresh_coordinator_data(self) -> None:
+        """由 LAN 拓扑推送触发的 coordinator 数据刷新。"""
+        _LOGGER.debug("LAN topology push: refreshing coordinator data")
+        await self.async_refresh()
+
     def _update_topology_generation(self) -> None:
         """仅在实体/设备拓扑变化时递增代数."""
         self._topology_tracker.update(
@@ -223,9 +228,15 @@ class YeelightProCoordinator(
             scenes=self.scenes,
         )
 
-    def get_device(self, device_id: int) -> dict[str, Any] | None:
+    def get_device(self, device_id: int | str) -> dict[str, Any] | None:
         """获取设备数据."""
-        return self.devices.get(device_id)
+        try:
+            normalized_device_id = int(device_id)
+        except (TypeError, ValueError):
+            return self.devices.get(device_id)  # type: ignore[arg-type]
+        if device := self.devices.get(normalized_device_id):
+            return device
+        return self.devices.get(str(normalized_device_id))  # type: ignore[call-overload]
 
     def get_gateway_devices(self) -> Dict[int, Dict[str, Any]]:
         """获取网关设备."""

@@ -7,6 +7,7 @@ from custom_components.yeelight_pro.device_display import (
     device_name_label,
     registry_model_value,
     device_type_label,
+    suggested_entity_object_id,
     switch_channel_count_hint,
 )
 from custom_components.yeelight_pro.core.device_classification import (
@@ -307,6 +308,22 @@ def test_device_name_label_uses_open_api_aliases() -> None:
     """设备名称应兼容 Open API 字段别名."""
     assert device_name_label({"deviceName": "玄关开关"}, "dev-1") == "玄关开关"
     assert device_name_label({}, "dev-2") == "Device dev-2"
+
+
+def test_suggested_entity_object_id_uses_friendly_device_name() -> None:
+    """主实体 object_id 建议应来自真实设备名，而不是技术 unique_id."""
+    assert suggested_entity_object_id(
+        {"device_id": "304784333", "name": "厨房操作台灯"},
+        entity_name=None,
+    ) == "厨房操作台灯"
+    assert suggested_entity_object_id(
+        {"device_id": "304784336", "name": "厨房智能开关"},
+        entity_name="左键",
+    ) == "厨房智能开关 左键"
+    assert suggested_entity_object_id(
+        {"device_id": "304784333", "name": "厨房操作台灯"},
+        entity_name="照明",
+    ) == "厨房操作台灯"
 
 
 def test_switch_channel_count_hint_from_friendly_product_name() -> None:

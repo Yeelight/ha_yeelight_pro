@@ -29,6 +29,18 @@ def test_sensor_entity_exposes_ha_entity_category(mock_coordinator) -> None:
     assert sensor.entity_category == EntityCategory.DIAGNOSTIC
 
 
+def test_sensor_entity_handles_missing_device_payload(mock_coordinator) -> None:
+    """设备拓扑短暂缺失时 sensor 不能向 projector 传 None."""
+    mock_coordinator.hide_unknown_entities = True
+    mock_coordinator.get_device.return_value = None
+
+    sensor = YeelightProSensor(mock_coordinator, 12345, component_id="battery")
+
+    assert sensor.available is False
+    assert sensor.native_value is None
+    assert sensor.entity_category is None
+
+
 def test_binary_sensor_entity_exposes_ha_entity_category(mock_coordinator) -> None:
     """二态诊断实体也应进入 HA 诊断分组。"""
     mock_coordinator.get_device.return_value = projection_payload(
@@ -46,6 +58,21 @@ def test_binary_sensor_entity_exposes_ha_entity_category(mock_coordinator) -> No
     )
 
     assert sensor.entity_category == EntityCategory.DIAGNOSTIC
+
+
+def test_binary_sensor_entity_handles_missing_device_payload(mock_coordinator) -> None:
+    """设备拓扑短暂缺失时 binary_sensor 不能向 projector 传 None."""
+    mock_coordinator.get_device.return_value = None
+
+    sensor = YeelightProBinarySensor(
+        mock_coordinator,
+        12345,
+        component_id="battery_charging",
+    )
+
+    assert sensor.available is False
+    assert sensor.is_on is None
+    assert sensor.entity_category is None
 
 
 def test_battery_component_projects_charging_binary_diagnostics() -> None:

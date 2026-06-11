@@ -17,7 +17,7 @@ from .event_support import (
     SENSITIVE_RUNTIME_EVENT_PARAM_KEYS,
     safe_runtime_event_params,
 )
-from .lan_methods import METHOD_POST_EVENT, METHOD_POST_PROP
+from .lan_methods import METHOD_POST_EVENT, METHOD_POST_PROP, METHOD_POST_TOPOLOGY
 from .utils import to_int
 
 _SENSITIVE_EVENT_PARAM_KEYS = SENSITIVE_RUNTIME_EVENT_PARAM_KEYS
@@ -98,6 +98,62 @@ def lan_event_payloads(message: Mapping[str, Any]) -> list[dict[str, Any]]:
     return events
 
 
+@dataclass(frozen=True, slots=True)
+class LanTopologyUpdate:
+    """拓扑推送通知，表示网关拓扑发生了变更。"""
+
+    message_id: int | None
+    node_count: int
+
+
+def lan_topology_update(message: Mapping[str, Any]) -> LanTopologyUpdate | None:
+    """解析 ``gateway_post.topology`` 消息，返回拓扑变更通知。
+
+    网关在设备增删、分组变化、改名时会主动推送拓扑。
+    返回 None 表示不是拓扑消息。
+    """
+    if message.get("method") != METHOD_POST_TOPOLOGY:
+        return None
+    nodes = message.get("nodes")
+    node_count = len(nodes) if isinstance(nodes, list) else 0
+    return LanTopologyUpdate(
+        message_id=to_int(message.get("id")),
+        node_count=node_count,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class LanSceneStateUpdate:
+    """场景状态更新。"""
+
+    scene_id: int
+    state: str  # "active", "inactive", "unknown"
+
+
+def lan_scene_updates(
+    message: Mapping[str, Any],
+) -> list[LanSceneStateUpdate]:
+    """从 ``gateway_post.prop`` 消息中提取场景状态变更。
+
+    协议规范：属性同步消息可包含 scenes 数组，每个场景有 id 和 state。
+    """
+    if message.get("method") != METHOD_POST_PROP:
+        return []
+    scenes = message.get("scenes")
+    if not isinstance(scenes, list):
+        return []
+    updates: list[LanSceneStateUpdate] = []
+    for scene in scenes:
+        if not isinstance(scene, Mapping):
+            continue
+        scene_id = to_int(scene.get("id"))
+        params = scene.get("params")
+        state = params.get("state") if isinstance(params, Mapping) else None
+        if scene_id is not None and isinstance(state, str):
+            updates.append(LanSceneStateUpdate(scene_id=scene_id, state=state))
+    return updates
+
+
 def _iter_nodes(message: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     """返回 LAN gateway_post 帧中的合法节点。"""
     nodes = message.get("nodes")
@@ -147,7 +203,11 @@ def _safe_event_params(params: Mapping[str, Any]) -> dict[str, Any]:
 
 
 __all__ = [
+    "LanSceneStateUpdate",
+    "LanTopologyUpdate",
     "YeelightLanPropertyUpdate",
     "lan_event_payloads",
     "lan_property_updates",
+    "lan_scene_updates",
+    "lan_topology_update",
 ]

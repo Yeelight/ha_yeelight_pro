@@ -8,6 +8,7 @@ import pytest
 from custom_components.yeelight_pro.const import DOMAIN
 from custom_components.yeelight_pro.fan import async_setup_entry as async_setup_fan_entry
 from custom_components.yeelight_pro.light import (
+    _iter_light_entities,
     async_setup_entry as async_setup_light_entry,
 )
 
@@ -62,6 +63,22 @@ async def test_light_platform_adds_new_entities_after_refresh(mock_hass) -> None
 
     listeners[0]()
     assert add_entities.call_count == 2
+
+
+def test_light_entity_factory_uses_payload_source_device_id() -> None:
+    """平台实体创建必须使用 payload 真实 id，不能依赖 coordinator.data 的临时 key."""
+    coordinator = MagicMock()
+    coordinator.data = {"temporary-key": legacy_light(304784333, name="厨房操作台灯")}
+    coordinator.devices = {304784333: coordinator.data["temporary-key"]}
+    coordinator.get_device.side_effect = lambda device_id: coordinator.devices.get(
+        int(device_id)
+    )
+
+    entities = _iter_light_entities(coordinator)
+
+    assert [entity._device_id for entity in entities] == [304784333]
+    assert [entity.unique_id for entity in entities] == ["yeelight_pro_304784333_light"]
+    assert entities[0].name is None
 
 
 @pytest.mark.asyncio

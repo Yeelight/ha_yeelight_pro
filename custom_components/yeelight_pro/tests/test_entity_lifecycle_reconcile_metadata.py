@@ -329,3 +329,4 @@ async def test_reconcile_clears_stale_active_registry_metadata(
         pending_stale=0,
         metadata_updated=1,
     )
+

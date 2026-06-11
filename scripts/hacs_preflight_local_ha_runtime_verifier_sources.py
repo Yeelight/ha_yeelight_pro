@@ -273,6 +273,7 @@ LOCAL_HA_RUNTIME_VERIFIER_SOURCE_TOKENS = {
         "push_manager": "push manager module presence check",
         "push_transport": "experimental push transport module presence check",
         "entity_lifecycle_cleanup": "registry cleanup helper module presence check",
+        "entity_lifecycle_entity_id": "entity id migration helper module presence check",
         "registry_cleanup_service": "cleanup registry service module presence check",
         "capabilities.spec_correction_normalizers": (
             "spec correction normalizer runtime module presence check"

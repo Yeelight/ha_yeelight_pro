@@ -214,10 +214,15 @@ async def test_start_lan_runtime_discovers_gateway_when_host_is_empty(
 async def test_lan_gateway_runtime_writes_topology_and_property_frames() -> None:
     """LAN runtime 应写出 CRLF 分隔的 topology 与 set.prop 帧."""
     writer = FakeLanWriter()
+    reader = FakeLanReader(
+        [
+            b'{"id":2,"result":"ok","data":{}}\r\n',
+        ]
+    )
 
     async def _open_connection(host: str, port: int) -> tuple[FakeLanReader, FakeLanWriter]:
         assert (host, port) == ("192.168.1.20", 65443)
-        return FakeLanReader([]), writer
+        return reader, writer
 
     runtime = LanGatewayRuntime(
         host="192.168.1.20",
@@ -236,6 +241,7 @@ async def test_lan_gateway_runtime_writes_topology_and_property_frames() -> None
     ]
     assert frames[1]["nodes"] == [{"id": 331915, "params": {"p": True}}]
     assert runtime.health.as_dict()["sent_count"] == 2
+    assert runtime.health.as_dict()["ack_count"] == 1
 
     await runtime.async_stop()
 
@@ -303,6 +309,9 @@ async def test_lan_gateway_runtime_records_connection_error_type() -> None:
         "connected": False,
         "sent_count": 0,
         "received_count": 0,
+        "ack_count": 0,
+        "ack_timeout_count": 0,
+        "reconnect_attempts": 0,
         "last_error_type": "OSError",
     }
     assert "192.168.1.20" not in str(runtime.health.as_dict())

@@ -33,7 +33,7 @@ class _ControlCoordinator(Protocol):
     _lan_runtime: Any | None
     _runtime_state: RuntimeStateStore
 
-    def get_device(self, device_id: int) -> dict[str, Any] | None:
+    def get_device(self, device_id: int | str) -> dict[str, Any] | None:
         """Return a device payload by id."""
 
     def async_update_listeners(self) -> None:
@@ -48,31 +48,32 @@ class CoordinatorControlMixin:
 
     async def async_control_device(
         self: _ControlCoordinator,
-        device_id: int,
+        device_id: int | str,
         params: dict[str, Any],
         duration: int = 500,
     ) -> None:
         """Control one device and optimistically update runtime state."""
-        if not self.get_device(device_id):
+        normalized_device_id = _normalized_device_id(device_id)
+        if normalized_device_id is None or not self.get_device(normalized_device_id):
             raise DeviceNotFoundError("Device not found")
 
         if not await async_try_lan_control_device(
             self._lan_runtime,
-            device_id=device_id,
+            device_id=normalized_device_id,
             params=params,
             duration=duration,
         ):
             await async_execute_control_device(
                 self.client,
                 house_id=self.house_id,
-                device_id=device_id,
+                device_id=normalized_device_id,
                 params=params,
                 duration=duration,
             )
 
         runtime_data = self.data if isinstance(self.data, Mapping) else {}
         self._runtime_state.store_update(
-            device_id,
+            normalized_device_id,
             params,
             devices=self.devices,
             gateways=self.gateways,
@@ -85,22 +86,23 @@ class CoordinatorControlMixin:
 
     async def async_toggle_device(
         self: _ControlCoordinator,
-        device_id: int,
+        device_id: int | str,
         properties: list[str],
     ) -> None:
         """Toggle one or more device properties."""
-        if not self.get_device(device_id):
+        normalized_device_id = _normalized_device_id(device_id)
+        if normalized_device_id is None or not self.get_device(normalized_device_id):
             raise DeviceNotFoundError("Device not found")
 
         if not await async_try_lan_toggle_device(
             self._lan_runtime,
-            device_id=device_id,
+            device_id=normalized_device_id,
             properties=properties,
         ):
             await async_execute_toggle_device(
                 self.client,
                 house_id=self.house_id,
-                device_id=device_id,
+                device_id=normalized_device_id,
                 properties=properties,
             )
 
@@ -144,3 +146,11 @@ class CoordinatorControlMixin:
 
 
 __all__ = ["CoordinatorControlMixin"]
+
+
+def _normalized_device_id(device_id: int | str) -> int | None:
+    """Normalize HA entity device ids back to Yeelight numeric node ids."""
+    try:
+        return int(device_id)
+    except (TypeError, ValueError):
+        return None

@@ -192,6 +192,16 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
             "unknown action button fallback rejection coverage"
         ),
     },
+    "test_entity_candidate_device_sections.py": {
+        "test_schema_rich_device_projects_device_page_sections": (
+            "schema-rich device page section projection coverage"
+        ),
+        '("light", "main_light")': "main control section candidate coverage",
+        '("sensor", "temperature")': "read-only state section candidate coverage",
+        '("event", "main_light")': "event section candidate coverage",
+        '"config"': "config entity-category section coverage",
+        '"diagnostic"': "diagnostic entity-category section coverage",
+    },
     "test_entity_candidate_scenes.py": {
         "test_entity_candidates_project_cloud_scenes_as_buttons_only": (
             "cloud scene button-only projection coverage"
@@ -210,6 +220,18 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
             "group color temperature control uses Yeelight ct property"
         ),
         '{"ct":': "group color temperature command payload",
+    },
+    "test_property_control_entities.py": {
+        "test_device_number_write_sends_indexed_control_key": (
+            "device number indexed control key write coverage"
+        ),
+        "test_device_select_write_sends_raw_option_code": (
+            "device select raw option code write coverage"
+        ),
+        "test_device_switch_write_sends_int_values_for_indicator_switch": (
+            "device switch raw int value write coverage"
+        ),
+        "suggested_object_id": "friendly device property entity-id coverage",
     },
     "test_select_dynamic_options.py": {
         "test_room_select_uses_latest_coordinator_rooms": (

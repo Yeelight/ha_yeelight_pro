@@ -181,6 +181,7 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         "runtime_subdevices.py": "OpenAPI sub-device helper zip required file guard",
         "scan_login_contract.py": "scan-login contract zip required file guard",
         "event_identity.py": "event identity helper zip required file guard",
+        "device_select.py": "device select helper zip required file guard",
         "projector/event_helpers.py": "event projector helper zip required file guard",
         "projector/property_control_common.py": (
             "property control common helper zip required file guard"

@@ -12,11 +12,14 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
 from .core.exceptions import YeelightProError
+from .device_display import suggested_entity_object_id
 from .dynamic_entities import async_track_dynamic_entities
+from .entity_device_id import source_device_id
 from .entity_category import ha_entity_category
 from .entity_errors import raise_service_error
 from .house_metadata import house_device_info
@@ -59,7 +62,8 @@ def _iter_number_entities(coordinator: YeelightProCoordinator) -> list[NumberEnt
     """按当前拓扑生成 number 实体候选."""
     entities: list[NumberEntity] = []
 
-    for device_id, device_data in coordinator.data.items():
+    for device_key, device_data in coordinator.data.items():
+        device_id = source_device_id(device_key, device_data)
         for projection in project_number_controls(device_data, domain=DOMAIN):
             entities.append(
                 YeelightProDeviceNumber(
@@ -84,7 +88,7 @@ def _iter_number_entities(coordinator: YeelightProCoordinator) -> list[NumberEnt
     return entities
 
 
-class YeelightProDeviceNumber(NumberEntity):
+class YeelightProDeviceNumber(CoordinatorEntity, NumberEntity):
     """设备级可写数值属性实体."""
 
     _attr_has_entity_name = True
@@ -92,12 +96,12 @@ class YeelightProDeviceNumber(NumberEntity):
     def __init__(
         self,
         coordinator: YeelightProCoordinator,
-        device_id: int,
+        device_id: int | str,
         *,
         component_id: str,
     ) -> None:
         """初始化设备数值属性实体."""
-        super().__init__()
+        super().__init__(coordinator)
         self._coordinator = coordinator
         self._device_id = device_id
         self._component_id = component_id
@@ -128,6 +132,15 @@ class YeelightProDeviceNumber(NumberEntity):
         """返回数值实体名称."""
         projection = self._projection
         return projection.name if projection is not None else None
+
+    @property
+    def suggested_object_id(self) -> str | None:
+        """返回 HA 首次注册时使用的友好实体 ID 建议."""
+        return suggested_entity_object_id(
+            self._coordinator.get_device(self._device_id),
+            entity_name=self.name,
+            fallback_id=self._device_id,
+        )
 
     @property
     def available(self) -> bool:

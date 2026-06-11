@@ -195,6 +195,15 @@ LOCAL_HA_RUNTIME_CORE_TEST_TOKENS = {
             "removed scene metadata stale coverage"
         ),
     },
+    "custom_components/yeelight_pro/tests/test_entity_lifecycle_reconcile_entity_id.py": {
+        "test_reconcile_renames_legacy_channel_entity_ids": (
+            "legacy entity-id migration coverage"
+        ),
+        "test_reconcile_preserves_user_named_legacy_entity_id": (
+            "user-named entity-id preservation coverage"
+        ),
+        "new_entity_id": "registry entity-id rename assertion",
+    },
     "custom_components/yeelight_pro/tests/test_entity_lifecycle_reconcile_display.py": {
         "test_reconcile_marks_extra_double_switch_channel_stale_and_updates_names": (
             "generated switch channel display-name cleanup coverage"

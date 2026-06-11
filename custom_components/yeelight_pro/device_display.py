@@ -119,6 +119,29 @@ def channel_name_label(
     )
 
 
+def suggested_entity_object_id(
+    payload: Mapping[str, Any] | None,
+    *,
+    entity_name: Any = None,
+    fallback_id: Any = None,
+) -> str | None:
+    """Return a friendly HA object-id seed for device-backed entities."""
+    if not isinstance(payload, Mapping):
+        return None
+
+    fallback_text = _first_text(payload, ("device_id", "id", "did")) or _text(fallback_id)
+    if fallback_text is None:
+        return None
+
+    device_name = device_name_label(payload, fallback_text)
+    suffix = _text(entity_name)
+    if suffix is None or suffix == "照明":
+        return device_name
+    if suffix in device_name:
+        return device_name
+    return f"{device_name} {suffix}"
+
+
 def switch_channel_count_hint(payload: Mapping[str, Any]) -> int | None:
     """Return product-name channel count hints such as 双键/三键."""
     return device_channels.switch_channel_count_hint(payload)
@@ -139,6 +162,11 @@ def _first_text(payload: Mapping[str, Any], keys: tuple[str, ...]) -> str | None
         if value := to_str(payload.get(key)):
             return value
     return None
+
+
+def _text(value: Any) -> str | None:
+    text = to_str(value)
+    return text or None
 
 
 def _looks_like_light_device_info(device_info: Mapping[str, Any]) -> bool:

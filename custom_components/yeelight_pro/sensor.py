@@ -12,7 +12,9 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
+from .device_display import suggested_entity_object_id
 from .dynamic_entities import async_track_dynamic_entities
+from .entity_device_id import source_device_id
 from .entity_category import ha_entity_category
 from .projector.sensor import HASensorProjection, project_sensors
 
@@ -53,7 +55,8 @@ async def async_setup_entry(
 def _iter_sensor_entities(coordinator: YeelightProCoordinator) -> list["YeelightProSensor"]:
     """按当前拓扑生成 sensor 实体候选."""
     sensors: list[YeelightProSensor] = []
-    for device_id, device_data in coordinator.data.items():
+    for device_key, device_data in coordinator.data.items():
+        device_id = source_device_id(device_key, device_data)
         projections = project_sensors(
             device_data,
             domain=DOMAIN,
@@ -78,7 +81,7 @@ class YeelightProSensor(CoordinatorEntity, SensorEntity):
     def __init__(
         self,
         coordinator: YeelightProCoordinator,
-        device_id: int,
+        device_id: int | str,
         *,
         component_id: str,
     ) -> None:
@@ -96,8 +99,11 @@ class YeelightProSensor(CoordinatorEntity, SensorEntity):
     @property
     def _projection(self) -> HASensorProjection | None:
         """返回最新的传感器投影视图."""
+        device = self.coordinator.get_device(self._device_id)
+        if device is None:
+            return None
         projections = project_sensors(
-            self.coordinator.get_device(self._device_id),
+            device,
             domain=DOMAIN,
             hide_unknown_entities=self.coordinator.hide_unknown_entities,
         )
@@ -116,6 +122,15 @@ class YeelightProSensor(CoordinatorEntity, SensorEntity):
         if device_data is not None:
             return device_data.get("name", f"Sensor {self._device_id}")
         return f"Sensor {self._device_id}"
+
+    @property
+    def suggested_object_id(self) -> str | None:
+        """返回 HA 首次注册时使用的友好实体 ID 建议."""
+        return suggested_entity_object_id(
+            self.coordinator.get_device(self._device_id),
+            entity_name=self.name,
+            fallback_id=self._device_id,
+        )
 
     @property
     def available(self) -> bool:

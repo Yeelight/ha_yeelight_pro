@@ -31,10 +31,17 @@ LIFECYCLE_CONTRACT_TOKENS = {
     "entity_lifecycle.py": {
         "async_reconcile_entity_registry": "entity registry reconcile hook",
         "entity_lifecycle_cleanup": "cleanup helper facade imports",
+        "entity_lifecycle_entity_id": "safe entity-id helper facade import",
         "_registry_entry_disabled_by_user": "user-disabled entity preservation",
         "_restore_active_integration_entries": "active integration-disabled entity restoration",
         "EntityRegistryReconcileSummary": "aggregate diagnostics summary",
         "collect_entity_candidate_keys": "filtered candidate lifecycle source",
+    },
+    "entity_lifecycle_entity_id.py": {
+        "safe_entity_id_migration": "safe legacy entity-id migration helper",
+        "registry_entity_ids": "entity-id conflict set helper",
+        "_legacy_unique_id_tail": "legacy channel suffix detector",
+        "_registry_entry_disabled_by_user": "user-disabled rename preservation",
     },
     "entity_candidates.py": {
         "CONF_DEVICE_IMPORT_FILTER": "candidate-level device import filter lookup",
@@ -141,6 +148,18 @@ LIFECYCLE_CONTRACT_TOKENS = {
             "removed scene metadata stale coverage"
         ),
         "metadata_updated=1": "active metadata updated diagnostics coverage",
+    },
+    "tests/test_entity_lifecycle_reconcile_entity_id.py": {
+        "test_reconcile_renames_legacy_channel_entity_ids": (
+            "legacy entity-id migration coverage"
+        ),
+        "test_reconcile_preserves_user_named_legacy_entity_id": (
+            "user-named entity-id preservation coverage"
+        ),
+        "new_entity_id": "registry entity-id rename assertion",
+        "chu_fang_shuang_jian_kai_guan_zuo_jian": (
+            "friendly entity-id channel assertion"
+        ),
     },
     "tests/test_entity_lifecycle_reconcile_display.py": {
         "test_reconcile_marks_extra_double_switch_channel_stale_and_updates_names": (

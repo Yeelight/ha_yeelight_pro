@@ -12,6 +12,7 @@ from typing import Any, Protocol
 
 from .const import CONF_DEVICE_IMPORT_FILTER, DEFAULT_HIDE_UNKNOWN_ENTITIES, DOMAIN
 from .device_filter import matches_device_import_filter
+from .device_display import suggested_entity_object_id
 from .entity_category import ENTITY_CATEGORY_CONFIG, ENTITY_CATEGORY_DIAGNOSTIC
 from .projector.binary_sensor import project_binary_sensors
 from .projector.climate import project_climate
@@ -54,6 +55,7 @@ class EntityCandidate:
     name: str | None = None
     icon: str | None = None
     entity_category: str | None = None
+    suggested_object_id: str | None = None
     available: bool = True
     availability_reason: str | None = None
 
@@ -214,6 +216,10 @@ def _candidate(
             _projection_entity_category(projection)
             or _platform_entity_category(platform)
         ),
+        suggested_object_id=_suggested_projection_object_id(
+            projection,
+            fallback_id=device_id,
+        ),
         available=available,
         availability_reason=None if available else "unavailable",
     )
@@ -319,6 +325,22 @@ def _projection_entity_category(projection: Any) -> str | None:
     """Return an internal entity category from projector projections."""
     category = getattr(projection, "entity_category", None)
     return category if category in {ENTITY_CATEGORY_CONFIG, ENTITY_CATEGORY_DIAGNOSTIC} else None
+
+
+def _suggested_projection_object_id(
+    projection: Any,
+    *,
+    fallback_id: str | None,
+) -> str | None:
+    """Return HA object-id seed matching the runtime entity implementation."""
+    device_info = getattr(projection, "device_info", None)
+    if isinstance(device_info, dict):
+        return suggested_entity_object_id(
+            device_info,
+            entity_name=_projection_name(projection),
+            fallback_id=fallback_id,
+        )
+    return None
 
 
 def _platform_entity_category(platform: str) -> str | None:

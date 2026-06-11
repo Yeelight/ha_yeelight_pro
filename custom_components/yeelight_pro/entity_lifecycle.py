@@ -26,6 +26,10 @@ from .entity_lifecycle_cleanup import (
     async_preview_stale_registry_cleanup,
     entity_registry_cleanup_diagnostics,
 )
+from .entity_lifecycle_entity_id import (
+    all_registry_entity_ids,
+    safe_entity_id_migration,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -276,6 +280,7 @@ def _sync_active_registry_metadata(
     if not registry_entries:
         return 0
     entity_registry = er.async_get(hass)
+    current_entity_ids = all_registry_entity_ids(entity_registry, registry_entries)
     updated = 0
     for registry_entry in registry_entries:
         registry_domain = _registry_entry_domain(registry_entry)
@@ -284,20 +289,59 @@ def _sync_active_registry_metadata(
         candidate = active_entity_candidates.get((registry_domain, registry_entry.unique_id))
         if candidate is None:
             continue
-        kwargs = _active_metadata_update_kwargs(registry_entry, candidate)
+        kwargs = _active_metadata_update_kwargs(
+            registry_entry,
+            candidate,
+            current_entity_ids=current_entity_ids,
+        )
         if not kwargs:
             continue
-        entity_registry.async_update_entity(registry_entry.entity_id, **kwargs)
+        applied_kwargs = _update_active_registry_entry(
+            entity_registry,
+            registry_entry,
+            kwargs,
+        )
+        if not applied_kwargs:
+            continue
+        if isinstance(new_entity_id := applied_kwargs.get("new_entity_id"), str):
+            current_entity_ids.discard(registry_entry.entity_id)
+            current_entity_ids.add(new_entity_id)
         updated += 1
     return updated
+
+
+def _update_active_registry_entry(
+    entity_registry: er.EntityRegistry,
+    registry_entry: er.RegistryEntry,
+    kwargs: dict[str, Any],
+) -> dict[str, Any]:
+    """Apply metadata updates, keeping display cleanup if entity_id migration fails."""
+    try:
+        entity_registry.async_update_entity(registry_entry.entity_id, **kwargs)
+        return kwargs
+    except ValueError:
+        metadata_kwargs = dict(kwargs)
+        metadata_kwargs.pop("new_entity_id", None)
+        if not metadata_kwargs:
+            return {}
+        entity_registry.async_update_entity(registry_entry.entity_id, **metadata_kwargs)
+        return metadata_kwargs
 
 
 def _active_metadata_update_kwargs(
     registry_entry: er.RegistryEntry,
     candidate: EntityCandidate,
+    *,
+    current_entity_ids: set[str] | None = None,
 ) -> dict[str, Any]:
     """Return safe registry metadata changes without touching user custom names."""
     kwargs: dict[str, Any] = {}
+    if new_entity_id := safe_entity_id_migration(
+        registry_entry,
+        candidate,
+        current_entity_ids=current_entity_ids,
+    ):
+        kwargs["new_entity_id"] = new_entity_id
     if getattr(registry_entry, "original_name", None) != candidate.name:
         kwargs["original_name"] = candidate.name
     if getattr(registry_entry, "original_icon", None) != candidate.icon:

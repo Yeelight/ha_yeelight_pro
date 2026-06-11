@@ -64,6 +64,17 @@ def test_cover_reads_projection_state(mock_coordinator) -> None:
     assert (DOMAIN, "12345") in cover.device_info["identifiers"]
 
 
+def test_cover_handles_missing_device_payload(mock_coordinator) -> None:
+    """设备拓扑短暂缺失时 cover 不能向 projector 传 None."""
+    mock_coordinator.get_device.return_value = None
+
+    cover = YeelightProCover(mock_coordinator, 12345)
+
+    assert cover.available is False
+    assert cover.current_cover_position is None
+    assert cover.device_info is None
+
+
 @pytest.mark.asyncio
 async def test_open_cover_sends_target_position(mock_coordinator) -> None:
     """打开窗帘应下发目标开合度 100."""

@@ -70,3 +70,19 @@ def test_event_entity_event_types_follow_latest_projection() -> None:
     )
 
     assert entity.event_types == ["click", "hold", "knob_spin"]
+
+
+def test_event_entity_handles_missing_device_payload() -> None:
+    """设备拓扑短暂缺失时 event 不能向 projector 传 None."""
+    coordinator = MagicMock()
+    coordinator.get_device.return_value = None
+
+    entity = YeelightProEventEntity(
+        coordinator,
+        228215,
+        component_id="scene_panel",
+    )
+
+    assert entity.available is False
+    assert entity.name is None
+    assert entity.device_info is None

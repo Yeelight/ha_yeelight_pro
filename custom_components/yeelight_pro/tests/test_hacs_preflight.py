@@ -268,6 +268,7 @@ def test_lifecycle_contract_check_requires_coverage_tokens(
     _write_test_file(component_root / "__init__.py", "async_remove_config_entry_device")
     _write_test_file(component_root / "ha_device_registry.py", "")
     _write_test_file(component_root / "entity_lifecycle.py", "")
+    _write_test_file(component_root / "entity_lifecycle_entity_id.py", "")
     _write_test_file(component_root / "entity_candidates.py", "")
     _write_test_file(component_root / "entity_lifecycle_cleanup.py", "")
     _write_test_file(component_root / "registry_cleanup_service.py", "")
@@ -277,6 +278,7 @@ def test_lifecycle_contract_check_requires_coverage_tokens(
     _write_test_file(tests_root / "test_entity_lifecycle.py", "")
     _write_test_file(tests_root / "test_entity_lifecycle_reconcile.py", "")
     _write_test_file(tests_root / "test_entity_lifecycle_reconcile_display.py", "")
+    _write_test_file(tests_root / "test_entity_lifecycle_reconcile_entity_id.py", "")
     _write_test_file(tests_root / "test_registry_cleanup_service.py", "")
     _write_test_file(tests_root / "test_registry_cleanup_service_privacy.py", "")
     _write_test_file(tests_root / "test_repair_issue_cleanup.py", "")
@@ -305,6 +307,7 @@ def test_lifecycle_contract_check_requires_coverage_tokens(
         for error in errors
     )
     assert any("removed scene platform stale coverage" in error for error in errors)
+    assert any("legacy entity-id migration coverage" in error for error in errors)
     assert any("shared lifecycle registry fake" in error for error in errors)
     assert any(
         "cleanup service filtered-device confirm coverage" in error

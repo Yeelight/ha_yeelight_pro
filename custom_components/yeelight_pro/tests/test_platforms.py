@@ -42,6 +42,25 @@ class TestYeelightProLight:
         light = YeelightProLight(mock_coordinator, 12345)
         assert light.device_info is not None
 
+    def test_main_light_suggests_friendly_entity_object_id(self, mock_coordinator):
+        """主灯实体首次注册时应使用设备名生成 entity_id."""
+        payload = projection_payload(
+            device_id="304784333",
+            category="light",
+            component_id="main_light",
+            component_category="color temperature light",
+            state={"p": True, "l": 80, "ct": 4000},
+        )
+        payload["name"] = "厨房操作台灯"
+        payload["ha_device_instance"]["name"] = "厨房操作台灯"
+        payload["ha_device_instance"]["device_info"]["name"] = "厨房操作台灯"
+        mock_coordinator.get_device.return_value = payload
+
+        light = YeelightProLight(mock_coordinator, 304784333)
+
+        assert light.name is None
+        assert light.suggested_object_id == "厨房操作台灯"
+
     @pytest.mark.asyncio
     async def test_turn_on_ignores_color_temp_for_rgb_only_light(self, mock_coordinator):
         """无色温彩光灯被误传色温时，不应向设备下发 ct。"""
@@ -118,6 +137,30 @@ class TestYeelightProSwitch:
             component_id="switch",
         )
         assert switch._device_id == 12345
+
+    def test_switch_suggests_device_and_channel_object_id(self, mock_coordinator):
+        """多键开关 entity_id 建议应包含设备名和友好通道名."""
+        payload = projection_payload(
+            device_id="304784336",
+            category="relay_switch",
+            component_id="switch_1",
+            component_category="switch control",
+            state={"p": True},
+            params={"1-p": True, "2-p": False},
+        )
+        payload["name"] = "厨房智能开关"
+        payload["ha_device_instance"]["name"] = "厨房智能开关"
+        payload["ha_device_instance"]["device_info"]["name"] = "厨房智能开关"
+        mock_coordinator.get_device.return_value = payload
+
+        switch = YeelightProSwitch(
+            mock_coordinator,
+            304784336,
+            component_id="switch_1",
+        )
+
+        assert switch.name == "左键"
+        assert switch.suggested_object_id == "厨房智能开关 左键"
 
 
 class TestYeelightProSensor:

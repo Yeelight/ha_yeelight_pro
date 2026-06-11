@@ -18,6 +18,8 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
 from .core.exceptions import YeelightProError
+from .device_display import suggested_entity_object_id
+from .entity_device_id import source_device_id
 from .dynamic_entities import async_track_dynamic_entities
 from .entity_errors import raise_service_error
 from .projector.light import (
@@ -55,7 +57,8 @@ async def async_setup_entry(
 def _iter_light_entities(coordinator: YeelightProCoordinator) -> list["YeelightProLight"]:
     """按当前拓扑生成灯光实体候选。"""
     lights: list[YeelightProLight] = []
-    for device_id, device_data in coordinator.data.items():
+    for device_key, device_data in coordinator.data.items():
+        device_id = source_device_id(device_key, device_data)
         for projection in project_lights(device_data, domain=DOMAIN):
             lights.append(
                 YeelightProLight(
@@ -73,7 +76,7 @@ class YeelightProLight(CoordinatorEntity, LightEntity):
     def __init__(
         self,
         coordinator: YeelightProCoordinator,
-        device_id: int,
+        device_id: int | str,
         *,
         component_id: str | None = None,
     ) -> None:
@@ -125,7 +128,16 @@ class YeelightProLight(CoordinatorEntity, LightEntity):
         projection = self._projection
         if projection is not None:
             return projection.name
-        return "照明"
+        return None
+
+    @property
+    def suggested_object_id(self) -> str | None:
+        """返回 HA 首次注册时使用的友好实体 ID 建议。"""
+        return suggested_entity_object_id(
+            self.coordinator.get_device(self._device_id),
+            entity_name=self.name,
+            fallback_id=self._device_id,
+        )
 
     @property
     def available(self) -> bool:

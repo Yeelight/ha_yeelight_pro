@@ -117,9 +117,11 @@ class DevicePayloadBuilder:
         """Build coordinator device and gateway maps from Open API rows."""
         data: dict[int, dict[str, Any]] = {}
         for device in devices:
-            device_id = device.get("id")
+            device_id = to_int(device.get("id"))
             if device_id:
                 normalized = self.normalize(device, product_schemas)
+                normalized["id"] = device_id
+                normalized["device_id"] = device_id
                 normalized = apply_runtime_overrides(normalized)
                 self.attach_canonical_models_if_available(
                     normalized,
@@ -131,9 +133,11 @@ class DevicePayloadBuilder:
 
         gateway_data: dict[int, dict[str, Any]] = {}
         for gateway in gateways:
-            gateway_id = gateway.get("id")
+            gateway_id = to_int(gateway.get("id"))
             if gateway_id:
                 normalized = self.normalize(gateway, product_schemas)
+                normalized["id"] = gateway_id
+                normalized["device_id"] = gateway_id
                 normalized["is_gateway"] = True
                 self.attach_canonical_models_if_available(
                     normalized,

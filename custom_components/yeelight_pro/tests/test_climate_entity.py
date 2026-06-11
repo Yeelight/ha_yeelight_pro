@@ -51,6 +51,17 @@ def _assert_redacted(error: HomeAssistantError, *, action: str) -> None:
         assert value not in formatted
 
 
+def test_climate_handles_missing_device_payload(mock_coordinator) -> None:
+    """设备拓扑短暂缺失时 climate 不能向 projector 传 None."""
+    mock_coordinator.get_device.return_value = None
+
+    climate = YeelightProClimate(mock_coordinator, "12345")
+
+    assert climate.available is False
+    assert climate.current_temperature is None
+    assert climate.hvac_modes == [HVACMode.OFF]
+
+
 @pytest.mark.asyncio
 async def test_set_temperature_none_does_not_send_control(mock_coordinator) -> None:
     """温度为空时不下发控制，避免写入无效目标温度。"""

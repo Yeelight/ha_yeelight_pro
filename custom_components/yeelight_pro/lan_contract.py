@@ -185,6 +185,17 @@ def is_lan_push_message(message: Mapping[str, Any]) -> bool:
     }
 
 
+def is_lan_ack_response(message: Mapping[str, Any]) -> bool:
+    """Return whether a message is a gateway ACK response to a client request.
+
+    ACK 格式: {"id": 123, "result": "ok"/"error", "data": {...}}
+    """
+    return (
+        isinstance(message.get("id"), int)
+        and isinstance(message.get("result"), str)
+    )
+
+
 def _request_with_id(message_id: int, method: str, node_id: int) -> dict[str, Any]:
     """Build a LAN request whose params contain an id field."""
     message = _base_message(message_id, method)
@@ -237,6 +248,7 @@ __all__ = [
     "build_set_properties_message",
     "decode_lan_frames",
     "encode_lan_frame",
+    "is_lan_ack_response",
     "is_lan_push_message",
     "lan_event_payloads",
     "lan_property_updates",

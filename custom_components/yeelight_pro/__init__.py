@@ -281,6 +281,11 @@ async def _async_start_optional_lan_runtime(
     if lan_runtime is not None:
         runtime_data["lan_runtime"] = lan_runtime
         coordinator.set_lan_runtime(lan_runtime)
+        _LOGGER.info(
+            "Yeelight Pro LAN runtime started: %s:%s",
+            lan_runtime.host,
+            lan_runtime.port,
+        )
 
 
 class _OptionalRuntimeStartupFailure:

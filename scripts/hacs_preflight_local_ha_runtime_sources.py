@@ -73,6 +73,16 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "channel_name_label": "friendly sub-entity channel label",
         "_CATEGORY_LABELS": "category label registry",
     },
+    "custom_components/yeelight_pro/device_select.py": {
+        "YeelightProDeviceSelect": "device select entity split helper",
+        "iter_device_select_entities": "device select dynamic entity factory",
+        "suggested_entity_object_id": "device select friendly entity-id guard",
+        "project_select_controls": "schema-backed writable enum projection source",
+    },
+    "custom_components/yeelight_pro/entity_device_id.py": {
+        "source_device_id": "device payload source-id resolver",
+        "_normalize_device_id": "numeric device id normalization guard",
+    },
     "custom_components/yeelight_pro/device_channels.py": {
         "channel_name_label": "friendly sub-entity channel label",
         "switch_channel_count_hint": "switch channel count inference",
@@ -84,6 +94,11 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "ha_entity_category": "HA EntityCategory conversion helper",
         "CONFIG_PROPERTIES": "config property category registry",
         "DIAGNOSTIC_PROPERTIES": "diagnostic property category registry",
+    },
+    "custom_components/yeelight_pro/entity_lifecycle_entity_id.py": {
+        "safe_entity_id_migration": "safe legacy entity-id migration helper",
+        "registry_entity_ids": "entity-id conflict set helper",
+        "_legacy_unique_id_tail": "legacy channel suffix detector",
     },
     "custom_components/yeelight_pro/capabilities/platform_contract.py": {
         "platform_contract_data": "platform contract data split import",

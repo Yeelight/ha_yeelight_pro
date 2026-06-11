@@ -12,6 +12,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
@@ -74,7 +75,7 @@ def _build_gateway_device_info(
     return normalized
 
 
-class YeelightProSceneButton(ButtonEntity):
+class YeelightProSceneButton(CoordinatorEntity, ButtonEntity):
     """Yeelight Pro 场景快速执行按钮."""
 
     _attr_has_entity_name = True
@@ -87,7 +88,7 @@ class YeelightProSceneButton(ButtonEntity):
         scene: dict[str, Any],
     ) -> None:
         """初始化场景按钮."""
-        super().__init__()
+        super().__init__(coordinator)
         self._coordinator = coordinator
         scene_id = scene_row_id(scene)
         if scene_id is None:

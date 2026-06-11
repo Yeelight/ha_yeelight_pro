@@ -25,7 +25,9 @@ from .const import (
     DOMAIN,
 )
 from .core.coordinator import YeelightProCoordinator
+from .device_display import suggested_entity_object_id
 from .dynamic_entities import async_track_dynamic_entities
+from .entity_device_id import source_device_id
 from .projector.event import HAEventProjection, project_events
 
 _LOGGER = logging.getLogger(__name__)
@@ -52,7 +54,8 @@ async def async_setup_entry(
 def _iter_event_entities(coordinator: YeelightProCoordinator) -> list["YeelightProEventEntity"]:
     """按当前拓扑生成 event 实体候选."""
     entities: list[YeelightProEventEntity] = []
-    for device_id, device_data in coordinator.data.items():
+    for device_key, device_data in coordinator.data.items():
+        device_id = source_device_id(device_key, device_data)
         for projection in project_events(device_data, domain=DOMAIN):
             entities.append(
                 YeelightProEventEntity(
@@ -73,7 +76,7 @@ class YeelightProEventEntity(CoordinatorEntity, EventEntity):
     def __init__(
         self,
         coordinator: YeelightProCoordinator,
-        source_device_id: int,
+        source_device_id: int | str,
         *,
         component_id: str,
     ) -> None:
@@ -96,8 +99,11 @@ class YeelightProEventEntity(CoordinatorEntity, EventEntity):
     @property
     def _projection(self) -> HAEventProjection | None:
         """返回最新的 event 投影视图."""
+        device = self.coordinator.get_device(self._source_device_id)
+        if device is None:
+            return None
         projections = project_events(
-            self.coordinator.get_device(self._source_device_id),
+            device,
             domain=DOMAIN,
         )
         return next(
@@ -110,6 +116,15 @@ class YeelightProEventEntity(CoordinatorEntity, EventEntity):
         """返回实体名称."""
         projection = self._projection
         return projection.name if projection is not None else None
+
+    @property
+    def suggested_object_id(self) -> str | None:
+        """返回 HA 首次注册时使用的友好实体 ID 建议."""
+        return suggested_entity_object_id(
+            self.coordinator.get_device(self._source_device_id),
+            entity_name=self.name,
+            fallback_id=self._source_device_id,
+        )
 
     @property
     def available(self) -> bool:

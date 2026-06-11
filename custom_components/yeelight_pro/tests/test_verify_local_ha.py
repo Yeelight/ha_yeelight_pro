@@ -176,6 +176,22 @@ def test_required_modules_include_entity_category_helper() -> None:
     )
 
 
+def test_required_modules_include_entity_id_migration_helper() -> None:
+    """本地 HA 安装态必须保留安全 entity_id 迁移 helper."""
+    assert (
+        "custom_components.yeelight_pro.entity_lifecycle_entity_id"
+        in REQUIRED_RUNTIME_MODULES
+    )
+
+
+def test_required_modules_include_device_select_helper() -> None:
+    """本地 HA 安装态必须保留设备级 select helper。"""
+    assert (
+        "custom_components.yeelight_pro.device_select"
+        in REQUIRED_RUNTIME_MODULES
+    )
+
+
 def test_required_modules_include_protocol_contract_modules() -> None:
     """本地 HA 安装态必须保留 no-network 协议合同模块."""
     expected_modules = {

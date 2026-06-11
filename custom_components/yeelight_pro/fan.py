@@ -19,7 +19,9 @@ from homeassistant.util.percentage import percentage_to_ranged_value
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
 from .core.exceptions import YeelightProError
+from .device_display import suggested_entity_object_id
 from .dynamic_entities import async_track_dynamic_entities
+from .entity_device_id import source_device_id
 from .entity_errors import raise_service_error
 from .projector.fan import HAFanProjection, NumericRange, project_fans
 
@@ -51,7 +53,8 @@ async def async_setup_entry(
 def _iter_fan_entities(coordinator: YeelightProCoordinator) -> list["YeelightProFan"]:
     """按当前拓扑生成风扇实体候选。"""
     fans: list[YeelightProFan] = []
-    for device_id, device_data in coordinator.data.items():
+    for device_key, device_data in coordinator.data.items():
+        device_id = source_device_id(device_key, device_data)
         projections = project_fans(device_data, domain=DOMAIN)
         for projection in projections:
             fans.append(
@@ -70,7 +73,7 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
     def __init__(
         self,
         coordinator: YeelightProCoordinator,
-        device_id: str,
+        device_id: int | str,
         *,
         component_id: str,
     ) -> None:
@@ -108,6 +111,15 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
         if device_data:
             return device_data.get("name", f"Fan {self._device_id}")
         return f"Fan {self._device_id}"
+
+    @property
+    def suggested_object_id(self) -> str | None:
+        """返回 HA 首次注册时使用的友好实体 ID 建议。"""
+        return suggested_entity_object_id(
+            self.coordinator.get_device(self._device_id),
+            entity_name=self.name,
+            fallback_id=self._device_id,
+        )
 
     @property
     def available(self) -> bool:

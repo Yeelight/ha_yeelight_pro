@@ -14,7 +14,9 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
 from .core.exceptions import YeelightProError
+from .device_display import suggested_entity_object_id
 from .dynamic_entities import async_track_dynamic_entities
+from .entity_device_id import source_device_id
 from .entity_category import ha_entity_category
 from .entity_errors import raise_service_error
 from .projector.property_controls import (
@@ -49,7 +51,8 @@ async def async_setup_entry(
 def _iter_switch_entities(coordinator: YeelightProCoordinator) -> list["YeelightProSwitch"]:
     """按当前拓扑生成 switch 实体候选."""
     switches: list[YeelightProSwitch] = []
-    for device_id, device_data in coordinator.data.items():
+    for device_key, device_data in coordinator.data.items():
+        device_id = source_device_id(device_key, device_data)
         projections: list[_SwitchProjection] = [
             *project_switches(device_data, domain=DOMAIN),
             *project_switch_controls(device_data, domain=DOMAIN),
@@ -73,7 +76,7 @@ class YeelightProSwitch(CoordinatorEntity, SwitchEntity):
     def __init__(
         self,
         coordinator: YeelightProCoordinator,
-        device_id: int,
+        device_id: int | str,
         *,
         component_id: str,
     ) -> None:
@@ -129,6 +132,15 @@ class YeelightProSwitch(CoordinatorEntity, SwitchEntity):
         if device_data is not None:
             return device_data.get("name", f"Switch {self._device_id}")
         return f"Switch {self._device_id}"
+
+    @property
+    def suggested_object_id(self) -> str | None:
+        """返回 HA 首次注册时使用的友好实体 ID 建议."""
+        return suggested_entity_object_id(
+            self.coordinator.get_device(self._device_id),
+            entity_name=self.name,
+            fallback_id=self._device_id,
+        )
 
     @property
     def available(self) -> bool:

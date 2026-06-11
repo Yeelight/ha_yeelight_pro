@@ -12,8 +12,18 @@ from custom_components.yeelight_pro import entity_lifecycle
 class FakeEntityRegistry:
     """Minimal entity registry double that records registry mutations."""
 
-    def __init__(self, entries: list[SimpleNamespace]) -> None:
+    def __init__(
+        self,
+        entries: list[SimpleNamespace],
+        *,
+        global_entries: list[SimpleNamespace] | None = None,
+        rejected_new_entity_ids: set[str] | None = None,
+    ) -> None:
         self.entries = entries
+        self.entities = {
+            entry.entity_id: entry for entry in [*entries, *(global_entries or [])]
+        }
+        self.rejected_new_entity_ids = set(rejected_new_entity_ids or ())
         self.removed_entity_ids: list[str] = []
         self.updated_entities: list[tuple[str, dict[str, object | None]]] = []
 
@@ -25,15 +35,23 @@ class FakeEntityRegistry:
         entity_id: str,
         *,
         disabled_by: object | None = None,
+        new_entity_id: str | None = None,
         **kwargs: object | None,
     ) -> SimpleNamespace:
         update_kwargs = dict(kwargs)
+        if new_entity_id in self.rejected_new_entity_ids:
+            raise ValueError("new entity_id already in use")
+        if new_entity_id is not None:
+            update_kwargs["new_entity_id"] = new_entity_id
         update_kwargs["disabled_by"] = disabled_by
         self.updated_entities.append((entity_id, update_kwargs))
         for entry in self.entries:
             if entry.entity_id == entity_id:
                 for key, value in update_kwargs.items():
-                    setattr(entry, key, value)
+                    if key == "new_entity_id":
+                        entry.entity_id = value
+                    else:
+                        setattr(entry, key, value)
                 return entry
         return SimpleNamespace(entity_id=entity_id, **update_kwargs)
 
@@ -86,6 +104,7 @@ def registry_entry(
     original_icon: str | None = None,
     has_entity_name: bool | None = True,
     entity_category: object | None = None,
+    name: str | None = None,
 ) -> SimpleNamespace:
     """Build a focused registry entry without depending on HA internals."""
     return SimpleNamespace(
@@ -96,6 +115,7 @@ def registry_entry(
         disabled_by=disabled_by,
         original_name=original_name,
         original_icon=original_icon,
+        name=name,
         has_entity_name=has_entity_name,
         entity_category=entity_category,
     )
