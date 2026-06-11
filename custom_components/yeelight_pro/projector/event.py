@@ -7,6 +7,7 @@ from typing import Any, Mapping
 
 from homeassistant.components.event import EventDeviceClass
 
+from ..const import DOMAIN
 from ..utils import to_bool
 from .common import load_instance as _load_instance
 from .common import load_product_model as _load_product_model
@@ -109,6 +110,24 @@ def project_device_triggers(device_payload: Mapping[str, Any]) -> list[HADeviceT
                 HADeviceTriggerProjection(
                     component_id=component.component_id,
                     type=component.component_id,
+                    subtype=event_type,
+                )
+            )
+    if triggers:
+        return triggers
+
+    fallback = _event_fallback_projection(
+        device_payload,
+        product_model,
+        _load_instance(device_payload),
+        domain=DOMAIN,
+    )
+    if fallback is not None:
+        for event_type in fallback.event_types:
+            triggers.append(
+                HADeviceTriggerProjection(
+                    component_id=fallback.component_id,
+                    type=fallback.component_id,
                     subtype=event_type,
                 )
             )

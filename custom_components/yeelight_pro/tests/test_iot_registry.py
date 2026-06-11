@@ -228,3 +228,60 @@ def test_color_light_without_temperature_matches_iot_csv_boundary() -> None:
     color_temp = registry.property_spec("ct")
     assert color_temp is not None
     assert "color light without temperature" not in color_temp.components
+
+
+def test_config_control_specs_keep_explicit_projection_metadata() -> None:
+    """配置控件只能使用 registry 中有证据的开关/枚举元数据."""
+    registry = iot_registry()
+
+    indicator = registry.property_spec("li")
+    reverse = registry.property_spec("rd")
+
+    assert indicator is not None
+    assert indicator.full_name == "indicator switch"
+    assert indicator.readable is True
+    assert indicator.writable is True
+    assert indicator.value_range is None
+    assert indicator.value_list == {}
+    assert reverse is not None
+    assert reverse.full_name == "reverse direction"
+    assert reverse.readable is True
+    assert reverse.writable is True
+    assert dict(reverse.value_list) == {"0": "正向", "1": "反向"}
+
+
+def test_extended_iot_property_specs_cover_documented_control_and_status() -> None:
+    """已审核的易来物模型属性应进入 registry，供 HA 按读写能力分流."""
+    registry = iot_registry()
+
+    bath_mode = registry.property_spec("bhm")
+    delay_off = registry.property_spec("do")
+    flash = registry.property_spec("slisaon")
+    open_type = registry.property_spec("open_type")
+    tilt_target = registry.property_spec("tra")
+    firmware = registry.property_spec("fv")
+    route_set = registry.property_spec("rs")
+
+    assert bath_mode is not None
+    assert bath_mode.readable is True
+    assert bath_mode.writable is True
+    assert bath_mode.category == "application"
+    assert dict(bath_mode.value_list)["4"] == "极速加热"
+    assert delay_off is not None
+    assert delay_off.value_range == (1, 120, 1)
+    assert delay_off.unit == "min"
+    assert flash is not None
+    assert flash.category == "config"
+    assert dict(flash.value_list) == {"0": "关闭", "1": "开启"}
+    assert open_type is not None
+    assert open_type.category == "config"
+    assert open_type.writable is True
+    assert tilt_target is not None
+    assert tilt_target.value_range == (0, 180, 1)
+    assert tilt_target.unit == "°"
+    assert firmware is not None
+    assert firmware.readable is True
+    assert firmware.writable is False
+    assert route_set is not None
+    assert route_set.readable is True
+    assert route_set.writable is False

@@ -11,6 +11,11 @@ from ..canonical.models import ComponentInstanceModel, ComponentModel, HAProduct
 from ..capabilities.events import normalize_event_type
 from ..capabilities.registry import iot_registry
 from ..device_display import channel_name_label
+from ..event_identity import (
+    SAFETY_EVENT_COMPONENT_ID,
+    SAFETY_EVENT_TYPES,
+    is_safety_event_device,
+)
 from ..utils import matches_category, to_bool, to_category, to_str
 from .common import component_index, humanize_component_id, schema_backed_component_available
 from .device import project_payload_device_info
@@ -72,6 +77,9 @@ def event_name(
     device_payload: Mapping[str, Any] | None = None,
 ) -> str | None:
     """生成 event 实体名称。"""
+    if component.component_id == SAFETY_EVENT_COMPONENT_ID:
+        return "报警事件"
+
     index = component_index(component.component_id)
     if index is not None:
         channel = channel_name_label(
@@ -106,6 +114,9 @@ def event_device_class(
 
 def event_icon(component: ComponentModel, product_model: HAProductModel) -> str | None:
     """根据组件/产品类别推断 event 图标。"""
+    if component.component_id == SAFETY_EVENT_COMPONENT_ID:
+        return "mdi:smoke-detector"
+
     tokens = _event_identity_tokens(component, product_model)
     if "knob" in tokens or "dial" in tokens or "旋钮" in tokens:
         return "mdi:knob"
@@ -150,7 +161,8 @@ def event_fallback_projection(
 
     from .event import HAEventProjection
 
-    component_id = _fallback_component_id(product_model)
+    component_id = _fallback_component_id(device_payload, product_model)
+    is_safety = component_id == SAFETY_EVENT_COMPONENT_ID
     source_device_id = (
         instance.device_id
         if instance is not None
@@ -167,8 +179,8 @@ def event_fallback_projection(
         available=available,
         event_types=list(event_types),
         device_info=project_payload_device_info(device_payload, instance),
-        device_class=EventDeviceClass.BUTTON,
-        icon="mdi:gesture-tap-button",
+        device_class=None if is_safety else EventDeviceClass.BUTTON,
+        icon="mdi:smoke-detector" if is_safety else "mdi:gesture-tap-button",
     )
 
 
@@ -216,6 +228,9 @@ def _fallback_event_types(
     product_model: HAProductModel,
 ) -> tuple[str, ...]:
     """Return default events only for documented event-input categories."""
+    if is_safety_event_device(device_payload):
+        return SAFETY_EVENT_TYPES
+
     tokens = _fallback_identity_tokens(device_payload, product_model)
     if matches_category(tokens, ("knob_switch",)) or matches_category(
         tokens,
@@ -230,8 +245,14 @@ def _fallback_event_types(
     return ()
 
 
-def _fallback_component_id(product_model: HAProductModel) -> str:
+def _fallback_component_id(
+    device_payload: Mapping[str, Any],
+    product_model: HAProductModel,
+) -> str:
     """Return a stable component id for fallback event entities."""
+    if is_safety_event_device(device_payload):
+        return SAFETY_EVENT_COMPONENT_ID
+
     for component in product_model.components:
         tokens = _event_identity_tokens(component, product_model)
         if matches_category(tokens, ("knob_switch",)) or matches_category(
@@ -262,6 +283,8 @@ def _fallback_event_name(
     index = component_index(component_id)
     channel = channel_name_label(index=index)
     tokens = _fallback_identity_tokens(device_payload, product_model)
+    if component_id == SAFETY_EVENT_COMPONENT_ID:
+        return "报警事件"
     if matches_category(tokens, ("knob_switch",)) or matches_category(
         tokens,
         KNOB_DEVICE_NAME_TOKENS,

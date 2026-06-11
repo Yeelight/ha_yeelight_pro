@@ -391,6 +391,9 @@ def test_runtime_payloads_keep_safety_sensor_out_of_light_category() -> None:
     device = data[405]
 
     assert device["iot_category"] == "other"
-    assert "ha_platform" not in device
+    assert device["ha_platform"] == "event"
     assert device["device_info"]["model"] == "烟雾传感器"
-    assert list(iter_device_entity_candidates(device)) == []
+    candidates = list(iter_device_entity_candidates(device))
+    assert [(item.platform, item.component_id) for item in candidates] == [
+        ("event", "safety_alarm")
+    ]

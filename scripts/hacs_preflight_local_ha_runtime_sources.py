@@ -85,6 +85,19 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "CONFIG_PROPERTIES": "config property category registry",
         "DIAGNOSTIC_PROPERTIES": "diagnostic property category registry",
     },
+    "custom_components/yeelight_pro/capabilities/platform_contract.py": {
+        "platform_contract_data": "platform contract data split import",
+        "platform_candidates_for_payload": "payload platform candidate facade",
+        "PRIMARY_PLATFORM_CONTRACT_ROWS": "platform evidence row source",
+    },
+    "custom_components/yeelight_pro/capabilities/platform_contract_data.py": {
+        "PRIMARY_PLATFORM_CONTRACT_ROWS": "platform evidence row registry",
+        "PRIMARY_CATEGORY_CANDIDATES": "IoT category candidate registry",
+        "READ_ONLY_BOOL_BINARY_PROPS": "binary sensor property candidate registry",
+        "READ_ONLY_SENSOR_PROPS": "sensor property candidate registry",
+        "CLIMATE_CANDIDATE_PROPS": "climate property candidate registry",
+        "LIGHT_CONTROL_PROPS": "light property candidate registry",
+    },
     "custom_components/yeelight_pro/ha_house_registry.py": {
         "sync_house_device": "house helper registry sync facade",
         "_house_device_entries": "legacy house helper registry matcher",
@@ -132,11 +145,24 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
     },
     "custom_components/yeelight_pro/projector/event_helpers.py": {
         "EVENT_COMPONENT_TOKENS": "event input component token registry",
+        "SAFETY_EVENT_TYPES": "safety alarm fallback event types",
+        "is_safety_event_device": "safety event identity fallback",
         "event_components": "event component projection helper",
         "event_types": "normalized schema event type helper",
         "event_device_class": "event device class inference helper",
         "event_icon": "event icon inference helper",
         "_registry_component_keys": "registry component alias matching helper",
+    },
+    "custom_components/yeelight_pro/event_identity.py": {
+        "SAFETY_EVENT_COMPONENT_ID": "shared safety event component id",
+        "SAFETY_EVENT_TYPES": "shared safety event type registry",
+        "is_safety_event_device": "shared safety event identity helper",
+        "is_safety_event_type": "shared safety event type helper",
+    },
+    "custom_components/yeelight_pro/event_support.py": {
+        "SAFETY_EVENT_COMPONENT_ID": "runtime safety event component route",
+        "is_safety_event_type": "runtime safety event type route",
+        "is_safety_event_device": "runtime safety event identity route",
     },
     "custom_components/yeelight_pro/projector/sensor_helpers.py": {
         "SensorSpec": "sensor projection spec model",
@@ -144,6 +170,11 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "should_project_registry_sensor": "sensor registry boundary helper",
         "runtime_state": "sensor runtime state merge helper",
         "is_event_style_device": "sensor event-input filter helper",
+    },
+    "custom_components/yeelight_pro/projector/sensor_metadata.py": {
+        "SENSOR_LABELS": "registry-backed sensor metadata labels",
+        "registry_sensor_spec": "registry-backed sensor spec helper",
+        "sensor_entity_category": "sensor entity category helper",
     },
     "custom_components/yeelight_pro/projector/property_controls.py": {
         "project_number_controls": "device number control projection helper",

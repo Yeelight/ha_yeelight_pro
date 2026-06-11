@@ -11,12 +11,16 @@ from ..canonical.models import (
     PropertyModel,
 )
 from ..utils import to_float
+from ..utils import to_bool
 from .common import NumericRange, load_instance
 from .device import project_payload_device_info
 from .property_control_common import (
     control_available,
     control_key,
     control_name,
+    control_unit,
+    control_value_list,
+    control_value_range,
     entity_category_for_property,
     is_writable_auxiliary_bool_property,
     is_writable_auxiliary_property,
@@ -24,6 +28,7 @@ from .property_control_common import (
     schema_properties,
     select_icon,
     select_options,
+    switch_command_values,
     switch_icon,
 )
 
@@ -81,6 +86,8 @@ class HASwitchControlProjection:
     name: str | None
     available: bool
     is_on: bool
+    on_value: Any
+    off_value: Any
     control_key: str
     device_info: dict[str, Any] | None
     icon: str | None = None
@@ -153,13 +160,14 @@ def _project_number(
 ) -> HANumberControlProjection | None:
     if not is_writable_auxiliary_property(prop):
         return None
-    if prop.value_range is None or prop.value_list:
+    value_range = control_value_range(prop)
+    if value_range is None or control_value_list(prop):
         return None
 
     numeric_range = NumericRange(
-        min=prop.value_range.min,
-        max=prop.value_range.max,
-        step=prop.value_range.step,
+        min=value_range.min,
+        max=value_range.max,
+        step=value_range.step,
     )
     return HANumberControlProjection(
         component_id=f"{component.component_id}_{prop.prop_id}_number",
@@ -169,7 +177,7 @@ def _project_number(
         available=control_available(device_payload, instance, component),
         value=to_float(component.state.get(prop.prop_id)),
         native_range=numeric_range,
-        unit=prop.unit,
+        unit=control_unit(prop),
         control_key=control_key(instance, component.component_id, prop.prop_id),
         device_info=project_payload_device_info(device_payload, instance),
         icon=number_icon(prop),
@@ -187,9 +195,10 @@ def _project_select(
 ) -> HASelectControlProjection | None:
     if not is_writable_auxiliary_property(prop):
         return None
-    if not prop.value_list:
+    value_list = control_value_list(prop)
+    if not value_list:
         return None
-    options = tuple(select_options(prop.value_list, HASelectOption))
+    options = tuple(select_options(value_list, HASelectOption))
     if not options:
         return None
 
@@ -219,13 +228,16 @@ def _project_switch(
     if not is_writable_auxiliary_bool_property(prop):
         return None
 
+    on_value, off_value = switch_command_values(prop)
     return HASwitchControlProjection(
         component_id=f"{component.component_id}_{prop.prop_id}_switch",
         prop_id=prop.prop_id,
         unique_id=f"{domain}_{instance.device_id}_{component.component_id}_{prop.prop_id}_switch",
         name=control_name(component, prop, device_payload=device_payload),
         available=control_available(device_payload, instance, component),
-        is_on=bool(component.state.get(prop.prop_id, prop.default or False)),
+        is_on=to_bool(component.state.get(prop.prop_id, prop.default), default=False),
+        on_value=on_value,
+        off_value=off_value,
         control_key=control_key(instance, component.component_id, prop.prop_id),
         device_info=project_payload_device_info(device_payload, instance),
         icon=switch_icon(prop),

@@ -5,10 +5,11 @@ from __future__ import annotations
 import re
 from typing import Any, Mapping
 
+from ..capabilities.registry import property_spec
 from ..utils import to_str
 
 RUNTIME_EXCLUDED_COMPONENT_TYPES = {"global"}
-RUNTIME_EXCLUDED_KINDS = {"config", "diagnostic", "info"}
+RUNTIME_EXCLUDED_KINDS = {"diagnostic", "info"}
 RUNTIME_EXCLUDED_PROPERTY_TYPES = {"config"}
 SENSOR_PROPERTY_KEYS = {
     "acct",
@@ -125,7 +126,15 @@ def should_expose_runtime_property(component: Any, prop: Any) -> bool:
         return False
 
     property_type = to_str(getattr(prop, "property_type", None))
+    if kind == "config" or property_type == "config":
+        return is_documented_runtime_config_property(prop)
     return property_type not in RUNTIME_EXCLUDED_PROPERTY_TYPES
+
+
+def is_documented_runtime_config_property(prop: Any) -> bool:
+    """只保留 registry 证明可读的普通组件配置状态。"""
+    spec = property_spec(getattr(prop, "prop_id", None))
+    return bool(spec is not None and spec.readable)
 
 
 def prefer_plain_match(

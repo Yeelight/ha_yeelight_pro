@@ -160,7 +160,7 @@ class YeelightProSwitch(CoordinatorEntity, SwitchEntity):
         try:
             await self.coordinator.async_control_device(
                 self._device_id,
-                {projection.control_key: True},
+                {projection.control_key: getattr(projection, "on_value", True)},
             )
         except YeelightProError as err:
             raise_service_error("switch.turn_on", err)
@@ -173,7 +173,7 @@ class YeelightProSwitch(CoordinatorEntity, SwitchEntity):
         try:
             await self.coordinator.async_control_device(
                 self._device_id,
-                {projection.control_key: False},
+                {projection.control_key: getattr(projection, "off_value", False)},
             )
         except YeelightProError as err:
             raise_service_error("switch.turn_off", err)

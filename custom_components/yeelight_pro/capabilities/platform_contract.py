@@ -8,80 +8,23 @@ from typing import Any, Literal
 
 from ..utils import to_category, to_str
 from .ha_core_platforms import HA_CORE_PLATFORMS
+from .platform_contract_data import (
+    CLIMATE_CANDIDATE_PROPS,
+    COVER_TARGET_PROPS,
+    DEFAULT_UNSUPPORTED_EVIDENCE,
+    LIGHT_CONTROL_PROPS,
+    PLATFORM_ORDER,
+    PRIMARY_CATEGORY_CANDIDATES,
+    PRIMARY_PLATFORM_CONTRACT_ROWS,
+    READ_ONLY_BOOL_BINARY_PROPS,
+    READ_ONLY_SENSOR_PROPS,
+    RELAY_SWITCH_CONTROL_PROPS,
+    WRITABLE_NUMERIC_FORMATS,
+)
 from .registry import parse_component_property_key, property_spec
 
 PlatformSupportStatus = Literal["supported", "experimental", "unsupported"]
 PlatformSummaryStatus = Literal["supported", "diagnostic", "unsupported"]
-
-READ_ONLY_BOOL_BINARY_PROPS = frozenset({"mv", "dc", "alm", "bc", "bcg"})
-READ_ONLY_SENSOR_PROPS = frozenset(
-    {
-        "ap",
-        "ae",
-        "bl",
-        "blp",
-        "cpt",
-        "acct",
-        "curp",
-        "ep",
-        "esv",
-        "esvf",
-        "fm",
-        "h",
-        "iec",
-        "lc",
-        "lf",
-        "li",
-        "level",
-        "lsc",
-        "lsot",
-        "lsv",
-        "luminance",
-        "o",
-        "ocp",
-        "ot",
-        "pf",
-        "pl",
-        "rd",
-        "rt",
-        "rfhct",
-        "st",
-        "sys_s",
-        "t",
-        "temp",
-    }
-)
-WRITABLE_NUMERIC_FORMATS = frozenset(
-    {"int", "integer", "uint8", "uint16", "uint32", "float", "double", "number"}
-)
-BOOLEAN_FORMATS = frozenset({"bool", "boolean"})
-PRIMARY_CATEGORY_CANDIDATES: dict[str, tuple[str, ...]] = {
-    "light": ("light",),
-    "contact_sensor": ("binary_sensor",),
-    "human_sensor": ("binary_sensor", "sensor"),
-    "light_sensor": ("sensor",),
-    "curtain": ("cover",),
-    "temp_control": ("climate",),
-    "relay_switch": ("switch",),
-    "scene_panel": ("event",),
-    "knob_switch": ("event",),
-    "other": (),
-    "gateway": (),
-}
-PLATFORM_ORDER = (
-    "light",
-    "binary_sensor",
-    "sensor",
-    "event",
-    "cover",
-    "climate",
-    "switch",
-    "fan",
-    "button",
-    "select",
-    "number",
-    "text",
-)
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,44 +48,14 @@ class PropertyEvidence:
     has_value_list: bool
 
 
-_PRIMARY_PLATFORM_CONTRACTS: tuple[PlatformContract, ...] = (
-    PlatformContract("light", "supported", "light p/l/ct/c properties"),
-    PlatformContract("switch", "supported", "relay_switch p/sp properties"),
-    PlatformContract("sensor", "supported", "readable telemetry properties"),
-    PlatformContract("binary_sensor", "supported", "mv/dc/alm state properties"),
-    PlatformContract("event", "supported", "documented device events and WebSocket event frames"),
-    PlatformContract("button", "supported", "scene execution action shortcut"),
-    PlatformContract("select", "supported", "house-level room/group/scene selector helpers"),
-    PlatformContract("number", "supported", "group l/ct property controls"),
-    PlatformContract("cover", "supported", "curtain cp/tp properties"),
-    PlatformContract("climate", "supported", "temp_control ac*/rfh*/tgt properties"),
-    PlatformContract("fan", "supported", "fresh-air and fan-speed properties"),
-    PlatformContract("lock", "unsupported", "no documented Yeelight door-lock device or action contract"),
-    PlatformContract("vacuum", "unsupported", "no documented Yeelight cleaning device or action contract"),
-    PlatformContract("scene", "unsupported", "cloud scene execution uses button/select action entities"),
-    PlatformContract("text", "unsupported", "no documented writable text semantics"),
-    PlatformContract("notify", "unsupported", "no documented notification target/service"),
-    PlatformContract("media_player", "unsupported", "no documented playback/media properties"),
-    PlatformContract("humidifier", "unsupported", "no dedicated humidifier property model"),
-    PlatformContract("water_heater", "unsupported", "covered by temp_control climate when documented"),
-    PlatformContract("valve", "unsupported", "no documented valve property model"),
-    PlatformContract("alarm_control_panel", "unsupported", "no alarm panel arm/disarm contract"),
-    PlatformContract("device_tracker", "unsupported", "no presence/location device tracker semantics"),
-    PlatformContract("update", "unsupported", "no firmware update runtime contract"),
-    PlatformContract(
-        "remote",
-        "unsupported",
-        "rmt/acrc are management/config properties without a documented HA remote command set",
-    ),
-    PlatformContract("siren", "unsupported", "blink is a transient LAN action, not a persistent siren entity"),
-    PlatformContract("camera", "unsupported", "no documented camera stream/snapshot contract"),
+_PRIMARY_PLATFORM_CONTRACTS: tuple[PlatformContract, ...] = tuple(
+    PlatformContract(platform, status, evidence)
+    for platform, status, evidence in PRIMARY_PLATFORM_CONTRACT_ROWS
 )
-
-_DEFAULT_UNSUPPORTED_EVIDENCE = "no documented Yeelight property, event, or action contract"
 PLATFORM_CONTRACTS: tuple[PlatformContract, ...] = (
     _PRIMARY_PLATFORM_CONTRACTS
     + tuple(
-        PlatformContract(platform, "unsupported", _DEFAULT_UNSUPPORTED_EVIDENCE)
+        PlatformContract(platform, "unsupported", DEFAULT_UNSUPPORTED_EVIDENCE)
         for platform in sorted(
             HA_CORE_PLATFORMS - {item.platform for item in _PRIMARY_PLATFORM_CONTRACTS}
         )
@@ -168,13 +81,13 @@ def platform_candidates_for_payload(payload: Mapping[str, Any]) -> tuple[str, ..
             _extend(candidates, ("binary_sensor",))
         elif prop in READ_ONLY_SENSOR_PROPS and _read_only(evidence):
             _extend(candidates, ("sensor",))
-        elif prop == "tp" and evidence.writable:
+        elif prop in COVER_TARGET_PROPS and evidence.writable:
             _extend(candidates, ("cover",))
-        elif prop in {"acp", "aco", "acm", "actt", "acct", "acf", "rfhp", "rfhct", "rfhtt"}:
+        elif prop in CLIMATE_CANDIDATE_PROPS:
             _extend(candidates, ("climate",))
-        elif prop in {"p", "sp"} and category == "relay_switch":
+        elif prop in RELAY_SWITCH_CONTROL_PROPS and category == "relay_switch":
             _extend(candidates, ("switch",))
-        elif prop in {"p", "l", "ct", "c"} and category == "light":
+        elif prop in LIGHT_CONTROL_PROPS and category == "light":
             _extend(candidates, ("light",))
         elif evidence.writable and evidence.has_value_list:
             _extend(candidates, ("select",))
@@ -330,7 +243,10 @@ def _raw_access(raw: Mapping[str, Any]) -> tuple[bool, bool]:
 
 
 def _has_light_property_evidence(props: Mapping[str, PropertyEvidence]) -> bool:
-    return any(prop in {"p", "l", "ct", "c"} and evidence.writable for prop, evidence in props.items())
+    return any(
+        prop in LIGHT_CONTROL_PROPS and evidence.writable
+        for prop, evidence in props.items()
+    )
 
 
 def _numeric_property(evidence: PropertyEvidence) -> bool:

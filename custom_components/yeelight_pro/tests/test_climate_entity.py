@@ -25,8 +25,8 @@ def _climate_payload() -> dict:
         category="temp_control",
         component_id="air_conditioner",
         component_category="air_conditioner",
-        state={"aco": True, "acct": 24, "actt": 26},
-        params={"aco": True, "acct": 24, "actt": 26},
+        state={"acp": True, "aco": True, "acct": 24, "actt": 26},
+        params={"acp": True, "aco": True, "acct": 24, "actt": 26},
     )
 
 
@@ -89,7 +89,7 @@ async def test_set_hvac_mode_sends_power_state(
     hvac_mode: HVACMode,
     expected_power: bool,
 ) -> None:
-    """HVAC 模式应映射为 aco 开关状态。"""
+    """HVAC 模式应映射为 acp 开关状态，aco 仅表示在线状态。"""
     mock_coordinator.get_device.return_value = _climate_payload()
     climate = YeelightProClimate(mock_coordinator, "12345")
 
@@ -97,7 +97,7 @@ async def test_set_hvac_mode_sends_power_state(
 
     mock_coordinator.async_control_device.assert_awaited_once_with(
         "12345",
-        {"aco": expected_power},
+        {"acp": expected_power},
     )
 
 

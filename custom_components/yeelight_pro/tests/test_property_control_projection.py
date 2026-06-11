@@ -15,6 +15,7 @@ from custom_components.yeelight_pro.projector.property_controls import (
     project_switch_controls,
 )
 from custom_components.yeelight_pro.select import YeelightProDeviceSelect
+from custom_components.yeelight_pro.switch import YeelightProSwitch
 
 from .projection_helpers import DOMAIN, projection_payload
 
@@ -28,11 +29,13 @@ def _property_control_payload() -> dict:
         component_category="curtain",
         state={
             "tp": 40,
+            "aux_level": 25,
             "li": 1,
             "rd": "0",
         },
         params={
             "1-tp": 40,
+            "1-aux_level": 25,
             "1-li": 1,
             "1-rd": "0",
         },
@@ -48,12 +51,18 @@ def _property_control_payload() -> dict:
             "unit": "%",
         },
         {
-            "prop_id": "li",
-            "name": "指示灯",
+            "prop_id": "aux_level",
+            "name": "辅助阈值",
             "access": "read_write",
             "property_type": "int",
             "value_range": {"min": 0, "max": 100, "step": 1},
             "unit": "%",
+        },
+        {
+            "prop_id": "li",
+            "name": "指示灯",
+            "access": "read_write",
+            "property_type": "int",
         },
         {
             "prop_id": "rd",
@@ -75,14 +84,34 @@ def test_writable_value_range_projects_device_number_control() -> None:
 
     assert len(projections) == 1
     projection = projections[0]
-    assert projection.unique_id == "yeelight_pro_curtain-1_curtain_1_li_number"
-    assert projection.component_id == "curtain_1_li_number"
-    assert projection.name == "左键 指示灯"
-    assert projection.value == 1
+    assert projection.unique_id == "yeelight_pro_curtain-1_curtain_1_aux_level_number"
+    assert projection.component_id == "curtain_1_aux_level_number"
+    assert projection.name == "左键 辅助阈值"
+    assert projection.value == 25
     assert projection.native_range.min == 0
     assert projection.native_range.max == 100
     assert projection.native_range.step == 1
     assert projection.unit == "%"
+    assert projection.control_key == "1-aux_level"
+    assert projection.entity_category is None
+
+
+def test_indicator_switch_projects_device_switch_not_number() -> None:
+    """li 是文档中的指示灯开关，不应被错误暴露为 0-100 number."""
+    payload = _property_control_payload()
+
+    numbers = project_number_controls(payload, domain=DOMAIN)
+    switches = project_switch_controls(payload, domain=DOMAIN)
+
+    assert {item.prop_id for item in numbers} == {"aux_level"}
+    assert len(switches) == 1
+    projection = switches[0]
+    assert projection.unique_id == "yeelight_pro_curtain-1_curtain_1_li_switch"
+    assert projection.component_id == "curtain_1_li_switch"
+    assert projection.name == "左键 指示灯"
+    assert projection.is_on is True
+    assert projection.on_value == 1
+    assert projection.off_value == 0
     assert projection.control_key == "1-li"
     assert projection.entity_category == "config"
 
@@ -95,14 +124,14 @@ def test_numeric_component_id_projects_friendly_control_name() -> None:
     component["name"] = "1"
     payload["ha_product_model"]["components"][0]["component_id"] = "1"
     payload["ha_device_instance"]["extensions"] = {
-        "component_state_keys": {"1": {"li": "1-li"}}
+        "component_state_keys": {"1": {"aux_level": "1-aux_level"}}
     }
 
     projection = project_number_controls(payload, domain=DOMAIN)[0]
 
-    assert projection.component_id == "1_li_number"
-    assert projection.name == "左键 指示灯"
-    assert projection.control_key == "1-li"
+    assert projection.component_id == "1_aux_level_number"
+    assert projection.name == "左键 辅助阈值"
+    assert projection.control_key == "1-aux_level"
 
 
 def test_writable_value_list_projects_device_select_control() -> None:
@@ -121,6 +150,29 @@ def test_writable_value_list_projects_device_select_control() -> None:
     assert projection.value == "0"
     assert projection.control_key == "1-rd"
     assert projection.entity_category == "config"
+
+
+def test_reverse_direction_uses_registry_options_when_schema_list_is_missing() -> None:
+    """rd 的正反向枚举来自 Yeelight registry，schema 缺列表也应生成 select."""
+    payload = _property_control_payload()
+    rd_prop = next(
+        prop
+        for prop in payload["ha_product_model"]["components"][0]["properties"]
+        if prop["prop_id"] == "rd"
+    )
+    rd_prop.pop("value_list")
+
+    projections = project_select_controls(payload, domain=DOMAIN)
+
+    assert len(projections) == 1
+    projection = projections[0]
+    assert projection.component_id == "curtain_1_rd_select"
+    assert [(item.value, item.label) for item in projection.options] == [
+        ("0", "正向"),
+        ("1", "反向"),
+    ]
+    assert projection.value == "0"
+    assert projection.control_key == "1-rd"
 
 
 def test_schema_backed_auxiliary_controls_remain_available_without_read_state() -> None:
@@ -176,7 +228,7 @@ def test_main_entity_properties_are_not_projected_as_duplicate_controls() -> Non
     numbers = project_number_controls(_property_control_payload(), domain=DOMAIN)
     selects = project_select_controls(_property_control_payload(), domain=DOMAIN)
 
-    assert {item.prop_id for item in numbers} == {"li"}
+    assert {item.prop_id for item in numbers} == {"aux_level"}
     assert {item.prop_id for item in selects} == {"rd"}
 
 
@@ -278,18 +330,18 @@ async def test_device_number_write_sends_indexed_control_key(mock_coordinator) -
     number = YeelightProDeviceNumber(
         mock_coordinator,
         12345,
-        component_id="curtain_1_li_number",
+        component_id="curtain_1_aux_level_number",
     )
 
-    assert number.name == "左键 指示灯"
-    assert number.native_value == 1
-    assert number.entity_category == EntityCategory.CONFIG
+    assert number.name == "左键 辅助阈值"
+    assert number.native_value == 25
+    assert number.entity_category is None
 
     await number.async_set_native_value(30)
 
     mock_coordinator.async_control_device.assert_awaited_once_with(
         12345,
-        {"1-li": 30},
+        {"1-aux_level": 30},
     )
 
 
@@ -314,3 +366,30 @@ async def test_device_select_write_sends_raw_option_code(mock_coordinator) -> No
         12345,
         {"1-rd": "1"},
     )
+
+
+@pytest.mark.asyncio
+async def test_device_switch_write_sends_int_values_for_indicator_switch(
+    mock_coordinator,
+) -> None:
+    """int 型开关语义配置项应按 Yeelight 原始 1/0 写入."""
+    payload = _property_control_payload()
+    mock_coordinator.get_device.return_value = payload
+    mock_coordinator.async_control_device = AsyncMock()
+    switch = YeelightProSwitch(
+        mock_coordinator,
+        12345,
+        component_id="curtain_1_li_switch",
+    )
+
+    assert switch.name == "左键 指示灯"
+    assert switch.is_on is True
+    assert switch.entity_category == EntityCategory.CONFIG
+
+    await switch.async_turn_off()
+    await switch.async_turn_on()
+
+    assert mock_coordinator.async_control_device.await_args_list == [
+        ((12345, {"1-li": 0}),),
+        ((12345, {"1-li": 1}),),
+    ]

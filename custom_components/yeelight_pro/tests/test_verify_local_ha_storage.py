@@ -35,7 +35,7 @@ def test_verify_storage_checks_counts_without_raw_ids(tmp_path: Path) -> None:
     )
 
     assert report.ok
-    assert any("entity registry retained entries: 157" in fact for fact in report.facts)
+    assert any("entity registry retained entries: 158" in fact for fact in report.facts)
     assert any("config entry versions: 1.8 x 1" in fact for fact in report.facts)
     assert any("config entry titles" in fact for fact in report.facts)
     assert any("config entry unique_id isolation" in fact for fact in report.facts)
@@ -61,7 +61,7 @@ def test_verify_storage_checks_counts_without_raw_ids(tmp_path: Path) -> None:
     assert any("entity registry categories" in fact for fact in report.facts)
     assert report.metrics["entity_registry_categories"] == {
         "config": 38,
-        "diagnostic": 41,
+        "diagnostic": 42,
     }
 
 
@@ -115,9 +115,9 @@ def test_verify_storage_allows_cleanup_b_retained_disabled_entities(
     )
 
     assert report.ok
-    assert any("entity registry retained entries: 158" in fact for fact in report.facts)
+    assert any("entity registry retained entries: 159" in fact for fact in report.facts)
     assert any("entity registry disabled_by" in fact for fact in report.facts)
-    assert report.metrics["retained_entities"] == 158
+    assert report.metrics["retained_entities"] == 159
 
 
 def test_verify_storage_rejects_unsupported_platform_domain(

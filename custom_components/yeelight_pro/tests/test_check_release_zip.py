@@ -12,6 +12,7 @@ def test_release_zip_required_files_include_runtime_contracts() -> None:
     assert {
         "custom_components/yeelight_pro/capabilities/spec_correction_normalizers.py",
         "custom_components/yeelight_pro/capabilities/ha_core_platforms.py",
+        "custom_components/yeelight_pro/capabilities/platform_contract_data.py",
         "custom_components/yeelight_pro/converter/runtime_inference_helpers.py",
         "custom_components/yeelight_pro/converter/runtime_template_controls.py",
         "custom_components/yeelight_pro/converter/runtime_template_hvac.py",
@@ -44,6 +45,7 @@ def test_release_zip_required_files_include_runtime_contracts() -> None:
         "custom_components/yeelight_pro/scan_login_contract.py",
         "custom_components/yeelight_pro/projector/event_helpers.py",
         "custom_components/yeelight_pro/projector/sensor_helpers.py",
+        "custom_components/yeelight_pro/projector/sensor_metadata.py",
         "custom_components/yeelight_pro/push_contract.py",
         "custom_components/yeelight_pro/push_manager.py",
         "custom_components/yeelight_pro/push_transport.py",

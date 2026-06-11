@@ -57,6 +57,41 @@ BINARY_SENSOR_SPECS: dict[str, dict[str, str | None]] = {
         "icon": None,
         "inverted": None,
     },
+    "aco": {
+        "component_id": "ac_online",
+        "label": "空调在线",
+        "device_class": None,
+        "icon": "mdi:air-conditioner",
+        "inverted": None,
+    },
+    "rs": {
+        "component_id": "route_calibrated",
+        "label": "行程已校准",
+        "device_class": None,
+        "icon": "mdi:ray-start-end",
+        "inverted": None,
+    },
+    "trs": {
+        "component_id": "tilt_route_calibrated",
+        "label": "调光行程已校准",
+        "device_class": None,
+        "icon": "mdi:ray-start-end",
+        "inverted": None,
+    },
+    "slisaon_rdy": {
+        "component_id": "slisaon_ready",
+        "label": "支持闪断",
+        "device_class": None,
+        "icon": "mdi:flash",
+        "inverted": None,
+    },
+    "run_speed_rdy": {
+        "component_id": "run_speed_ready",
+        "label": "支持运行速度",
+        "device_class": None,
+        "icon": "mdi:speedometer",
+        "inverted": None,
+    },
 }
 
 # 情景/面板类设备类别 token

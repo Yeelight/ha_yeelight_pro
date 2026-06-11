@@ -15,6 +15,11 @@ from .const import (
     ATTR_EVENT_TYPE,
     ATTR_SOURCE_DEVICE_ID,
 )
+from .event_identity import (
+    SAFETY_EVENT_COMPONENT_ID,
+    is_safety_event_device,
+    is_safety_event_type,
+)
 
 SENSITIVE_RUNTIME_EVENT_PARAM_KEYS = frozenset(
     {"accesstoken", "deviceid", "did", "ip", "ipaddress", "mac", "macaddress", "token"}
@@ -82,6 +87,8 @@ def infer_event_component_id(
     }
     if len(matches) == 1:
         result[ATTR_COMPONENT_ID] = next(iter(matches))
+    elif is_safety_event_type(event_type) and is_safety_event_device(device_payload):
+        result[ATTR_COMPONENT_ID] = SAFETY_EVENT_COMPONENT_ID
     return result
 
 

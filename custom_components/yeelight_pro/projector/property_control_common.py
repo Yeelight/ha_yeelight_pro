@@ -10,6 +10,7 @@ from ..canonical.models import (
     HADeviceInstanceModel,
     PropertyModel,
     ValueItemModel,
+    ValueRangeModel,
 )
 from ..capabilities.registry import format_component_property_key, property_spec
 from ..device_display import channel_name_label
@@ -38,17 +39,12 @@ MAIN_ENTITY_PROPS = frozenset({
     "tp",
     "rs",
     "acp",
-    "aco",
-    "acm",
     "actt",
     "acct",
-    "acf",
     "rfhp",
     "rfhct",
     "rfhtt",
     "tgt",
-    "fa",
-    "he",
     "vmcp",
     "vmcf",
     "lv",
@@ -61,8 +57,9 @@ MAIN_ENTITY_PROPS = frozenset({
 BOOL_FORMATS = frozenset({"bool", "boolean"})
 AUXILIARY_BOOL_CONFIG_PROPS = frozenset({
     "acrc",
+    "blp",
     "keys_visible",
-    "nightMode",
+    "li",
     "ntOn",
     "temp_hidden",
     "time_hidden",
@@ -126,8 +123,65 @@ def control_available(
 
 def looks_bool(prop: PropertyModel) -> bool:
     """Return whether a property has boolean semantics."""
+    if prop.prop_id in AUXILIARY_BOOL_CONFIG_PROPS:
+        return True
     values = {prop.kind, prop.property_type, prop.format}
-    return any((item or "").lower() in BOOL_FORMATS for item in values)
+    if any((item or "").lower() in BOOL_FORMATS for item in values):
+        return True
+    spec = property_spec(prop.prop_id)
+    return bool(spec is not None and spec.data_type.lower() in BOOL_FORMATS)
+
+
+def control_value_range(prop: PropertyModel) -> ValueRangeModel | None:
+    """Return schema or registry-backed numeric range metadata."""
+    if prop.value_range is not None:
+        return prop.value_range
+    spec = property_spec(prop.prop_id)
+    if spec is None or spec.value_range is None:
+        return None
+    minimum, maximum, step = spec.value_range
+    return ValueRangeModel(
+        min=_range_value(minimum),
+        max=_range_value(maximum),
+        step=_range_value(step),
+    )
+
+
+def control_value_list(prop: PropertyModel) -> list[ValueItemModel]:
+    """Return schema or registry-backed enum metadata."""
+    if prop.value_list:
+        return prop.value_list
+    spec = property_spec(prop.prop_id)
+    if spec is None or not spec.value_list:
+        return []
+    return [
+        ValueItemModel(code=str(code), desc=to_str(label) or str(code))
+        for code, label in spec.value_list.items()
+    ]
+
+
+def control_unit(prop: PropertyModel) -> str | None:
+    """Return schema or registry-backed unit metadata."""
+    if prop.unit:
+        return prop.unit
+    spec = property_spec(prop.prop_id)
+    return spec.unit if spec is not None else None
+
+
+def switch_command_values(prop: PropertyModel) -> tuple[Any, Any]:
+    """Return raw on/off values matching the Yeelight property type."""
+    spec = property_spec(prop.prop_id)
+    data_type = prop.property_type or (spec.data_type if spec is not None else "") or ""
+    if data_type.lower() in {"int", "integer", "uint8", "uint16", "uint32"}:
+        return 1, 0
+    return True, False
+
+
+def _range_value(value: Any) -> int | None:
+    """Return the integer range value supported by canonical ValueRangeModel."""
+    if value is None:
+        return None
+    return int(value)
 
 
 def control_key(
@@ -212,6 +266,9 @@ __all__ = [
     "control_available",
     "control_key",
     "control_name",
+    "control_unit",
+    "control_value_list",
+    "control_value_range",
     "entity_category_for_property",
     "is_writable_auxiliary_bool_property",
     "is_writable_auxiliary_property",
@@ -219,5 +276,6 @@ __all__ = [
     "schema_properties",
     "select_icon",
     "select_options",
+    "switch_command_values",
     "switch_icon",
 ]

@@ -176,6 +176,47 @@ def test_power_alarm_schema_events_project_without_static_component_claim() -> N
     ]
 
 
+def test_smoke_sensor_fallback_projects_alarm_event_and_trigger() -> None:
+    """明确烟感设备无 schema events 时也应保留告警事件入口。"""
+    device = projection_payload(
+        device_id="smoke-event-1",
+        category="other",
+        component_id="basic",
+        state={},
+        component_category="basic",
+    )
+    device["name"] = "厨房烟雾传感器"
+    device["ha_product_model"]["components"][0]["events"] = []
+
+    events = project_events(device, domain=DOMAIN)
+
+    assert len(events) == 1
+    assert events[0].component_id == "safety_alarm"
+    assert events[0].name == "报警事件"
+    assert events[0].event_types == ["power_alarm", "power_normal"]
+    assert events[0].icon == "mdi:smoke-detector"
+    assert [(trigger.type, trigger.subtype) for trigger in project_device_triggers(device)] == [
+        ("safety_alarm", "power_alarm"),
+        ("safety_alarm", "power_normal"),
+    ]
+
+
+def test_plain_other_without_events_does_not_project_alarm_fallback() -> None:
+    """普通 other 设备不能仅凭无 schema 状态生成告警事件。"""
+    device = projection_payload(
+        device_id="plain-other-1",
+        category="other",
+        component_id="basic",
+        state={},
+        component_category="basic",
+    )
+    device["name"] = "普通扩展设备"
+    device["ha_product_model"]["components"][0]["events"] = []
+
+    assert project_events(device, domain=DOMAIN) == []
+    assert project_device_triggers(device) == []
+
+
 def test_relay_switch_without_declared_events_does_not_project_event() -> None:
     """普通继电器没有 product events 时不能仅凭品类生成 event。"""
     device = projection_payload(

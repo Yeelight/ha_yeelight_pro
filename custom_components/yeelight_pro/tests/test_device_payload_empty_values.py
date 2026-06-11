@@ -157,8 +157,8 @@ def test_runtime_payloads_do_not_use_conflicting_switch_schema_for_curtain() -> 
     assert candidates == {("cover", "cover")}
 
 
-def test_runtime_payloads_keep_empty_cover_and_climate_without_switches() -> None:
-    """明确窗帘/温控品类即使暂无值，也应保留正确 HA 类型而非 switch."""
+def test_runtime_payloads_keep_empty_cover_and_climate_without_main_switches() -> None:
+    """明确窗帘/温控品类无当前值时，应保留主实体和配置实体而非泛化主开关."""
     builder = DevicePayloadBuilder()
 
     data, _gateways = builder.build_runtime_payloads(
@@ -188,12 +188,12 @@ def test_runtime_payloads_keep_empty_cover_and_climate_without_switches() -> Non
 
     cover_keys = {(item.platform, item.component_id) for item in cover_candidates}
     assert ("cover", "cover") in cover_keys
-    assert ("sensor", "indicator_switch") in cover_keys
-    assert ("sensor", "reverse_direction") in cover_keys
+    assert ("switch", "curtain_li_switch") in cover_keys
+    assert ("select", "curtain_rd_select") in cover_keys
     assert ("climate", "climate") in {
         (item.platform, item.component_id) for item in climate_candidates
     }
-    assert "switch" not in {item.platform for item in cover_candidates + climate_candidates}
+    assert ("switch", "switch") not in cover_keys
     assert all(item.available is True for item in cover_candidates + climate_candidates)
 
 

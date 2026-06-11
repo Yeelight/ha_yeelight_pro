@@ -149,7 +149,7 @@ def test_temp_control_projects_climate() -> None:
         device_id="climate-1",
         category="temp_control",
         component_id="air_conditioner",
-        state={"aco": True, "acct": 24, "actt": 26},
+        state={"acp": True, "aco": True, "acct": 24, "actt": 26},
         component_category="air_conditioner",
     )
 

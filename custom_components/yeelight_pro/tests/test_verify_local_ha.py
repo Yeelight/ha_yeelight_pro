@@ -96,6 +96,14 @@ def test_required_modules_include_spec_correction_normalizers() -> None:
     )
 
 
+def test_required_modules_include_platform_contract_data() -> None:
+    """本地 HA 安装态必须保留拆分后的平台合同数据模块."""
+    assert (
+        "custom_components.yeelight_pro.capabilities.platform_contract_data"
+        in REQUIRED_RUNTIME_MODULES
+    )
+
+
 def test_required_modules_include_runtime_inference_helper() -> None:
     """本地 HA 安装态必须保留运行时推断 helper."""
     assert (
@@ -152,6 +160,10 @@ def test_required_modules_include_sensor_projector_helper() -> None:
     """本地 HA 安装态必须保留拆分后的 sensor projector helper."""
     assert (
         "custom_components.yeelight_pro.projector.sensor_helpers"
+        in REQUIRED_RUNTIME_MODULES
+    )
+    assert (
+        "custom_components.yeelight_pro.projector.sensor_metadata"
         in REQUIRED_RUNTIME_MODULES
     )
 

@@ -323,7 +323,7 @@ def test_schema_unknown_actions_do_not_create_device_buttons() -> None:
 
 
 def test_schema_writable_auxiliary_properties_create_control_candidates() -> None:
-    """可写辅助属性应按类型进入 switch/number/select 生命周期候选集合."""
+    """可写辅助属性应按类型进入 switch/select 生命周期候选集合."""
     payload = _light_payload()
     payload["device_id"] = "aux-device-1"
     payload["ha_device_instance"]["device_id"] = "aux-device-1"
@@ -349,17 +349,12 @@ def test_schema_writable_auxiliary_properties_create_control_candidates() -> Non
             "name": "指示灯",
             "access": "read_write",
             "property_type": "int",
-            "value_range": {"min": 0, "max": 100, "step": 1},
         },
         {
             "prop_id": "rd",
             "name": "电机方向",
             "access": "read_write",
-            "property_type": "enum",
-            "value_list": [
-                {"code": "0", "desc": "正向"},
-                {"code": "1", "desc": "反向"},
-            ],
+            "property_type": "int",
         },
     ]
 
@@ -369,6 +364,6 @@ def test_schema_writable_auxiliary_properties_create_control_candidates() -> Non
     }
 
     assert ("switch", "yeelight_pro_aux-device-1_main_light_acrc_switch") in candidates
-    assert ("number", "yeelight_pro_aux-device-1_main_light_li_number") in candidates
+    assert ("switch", "yeelight_pro_aux-device-1_main_light_li_switch") in candidates
     assert ("select", "yeelight_pro_aux-device-1_main_light_rd_select") in candidates
     assert not any(unique_id.endswith("_l_number") for _platform, unique_id in candidates)

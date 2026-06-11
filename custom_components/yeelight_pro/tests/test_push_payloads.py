@@ -186,6 +186,26 @@ def test_infer_event_component_id_keeps_fallback_on_ambiguous_match() -> None:
     assert inferred[ATTR_COMPONENT_ID] == "node_type_2"
 
 
+def test_infer_event_component_id_routes_smoke_alarm_fallback() -> None:
+    """烟感告警事件无 schema 组件时应路由到安全事件实体。"""
+    payload = {
+        ATTR_SOURCE_DEVICE_ID: "311931214",
+        ATTR_COMPONENT_ID: "push_event",
+        ATTR_EVENT_TYPE: "power.alarm",
+    }
+    device_payload = {
+        "name": "厨房烟雾传感器",
+        "category": "light",
+        "iot_category": "other",
+        "ha_product_model": {"components": []},
+    }
+
+    inferred = infer_event_component_id(payload, device_payload)
+
+    assert inferred[ATTR_COMPONENT_ID] == "safety_alarm"
+    assert payload[ATTR_COMPONENT_ID] == "push_event"
+
+
 def test_push_payload_rejects_invalid_nodes_shape() -> None:
     """无效 nodes 不应被静默当作空推送吞掉."""
     with pytest.raises(HomeAssistantError):

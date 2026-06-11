@@ -157,6 +157,7 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         "FORBIDDEN_SUFFIXES": "release zip generated suffix guard",
         "REQUIRED_FILES": "release zip required runtime file guard",
         "entity_category.py": "entity category helper zip required file guard",
+        "platform_contract_data.py": "platform contract data zip required file guard",
         "client_node_api.py": "Open API node helper zip required file guard",
         "client_node_base.py": "Open API node base helper zip required file guard",
         "client_node_lists.py": "Open API node list helper zip required file guard",
@@ -179,11 +180,13 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         "runtime_templates.py": "runtime template facade zip required file guard",
         "runtime_subdevices.py": "OpenAPI sub-device helper zip required file guard",
         "scan_login_contract.py": "scan-login contract zip required file guard",
+        "event_identity.py": "event identity helper zip required file guard",
         "projector/event_helpers.py": "event projector helper zip required file guard",
         "projector/property_control_common.py": (
             "property control common helper zip required file guard"
         ),
         "projector/sensor_helpers.py": "sensor projector helper zip required file guard",
+        "projector/sensor_metadata.py": "sensor metadata helper zip required file guard",
         "name.endswith(\"/\")": "release zip directory entry guard",
         "\"..\" in path.parts": "release zip ZipSlip guard",
         "path.is_absolute()": "release zip absolute path guard",

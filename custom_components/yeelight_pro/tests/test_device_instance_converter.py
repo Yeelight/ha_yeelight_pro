@@ -264,3 +264,48 @@ def test_device_converter_excludes_global_config_and_info_state() -> None:
 
     assert [component.component_id for component in device.components] == ["light"]
     assert device.components[0].state == {"p": True, "l": 70}
+
+
+def test_device_converter_preserves_documented_component_config_state() -> None:
+    """普通组件的文档化配置属性应进入 canonical state 供配置实体投影."""
+    product = YeelightProductSchemaConverter().convert(
+        {
+            "pid": 1005,
+            "name": "Curtain with config",
+            "category": "curtain",
+            "components": [
+                {
+                    "cid": 12,
+                    "name": "curtain",
+                    "type": 0,
+                    "category": "curtain",
+                    "index": 1,
+                    "properties": [
+                        {"propId": "cp", "access": "read"},
+                        {"propId": "tp", "operators": ["set"]},
+                        {"propId": "li", "type": 1, "operators": ["set"]},
+                        {"propId": "rd", "type": 1, "operators": ["set"]},
+                    ],
+                }
+            ],
+        }
+    )
+
+    device = YeelightLanDeviceInstanceConverter().convert(
+        {
+            "id": "curtain-config",
+            "name": "Curtain Config",
+            "pid": 1005,
+            "online": True,
+            "params": {
+                "1-cp": 20,
+                "1-tp": 80,
+                "1-li": 1,
+                "1-rd": 0,
+            },
+        },
+        product_model=product,
+    )
+
+    assert [component.component_id for component in device.components] == ["curtain"]
+    assert device.components[0].state == {"cp": 20, "tp": 80, "li": 1, "rd": 0}

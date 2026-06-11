@@ -109,8 +109,8 @@ def test_verify_runtime_entity_counts_accepts_active_distribution() -> None:
     )
 
     assert report.ok
-    assert any("runtime active entities: 157" in fact for fact in report.facts)
-    assert report.metrics["runtime_entities"] == 157
+    assert any("runtime active entities: 158" in fact for fact in report.facts)
+    assert report.metrics["runtime_entities"] == 158
     assert report.metrics["runtime_entity_domains"] == dict(
         sorted(DEFAULT_ENTITY_COUNTS.items())
     )

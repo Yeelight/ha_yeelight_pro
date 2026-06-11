@@ -8,6 +8,7 @@ from homeassistant.components.climate import ClimateEntity, HVACMode
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -19,6 +20,9 @@ from .entity_errors import raise_service_error
 from .projector.climate import HAClimateProjection, project_climate
 
 _LOGGER = logging.getLogger(__name__)
+ERROR_CLIMATE_PROJECTION_UNAVAILABLE = "无法解析温控投影"
+ERROR_CLIMATE_TARGET_UNAVAILABLE = "设备未声明可写目标温度"
+ERROR_CLIMATE_POWER_UNAVAILABLE = "设备未声明可写温控开关"
 
 
 async def async_setup_entry(
@@ -144,20 +148,30 @@ class YeelightProClimate(CoordinatorEntity, ClimateEntity):
         temperature = kwargs.get("temperature")
         if temperature is None:
             return
+        projection = self._projection
+        if projection is None:
+            raise HomeAssistantError(ERROR_CLIMATE_PROJECTION_UNAVAILABLE)
+        if projection.target_temperature_key is None:
+            raise HomeAssistantError(ERROR_CLIMATE_TARGET_UNAVAILABLE)
         try:
             await self.coordinator.async_control_device(
                 self._device_id,
-                {"actt": float(temperature)},
+                {projection.target_temperature_key: float(temperature)},
             )
         except YeelightProError as err:
             raise_service_error("climate.set_temperature", err)
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """设置 HVAC 模式。"""
+        projection = self._projection
+        if projection is None:
+            raise HomeAssistantError(ERROR_CLIMATE_PROJECTION_UNAVAILABLE)
+        if projection.power_key is None:
+            raise HomeAssistantError(ERROR_CLIMATE_POWER_UNAVAILABLE)
         try:
             await self.coordinator.async_control_device(
                 self._device_id,
-                {"aco": hvac_mode != HVACMode.OFF},
+                {projection.power_key: hvac_mode != HVACMode.OFF},
             )
         except YeelightProError as err:
             raise_service_error("climate.set_hvac_mode", err)

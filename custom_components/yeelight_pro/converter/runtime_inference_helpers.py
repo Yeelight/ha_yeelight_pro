@@ -5,6 +5,11 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from ..canonical.models import ComponentModel, EventModel, PropertyModel, ValueRangeModel
+from ..event_identity import (
+    SAFETY_EVENT_COMPONENT_ID,
+    SAFETY_EVENT_TYPES,
+    is_safety_event_device,
+)
 from .runtime_templates import INDEXED_SWITCH_KEY_RE, RUNTIME_PROPERTY_TEMPLATES
 from .runtime_subdevices import infer_subdevice_components as _infer_subdevice_components
 
@@ -29,11 +34,11 @@ def infer_runtime_components(payload: Mapping[str, Any]) -> list[ComponentModel]
             return indexed_components
 
     properties = infer_runtime_properties(template_key, params, payload=payload)
-    events = infer_runtime_events(template_key)
+    events = infer_runtime_events(template_key, payload=payload)
     if not properties and not events:
         return []
 
-    component_id = default_component_id(category or device_type)
+    component_id = _runtime_event_component_id(template_key, payload)
     return [
         ComponentModel(
             component_id=component_id,
@@ -116,11 +121,15 @@ def infer_runtime_properties(
     return properties
 
 
-def infer_runtime_events(template_key: str | None) -> list[EventModel]:
+def infer_runtime_events(
+    template_key: str | None,
+    *,
+    payload: Mapping[str, Any] | None = None,
+) -> list[EventModel]:
     """根据运行时品类补齐文档支持的事件模型。"""
     return [
         EventModel(name=name, semantic=name, params=[])
-        for name in RUNTIME_EVENT_TEMPLATES.get(template_key or "", ())
+        for name in _runtime_event_types(template_key, payload)
     ]
 
 
@@ -198,7 +207,7 @@ def _can_infer_empty_template(
 ) -> bool:
     """Return true for documented categories where identity alone implies schema."""
     if template_key == "other":
-        return _has_sensor_identity_hint(payload)
+        return _has_sensor_identity_hint(payload) or is_safety_event_device(payload)
     return template_key in {
         "binary_sensor",
         "climate",
@@ -273,6 +282,16 @@ def _sensor_identity_property_ids(payload: Mapping[str, Any] | None) -> set[str]
     return props
 
 
+def _runtime_event_component_id(
+    template_key: str | None,
+    payload: Mapping[str, Any],
+) -> str:
+    """Return the component id implied by runtime-only event identity."""
+    if template_key == "other" and is_safety_event_device(payload):
+        return SAFETY_EVENT_COMPONENT_ID
+    return default_component_id(template_key)
+
+
 def _runtime_property_ids_from_params(params: Mapping[str, Any]) -> set[str]:
     """Return property ids from direct and indexed runtime params."""
     return {str(prop).split("-", 1)[-1] for prop in params}
@@ -305,6 +324,16 @@ RUNTIME_EVENT_TEMPLATES = {
     "scene_panel": ("click", "hold", "release_after_hold"),
     "knob_switch": ("knob_spin", "multi_spin", "absolut_spin"),
 }
+
+
+def _runtime_event_types(
+    template_key: str | None,
+    payload: Mapping[str, Any] | None,
+) -> tuple[str, ...]:
+    """Return runtime fallback event types for event-only devices."""
+    if template_key == "other" and is_safety_event_device(payload):
+        return SAFETY_EVENT_TYPES
+    return RUNTIME_EVENT_TEMPLATES.get(template_key or "", ())
 
 
 def infer_subdevice_components(payload: Mapping[str, Any]) -> list[ComponentModel]:
