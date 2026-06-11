@@ -49,6 +49,7 @@ IOT_COMPONENT_SPECS: tuple[IoTComponentSpec, ...] = (
     IoTComponentSpec(21, "contact sensor", "接触式传感器", "contact_sensor", "normal", "binary_sensor", ("alm", "dc"), ("door_open", "door_close", "door_alarm", "door_normal")),
     IoTComponentSpec(23, "human body infrared sensor", "人体红外传感器", "human_sensor", "normal", "binary_sensor", ("mv", "luminance"), ("motion_detected", "motion_undetected", "human_enter", "human_leave")),
     IoTComponentSpec(24, "ambient light sensor", "环境光传感器", "light_sensor", "normal", "sensor", ("luminance",)),
+    IoTComponentSpec(25, "tof sensor", "TOF传感器", "human_sensor", "normal", "binary_sensor", (), ("handwave",)),
     IoTComponentSpec(39, "zebra blinds", "梦幻帘", "curtain", "normal", "cover", ("cp", "tp", "li")),
     IoTComponentSpec(42, "fresh air", "新风", "temp_control", "normal", "fan", ("vmcp", "vmcf")),
     IoTComponentSpec(43, "floor heating", "地暖", "temp_control", "normal", "climate", ("rfhp", "rfhct", "rfhtt")),
@@ -183,6 +184,7 @@ IOT_EVENT_SPECS: tuple[IoTEventSpec, ...] = (
     IoTEventSpec("传感器正常", "power_normal", 15, "传感器恢复正常", ("powernormal", "power_normal")),
     IoTEventSpec("有人进入", "human_enter", 22, "有人进入", ("humanenter", "human_enter", "human enter", "approach.true"), ("human body infrared sensor",)),
     IoTEventSpec("有人离开", "human_leave", 23, "有人离开", ("humanleave", "human_leave", "human leave", "approach.false"), ("human body infrared sensor",)),
+    IoTEventSpec("挥手", "handwave", 24, "TOF传感器挥手", ("handwave", "hand_wave"), ("tof sensor",)),
     IoTEventSpec("多圈旋转", "multi_spin", None, "多圈旋转", ("multispin", "multi_spin")),
     IoTEventSpec("绝对旋转", "absolut_spin", None, "绝对旋转", ("absolutspin", "absolut_spin", "absolute_spin")),
 )

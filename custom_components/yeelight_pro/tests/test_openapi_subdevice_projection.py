@@ -65,6 +65,7 @@ def test_openapi_subdevice_lights_project_multiple_light_entities() -> None:
     }
 
     assert [light.component_id for light in lights] == ["light_1", "light_2"]
+    assert [light.name for light in lights] == ["主灯", "氛围灯"]
     assert lights[0].supported_color_modes == {ColorMode.COLOR_TEMP}
     assert lights[0].brightness == 203
     assert lights[0].color_temp == 250
@@ -77,6 +78,38 @@ def test_openapi_subdevice_lights_project_multiple_light_entities() -> None:
     assert lights[1].rgb_color == (0x33, 0x66, 0x99)
     assert ("light", "yeelight_pro_9001_light_1") in candidates
     assert ("light", "yeelight_pro_9001_light_2") in candidates
+
+
+def test_openapi_subdevice_lights_use_channel_names_without_component_desc() -> None:
+    """多路 light 没有组件描述时，应显示友好的第 N 路而不是照明/裸数字."""
+    device = _build_device(
+        {
+            "id": 9018,
+            "name": "走廊双路灯",
+            "category": "light",
+            "subDeviceList": [
+                {
+                    "index": 1,
+                    "category": "light",
+                    "properties": [
+                        _prop("p", True, "开关", "boolean", operators=["set"]),
+                    ],
+                },
+                {
+                    "index": 2,
+                    "category": "light",
+                    "properties": [
+                        _prop("p", False, "开关", "boolean", operators=["set"]),
+                    ],
+                },
+            ],
+        }
+    )
+
+    lights = project_lights(device, domain=DOMAIN)
+
+    assert [light.component_id for light in lights] == ["light_1", "light_2"]
+    assert [light.name for light in lights] == ["第 1 路", "第 2 路"]
 
 
 def test_openapi_subdevice_component_metadata_reaches_runtime_instance() -> None:

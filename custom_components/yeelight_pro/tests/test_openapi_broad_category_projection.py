@@ -161,6 +161,25 @@ def test_single_openapi_light_uses_device_name_as_primary_entity() -> None:
     assert light.name is None
 
 
+def test_light_component_id_never_generates_generic_light_name() -> None:
+    """技术组件 id 不能生成照明这类泛名，避免 registry 保留无意义 original_name."""
+    device = _build_device(
+        {
+            "id": 9019,
+            "name": "卧室灯带",
+            "category": "light",
+            "properties": [
+                _prop("p", True, "开关", "boolean", operators=["set", "toggle"]),
+            ],
+        }
+    )
+
+    [light] = project_lights(device, domain=DOMAIN)
+
+    assert light.component_id == "light"
+    assert light.name is None
+
+
 def test_openapi_double_switch_ignores_extra_third_subdevice() -> None:
     """双键开关的 subDeviceList 如果带第三路残留，也只生成两路实体."""
     device = _build_device(

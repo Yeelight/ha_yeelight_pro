@@ -135,6 +135,49 @@ async def async_try_lan_execute_scene(
     )
 
 
+async def async_try_lan_simulate_event(
+    lan_runtime: Any,
+    *,
+    device_id: int,
+    event_type: str,
+    params: Mapping[str, Any] | None = None,
+) -> bool:
+    """Send a virtual sensor event simulation over LAN.
+
+    协议规范：gateway_set.event 用于模拟传感器事件触发。
+    event_type 示例: "panel.click", "motion.true", "contact.open"
+    params 示例: {"key": 3, "count": 1}
+    """
+    node: dict[str, Any] = {
+        "id": device_id,
+        "nt": 2,
+        "value": event_type,
+    }
+    if params:
+        node["params"] = dict(params)
+    if not _lan_runtime_connected(lan_runtime):
+        return False
+    send = getattr(lan_runtime, "async_send_and_wait", None)
+    if not callable(send):
+        return False
+    builder = getattr(lan_runtime, "_builder", None)
+    if builder is None:
+        return False
+    message = builder.set_event(nodes=[node])
+    try:
+        ack = await send(message)
+    except YeelightProError:
+        raise
+    except Exception as err:
+        raise CommandError(
+            f"Failed to simulate event over LAN: {safe_error_summary(err)}"
+        ) from None
+    if isinstance(ack, Mapping) and ack.get("result") == "error":
+        error_data = ack.get("data", {})
+        raise CommandError(f"LAN simulate event rejected: {error_data}")
+    return True
+
+
 async def _async_try_send_lan_properties(
     lan_runtime: Any,
     *,
@@ -202,5 +245,6 @@ __all__ = [
     "async_try_lan_control_device",
     "async_try_lan_control_group",
     "async_try_lan_execute_scene",
+    "async_try_lan_simulate_event",
     "async_try_lan_toggle_device",
 ]

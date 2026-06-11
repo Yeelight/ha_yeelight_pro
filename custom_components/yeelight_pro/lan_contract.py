@@ -7,6 +7,10 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .lan_methods import (
+    ALL_POST_METHODS,
+    LAN_DEVICE_DISCOVERY_MESSAGE,
+    METHOD_DEVICE_GET_TOPOLOGY,
+    METHOD_DEVICE_SET_PROP,
     METHOD_GET_GROUP,
     METHOD_GET_NODE,
     METHOD_GET_ROOM,
@@ -74,6 +78,29 @@ class LanMessageBuilder:
             nodes=nodes,
             scenes=scenes,
         )
+
+    # WiFi 全面屏设备方法（pid=2）
+
+    def device_get_topology(self) -> dict[str, Any]:
+        """Build a WiFi full-screen topology request."""
+        return _base_message(self._claim_id(), METHOD_DEVICE_GET_TOPOLOGY)
+
+    def device_set_properties(
+        self,
+        nodes: list[Mapping[str, Any]],
+    ) -> dict[str, Any]:
+        """Build a WiFi full-screen property-control request."""
+        message = _base_message(self._claim_id(), METHOD_DEVICE_SET_PROP)
+        if nodes:
+            message["nodes"] = [dict(node) for node in nodes]
+        return message
+
+    def set_event(
+        self,
+        nodes: list[Mapping[str, Any]],
+    ) -> dict[str, Any]:
+        """Build a virtual sensor event simulation request."""
+        return build_set_event_message(self._claim_id(), nodes=nodes)
 
     def _claim_id(self) -> int:
         """Return current id and advance the internal counter."""
@@ -176,13 +203,26 @@ def build_set_properties_message(
     return message
 
 
+def build_set_event_message(
+    message_id: int,
+    *,
+    nodes: list[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Build a LAN virtual sensor event simulation request.
+
+    协议规范：gateway_set.event 用于模拟传感器事件触发。
+    nodes 格式：[{"id": 331915, "nt": 2, "value": "panel.click", "params": {"key": 3, "count": 1}}]
+    """
+    if not nodes:
+        raise ValueError("Yeelight Pro LAN event request requires nodes")
+    message = _base_message(message_id, METHOD_SET_EVENT)
+    message["nodes"] = [dict(node) for node in nodes]
+    return message
+
+
 def is_lan_push_message(message: Mapping[str, Any]) -> bool:
     """Return whether a message is a gateway-to-client push frame."""
-    return message.get("method") in {
-        METHOD_POST_TOPOLOGY,
-        METHOD_POST_PROP,
-        METHOD_POST_EVENT,
-    }
+    return message.get("method") in ALL_POST_METHODS
 
 
 def is_lan_ack_response(message: Mapping[str, Any]) -> bool:
@@ -245,6 +285,7 @@ __all__ = [
     "build_get_room_message",
     "build_get_scene_message",
     "build_get_topology_message",
+    "build_set_event_message",
     "build_set_properties_message",
     "decode_lan_frames",
     "encode_lan_frame",

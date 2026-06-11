@@ -264,24 +264,47 @@ def _project_icon(
 
 def _project_light_name(component: ComponentInstanceModel, *, total: int = 1) -> str | None:
     """从组件 ID 推断灯光显示名称。"""
-    desc = to_str(getattr(component, "desc", None))
-    if desc and total > 1:
-        return desc.removesuffix("组件")
+    friendly_name = _friendly_component_name(component)
+    if friendly_name and total > 1:
+        return friendly_name
 
     index = component_index(component.component_id)
     if index is not None:
-        if total <= 1:
-            return None
-        return f"照明 {index}"
+        return _indexed_channel_name(index, total=total)
 
     lowered = component.component_id.lower()
     if lowered in {"light", "main", "main_light"}:
         return None
     if lowered.startswith("light_"):
-        return lowered.removeprefix("light_").replace("_", " ").strip() or None
+        suffix = lowered.removeprefix("light_").strip("_")
+        if suffix.isdigit():
+            return _indexed_channel_name(to_int(suffix), total=total)
+        return humanize_component_id(suffix)
     if lowered.startswith("light"):
-        return None if total <= 1 else "照明"
+        suffix = lowered.removeprefix("light")
+        if suffix.isdigit():
+            return _indexed_channel_name(to_int(suffix), total=total)
+        return None
     return humanize_component_id(component.component_id)
+
+
+def _indexed_channel_name(index: int | None, *, total: int) -> str | None:
+    """为多路灯光生成稳定的通道名，单路主实体交给设备名承载。"""
+    if index is None or total <= 1:
+        return None
+    return f"第 {index} 路"
+
+
+def _friendly_component_name(component: ComponentInstanceModel) -> str | None:
+    """返回来自产品 schema 的组件友好名称，过滤技术占位名。"""
+    for value in (getattr(component, "desc", None), getattr(component, "name", None)):
+        text = to_str(value)
+        if not text:
+            continue
+        friendly = text.removesuffix("组件").strip()
+        if friendly and friendly.lower() not in {"light", "main", "main_light"}:
+            return friendly
+    return None
 
 
 def _has_brightness_capability(features: set[str], state: Mapping[str, Any]) -> bool:
