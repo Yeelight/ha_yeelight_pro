@@ -5,13 +5,15 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from ..canonical.models import ComponentModel, EventModel, PropertyModel, ValueRangeModel
-from ..event_identity import (
-    SAFETY_EVENT_COMPONENT_ID,
-    SAFETY_EVENT_TYPES,
-    is_safety_event_device,
-)
+from ..capabilities.events import normalize_event_type
 from .runtime_templates import INDEXED_SWITCH_KEY_RE, RUNTIME_PROPERTY_TEMPLATES
 from .runtime_subdevices import infer_subdevice_components as _infer_subdevice_components
+
+MINIMAL_EMPTY_TEMPLATE_PROPERTIES = {
+    "light": {"p"},
+    "relay_switch": {"p"},
+    "switch": {"p"},
+}
 
 
 def infer_runtime_components(payload: Mapping[str, Any]) -> list[ComponentModel]:
@@ -35,6 +37,8 @@ def infer_runtime_components(payload: Mapping[str, Any]) -> list[ComponentModel]
 
     properties = infer_runtime_properties(template_key, params, payload=payload)
     events = infer_runtime_events(template_key, payload=payload)
+    if not events:
+        events = infer_openapi_events(payload)
     if not properties and not events:
         return []
 
@@ -44,7 +48,7 @@ def infer_runtime_components(payload: Mapping[str, Any]) -> list[ComponentModel]
             component_id=component_id,
             name=component_id,
             component_type="custom",
-            category=category or device_type,
+            category=template_key or category or device_type,
             capabilities=infer_runtime_capabilities(template_key, properties),
             properties=properties,
             events=events,
@@ -106,6 +110,8 @@ def infer_runtime_properties(
     source_props: set[str]
     if params:
         source_props = _runtime_property_ids_from_params(params)
+    elif _payload_event_models(payload):
+        source_props = set()
     elif _can_infer_empty_template(template_key, payload=payload):
         source_props = _empty_template_property_ids(template_key, payload, templates)
     else:
@@ -127,10 +133,37 @@ def infer_runtime_events(
     payload: Mapping[str, Any] | None = None,
 ) -> list[EventModel]:
     """根据运行时品类补齐文档支持的事件模型。"""
+    payload_events = _payload_event_models(payload)
+    if payload_events:
+        return payload_events
     return [
         EventModel(name=name, semantic=name, params=[])
         for name in _runtime_event_types(template_key, payload)
     ]
+
+
+def infer_openapi_events(payload: Mapping[str, Any]) -> list[EventModel]:
+    """Build runtime events from explicit OpenAPI event rows."""
+    projected: list[EventModel] = []
+    seen: set[str] = set()
+    for event in payload.get("events") or []:
+        if not isinstance(event, Mapping):
+            continue
+        event_type = _runtime_event_type(event)
+        key = event_type or string_value(event.get("name")) or string_value(event.get("id"))
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        projected.append(
+            EventModel(
+                event_id=_int_value(event.get("eventId", event.get("id"))),
+                name=string_value(event.get("name")) or event_type,
+                desc=string_value(event.get("desc")),
+                semantic=event_type,
+                params=[],
+            )
+        )
+    return projected
 
 
 def build_runtime_property_model(
@@ -207,9 +240,8 @@ def _can_infer_empty_template(
 ) -> bool:
     """Return true for documented categories where identity alone implies schema."""
     if template_key == "other":
-        return _has_sensor_identity_hint(payload) or is_safety_event_device(payload)
+        return False
     return template_key in {
-        "binary_sensor",
         "climate",
         "contact_sensor",
         "cover",
@@ -221,35 +253,9 @@ def _can_infer_empty_template(
         "knob_switch",
         "relay_switch",
         "scene_panel",
-        "sensor",
         "switch",
         "temp_control",
     }
-
-
-def _has_sensor_identity_hint(payload: Mapping[str, Any] | None) -> bool:
-    """Return true when names imply documented read-only sensor properties."""
-    if payload is None:
-        return False
-    text = " ".join(
-        value
-        for key in ("name", "deviceName", "device_name", "n", "modelName", "model_name")
-        if (value := string_value(payload.get(key)))
-    ).lower()
-    return any(
-        token in text
-        for token in (
-            "温湿度",
-            "温度传感",
-            "湿度传感",
-            "照度",
-            "光照",
-            "temperature sensor",
-            "humidity sensor",
-            "illuminance",
-            "light sensor",
-        )
-    )
 
 
 def _empty_template_property_ids(
@@ -258,28 +264,9 @@ def _empty_template_property_ids(
     templates: Mapping[str, Any],
 ) -> set[str]:
     """Return precise empty-template props for broad sensor fallbacks."""
-    if template_key != "other":
-        return set(templates)
-    return _sensor_identity_property_ids(payload)
-
-
-def _sensor_identity_property_ids(payload: Mapping[str, Any] | None) -> set[str]:
-    """Return documented sensor props implied by names when values are absent."""
-    if payload is None:
-        return set()
-    text = " ".join(
-        value
-        for key in ("name", "deviceName", "device_name", "n", "modelName", "model_name")
-        if (value := string_value(payload.get(key)))
-    ).lower()
-    props: set[str] = set()
-    if any(token in text for token in ("温湿度", "温度传感", "temperature sensor")):
-        props.add("t")
-    if any(token in text for token in ("温湿度", "湿度传感", "humidity sensor")):
-        props.add("h")
-    if any(token in text for token in ("照度", "光照", "illuminance", "light sensor")):
-        props.add("luminance")
-    return props
+    if template_key in MINIMAL_EMPTY_TEMPLATE_PROPERTIES:
+        return set(MINIMAL_EMPTY_TEMPLATE_PROPERTIES[template_key])
+    return set(templates) if template_key != "other" else set()
 
 
 def _runtime_event_component_id(
@@ -287,8 +274,6 @@ def _runtime_event_component_id(
     payload: Mapping[str, Any],
 ) -> str:
     """Return the component id implied by runtime-only event identity."""
-    if template_key == "other" and is_safety_event_device(payload):
-        return SAFETY_EVENT_COMPONENT_ID
     return default_component_id(template_key)
 
 
@@ -326,13 +311,42 @@ RUNTIME_EVENT_TEMPLATES = {
 }
 
 
+def _payload_event_models(payload: Mapping[str, Any] | None) -> list[EventModel]:
+    """Convert explicit OpenAPI event rows into canonical event models."""
+    if not isinstance(payload, Mapping):
+        return []
+    projected: list[EventModel] = []
+    seen: set[str] = set()
+    for event in payload.get("events") or []:
+        if not isinstance(event, Mapping):
+            continue
+        name = string_value(event.get("name"))
+        normalized = (
+            normalize_event_type(name)
+            or normalize_event_type(event.get("semantic"))
+            or normalize_event_type(event.get("id", event.get("eventId")))
+        )
+        key = normalized or name or string_value(event.get("id", event.get("eventId")))
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        projected.append(
+            EventModel(
+                event_id=_int_value(event.get("id", event.get("eventId"))),
+                name=name,
+                desc=string_value(event.get("desc")),
+                semantic=normalized,
+                params=[],
+            )
+        )
+    return projected
+
+
 def _runtime_event_types(
     template_key: str | None,
     payload: Mapping[str, Any] | None,
 ) -> tuple[str, ...]:
     """Return runtime fallback event types for event-only devices."""
-    if template_key == "other" and is_safety_event_device(payload):
-        return SAFETY_EVENT_TYPES
     return RUNTIME_EVENT_TEMPLATES.get(template_key or "", ())
 
 
@@ -355,10 +369,28 @@ def string_value(value: Any) -> str | None:
     return text or None
 
 
+def _runtime_event_type(event: Mapping[str, Any]) -> str | None:
+    """Normalize explicit OpenAPI event metadata."""
+    return (
+        normalize_event_type(event.get("semantic"))
+        or normalize_event_type(event.get("name"))
+        or normalize_event_type(event.get("desc"))
+        or normalize_event_type(event.get("eventId", event.get("id")))
+    )
+
+
+def _int_value(value: Any) -> int | None:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 __all__ = [
     "build_runtime_property_model",
     "default_component_id",
     "infer_indexed_switch_components",
+    "infer_openapi_events",
     "infer_runtime_capabilities",
     "infer_subdevice_components",
     "infer_runtime_components",

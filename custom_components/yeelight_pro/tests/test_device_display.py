@@ -49,11 +49,12 @@ def test_device_type_label_uses_iot_category_not_ha_sensor_platform() -> None:
     assert device_type_label({"category": "light_sensor"}) == "照度传感器"
 
 
-def test_sensor_registry_models_are_not_generic_fallbacks() -> None:
-    """传感器真实品类应进入 HA device registry model，而不是 Yeelight Pro 设备."""
+def test_sensor_registry_models_require_category_or_property_evidence() -> None:
+    """Registry model 不能只凭用户设备名推断传感器类型。"""
     assert not is_generic_model_label("人体传感器")
-    assert registry_model_value({"name": "客厅人体传感器"}, "Yeelight Pro 设备") == "人体传感器"
-    assert registry_model_value({"name": "玄关门磁传感器"}, "Yeelight Pro 设备") == "门磁传感器"
+    assert registry_model_value({"name": "客厅人体传感器"}, "Yeelight Pro 设备") == "Yeelight Pro 设备"
+    assert registry_model_value({"category": "human_sensor"}, "Yeelight Pro 设备") == "人体传感器"
+    assert registry_model_value({"params": {"dc": True}}, "Yeelight Pro 设备") == "门磁传感器"
 
 
 def test_friendly_specific_model_name_never_returns_broad_registry_model() -> None:
@@ -67,25 +68,11 @@ def test_friendly_specific_model_name_never_returns_broad_registry_model() -> No
         assert not is_generic_model_label(friendly_specific_model_name(payload))
 
 
-def test_device_type_label_refines_common_names_before_broad_category() -> None:
-    """设备名能明确表达产品形态时，不应回退到 light/relay_switch 大类."""
-    assert device_type_label({"category": "light", "name": "书房台灯"}) == "台灯"
-    assert device_type_label({"category": "light", "name": "餐厅吊灯"}) == "吊灯"
-    assert device_type_label({"category": "light", "name": "卫生间镜前灯"}) == "镜前灯"
-    assert device_type_label({"category": "light", "name": "厨房操作台灯"}) == "操作台灯"
-    assert device_type_label({"category": "light", "name": "玄关感应夜灯"}) == "感应夜灯"
-    assert device_type_label({"category": "light", "name": "主卧衣柜灯"}) == "衣柜灯"
-    assert device_type_label({"category": "light", "name": "阳台氛围灯"}) == "氛围灯"
-    assert device_type_label({"category": "light", "name": "主卧床头灯"}) == "床头灯"
-    assert device_type_label({"category": "light", "name": "客厅主灯"}) == "主灯"
-    assert device_type_label({
-        "category": "relay_switch",
-        "name": "厨房智能开关",
-    }) == "智能开关"
-    assert device_type_label({
-        "category": "temp_control",
-        "name": "卫生间暖风机",
-    }) == "暖风机"
+def test_device_type_label_uses_category_not_user_name() -> None:
+    """设备类型展示不能被用户自定义名称改写。"""
+    assert device_type_label({"category": "light", "name": "书房台灯"}) == "易来照明设备"
+    assert device_type_label({"category": "relay_switch", "name": "厨房智能开关"}) == "易来开关设备"
+    assert device_type_label({"category": "temp_control", "name": "卫生间暖风机"}) == "易来温控设备"
 
 
 def test_device_type_label_omits_unknown_generic_device() -> None:
@@ -93,34 +80,26 @@ def test_device_type_label_omits_unknown_generic_device() -> None:
     assert device_type_label({"name": "Unnamed"}) is None
 
 
-def test_chinese_generic_model_labels_are_refined_from_device_name() -> None:
-    """已有中文泛化型号时，也应继续按设备名细化型号。"""
-    assert device_type_label({
-        "category": "light",
-        "model": "灯具",
-        "name": "卫生间镜前灯",
-    }) == "镜前灯"
-    assert device_type_label({
-        "category": "relay_switch",
-        "model": "继电器开关",
-        "name": "厨房智能开关",
-    }) == "智能开关"
+def test_chinese_generic_model_labels_fall_back_to_category() -> None:
+    """中文泛化型号不能触发设备名推断。"""
+    assert device_type_label({"category": "light", "model": "灯具", "name": "卫生间镜前灯"}) == "易来照明设备"
+    assert device_type_label({"category": "relay_switch", "model": "继电器开关", "name": "厨房智能开关"}) == "易来开关设备"
 
 
 def test_generic_ha_platform_category_does_not_become_iot_category() -> None:
     """HA 平台词 sensor 不能被当作易来 IoT 设备品类展示."""
     payload = {"category": "sensor", "name": "主卧温湿度传感器"}
 
-    assert infer_iot_category(payload) == "other"
-    assert device_type_label(payload) == "温湿度传感器"
+    assert infer_iot_category(payload) == "sensor"
+    assert device_type_label(payload) == "易来传感设备"
 
 
-def test_safety_sensor_name_does_not_fallback_to_light() -> None:
-    """云端粗 light 不能让烟感类传感器在 HA 中显示成灯具."""
+def test_safety_sensor_name_does_not_affect_display_type() -> None:
+    """设备名不能把 light 大类显示成烟雾传感器类型。"""
     payload = {"category": "light", "name": "厨房烟雾传感器"}
 
-    assert infer_iot_category(payload) == "other"
-    assert device_type_label(payload) == "烟雾传感器"
+    assert infer_iot_category(payload) == "light"
+    assert device_type_label(payload) == "易来照明设备"
 
 
 def test_friendly_model_id_replaces_runtime_category_when_pid_exists() -> None:

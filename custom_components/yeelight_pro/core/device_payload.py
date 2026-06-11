@@ -244,7 +244,12 @@ class DevicePayloadBuilder:
         product_schema: Mapping[str, Any],
     ) -> bool:
         """Return true when broad schema would hide a stricter runtime category."""
-        category = str(payload.get("iot_category") or payload.get("category") or "")
+        category = str(
+            payload.get("iot_specific_category")
+            or payload.get("iot_category")
+            or payload.get("category")
+            or ""
+        )
         if category not in {"curtain", "temp_control", "scene_panel", "knob_switch"}:
             return False
         schema_categories = _schema_categories(product_schema)

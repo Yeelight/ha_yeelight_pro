@@ -13,6 +13,7 @@ COMPONENT_ROOT = ROOT / "custom_components" / "yeelight_pro"
 REQUIRED_FILES = {
     "custom_components/yeelight_pro/__init__.py",
     "custom_components/yeelight_pro/capabilities/spec_correction_normalizers.py",
+    "custom_components/yeelight_pro/capabilities/documented_catalog.py",
     "custom_components/yeelight_pro/capabilities/ha_core_platforms.py",
     "custom_components/yeelight_pro/capabilities/platform_contract.py",
     "custom_components/yeelight_pro/capabilities/platform_contract_data.py",

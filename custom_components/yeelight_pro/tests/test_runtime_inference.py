@@ -118,6 +118,24 @@ def test_runtime_inferred_product_model_keeps_category_template_without_params()
     ]
 
 
+def test_runtime_inferred_product_model_keeps_empty_light_fallback() -> None:
+    """粗 light 缺少能力证据时仍应按 category 生成最小灯 schema。"""
+    payload = {
+        "model_id": "runtime-light-empty",
+        "type": "light",
+        "category": "light",
+        "iot_category": "light",
+        "params": {},
+    }
+
+    product = RuntimeInferredProductModelBuilder().build(payload)
+
+    assert product is not None
+    assert product.product.category == "light"
+    assert product.components[0].component_id == "light"
+    assert [prop.prop_id for prop in product.components[0].properties] == ["p"]
+
+
 def test_runtime_inferred_light_template_ranges_are_stable() -> None:
     """Runtime light fallback must keep Yeelight brightness and CT ranges stable."""
     payload = {

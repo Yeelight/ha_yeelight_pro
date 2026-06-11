@@ -83,8 +83,7 @@ def is_writable_auxiliary_property(prop: PropertyModel) -> bool:
         return False
     if looks_bool(prop):
         return False
-    access = (prop.access or "").lower()
-    if "write" not in access:
+    if not _access_allows_write(prop.access):
         return False
     spec = property_spec(prop.prop_id)
     if spec is not None and not spec.writable:
@@ -98,8 +97,7 @@ def is_writable_auxiliary_bool_property(prop: PropertyModel) -> bool:
         return False
     if not looks_bool(prop):
         return False
-    access = (prop.access or "").lower()
-    if "write" not in access:
+    if not _access_allows_write(prop.access):
         return False
     spec = property_spec(prop.prop_id)
     if spec is not None and not spec.writable:
@@ -182,6 +180,14 @@ def _range_value(value: Any) -> int | None:
     if value is None:
         return None
     return int(value)
+
+
+def _access_allows_write(value: str | None) -> bool:
+    """Return true for normalized or documented writable access text."""
+    if value is None:
+        return False
+    access = value.lower()
+    return "write" in access or "写" in value
 
 
 def control_key(

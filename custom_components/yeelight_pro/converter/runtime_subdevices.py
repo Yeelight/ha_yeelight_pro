@@ -213,7 +213,12 @@ def _property_access(
     numeric_access = to_int(access)
     if numeric_access is not None:
         return "read_write" if numeric_access & 2 else "read_only"
-    return string_value(access)
+    access_text = string_value(access)
+    if access_text and _access_allows_write(access_text):
+        return "read_write"
+    if access_text and _access_is_read_only(access_text):
+        return "read_only"
+    return access_text
 
 
 def _property_kind(
@@ -222,6 +227,18 @@ def _property_kind(
 ) -> str:
     """OpenAPI 未显式区分 kind，按 operators 判断控制/状态。"""
     return "control" if _property_access(prop, string_value) == "read_write" else "state"
+
+
+def _access_allows_write(value: str) -> bool:
+    """判断 OpenAPI/CSV 文本权限是否包含写能力."""
+    lowered = value.lower()
+    return "write" in lowered or "写" in value
+
+
+def _access_is_read_only(value: str) -> bool:
+    """判断 OpenAPI/CSV 文本权限是否明确只读."""
+    lowered = value.lower().replace(" ", "").replace("-", "_")
+    return lowered in {"read", "read_only", "readonly", "ro", "r"} or value == "读"
 
 
 def _value_range(value: Any) -> ValueRangeModel | None:

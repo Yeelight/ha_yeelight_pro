@@ -68,8 +68,8 @@ async def test_broad_cloud_light_discovers_actual_device_properties() -> None:
 
 
 @pytest.mark.asyncio
-async def test_broad_discovery_does_not_read_generic_power_for_cover_or_climate() -> None:
-    """窗帘/温控不能靠泛化 p 属性生成 switch 候选."""
+async def test_broad_discovery_does_not_use_name_hints_for_cover_or_climate() -> None:
+    """读属性集合不能因设备名称被改成窗帘或温控能力。"""
     client = AsyncMock()
     client.read_nodes_properties.return_value = {"code": "200", "data": {}}
 
@@ -91,10 +91,9 @@ async def test_broad_discovery_does_not_read_generic_power_for_cover_or_climate(
         for call in client.read_nodes_properties.await_args_list
     }
 
-    assert "p" not in calls[(1,)]
-    assert {"cp", "tp"}.issubset(calls[(1,)])
-    assert "p" not in calls[(2,)]
-    assert {"acp", "aco", "actt", "acct"}.issubset(calls[(2,)])
+    assert calls == {
+        (1, 2): {"p", "sp", "l", "o"},
+    }
 
 
 def _relay_switch_schema(pid: int) -> dict:

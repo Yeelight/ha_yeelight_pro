@@ -32,7 +32,7 @@ LanPayloadCallback = Callable[[Mapping[str, Any]], Awaitable[object]]
 
 # 连接与读取超时
 _LAN_CONNECT_TIMEOUT = 10.0
-_LAN_READ_TIMEOUT = 90.0
+_LAN_READ_TIMEOUT = 660.0  # 11分钟（协议规定网关每10分钟全量同步一次）
 _LAN_ACK_TIMEOUT = 5.0
 
 # 重连退避参数（秒）
@@ -211,7 +211,7 @@ class LanGatewayRuntime:
         writer.close()
         wait_closed = getattr(writer, "wait_closed", None)
         if callable(wait_closed):
-            await wait_closed()
+            await wait_closed() # pyright: ignore[reportGeneralTypeIssues]
 
     def _flush_pending_acks(self, reason: str) -> None:
         """Cancel all pending ACK futures on disconnect."""

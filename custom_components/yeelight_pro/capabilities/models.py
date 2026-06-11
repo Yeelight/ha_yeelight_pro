@@ -65,12 +65,14 @@ class IoTPropertySpec:
     @property
     def readable(self) -> bool:
         """属性是否可读."""
-        return "read" in self.access.lower()
+        access = self.access.lower()
+        return "read" in access or "读" in self.access
 
     @property
     def writable(self) -> bool:
         """属性是否可写."""
-        return "write" in self.access.lower()
+        access = self.access.lower()
+        return "write" in access or "写" in self.access
 
 
 @dataclass(frozen=True, slots=True)

@@ -120,7 +120,7 @@ async def test_sync_gateway_devices_replaces_generic_model_label_without_model_i
 
     assert updated.model_id is None
     assert device_registry.updated_devices == [
-        ("device-1", {"model": "双键开关", "model_id": None})
+        ("device-1", {"model": "易来开关设备", "model_id": None})
     ]
 
 
@@ -144,7 +144,7 @@ async def test_sync_gateway_devices_normalizes_canonical_generic_model(
         identifiers={(DOMAIN, "304784339")}
     )
     assert device is not None
-    assert device.model == "双键开关"
+    assert device.model == "易来开关设备"
 
 
 class _ModelIdDeviceRegistry:

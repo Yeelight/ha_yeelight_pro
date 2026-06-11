@@ -186,8 +186,8 @@ def test_infer_event_component_id_keeps_fallback_on_ambiguous_match() -> None:
     assert inferred[ATTR_COMPONENT_ID] == "node_type_2"
 
 
-def test_infer_event_component_id_routes_smoke_alarm_fallback() -> None:
-    """烟感告警事件无 schema 组件时应路由到安全事件实体。"""
+def test_infer_event_component_id_keeps_name_only_alarm_fallback() -> None:
+    """安全事件路由不能只依赖设备名称。"""
     payload = {
         ATTR_SOURCE_DEVICE_ID: "311931214",
         ATTR_COMPONENT_ID: "push_event",
@@ -202,7 +202,37 @@ def test_infer_event_component_id_routes_smoke_alarm_fallback() -> None:
 
     inferred = infer_event_component_id(payload, device_payload)
 
-    assert inferred[ATTR_COMPONENT_ID] == "safety_alarm"
+    assert inferred[ATTR_COMPONENT_ID] == "push_event"
+    assert payload[ATTR_COMPONENT_ID] == "push_event"
+
+
+def test_infer_event_component_id_routes_declared_alarm_event_component() -> None:
+    """schema 明确声明 power 告警事件时才补全事件组件。"""
+    payload = {
+        ATTR_SOURCE_DEVICE_ID: "311931214",
+        ATTR_COMPONENT_ID: "push_event",
+        ATTR_EVENT_TYPE: "power.alarm",
+    }
+    device_payload = {
+        "name": "厨房烟雾传感器",
+        "category": "light",
+        "iot_category": "other",
+        "ha_product_model": {
+            "components": [
+                {
+                    "component_id": "vendor_power_alarm",
+                    "events": [
+                        {"event_id": 14, "name": "power.alarm"},
+                        {"event_id": 15, "name": "power.normal"},
+                    ],
+                }
+            ]
+        },
+    }
+
+    inferred = infer_event_component_id(payload, device_payload)
+
+    assert inferred[ATTR_COMPONENT_ID] == "vendor_power_alarm"
     assert payload[ATTR_COMPONENT_ID] == "push_event"
 
 

@@ -14,6 +14,10 @@ from .models import (
     IoTProtocolSpec,
     PropertyCapability,
 )
+from .documented_catalog import (
+    DOCUMENTED_COMPONENT_SPECS,
+    DOCUMENTED_PROPERTY_SPECS,
+)
 
 
 IOT_CATEGORY_SPECS: tuple[IoTCategorySpec, ...] = (
@@ -66,7 +70,7 @@ IOT_COMPONENT_SPECS: tuple[IoTComponentSpec, ...] = (
     IoTComponentSpec(72, "color light without temperature", "无色温彩光灯组件", "light", "normal", "light", ("p", "l", "c")),
     IoTComponentSpec(76, "power meter", "电量组件", None, "global", "sensor", ("curp", "iec")),
     IoTComponentSpec(55, "HVAC gateway", "HVAC网关", None, "global", "sensor", ("ch_num",)),
-)
+) + DOCUMENTED_COMPONENT_SPECS
 
 
 IOT_PROPERTY_SPECS: tuple[IoTPropertySpec, ...] = (
@@ -166,7 +170,7 @@ IOT_PROPERTY_SPECS: tuple[IoTPropertySpec, ...] = (
     IoTPropertySpec("ep", "event priority", "int", "read_write", "config", "gateway", components=("dali scene control button", "dali knob switch")),
     IoTPropertySpec("st", "short timers", "int", "read_write", "config", "gateway", components=("dali scene control button",)),
     IoTPropertySpec("rt", "repeat timers", "int", "read_write", "config", "gateway", components=("dali scene control button", "dali knob switch")),
-)
+) + DOCUMENTED_PROPERTY_SPECS
 
 
 IOT_EVENT_SPECS: tuple[IoTEventSpec, ...] = (

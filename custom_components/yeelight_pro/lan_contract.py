@@ -8,7 +8,6 @@ from typing import Any
 
 from .lan_methods import (
     ALL_POST_METHODS,
-    LAN_DEVICE_DISCOVERY_MESSAGE,
     METHOD_DEVICE_GET_TOPOLOGY,
     METHOD_DEVICE_SET_PROP,
     METHOD_GET_GROUP,

@@ -219,7 +219,7 @@ def _specific_product_model(
     model = product_model.product.model
     if model and not is_generic_model_label(model):
         return model
-    return device_model_name(payload)
+    return device_model_name(dict(payload, model=None))
 
 
 def _room_name(

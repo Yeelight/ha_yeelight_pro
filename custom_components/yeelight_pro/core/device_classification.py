@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 from ..capabilities.platform_contract import primary_platform_for_payload
+from ..capabilities.registry import is_iot_category, parse_component_property_key
 from ..utils import to_str
 from .device_classification_categories import BROAD_CATEGORIES, CATEGORY_ALIASES
 
@@ -49,101 +50,10 @@ GENERIC_MODEL_LABELS = frozenset({
     "风扇",
 })
 
-_CONTACT_NAME_TOKENS = ("门磁", "门窗", "接触", "contact")
-_HUMAN_NAME_TOKENS = ("人体", "人感", "存在", "motion", "presence")
-_LIGHT_SENSOR_NAME_TOKENS = ("照度", "光照", "照明传感", "illuminance")
-_SAFETY_SENSOR_NAME_TOKENS = (
-    "烟雾",
-    "烟感",
-    "烟雾传感",
-    "烟感传感",
-    "可燃气",
-    "燃气",
-    "水浸",
-    "漏水",
-    "smoke",
-    "gas",
-    "water leak",
-)
-_TELEMETRY_SENSOR_NAME_TOKENS = (
-    "温湿度",
-    "温度传感",
-    "湿度传感",
-    "temperature sensor",
-    "humidity sensor",
-)
-_CURTAIN_NAME_TOKENS = ("窗帘", "卷帘", "百叶", "电机", "curtain", "blind")
-_TEMP_CONTROL_NAME_TOKENS = ("空调", "地暖", "温控", "新风", "climate", "thermostat")
-_BATH_HEATER_NAME_TOKENS = ("暖风", "浴霸", "heater", "bath heater")
-_SCENE_PANEL_NAME_TOKENS = (
-    "全面屏",
-    "智慧屏",
-    "智能面板",
-    "情景面板",
-    "控制面板",
-    "scene panel",
-    "control panel",
-)
-_SWITCH_NAME_TOKENS = ("开关", "插座", "继电器", "switch", "relay")
-_LIGHT_NAME_TOKENS = (
-    "灯",
-    "射灯",
-    "筒灯",
-    "灯带",
-    "吸顶",
-    "泛光",
-    "青空",
-    "light",
-    "lamp",
-)
-
-_FRIENDLY_MODEL_PATTERNS: tuple[tuple[tuple[str, ...], str], ...] = (
-    (("E20", "射灯"), "E20 射灯"),
-    (("单键", "开关"), "单键开关"),
-    (("双键", "开关"), "双键开关"),
-    (("三键", "开关"), "三键开关"),
-    (("四键", "开关"), "四键开关"),
-    (("智能", "开关"), "智能开关"),
-    (("墙壁", "开关"), "墙壁开关"),
-    (("全面屏",), "全面屏面板"),
-    (("智慧屏",), "智慧屏面板"),
-    (("智能面板",), "智能面板"),
-    (("控制面板",), "控制面板"),
-    (("窗帘", "电机"), "窗帘电机"),
-    (("温控器",), "温控器"),
-    (("暖风机",), "暖风机"),
-    (("浴霸",), "浴霸"),
-    (("温湿度", "传感器"), "温湿度传感器"),
-    (("门磁",), "门磁传感器"),
-    (("人体",), "人体传感器"),
-    (("人感",), "人体传感器"),
-    (("烟雾",), "烟雾传感器"),
-    (("烟感",), "烟雾传感器"),
-    (("燃气",), "燃气传感器"),
-    (("水浸",), "水浸传感器"),
-    (("漏水",), "水浸传感器"),
-    (("照度",), "照度传感器"),
-    (("光照",), "照度传感器"),
-    (("青空灯",), "青空灯"),
-    (("吸顶灯",), "吸顶灯"),
-    (("镜前灯",), "镜前灯"),
-    (("操作台灯",), "操作台灯"),
-    (("衣柜灯",), "衣柜灯"),
-    (("主灯",), "主灯"),
-    (("床头灯",), "床头灯"),
-    (("晾晒灯",), "晾晒灯"),
-    (("氛围灯",), "氛围灯"),
-    (("感应夜灯",), "感应夜灯"),
-    (("夜灯",), "夜灯"),
-    (("台灯",), "台灯"),
-    (("吊灯",), "吊灯"),
-    (("筒灯",), "筒灯"),
-    (("射灯",), "射灯"),
-    (("灯带",), "灯带"),
-)
-
 _CATEGORY_LABELS = {
+    "binary_sensor": "二元传感器",
     "light": "灯具",
+    "sensor": "传感器",
     "relay_switch": "继电器开关",
     "contact_sensor": "门磁传感器",
     "human_sensor": "人体传感器",
@@ -157,13 +67,19 @@ _CATEGORY_LABELS = {
 }
 
 _BROAD_CATEGORY_MODEL_REPLACEMENTS = {
+    "binary_sensor": "易来传感设备",
+    "curtain": "易来窗帘设备",
+    "gateway": "易来网关",
     "light": "易来照明设备",
     "relay_switch": "易来开关设备",
+    "sensor": "易来传感设备",
     "temp_control": "易来温控设备",
     "other": "易来扩展设备",
 }
 _BROAD_CATEGORY_MODEL_LABELS = frozenset({
+    "二元传感器",
     "灯具",
+    "传感器",
     "继电器开关",
     "温控设备",
     "易来设备",
@@ -171,28 +87,29 @@ _BROAD_CATEGORY_MODEL_LABELS = frozenset({
 
 
 def infer_iot_category(payload: Mapping[str, Any]) -> str | None:
-    """Infer a Yeelight IoT category from documented properties and names."""
+    """Infer a Yeelight IoT category from documented category/property evidence."""
     current = _category_text(payload.get("category")) or _category_text(payload.get("type"))
-    params = _params(payload)
-    keys = set(params)
-    name = _device_name(payload)
-
-    prop_category = _category_from_props(keys, name)
+    prop_category = _category_from_props(_property_keys(payload))
     if prop_category is not None:
         return prop_category
+
+    component_category = _category_from_components(payload)
+    if component_category is not None:
+        return component_category
 
     if current and current not in BROAD_CATEGORIES:
         return current
 
-    name_category = _category_from_name(name)
-    if name_category is not None:
-        return name_category
-
     if current == "switch":
         return "relay_switch"
     if current in BROAD_CATEGORIES:
-        return None if current in {"", "binary_sensor", "sensor"} else current
+        return None if current == "" else current
     return current or None
+
+
+def infer_specific_iot_category(payload: Mapping[str, Any]) -> str | None:
+    """Infer the most specific category from properties while preserving broad category."""
+    return infer_iot_category(payload)
 
 
 def ha_platform_for_payload(payload: Mapping[str, Any]) -> str | None:
@@ -220,10 +137,9 @@ def friendly_model_name(payload: Mapping[str, Any]) -> str:
     if schema_name:
         return schema_name
 
-    name = _device_name(payload)
-    for tokens, label in _FRIENDLY_MODEL_PATTERNS:
-        if all(token.lower() in name.lower() for token in tokens):
-            return label
+    property_label = _property_model_label(_property_keys(payload))
+    if property_label is not None:
+        return property_label
 
     category = infer_iot_category(payload)
     if category in _CATEGORY_LABELS:
@@ -239,8 +155,7 @@ def friendly_specific_model_name(payload: Mapping[str, Any]) -> str:
     category = infer_iot_category(payload)
     if category in _BROAD_CATEGORY_MODEL_REPLACEMENTS:
         return _BROAD_CATEGORY_MODEL_REPLACEMENTS[category]
-    name = _device_name(payload)
-    return f"易来{name}设备" if name else "易来扩展设备"
+    return ""
 
 
 def friendly_model_id(payload: Mapping[str, Any]) -> str:
@@ -267,7 +182,7 @@ def is_generic_model_label(value: Any) -> bool:
     return normalized in GENERIC_MODEL_LABELS or canonical in GENERIC_MODEL_LABELS
 
 
-def _category_from_props(keys: set[str], name: str) -> str | None:
+def _category_from_props(keys: set[str]) -> str | None:
     if keys & {"mv"}:
         return "human_sensor"
     if keys & {"dc"}:
@@ -276,7 +191,7 @@ def _category_from_props(keys: set[str], name: str) -> str | None:
         return "curtain"
     if keys & {"acp", "acm", "actt", "acct", "acf", "aco", "rfhp", "rfhct", "rfhtt"}:
         return "temp_control"
-    if keys & {"tgt", "fa", "he"} and _has_any(name, _TEMP_CONTROL_NAME_TOKENS):
+    if keys & {"tgt", "fa", "he"}:
         return "temp_control"
     if (
         keys <= {"luminance", "level", "o", "bl", "bc", "bcg"}
@@ -287,36 +202,79 @@ def _category_from_props(keys: set[str], name: str) -> str | None:
         if not keys & {"p", "sp", "l", "ct", "c"}:
             return "other"
     if keys & {"alm"}:
-        return _category_from_name(name) or "contact_sensor"
+        return "contact_sensor"
     return None
 
 
-def _category_from_name(name: str) -> str | None:
-    for tokens, category in (
-        (_CONTACT_NAME_TOKENS, "contact_sensor"),
-        (_HUMAN_NAME_TOKENS, "human_sensor"),
-        (_LIGHT_SENSOR_NAME_TOKENS, "light_sensor"),
-        (_SAFETY_SENSOR_NAME_TOKENS, "other"),
-        (_TELEMETRY_SENSOR_NAME_TOKENS, "other"),
-        (_CURTAIN_NAME_TOKENS, "curtain"),
-        (_TEMP_CONTROL_NAME_TOKENS, "temp_control"),
-        (_BATH_HEATER_NAME_TOKENS, "temp_control"),
-        (_SCENE_PANEL_NAME_TOKENS, "scene_panel"),
-        (_SWITCH_NAME_TOKENS, "relay_switch"),
-        (_LIGHT_NAME_TOKENS, "light"),
-    ):
-        if _has_any(name, tokens):
+def _property_model_label(keys: set[str]) -> str | None:
+    """Return a concrete model label only from property evidence."""
+    if keys & {"dc"}:
+        return "门磁传感器"
+    if keys & {"mv"}:
+        return "人体传感器"
+    if keys & {"cp", "tp", "rd"}:
+        return "窗帘"
+    if keys & {"acp", "acm", "actt", "acct", "acf", "aco", "rfhp", "rfhct", "rfhtt"}:
+        return "温控设备"
+    if keys & {"tgt", "fa", "he"}:
+        return "温控设备"
+    if (keys & {"t", "temp"}) and keys & {"h"}:
+        return "温湿度传感器"
+    if keys & {"t", "temp"}:
+        return "温度传感器"
+    if keys & {"h"}:
+        return "湿度传感器"
+    if keys & {"luminance", "level"}:
+        return "照度传感器"
+    return None
+
+
+def _property_keys(payload: Mapping[str, Any]) -> set[str]:
+    keys: set[str] = set()
+    keys.update(_params(payload))
+    for prop in _property_rows(payload.get("properties")):
+        keys.add(_prop_name(_property_id(prop)))
+    for subdevice in _property_rows(payload.get("subDeviceList")):
+        for prop in _property_rows(subdevice.get("properties")):
+            keys.add(_prop_name(_property_id(prop)))
+    keys.update(_product_model_property_keys(payload.get("ha_product_model")))
+    keys.update(_schema_property_keys(payload.get("product_schema")))
+    keys.discard("")
+    return keys
+
+
+def _category_from_components(payload: Mapping[str, Any]) -> str | None:
+    for category in _component_categories(payload):
+        if (
+            is_iot_category(category)
+            and category not in {"light", "switch", "relay_switch", "other"}
+        ):
             return category
     return None
+
+
+def _component_categories(payload: Mapping[str, Any]) -> Iterable[str]:
+    for subdevice in _property_rows(payload.get("subDeviceList")):
+        category = _category_text(subdevice.get("category"))
+        if category:
+            yield category
+    schema = payload.get("product_schema")
+    if isinstance(schema, Mapping):
+        for component in _schema_components(schema):
+            category = _category_text(component.get("category"))
+            if category:
+                yield category
+    product_model = payload.get("ha_product_model")
+    if isinstance(product_model, Mapping):
+        for component in _property_rows(product_model.get("components")):
+            category = _category_text(component.get("category"))
+            if category:
+                yield category
 
 
 def _params(payload: Mapping[str, Any]) -> dict[str, Any]:
     raw_params = payload.get("params")
     return dict(raw_params) if isinstance(raw_params, Mapping) else {}
-
-
-def _device_name(payload: Mapping[str, Any]) -> str:
-    return _first_text(payload, ("name", "deviceName", "device_name", "n")) or ""
 
 
 def _schema_model_name(payload: Mapping[str, Any]) -> str | None:
@@ -330,6 +288,51 @@ def _schema_model_name(payload: Mapping[str, Any]) -> str | None:
     if model is None or is_generic_model_label(model):
         return None
     return model
+
+
+def _product_model_property_keys(value: Any) -> set[str]:
+    if not isinstance(value, Mapping):
+        return set()
+    keys: set[str] = set()
+    for component in _property_rows(value.get("components")):
+        for prop in _property_rows(component.get("properties")):
+            keys.add(_prop_name(_property_id(prop)))
+    return keys
+
+
+def _schema_property_keys(value: Any) -> set[str]:
+    if not isinstance(value, Mapping):
+        return set()
+    keys: set[str] = set()
+    for component in _schema_components(value):
+        for prop in _property_rows(component.get("properties")):
+            keys.add(_prop_name(_property_id(prop)))
+    return keys
+
+
+def _schema_components(schema: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    components: list[Mapping[str, Any]] = []
+    for key in ("components", "customComponents"):
+        components.extend(_property_rows(schema.get(key)))
+    return components
+
+
+def _property_rows(value: Any) -> list[Mapping[str, Any]]:
+    return [item for item in value or [] if isinstance(item, Mapping)]
+
+
+def _property_id(prop: Mapping[str, Any]) -> Any:
+    return prop.get("prop_id", prop.get("propId", prop.get("propName")))
+
+
+def _prop_name(value: Any) -> str:
+    text = _text(value)
+    if not text:
+        return ""
+    try:
+        return parse_component_property_key(text).prop_name
+    except ValueError:
+        return text
 
 
 def _first_text(payload: Mapping[str, Any], keys: tuple[str, ...]) -> str | None:
@@ -351,16 +354,12 @@ def _category_text(value: Any) -> str | None:
     return CATEGORY_ALIASES.get(normalized, normalized.replace(" ", "_"))
 
 
-def _has_any(text: str, tokens: tuple[str, ...]) -> bool:
-    lower = text.lower()
-    return any(token.lower() in lower for token in tokens)
-
-
 __all__ = [
     "friendly_model_id",
     "friendly_model_name",
     "friendly_specific_model_name",
     "ha_platform_for_payload",
     "infer_iot_category",
+    "infer_specific_iot_category",
     "is_generic_model_label",
 ]

@@ -46,7 +46,7 @@ def _infer_features_from_payload(
     product_type = device_payload.get("product_type")
     features: set[str] = set()
 
-    if "p" in state or "on" in state or _payload_is_light(device_payload):
+    if "p" in state or "on" in state:
         features.add("onoff")
     if "l" in state or product_type in {2, 3, 4, 14, 30}:
         features.add("brightness")
@@ -208,6 +208,11 @@ def _infer_features_from_product_component(product_component: ComponentModel | N
     if "c" in prop_ids:
         features.add("rgb")
     return features
+
+
+def _state_has_light_property(state: Mapping[str, Any]) -> bool:
+    """Return true when runtime state carries real light properties."""
+    return bool({"p", "l", "ct", "c", "on", "brightness", "color_temp_kelvin", "rgb"} & set(state))
 
 
 def _product_constraint(

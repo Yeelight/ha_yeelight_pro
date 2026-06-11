@@ -141,6 +141,91 @@ def test_openapi_light_payload_still_projects_light() -> None:
     assert candidates == {("light", "light")}
 
 
+def test_openapi_light_named_smoke_without_capabilities_uses_light_fallback() -> None:
+    """名称不能生成安全能力；无能力证据时仅按粗 light 兜底。"""
+    device = _build_device(
+        {
+            "id": 9020,
+            "name": "厨房烟雾传感器",
+            "category": "light",
+            "properties": [],
+        }
+    )
+
+    candidates = _candidate_platform_components(device)
+
+    assert device["iot_category"] == "light"
+    assert device["ha_platform"] == "light"
+    assert device["ha_platform_candidates"] == ["light"]
+    assert candidates == {("light", "light")}
+
+
+def test_openapi_light_named_smoke_with_events_projects_event_only() -> None:
+    """显式 OpenAPI events 只生成 event 候选，不反推 light 能力。"""
+    device = _build_device(
+        {
+            "id": 9021,
+            "name": "厨房烟雾传感器",
+            "category": "light",
+            "properties": [],
+            "events": [
+                {"id": 14, "name": "power.alarm"},
+                {"id": 15, "name": "power.normal"},
+            ],
+        }
+    )
+
+    candidates = _candidate_platform_components(device)
+
+    assert device["iot_category"] == "light"
+    assert device["ha_platform"] == "event"
+    assert device["ha_platform_candidates"] == ["event"]
+    assert candidates == {("event", "light")}
+
+
+def test_openapi_light_named_smoke_with_product_schema_events_projects_event() -> None:
+    """产品 schema 明确声明 events 时生成 event 候选。"""
+    from custom_components.yeelight_pro.core.device_payload import DevicePayloadBuilder
+
+    builder = DevicePayloadBuilder()
+    data, _gateways = builder.build_runtime_payloads(
+        devices=[
+            {
+                "id": 9022,
+                "name": "厨房烟雾传感器",
+                "category": "light",
+                "pid": 90220,
+                "properties": [],
+            }
+        ],
+        gateways=[],
+        product_schemas={
+            90220: {
+                "pid": 90220,
+                "name": "Vendor alarm schema",
+                "category": "light",
+                "components": [
+                    {
+                        "cid": 900,
+                        "name": "vendor power alarm",
+                        "category": "vendor power alarm",
+                        "events": [
+                            {"eventId": 14, "name": "power.alarm"},
+                            {"eventId": 15, "name": "power.normal"},
+                        ],
+                    }
+                ],
+            }
+        },
+        apply_runtime_overrides=lambda payload: payload,
+    )
+    device = data[9022]
+
+    assert device["iot_category"] == "light"
+    assert device["ha_platform_candidates"] == ["event"]
+    assert _candidate_platform_components(device) == {("event", "vendor_power_alarm")}
+
+
 def test_single_openapi_light_uses_device_name_as_primary_entity() -> None:
     """单个主灯实体名称应交给 HA 使用设备名，避免所有灯都叫照明."""
     device = _build_device(

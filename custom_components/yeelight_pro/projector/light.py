@@ -43,6 +43,7 @@ from .light_helpers import (
     _resolve_light_features,
     _resolve_range,
     _resolve_supported_color_modes,
+    _state_has_light_property,
 )
 
 LIGHT_COLOR_MODE_HINT_KEY = _LIGHT_COLOR_MODE_HINT_KEY
@@ -269,11 +270,14 @@ def _light_component_score(
 ) -> int:
     """根据类别、component_id 和能力判断组件是否属于 light。"""
     state = component.state
+    product = product_component(product_model, component.component_id)
     features = _resolve_light_features(
         component,
         device_payload,
-        product_component(product_model, component.component_id),
+        product,
     )
+    if not features and not _state_has_light_property(state):
+        return 0
     score = 0
     category = to_category(component.category)
     component_id = component.component_id.lower()

@@ -90,14 +90,18 @@ class PushManager:
         self._health.running = False
         if not self._transport_started:
             return
+        had_error = False
         try:
             await self._transport.async_stop()
         except Exception as err:
             self._health.last_error_type = type(err).__name__
+            had_error = True
             raise
-        self._transport_started = False
-        self._health.stopped_count += 1
-        self._health.last_error_type = None
+        finally:
+            if not had_error:
+                self._transport_started = False
+                self._health.last_error_type = None
+                self._health.stopped_count += 1
 
     async def _handle_payload(self, payload: Mapping[str, Any]) -> object | None:
         """Forward payloads to the coordinator while the manager is running."""

@@ -28,6 +28,15 @@ _CATEGORY_LABELS = {
     "gateway": "网关",
     "other": "易来设备",
 }
+_CATEGORY_TYPE_LABELS = {
+    **_CATEGORY_LABELS,
+    "binary_sensor": "易来传感设备",
+    "light": "易来照明设备",
+    "relay_switch": "易来开关设备",
+    "sensor": "易来传感设备",
+    "temp_control": "易来温控设备",
+    "other": "易来扩展设备",
+}
 _PLATFORM_LABELS = {
     "binary_sensor": "二元传感器",
     "climate": "温控",
@@ -57,22 +66,20 @@ def device_name_label(payload: Mapping[str, Any], fallback_id: str) -> str:
 
 def device_type_label(payload: Mapping[str, Any]) -> str | None:
     """Return a user-facing model/category/platform summary for picker details."""
+    explicit = _specific_text(payload, _MODEL_NAME_KEYS)
+    if explicit is not None:
+        return explicit
+
     category = infer_iot_category(payload)
-    model = friendly_model_name(payload)
-    if model and not is_generic_model_label(model):
-        return model
-
-    if category:
-        fallback_model = friendly_specific_model_name(payload)
-        if fallback_model and not is_generic_model_label(fallback_model):
-            return fallback_model
-
-    if category in _CATEGORY_LABELS:
-        return _CATEGORY_LABELS[category]
+    if category in _CATEGORY_TYPE_LABELS:
+        return _CATEGORY_TYPE_LABELS[category]
 
     platform = platform_for_category(category)
     if platform in _PLATFORM_LABELS and platform not in {"binary_sensor", "sensor"}:
         return _PLATFORM_LABELS[platform]
+    model = friendly_model_name(payload)
+    if model and not is_generic_model_label(model):
+        return model
     return None
 
 
@@ -100,8 +107,12 @@ def registry_model_value(
     if inferred and not is_generic_model_label(inferred):
         return inferred
 
+    if model is None:
+        return str(current_model) if current_model is not None else None
     if is_generic_model_label(current_model):
-        return "易来照明设备" if _looks_like_light_device_info(device_info) else "Yeelight Pro 设备"
+        if category_model := _category_model_value(device_info):
+            return category_model
+        return "Yeelight Pro 设备"
     return None
 
 
@@ -169,13 +180,15 @@ def _text(value: Any) -> str | None:
     return text or None
 
 
-def _looks_like_light_device_info(device_info: Mapping[str, Any]) -> bool:
-    text = " ".join(
-        value
-        for value in (
-            _first_text(device_info, ("model", "modelName", "productName")),
-            _first_text(device_info, ("name", "deviceName", "device_name", "n")),
-        )
-        if value
-    )
-    return "灯" in text or "light" in text.lower()
+def _category_model_value(device_info: Mapping[str, Any]) -> str | None:
+    category = infer_iot_category(device_info)
+    if category in _CATEGORY_TYPE_LABELS:
+        return _CATEGORY_TYPE_LABELS[category]
+    model = _first_text(device_info, ("model", "modelName", "productName"))
+    if model is None:
+        return None
+    generic_payload = {"category": model}
+    category = infer_iot_category(generic_payload)
+    if category in _CATEGORY_TYPE_LABELS:
+        return _CATEGORY_TYPE_LABELS[category]
+    return None

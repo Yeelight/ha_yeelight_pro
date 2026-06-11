@@ -160,8 +160,8 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
     },
     "custom_components/yeelight_pro/projector/event_helpers.py": {
         "EVENT_COMPONENT_TOKENS": "event input component token registry",
-        "SAFETY_EVENT_TYPES": "safety alarm fallback event types",
-        "is_safety_event_device": "safety event identity fallback",
+        "SAFETY_EVENT_TYPES": "safety alarm schema event types",
+        "is_safety_event_device": "safety event schema-evidence route",
         "event_components": "event component projection helper",
         "event_types": "normalized schema event type helper",
         "event_device_class": "event device class inference helper",
@@ -177,7 +177,7 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
     "custom_components/yeelight_pro/event_support.py": {
         "SAFETY_EVENT_COMPONENT_ID": "runtime safety event component route",
         "is_safety_event_type": "runtime safety event type route",
-        "is_safety_event_device": "runtime safety event identity route",
+        "is_safety_event_device": "runtime safety event schema-evidence route",
     },
     "custom_components/yeelight_pro/projector/sensor_helpers.py": {
         "SensorSpec": "sensor projection spec model",
@@ -209,6 +209,7 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "infer_subdevice_components": "OpenAPI sub-device inference facade",
         "infer_indexed_switch_components": "indexed switch inference helper",
         "build_runtime_property_model": "runtime template property builder",
+        "infer_openapi_events": "explicit OpenAPI runtime event inference helper",
         "infer_runtime_capabilities": "runtime capability inference helper",
         "RUNTIME_PROPERTY_TEMPLATES": "runtime inference template registry use",
     },

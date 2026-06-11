@@ -57,12 +57,13 @@ class CoordinatorControlMixin:
         if normalized_device_id is None or not self.get_device(normalized_device_id):
             raise DeviceNotFoundError("Device not found")
 
-        if not await async_try_lan_control_device(
+        lan_ok = await async_try_lan_control_device(
             self._lan_runtime,
             device_id=normalized_device_id,
             params=params,
             duration=duration,
-        ):
+        )
+        if not lan_ok:
             await async_execute_control_device(
                 self.client,
                 house_id=self.house_id,

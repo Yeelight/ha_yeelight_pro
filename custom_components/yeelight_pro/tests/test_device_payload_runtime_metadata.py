@@ -105,7 +105,7 @@ def test_build_runtime_payloads_infers_canonical_device_info_without_schema() ->
     assert device["ha_product_model"]["schema_version"] == "runtime-v1"
     assert device["model_id"] == "YL-200"
     assert device_info["name"] == "客厅筒灯 1"
-    assert device_info["model"] == "筒灯"
+    assert device_info["model"] == "易来照明设备"
     assert device_info["suggested_area"] == "客厅"
     assert device_info["identifiers"] == [
         ["yeelight_pro", "304784333"],
@@ -118,7 +118,7 @@ def test_build_runtime_payloads_infers_canonical_device_info_without_schema() ->
 
 
 def test_runtime_metadata_replaces_generic_cloud_model_labels() -> None:
-    """云端粗 model 不应短路设备名和属性推导出的友好产品型号."""
+    """云端粗 model 不应短路能力证据或安全大类兜底。"""
     builder = DevicePayloadBuilder()
 
     data, _gateways = builder.build_runtime_payloads(
@@ -154,9 +154,9 @@ def test_runtime_metadata_replaces_generic_cloud_model_labels() -> None:
 
     light_info = data[304784337]["ha_device_instance"]["device_info"]
     switch_info = data[304784338]["device_info"]
-    assert light_info["model"] == "E20 射灯"
+    assert light_info["model"] == "易来照明设备"
     assert light_info["model_id"] == "YL-202"
-    assert switch_info["model"] == "墙壁开关"
+    assert switch_info["model"] == "易来开关设备"
     assert switch_info["model_id"] == "YL-203"
 
 
@@ -187,8 +187,8 @@ def test_runtime_metadata_does_not_expose_internal_runtime_model_id() -> None:
     assert "model_id" not in device_info
 
 
-def test_build_runtime_payloads_infers_real_category_from_properties_and_name() -> None:
-    """云端粗品类缺失或错误时，应按属性和名称修正设备主平台与型号."""
+def test_build_runtime_payloads_infers_real_category_from_properties() -> None:
+    """云端粗品类缺失或错误时，应按属性能力修正设备主平台与型号。"""
     builder = DevicePayloadBuilder()
 
     data, _gateways = builder.build_runtime_payloads(
@@ -259,7 +259,7 @@ def test_build_runtime_payloads_infers_real_category_from_properties_and_name() 
     assert "type" not in curtain
     assert curtain["ha_platform"] == "cover"
     assert curtain["ha_platform_candidates"] == ["cover"]
-    assert curtain["device_info"]["model"] == "窗帘电机"
+    assert curtain["device_info"]["model"] == "窗帘"
 
 
 def test_runtime_payloads_project_entities_from_each_supported_property() -> None:
@@ -367,8 +367,8 @@ def test_runtime_payloads_project_entities_from_each_supported_property() -> Non
     }
 
 
-def test_runtime_payloads_keep_safety_sensor_out_of_light_category() -> None:
-    """烟感类设备不能因云端粗 light 品类被当成灯具。"""
+def test_runtime_payloads_do_not_infer_capabilities_from_safety_name() -> None:
+    """云端粗 light 且无细分证据时，设备名不能生成安全事件实体。"""
     builder = DevicePayloadBuilder()
 
     data, _gateways = builder.build_runtime_payloads(
@@ -390,10 +390,11 @@ def test_runtime_payloads_keep_safety_sensor_out_of_light_category() -> None:
 
     device = data[405]
 
-    assert device["iot_category"] == "other"
-    assert device["ha_platform"] == "event"
-    assert device["device_info"]["model"] == "烟雾传感器"
-    candidates = list(iter_device_entity_candidates(device))
-    assert [(item.platform, item.component_id) for item in candidates] == [
-        ("event", "safety_alarm")
-    ]
+    assert device["iot_category"] == "light"
+    assert device["ha_platform"] == "light"
+    assert device["ha_platform_candidates"] == ["light"]
+    assert device["device_info"]["model"] == "易来照明设备"
+    assert [
+        (item.platform, item.component_id)
+        for item in iter_device_entity_candidates(device)
+    ] == [("light", "light")]

@@ -76,7 +76,7 @@ def test_light_projection_uses_top_level_fallback_device_info() -> None:
     assert projection.device_info is not None
     assert projection.device_info["identifiers"] == {(DOMAIN, "304784333")}
     assert projection.device_info["name"] == "客厅筒灯 1"
-    assert projection.device_info["model"] == "筒灯"
+    assert "model" not in projection.device_info
     assert projection.device_info["model_id"] == "YL-200"
     assert projection.device_info["suggested_area"] == "客厅"
 

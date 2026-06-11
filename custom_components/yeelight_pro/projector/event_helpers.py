@@ -27,16 +27,6 @@ MOTION_COMPONENT_TOKENS = ("motion", "presence", "occupancy")
 DOORBELL_COMPONENT_TOKENS = ("doorbell",)
 SCENE_PANEL_FALLBACK_EVENTS = ("click", "hold", "release_after_hold")
 KNOB_SWITCH_FALLBACK_EVENTS = ("knob_spin", "multi_spin", "absolut_spin")
-EVENT_DEVICE_NAME_TOKENS = (
-    "全面屏",
-    "智慧屏",
-    "智能面板",
-    "情景面板",
-    "控制面板",
-    "scene panel",
-    "control panel",
-)
-KNOB_DEVICE_NAME_TOKENS = ("旋钮", "knob", "dial")
 
 
 def event_components(
@@ -232,15 +222,9 @@ def _fallback_event_types(
         return SAFETY_EVENT_TYPES
 
     tokens = _fallback_identity_tokens(device_payload, product_model)
-    if matches_category(tokens, ("knob_switch",)) or matches_category(
-        tokens,
-        KNOB_DEVICE_NAME_TOKENS,
-    ):
+    if matches_category(tokens, ("knob_switch",)):
         return KNOB_SWITCH_FALLBACK_EVENTS
-    if matches_category(tokens, ("scene_panel",)) or matches_category(
-        tokens,
-        EVENT_DEVICE_NAME_TOKENS,
-    ):
+    if matches_category(tokens, ("scene_panel",)):
         return SCENE_PANEL_FALLBACK_EVENTS
     return ()
 
@@ -255,21 +239,12 @@ def _fallback_component_id(
 
     for component in product_model.components:
         tokens = _event_identity_tokens(component, product_model)
-        if matches_category(tokens, ("knob_switch",)) or matches_category(
-            tokens,
-            KNOB_DEVICE_NAME_TOKENS,
-        ):
+        if matches_category(tokens, ("knob_switch",)):
             return component.component_id
-        if matches_category(tokens, ("scene_panel",)) or matches_category(
-            tokens,
-            EVENT_DEVICE_NAME_TOKENS,
-        ):
+        if matches_category(tokens, ("scene_panel",)):
             return component.component_id
     category = to_category(product_model.product.category)
-    if matches_category(category, ("knob_switch",)) or matches_category(
-        category,
-        KNOB_DEVICE_NAME_TOKENS,
-    ):
+    if matches_category(category, ("knob_switch",)):
         return "knob_switch"
     return "scene_panel"
 
@@ -285,14 +260,11 @@ def _fallback_event_name(
     tokens = _fallback_identity_tokens(device_payload, product_model)
     if component_id == SAFETY_EVENT_COMPONENT_ID:
         return "报警事件"
-    if matches_category(tokens, ("knob_switch",)) or matches_category(
-        tokens,
-        KNOB_DEVICE_NAME_TOKENS,
-    ):
+    if matches_category(tokens, ("knob_switch",)):
         return f"{channel}旋钮事件" if channel else "旋钮事件"
     if channel:
         return f"{channel}事件"
-    if matches_category(tokens, EVENT_DEVICE_NAME_TOKENS):
+    if matches_category(tokens, ("scene_panel",)):
         return "面板事件"
     return "设备事件"
 
@@ -309,9 +281,6 @@ def _fallback_identity_tokens(
             to_category(device_payload.get("category")),
             to_category(product_model.product.category),
             to_category(product_model.product.model),
-            to_category(device_payload.get("name")),
-            to_category(device_payload.get("deviceName")),
-            to_category(device_payload.get("n")),
         )
         if value
     )

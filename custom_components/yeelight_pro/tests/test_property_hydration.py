@@ -67,15 +67,12 @@ async def test_hydration_reads_missing_sensor_properties_before_projection() -> 
         apply_runtime_overrides=lambda payload: payload,
     )
 
-    assert client.read_nodes_properties.await_count == 2
-    calls = [call.kwargs for call in client.read_nodes_properties.await_args_list]
-    by_resource = {
-        tuple(kwargs["resource_ids"]): set(kwargs["properties"]) for kwargs in calls
-    }
-    assert all(kwargs["house_id"] == 429392 for kwargs in calls)
-    assert all(kwargs["node_kind"] == "device" for kwargs in calls)
-    assert {"dc", "alm", "bl"}.issubset(by_resource[(311930423,)])
-    assert {"t", "h", "bl"}.issubset(by_resource[(311930425,)])
+    client.read_nodes_properties.assert_awaited_once()
+    kwargs = client.read_nodes_properties.await_args.kwargs
+    assert kwargs["house_id"] == 429392
+    assert kwargs["node_kind"] == "device"
+    assert kwargs["resource_ids"] == [311930423, 311930425]
+    assert {"dc", "alm", "bl", "t", "h"}.issubset(kwargs["properties"])
 
     contact_candidates = {
         (item.platform, item.component_id)
@@ -260,8 +257,8 @@ async def test_hydration_plain_failures_keep_original_rows() -> None:
     assert hydrated is not devices
 
 
-def test_broad_light_temperature_sensor_name_projects_unknown_sensors() -> None:
-    """属性读取失败时不能误判为灯，但应保留温湿度实体为 unknown."""
+def test_broad_light_temperature_sensor_name_without_properties_uses_light_fallback() -> None:
+    """属性读取失败时不能凭设备名生成传感器，只能按粗 light 兜底。"""
     data, _gateways = DevicePayloadBuilder().build_runtime_payloads(
         devices=[
             {
@@ -277,15 +274,13 @@ def test_broad_light_temperature_sensor_name_projects_unknown_sensors() -> None:
 
     device = data[311930425]
 
-    assert device["iot_category"] == "other"
-    assert device["ha_platform"] == "sensor"
-    assert {
-        (item.platform, item.component_id, item.available)
+    assert device["iot_category"] == "light"
+    assert device["ha_platform"] == "light"
+    assert device["ha_platform_candidates"] == ["light"]
+    assert [
+        (item.platform, item.component_id)
         for item in iter_device_entity_candidates(device)
-    } == {
-        ("sensor", "temperature", True),
-        ("sensor", "humidity", True),
-    }
+    ] == [("light", "light")]
 
 
 @pytest.mark.asyncio
@@ -334,9 +329,9 @@ async def test_hydration_keeps_successful_property_groups_when_one_group_fails()
         apply_runtime_overrides=lambda payload: payload,
     )
 
-    assert client.read_nodes_properties.await_count == 2
+    client.read_nodes_properties.assert_awaited_once()
     assert data[311930423]["iot_category"] == "contact_sensor"
-    assert data[311930425]["iot_category"] == "other"
+    assert data[311930425]["iot_category"] == "light"
     assert {
         (item.platform, item.component_id)
         for item in iter_device_entity_candidates(data[311930423])
@@ -345,11 +340,7 @@ async def test_hydration_keeps_successful_property_groups_when_one_group_fails()
         ("binary_sensor", "tamper"),
         ("sensor", "battery"),
     }
-    assert {
+    assert [
         (item.platform, item.component_id)
         for item in iter_device_entity_candidates(data[311930425])
-    } == {
-        ("sensor", "temperature"),
-        ("sensor", "humidity"),
-    }
-
+    ] == [("light", "light")]

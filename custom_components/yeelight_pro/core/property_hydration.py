@@ -190,14 +190,11 @@ def _device_hydration_properties(
             props.update(schema_props)
     if category:
         props.update(_CATEGORY_EXTRA_PROPERTIES.get(category, ()))
-    name_props = _name_hint_properties(device)
-    props.update(name_props)
     if not props or _needs_broad_property_discovery(
         device,
         inferred_category=category,
         existing_props=existing_props,
         schema_props=schema_props,
-        name_props=name_props,
     ):
         props.update(DEFAULT_HYDRATION_PROPERTIES)
     return [prop for prop in DEFAULT_HYDRATION_PROPERTIES if prop in props]
@@ -209,10 +206,9 @@ def _needs_broad_property_discovery(
     inferred_category: str | None,
     existing_props: set[str],
     schema_props: set[str],
-    name_props: set[str],
 ) -> bool:
     """Return true when a broad cloud category needs read-side disambiguation."""
-    if (existing_props | schema_props | name_props) - {"o"}:
+    if (existing_props | schema_props) - {"o"}:
         return False
     if inferred_category not in {None, "light", "relay_switch", "switch", "sensor", "other"}:
         return False
@@ -328,25 +324,6 @@ def _schema_categories(schema: Mapping[str, Any]) -> set[str]:
             if component.get("category") is not None and str(component.get("category"))
         )
     return categories
-
-
-def _name_hint_properties(device: Mapping[str, Any]) -> set[str]:
-    """Return read targets implied by user-facing product names."""
-    name = " ".join(
-        str(value)
-        for key in ("name", "deviceName", "device_name", "n", "modelName", "model_name")
-        if (value := device.get(key)) is not None
-    ).lower()
-    props: set[str] = set()
-    if any(token in name for token in ("温湿度", "温度", "湿度", "temperature", "humidity")):
-        props.update({"t", "temp", "h", "bl", "bc", "bcg", "o"})
-    if any(token in name for token in ("门磁", "门窗", "contact")):
-        props.update({"dc", "alm", "bl", "bc", "bcg", "o"})
-    if any(token in name for token in ("人体", "人感", "存在", "motion", "presence")):
-        props.update({"mv", "alm", "luminance", "bl", "bc", "bcg", "o"})
-    if any(token in name for token in ("照度", "光照", "illuminance")):
-        props.update({"luminance", "level", "bl", "bc", "bcg", "o"})
-    return props
 
 
 def _device_id(device: Mapping[str, Any]) -> int | str | None:

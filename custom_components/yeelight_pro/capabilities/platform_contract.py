@@ -73,7 +73,9 @@ def platform_candidates_for_payload(payload: Mapping[str, Any]) -> tuple[str, ..
     candidates: list[str] = []
     category = _payload_category(payload)
     props = _property_evidence(payload)
-    if category != "light" or _has_light_property_evidence(props):
+    has_events = _has_events(payload)
+
+    if _should_use_category_fallback(category, props, has_events):
         _extend(candidates, PRIMARY_CATEGORY_CANDIDATES.get(category, ()))
 
     for prop, evidence in props.items():
@@ -94,7 +96,7 @@ def platform_candidates_for_payload(payload: Mapping[str, Any]) -> tuple[str, ..
         elif evidence.writable and _numeric_property(evidence):
             _extend(candidates, ("number",))
 
-    if _has_events(payload):
+    if has_events:
         _extend(candidates, ("event",))
 
     return tuple(platform for platform in PLATFORM_ORDER if platform in candidates)
@@ -126,8 +128,25 @@ def _support_status(status: str) -> PlatformSummaryStatus:
     return "supported"
 
 
+def _should_use_category_fallback(
+    category: str,
+    props: Mapping[str, PropertyEvidence],
+    has_events: bool,
+) -> bool:
+    """Return true when category identity is the best available platform evidence."""
+    if category == "light":
+        return not props and not has_events
+    if category in {"relay_switch", "switch"}:
+        return not props and not has_events
+    return True
+
+
 def _payload_category(payload: Mapping[str, Any]) -> str:
-    return to_category(payload.get("iot_category") or payload.get("category") or payload.get("type"))
+    return to_category(
+        payload.get("iot_category")
+        or payload.get("category")
+        or payload.get("type")
+    )
 
 
 def _property_evidence(payload: Mapping[str, Any]) -> dict[str, PropertyEvidence]:

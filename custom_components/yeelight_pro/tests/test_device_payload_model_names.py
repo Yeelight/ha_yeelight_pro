@@ -5,8 +5,8 @@ from __future__ import annotations
 from custom_components.yeelight_pro.core.device_payload import DevicePayloadBuilder
 
 
-def test_runtime_metadata_refines_broad_model_labels_from_device_names() -> None:
-    """云端只给 broad model/category 时，HA 设备型号仍应尽量友好具体."""
+def test_runtime_metadata_does_not_refine_models_from_device_names() -> None:
+    """用户设备名不能把 broad model/category 改写成具体设备类型。"""
     builder = DevicePayloadBuilder()
 
     data, _gateways = builder.build_runtime_payloads(
@@ -57,15 +57,15 @@ def test_runtime_metadata_refines_broad_model_labels_from_device_names() -> None
         apply_runtime_overrides=lambda payload: payload,
     )
 
-    assert data[501]["device_info"]["model"] == "台灯"
-    assert data[502]["device_info"]["model"] == "吊灯"
-    assert data[503]["device_info"]["model"] == "感应夜灯"
-    assert data[504]["device_info"]["model"] == "智能开关"
-    assert data[505]["device_info"]["model"] == "暖风机"
+    assert data[501]["device_info"]["model"] == "易来照明设备"
+    assert data[502]["device_info"]["model"] == "易来照明设备"
+    assert data[503]["device_info"]["model"] == "易来照明设备"
+    assert data[504]["device_info"]["model"] == "易来开关设备"
+    assert data[505]["device_info"]["model"] == "易来温控设备"
 
 
-def test_runtime_metadata_refines_chinese_generic_model_labels() -> None:
-    """云端已回填中文泛化型号时，HA 设备详情仍应显示具体品类。"""
+def test_runtime_metadata_replaces_chinese_generic_model_labels_without_name_guessing() -> None:
+    """中文泛化型号应替换为安全大类，不从用户设备名猜具体类型。"""
     builder = DevicePayloadBuilder()
 
     data, _gateways = builder.build_runtime_payloads(
@@ -108,7 +108,7 @@ def test_runtime_metadata_refines_chinese_generic_model_labels() -> None:
         apply_runtime_overrides=lambda payload: payload,
     )
 
-    assert data[601]["device_info"]["model"] == "镜前灯"
-    assert data[602]["device_info"]["model"] == "操作台灯"
-    assert data[603]["device_info"]["model"] == "衣柜灯"
-    assert data[604]["device_info"]["model"] == "智能开关"
+    assert data[601]["device_info"]["model"] == "易来照明设备"
+    assert data[602]["device_info"]["model"] == "易来照明设备"
+    assert data[603]["device_info"]["model"] == "易来照明设备"
+    assert data[604]["device_info"]["model"] == "易来开关设备"

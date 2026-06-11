@@ -7,7 +7,7 @@ from custom_components.yeelight_pro.entity_candidates import iter_device_entity_
 
 
 def test_runtime_payloads_restore_empty_category_schema_and_metadata() -> None:
-    """明确品类无当前属性值时仍应生成实体 schema，并同步友好 metadata."""
+    """粗开关品类无细分证据时仍保留大类 switch 实体。"""
     builder = DevicePayloadBuilder()
 
     data, _gateways = builder.build_runtime_payloads(
@@ -37,7 +37,7 @@ def test_runtime_payloads_restore_empty_category_schema_and_metadata() -> None:
     assert device["model_id"] == "YL-201"
     assert device["room_name"] == "客厅"
     assert device_info["name"] == "墙壁开关1"
-    assert device_info["model"] == "墙壁开关"
+    assert device_info["model"] == "易来开关设备"
     assert device_info["suggested_area"] == "客厅"
     assert device_info["identifiers"] == [
         ["yeelight_pro", "304784336"],
@@ -50,7 +50,7 @@ def test_runtime_payloads_restore_empty_category_schema_and_metadata() -> None:
 
 
 def test_runtime_payloads_keep_documented_sensor_entities_when_values_are_missing() -> None:
-    """设备列表暂缺值时，身份明确的传感器仍应维持 HA 实体声明."""
+    """只有明确细分传感器品类可在暂缺值时维持 HA 实体声明。"""
     builder = DevicePayloadBuilder()
 
     data, _gateways = builder.build_runtime_payloads(
@@ -82,21 +82,18 @@ def test_runtime_payloads_keep_documented_sensor_entities_when_values_are_missin
     temp_candidates = list(iter_device_entity_candidates(data[502]))
 
     assert data[501]["iot_category"] == "human_sensor"
-    assert data[502]["iot_category"] == "other"
+    assert data[502]["iot_category"] == "sensor"
     assert {(item.platform, item.component_id, item.available) for item in human_candidates} == {
         ("binary_sensor", "motion", True),
         ("binary_sensor", "tamper", True),
         ("sensor", "illuminance", True),
         ("sensor", "battery", True),
     }
-    assert {(item.platform, item.component_id, item.available) for item in temp_candidates} == {
-        ("sensor", "temperature", True),
-        ("sensor", "humidity", True),
-    }
+    assert temp_candidates == []
 
 
-def test_runtime_payloads_project_named_temperature_humidity_sensor_without_values() -> None:
-    """云端粗 light 且暂缺值时，应按名称/schema 维持温湿度实体."""
+def test_runtime_payloads_do_not_project_named_temperature_humidity_without_values() -> None:
+    """云端粗 light 且无细分证据时，不凭名称或大类生成实体。"""
     builder = DevicePayloadBuilder()
 
     data, _gateways = builder.build_runtime_payloads(
@@ -119,12 +116,12 @@ def test_runtime_payloads_project_named_temperature_humidity_sensor_without_valu
     device = data[503]
     candidates = list(iter_device_entity_candidates(device))
 
-    assert device["iot_category"] == "other"
-    assert device["ha_platform"] == "sensor"
-    assert {(item.platform, item.component_id, item.available) for item in candidates} == {
-        ("sensor", "temperature", True),
-        ("sensor", "humidity", True),
-    }
+    assert device["iot_category"] == "light"
+    assert device["ha_platform"] == "light"
+    assert device["ha_platform_candidates"] == ["light"]
+    assert [(item.platform, item.component_id) for item in candidates] == [
+        ("light", "light")
+    ]
 
 
 def test_runtime_payloads_do_not_use_conflicting_switch_schema_for_curtain() -> None:
@@ -198,7 +195,7 @@ def test_runtime_payloads_keep_empty_cover_and_climate_without_main_switches() -
 
 
 def test_runtime_payloads_project_scene_panels_as_events_not_switches() -> None:
-    """全面屏/智能面板应映射为 event，不能因泛化开关 schema 变成 switch."""
+    """仅凭名称不能把泛化开关 schema 改成面板事件设备。"""
     builder = DevicePayloadBuilder()
 
     data, _gateways = builder.build_runtime_payloads(
@@ -219,11 +216,11 @@ def test_runtime_payloads_project_scene_panels_as_events_not_switches() -> None:
     device = data[604]
     candidates = list(iter_device_entity_candidates(device))
 
-    assert device["iot_category"] == "scene_panel"
+    assert device["iot_category"] == "relay_switch"
     assert [(item.platform, item.component_id) for item in candidates] == [
-        ("event", "scene_panel")
+        ("switch", "relay_switch_1"),
+        ("switch", "relay_switch_2"),
     ]
-    assert all(item.platform != "switch" for item in candidates)
 
 
 def test_runtime_payloads_do_not_project_indexed_power_for_non_switch_categories() -> None:
@@ -272,13 +269,18 @@ def test_runtime_payloads_do_not_project_indexed_power_for_non_switch_categories
 
     assert data[605]["iot_category"] == "curtain"
     assert data[606]["iot_category"] == "temp_control"
-    assert data[607]["iot_category"] == "scene_panel"
+    assert data[607]["iot_category"] == "relay_switch"
     assert by_device[605] == {("cover", "cover")}
     assert ("climate", "climate") in by_device[606]
-    assert by_device[607] == {("event", "scene_panel")}
+    assert by_device[607] == {
+        ("switch", "switch_1"),
+        ("switch", "switch_2"),
+        ("switch", "switch_3"),
+    }
     assert all(
         "switch" not in {platform for platform, _component_id in candidates}
-        for candidates in by_device.values()
+        for device_id, candidates in by_device.items()
+        if device_id != 607
     )
 
 
