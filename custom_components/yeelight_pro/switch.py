@@ -15,11 +15,17 @@ from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
 from .core.exceptions import YeelightProError
 from .dynamic_entities import async_track_dynamic_entities
+from .entity_category import ha_entity_category
 from .entity_errors import raise_service_error
+from .projector.property_controls import (
+    HASwitchControlProjection,
+    project_switch_controls,
+)
 from .projector.switch import HASwitchProjection, project_switches
 
 _LOGGER = logging.getLogger(__name__)
 ERROR_SWITCH_PROJECTION_UNAVAILABLE = "无法解析 switch 投影"
+_SwitchProjection = HASwitchProjection | HASwitchControlProjection
 
 
 async def async_setup_entry(
@@ -44,7 +50,10 @@ def _iter_switch_entities(coordinator: YeelightProCoordinator) -> list["Yeelight
     """按当前拓扑生成 switch 实体候选."""
     switches: list[YeelightProSwitch] = []
     for device_id, device_data in coordinator.data.items():
-        projections = project_switches(device_data, domain=DOMAIN)
+        projections: list[_SwitchProjection] = [
+            *project_switches(device_data, domain=DOMAIN),
+            *project_switch_controls(device_data, domain=DOMAIN),
+        ]
         for projection in projections:
             switches.append(
                 YeelightProSwitch(
@@ -80,12 +89,15 @@ class YeelightProSwitch(CoordinatorEntity, SwitchEntity):
         )
 
     @property
-    def _projection(self) -> HASwitchProjection | None:
+    def _projection(self) -> _SwitchProjection | None:
         """返回最新的开关投影视图."""
-        projections = project_switches(
-            self.coordinator.get_device(self._device_id),
-            domain=DOMAIN,
-        )
+        device = self.coordinator.get_device(self._device_id)
+        if device is None:
+            return None
+        projections: list[_SwitchProjection] = [
+            *project_switches(device, domain=DOMAIN),
+            *project_switch_controls(device, domain=DOMAIN),
+        ]
         return next(
             (item for item in projections if item.component_id == self._component_id),
             None,
@@ -125,6 +137,14 @@ class YeelightProSwitch(CoordinatorEntity, SwitchEntity):
         if projection is not None:
             return projection.available
         return False
+
+    @property
+    def entity_category(self):
+        """返回实体分类，用于 HA 设备页分组."""
+        projection = self._projection
+        if projection is None:
+            return None
+        return ha_entity_category(projection.entity_category)
 
     @property
     def is_on(self) -> bool:

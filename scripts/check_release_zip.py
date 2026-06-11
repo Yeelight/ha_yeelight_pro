@@ -13,14 +13,25 @@ COMPONENT_ROOT = ROOT / "custom_components" / "yeelight_pro"
 REQUIRED_FILES = {
     "custom_components/yeelight_pro/__init__.py",
     "custom_components/yeelight_pro/capabilities/spec_correction_normalizers.py",
+    "custom_components/yeelight_pro/capabilities/ha_core_platforms.py",
+    "custom_components/yeelight_pro/capabilities/platform_contract.py",
+    "custom_components/yeelight_pro/capabilities/ha_platforms.py",
     "custom_components/yeelight_pro/core/client_node_base.py",
     "custom_components/yeelight_pro/converter/runtime_inference_helpers.py",
+    "custom_components/yeelight_pro/converter/runtime_template_constants.py",
+    "custom_components/yeelight_pro/converter/runtime_template_controls.py",
+    "custom_components/yeelight_pro/converter/runtime_template_hvac.py",
+    "custom_components/yeelight_pro/converter/runtime_template_sensors.py",
+    "custom_components/yeelight_pro/converter/runtime_templates.py",
+    "custom_components/yeelight_pro/converter/runtime_subdevices.py",
     "custom_components/yeelight_pro/core/client_node_api.py",
     "custom_components/yeelight_pro/core/client_node_lists.py",
     "custom_components/yeelight_pro/core/client_node_properties.py",
     "custom_components/yeelight_pro/core/coordinator_controls.py",
+    "custom_components/yeelight_pro/core/device_classification_categories.py",
     "custom_components/yeelight_pro/core/device_metadata.py",
     "custom_components/yeelight_pro/core/lan_control.py",
+    "custom_components/yeelight_pro/core/property_hydration.py",
     "custom_components/yeelight_pro/core/scan_login.py",
     "custom_components/yeelight_pro/core/runtime_bridge.py",
     "custom_components/yeelight_pro/config_flow_account.py",
@@ -32,9 +43,13 @@ REQUIRED_FILES = {
     "custom_components/yeelight_pro/config_flow_scan_login_helpers.py",
     "custom_components/yeelight_pro/config_flow_scan_login_region.py",
     "custom_components/yeelight_pro/debug_service.py",
+    "custom_components/yeelight_pro/device_channels.py",
+    "custom_components/yeelight_pro/device_display.py",
     "custom_components/yeelight_pro/diagnostics.py",
     "custom_components/yeelight_pro/entry_title.py",
+    "custom_components/yeelight_pro/entity_category.py",
     "custom_components/yeelight_pro/entity_lifecycle_cleanup.py",
+    "custom_components/yeelight_pro/ha_house_registry.py",
     "custom_components/yeelight_pro/lan_contract.py",
     "custom_components/yeelight_pro/lan_discovery.py",
     "custom_components/yeelight_pro/lan_methods.py",
@@ -44,6 +59,8 @@ REQUIRED_FILES = {
     "custom_components/yeelight_pro/manifest.json",
     "custom_components/yeelight_pro/scan_login_contract.py",
     "custom_components/yeelight_pro/projector/event_helpers.py",
+    "custom_components/yeelight_pro/projector/property_control_common.py",
+    "custom_components/yeelight_pro/projector/property_controls.py",
     "custom_components/yeelight_pro/projector/sensor_helpers.py",
     "custom_components/yeelight_pro/push_contract.py",
     "custom_components/yeelight_pro/push_manager.py",
@@ -69,6 +86,16 @@ FORBIDDEN_SUFFIXES = {
 FORBIDDEN_NAMES = {
     ".coverage",
     "coverage.xml",
+    "analytics.py",
+    "device_tracker.py",
+    "humidifier.py",
+    "lock.py",
+    "media_player.py",
+    "notify.py",
+    "scene.py",
+    "text.py",
+    "vacuum.py",
+    "water_heater.py",
 }
 
 
@@ -104,8 +131,10 @@ def _validate_names(names: set[str]) -> list[str]:
             errors.append(f"unexpected root path: {name}")
         if any(part in FORBIDDEN_PARTS for part in path.parts):
             errors.append(f"forbidden generated/test path: {name}")
-        if path.suffix in FORBIDDEN_SUFFIXES or path.name in FORBIDDEN_NAMES:
+        if path.suffix in FORBIDDEN_SUFFIXES:
             errors.append(f"forbidden generated file: {name}")
+        if path.name in FORBIDDEN_NAMES:
+            errors.append(f"forbidden release file: {name}")
     return errors
 
 

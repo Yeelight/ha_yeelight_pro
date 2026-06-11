@@ -108,7 +108,7 @@ def test_iot_registry_contract_check_requires_coverage_tokens(
         "event-input sensor fallback boundary coverage",
         "low-frequency component projection boundary coverage",
         "bridge protocol metadata projection boundary coverage",
-        "vacuum experimental projection boundary coverage",
+            "unsupported vacuum projection boundary coverage",
         "core IoT category exclusion coverage",
         "light component-state merge coverage",
         "gateway via_device projection coverage",
@@ -243,8 +243,6 @@ def test_split_contract_check_requires_coverage_tokens(
     assert any("client multi-node control entrypoint coverage" in error for error in errors)
     assert any("documented read properties client coverage" in error for error in errors)
     assert any("documented read property variants client coverage" in error for error in errors)
-    assert any("automation action client path coverage" in error for error in errors)
-    assert any("automation trigger path assertion" in error for error in errors)
     assert any("read properties body field coverage" in error for error in errors)
     assert any("multi-node read body field coverage" in error for error in errors)
     assert any("client auth error classification coverage" in error for error in errors)
@@ -253,8 +251,7 @@ def test_split_contract_check_requires_coverage_tokens(
     assert any("setup coordinator fixture coverage" in error for error in errors)
     assert any("failed unload runtime preservation coverage" in error for error in errors)
     assert any("manual device filter reload coverage" in error for error in errors)
-    assert any("experimental platform default-off coverage" in error for error in errors)
-    assert any("experimental platform constant coverage" in error for error in errors)
+    assert any("unsupported platform removal coverage" in error for error in errors)
     assert any("Repairs placeholder runtime coverage" in error for error in errors)
 
 
@@ -279,6 +276,7 @@ def test_lifecycle_contract_check_requires_coverage_tokens(
     _write_test_file(tests_root / "entity_lifecycle_helpers.py", "")
     _write_test_file(tests_root / "test_entity_lifecycle.py", "")
     _write_test_file(tests_root / "test_entity_lifecycle_reconcile.py", "")
+    _write_test_file(tests_root / "test_entity_lifecycle_reconcile_display.py", "")
     _write_test_file(tests_root / "test_registry_cleanup_service.py", "")
     _write_test_file(tests_root / "test_registry_cleanup_service_privacy.py", "")
     _write_test_file(tests_root / "test_repair_issue_cleanup.py", "")
@@ -306,7 +304,7 @@ def test_lifecycle_contract_check_requires_coverage_tokens(
         "filtered device stale-without-removal coverage" in error
         for error in errors
     )
-    assert any("domain-scoped unique-id coverage" in error for error in errors)
+    assert any("removed scene platform stale coverage" in error for error in errors)
     assert any("shared lifecycle registry fake" in error for error in errors)
     assert any(
         "cleanup service filtered-device confirm coverage" in error

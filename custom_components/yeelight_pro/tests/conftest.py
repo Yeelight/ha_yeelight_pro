@@ -49,12 +49,10 @@ def mock_coordinator():
     coordinator.house_id = 12345
     # 辅助数据直接挂载在 coordinator 上
     coordinator.scenes = []
-    coordinator.automations = []
     coordinator.groups = []
     coordinator.rooms = []
     coordinator.areas = []
     coordinator.async_execute_scene = AsyncMock()
-    coordinator.async_trigger_automation = AsyncMock()
     coordinator.async_control_device = AsyncMock()
     coordinator.async_control_group = AsyncMock()
     return coordinator
@@ -101,26 +99,6 @@ def sample_scene_data():
         {"id": "scene_1", "name": "回家模式", "icon": "mdi:home"},
         {"id": "scene_2", "name": "离家模式", "icon": "mdi:home-export-outline"},
     ]
-
-
-@pytest.fixture
-def sample_automation_data():
-    """示例自动化数据."""
-    return [
-        {
-            "id": "auto_1",
-            "name": "日落自动开灯",
-            "type": "sensor",
-            "enabled": True,
-        },
-        {
-            "id": "auto_2",
-            "name": "定时关灯",
-            "type": "timer",
-            "enabled": False,
-        },
-    ]
-
 
 @pytest.fixture
 def sample_group_data():

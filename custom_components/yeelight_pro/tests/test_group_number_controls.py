@@ -12,6 +12,7 @@ from custom_components.yeelight_pro.number import (
 @pytest.mark.asyncio
 async def test_group_brightness_number_uses_iot_property_key(mock_coordinator) -> None:
     """灯组亮度控制必须发送 Yeelight IoT 属性缩写 l."""
+    mock_coordinator.entry_data = {"house_name": "绿地中央公园"}
     entity = YeelightProGroupBrightness(mock_coordinator, "group_1", "一楼灯组")
     entity.async_write_ha_state = lambda: None
 
@@ -21,6 +22,11 @@ async def test_group_brightness_number_uses_iot_property_key(mock_coordinator) -
         "group_1",
         {"l": 42},
     )
+    assert entity.device_info["identifiers"] == {
+        ("yeelight_pro", "12345"),
+        ("yeelight_pro", "house:12345"),
+    }
+    assert entity.device_info["name"] == "绿地中央公园"
 
 
 @pytest.mark.asyncio

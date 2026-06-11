@@ -1,16 +1,14 @@
-"""Yeelight IoT 投影边界与实验平台回归测试."""
+"""Yeelight IoT 投影边界回归测试."""
 from __future__ import annotations
 
 from custom_components.yeelight_pro.capabilities.mapping import platform_for_category
 from custom_components.yeelight_pro.capabilities.registry import is_iot_category
-from custom_components.yeelight_pro.const import EXPERIMENTAL_PLATFORMS
 from custom_components.yeelight_pro.entity_lifecycle import collect_active_entity_keys
 from custom_components.yeelight_pro.projector.binary_sensor import project_binary_sensors
 from custom_components.yeelight_pro.projector.event import project_events
 from custom_components.yeelight_pro.projector.light import project_light
 from custom_components.yeelight_pro.projector.sensor import project_sensors
 from custom_components.yeelight_pro.projector.switch import project_switches
-from custom_components.yeelight_pro.projector.vacuum import project_vacuum
 
 from .projection_helpers import DOMAIN, LifecycleCoordinator, projection_payload
 
@@ -32,7 +30,6 @@ HA_ENTITY_PLATFORMS_NOT_IOT_CATEGORIES = {
     "button",
     "select",
     "number",
-    "vacuum",
     "text",
 }
 
@@ -71,6 +68,41 @@ def test_unknown_power_like_component_hidden_from_switch_when_hiding_enabled() -
     assert collect_active_entity_keys(LifecycleCoordinator(data={"unknown": device})) == set()
 
 
+def test_non_light_sensor_payload_does_not_fallback_to_light() -> None:
+    """云端粗 type=light 不能把传感器 payload 误投成灯."""
+    for device in (
+        projection_payload(
+            device_id="contact-light-fallback",
+            category="contact_sensor",
+            component_id="contact_sensor",
+            state={"dc": True, "alm": False},
+            component_category="contact sensor",
+        ),
+        projection_payload(
+            device_id="human-light-fallback",
+            category="human_sensor",
+            component_id="human_sensor",
+            state={"mv": True, "luminance": 80},
+            component_category="human detection sensor",
+        ),
+    ):
+        device["type"] = "light"
+
+        assert project_light(device, domain=DOMAIN) is None
+
+
+def test_legacy_type_light_power_only_payload_does_not_project_light() -> None:
+    """仅有 type=light 和开关状态不足以证明设备是灯。"""
+    device = {
+        "device_id": "legacy-power-only",
+        "type": "light",
+        "online": True,
+        "params": {"p": True},
+    }
+
+    assert project_light(device, domain=DOMAIN) is None
+
+
 def test_unknown_indexed_power_keys_do_not_project_writable_switches() -> None:
     """未知 indexed p/sp 不能绕过 raw fallback 生成可写 switch。"""
     device = {
@@ -91,6 +123,27 @@ def test_unknown_indexed_power_keys_do_not_project_writable_switches() -> None:
     assert collect_active_entity_keys(coordinator) == set()
 
 
+def test_non_switch_parent_category_blocks_indexed_switch_fallback() -> None:
+    """父级已规范为其他品类时，type=switch 不能覆盖生成 switch。"""
+    for category, params in (
+        ("curtain", {"1-p": True, "2-p": True, "cp": 40, "tp": 90}),
+        ("temp_control", {"1-p": True, "2-p": False, "aco": True}),
+        ("scene_panel", {"1-p": True, "2-p": True, "3-p": False}),
+        ("other", {"1-p": True, "2-sp": False}),
+    ):
+        device = {
+            "device_id": f"{category}-indexed-switch",
+            "name": category,
+            "iot_category": category,
+            "category": category,
+            "type": "switch",
+            "online": True,
+            "params": params,
+        }
+
+        assert project_switches(device, domain=DOMAIN) == []
+
+
 def test_relay_switch_legacy_indexed_keys_still_project_switches() -> None:
     """已知继电器旧载荷仍可用 indexed IoT 控制键生成多路 switch。"""
     device = {
@@ -106,7 +159,46 @@ def test_relay_switch_legacy_indexed_keys_still_project_switches() -> None:
 
     assert [item.component_id for item in projections] == ["switch_1", "switch_2"]
     assert [item.control_key for item in projections] == ["1-p", "2-sp"]
+    assert [item.name for item in projections] == ["第 1 键", "第 2 键"]
     assert [item.is_on for item in projections] == [True, False]
+
+
+def test_double_switch_name_limits_legacy_indexed_channels() -> None:
+    """双键开关不应因为云端残留第三路 key 而生成三键实体。"""
+    device = {
+        "device_id": "double-switch-1",
+        "name": "厨房双键开关",
+        "category": "relay_switch",
+        "type": "switch",
+        "online": True,
+        "params": {"1-p": True, "2-p": False, "3-p": True},
+    }
+
+    projections = project_switches(device, domain=DOMAIN)
+
+    assert [item.component_id for item in projections] == ["switch_1", "switch_2"]
+    assert [item.name for item in projections] == ["左键", "右键"]
+
+
+def test_three_gang_switch_projects_positional_channel_names() -> None:
+    """三键开关在 HA 设备详情中应显示左/中/右键。"""
+    device = {
+        "device_id": "three-switch-1",
+        "name": "玄关三键智能开关",
+        "category": "relay_switch",
+        "type": "switch",
+        "online": True,
+        "params": {"1-p": True, "2-p": False, "3-p": True},
+    }
+
+    projections = project_switches(device, domain=DOMAIN)
+
+    assert [item.component_id for item in projections] == [
+        "switch_1",
+        "switch_2",
+        "switch_3",
+    ]
+    assert [item.name for item in projections] == ["左键", "中键", "右键"]
 
 
 def test_unknown_readable_property_projects_marked_fallback_sensor_when_hiding_disabled() -> None:
@@ -186,7 +278,9 @@ def test_event_input_unknown_scalar_does_not_project_fallback_sensor() -> None:
     assert project_sensors(device, domain=DOMAIN) == []
     assert collect_active_entity_keys(
         LifecycleCoordinator(data={"panel": device}, hide_unknown_entities=False)
-    ) == set()
+    ) == {
+        ("event", "yeelight_pro_scene-panel-unknown-scalar-1_scene_panel_event")
+    }
 
 
 def test_low_frequency_component_unknown_scalar_does_not_project_fallback_sensor() -> None:
@@ -234,35 +328,31 @@ def test_bridge_protocol_metadata_does_not_enable_unknown_fallback_sensor() -> N
 
 
 def test_ha_entity_platforms_are_not_yeelight_iot_device_categories() -> None:
-    """scene/button/select/number/vacuum/text 是 HA 表达或实验能力，不是后台 IoT 品类。"""
+    """scene/button/select/number/text 是 HA 表达，不是后台 IoT 品类。"""
     for platform in HA_ENTITY_PLATFORMS_NOT_IOT_CATEGORIES:
         assert not is_iot_category(platform)
         assert platform_for_category(platform) is None
 
-    assert "vacuum" in EXPERIMENTAL_PLATFORMS
+    assert not is_iot_category("vacuum")
+    assert platform_for_category("vacuum") is None
 
 
-def test_vacuum_projection_is_experimental_and_requires_explicit_vacuum_payload() -> None:
-    """vacuum 保留为实验平台，只有明确 vacuum payload 才投影。"""
-    light = projection_payload(
-        device_id="light-robot-name",
-        category="light",
-        component_id="light",
-        state={"p": True},
-    )
-    vacuum = projection_payload(
+def test_unsupported_vacuum_payload_does_not_project_entities() -> None:
+    """无易来文档/接口支撑的 vacuum-like payload 不应生成 HA 实体。"""
+    device = projection_payload(
         device_id="vacuum-1",
         category="other",
         component_id="vacuum",
         state={"status": "cleaning", "bl": 88},
         component_category="vacuum",
     )
-    vacuum["type"] = "vacuum"
+    device["type"] = "vacuum"
 
-    assert project_vacuum(light, domain=DOMAIN) is None
-    projection = project_vacuum(vacuum, domain=DOMAIN)
-    assert projection is not None
-    assert projection.status == "cleaning"
-    assert projection.battery_level == 88
+    assert project_light(device, domain=DOMAIN) is None
+    assert project_switches(device, domain=DOMAIN) == []
+    assert project_binary_sensors(device, domain=DOMAIN) == []
+    assert project_sensors(device, domain=DOMAIN) == []
+    assert project_events(device, domain=DOMAIN) == []
+    assert collect_active_entity_keys(LifecycleCoordinator(data={"vacuum": device})) == set()
     assert len(CORE_IOT_DEVICE_CATEGORIES) == 10
     assert "vacuum" not in CORE_IOT_DEVICE_CATEGORIES

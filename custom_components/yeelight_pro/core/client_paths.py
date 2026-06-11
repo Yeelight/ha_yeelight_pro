@@ -44,11 +44,6 @@ def house_scenes_path(house_id: int) -> str:
     return f"/v1/open/node/house/{house_id}/scenes/r/list"
 
 
-def house_automations_path(house_id: int) -> str:
-    """家庭自动化列表路径。"""
-    return f"/v1/automations/{house_id}/r/list"
-
-
 def house_areas_path(house_id: int) -> str:
     """家庭区域列表路径。"""
     return f"/v1/open/node/house/{house_id}/areas/r/list"
@@ -62,11 +57,6 @@ def house_snapshot_path(house_id: int) -> str:
 def scene_execute_path(house_id: int, scene_id: str) -> str:
     """场景执行路径。"""
     return f"/v1/open/control/house/{house_id}/control/w/scenes/{scene_id}"
-
-
-def automation_action_path(automation_id: str, action: str) -> str:
-    """自动化动作路径。"""
-    return f"/v1/automation/{automation_id}/{action}"
 
 
 def node_properties_control_path(

@@ -12,7 +12,6 @@ from homeassistant.core import HomeAssistant
 from custom_components.yeelight_pro.const import (
     CONF_DEBUG_MODE,
     CONF_DEVICE_IMPORT_FILTER,
-    CONF_EXPERIMENTAL_PLATFORMS,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_LIVE_UPDATES,
     CONF_LOCAL_GATEWAY_CONTROL,
@@ -39,7 +38,6 @@ def _runtime_coordinator(
         options={
             CONF_SCAN_INTERVAL: 30,
             CONF_DEBUG_MODE: False,
-            CONF_EXPERIMENTAL_PLATFORMS: False,
             CONF_HIDE_UNKNOWN_ENTITIES: True,
             CONF_TOPOLOGY_CHANGE_REPAIRS: True,
             CONF_LIVE_UPDATES: DEFAULT_LIVE_UPDATES,
@@ -83,7 +81,6 @@ async def test_options_update_applies_runtime_options_without_reload(
     mock_config_entry.options = {
         CONF_SCAN_INTERVAL: 45,
         CONF_DEBUG_MODE: True,
-        CONF_EXPERIMENTAL_PLATFORMS: False,
         CONF_HIDE_UNKNOWN_ENTITIES: True,
         CONF_TOPOLOGY_CHANGE_REPAIRS: True,
     }
@@ -113,8 +110,7 @@ async def test_options_update_reloads_when_entity_projection_changes(
     mock_config_entry.options = {
         CONF_SCAN_INTERVAL: 30,
         CONF_DEBUG_MODE: False,
-        CONF_EXPERIMENTAL_PLATFORMS: True,
-        CONF_HIDE_UNKNOWN_ENTITIES: True,
+        CONF_HIDE_UNKNOWN_ENTITIES: False,
         CONF_TOPOLOGY_CHANGE_REPAIRS: True,
     }
     hass.config_entries.async_reload = AsyncMock()
@@ -167,7 +163,6 @@ async def test_options_update_reloads_when_device_import_filter_changes(
     mock_config_entry.options = {
         CONF_SCAN_INTERVAL: 30,
         CONF_DEBUG_MODE: False,
-        CONF_EXPERIMENTAL_PLATFORMS: False,
         CONF_HIDE_UNKNOWN_ENTITIES: True,
         CONF_TOPOLOGY_CHANGE_REPAIRS: True,
         CONF_DEVICE_IMPORT_FILTER: {
@@ -195,7 +190,6 @@ async def test_options_update_does_not_reload_for_equivalent_empty_device_filter
     mock_config_entry.options = {
         CONF_SCAN_INTERVAL: 30,
         CONF_DEBUG_MODE: False,
-        CONF_EXPERIMENTAL_PLATFORMS: False,
         CONF_HIDE_UNKNOWN_ENTITIES: True,
         CONF_TOPOLOGY_CHANGE_REPAIRS: True,
         CONF_DEVICE_IMPORT_FILTER: {
@@ -212,7 +206,6 @@ async def test_options_update_does_not_reload_for_equivalent_empty_device_filter
     coordinator.apply_options.assert_called_once_with({
         CONF_SCAN_INTERVAL: 30,
         CONF_DEBUG_MODE: False,
-        CONF_EXPERIMENTAL_PLATFORMS: False,
         CONF_HIDE_UNKNOWN_ENTITIES: True,
         CONF_TOPOLOGY_CHANGE_REPAIRS: True,
         CONF_DEVICE_IMPORT_FILTER: {
@@ -252,7 +245,6 @@ async def test_options_update_clears_topology_repairs_when_disabled(
     coordinator = _runtime_coordinator(apply_options=MagicMock())
     _install_runtime(hass, mock_config_entry, coordinator)
     mock_config_entry.options = {
-        CONF_EXPERIMENTAL_PLATFORMS: False,
         CONF_HIDE_UNKNOWN_ENTITIES: True,
         CONF_TOPOLOGY_CHANGE_REPAIRS: False,
     }
@@ -285,7 +277,6 @@ async def test_options_update_keeps_topology_repairs_when_enabled(
     coordinator = _runtime_coordinator(apply_options=MagicMock())
     _install_runtime(hass, mock_config_entry, coordinator)
     mock_config_entry.options = {
-        CONF_EXPERIMENTAL_PLATFORMS: False,
         CONF_HIDE_UNKNOWN_ENTITIES: True,
         CONF_TOPOLOGY_CHANGE_REPAIRS: True,
     }

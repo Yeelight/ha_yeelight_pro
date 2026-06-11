@@ -22,6 +22,18 @@ from scripts.hacs_preflight_data import (
 )
 
 MAX_PYTHON_FILE_LINES = 400
+FORBIDDEN_RUNTIME_PLATFORM_FILES = {
+    "analytics.py",
+    "device_tracker.py",
+    "humidifier.py",
+    "lock.py",
+    "media_player.py",
+    "notify.py",
+    "scene.py",
+    "text.py",
+    "vacuum.py",
+    "water_heater.py",
+}
 SEMANTIC_VERSION_RE = re.compile(
     r"^(0|[1-9]\d*)\."
     r"(0|[1-9]\d*)\."
@@ -127,23 +139,52 @@ def check_platform_constants(component_root: Path) -> list[str]:
     errors: list[str] = []
     const_path = component_root / "const.py"
     platforms = _literal_value(const_path, "PLATFORMS")
-    experimental = _literal_value(const_path, "EXPERIMENTAL_PLATFORMS")
     if not isinstance(platforms, list):
         errors.append("PLATFORMS must be a literal list")
-        return errors
-    if not isinstance(experimental, list):
-        errors.append("EXPERIMENTAL_PLATFORMS must be a literal list")
         return errors
 
     if "text" in platforms:
         errors.append("text must not be advertised as an enabled platform")
-    if "vacuum" not in experimental:
-        errors.append("vacuum must stay marked experimental until validated")
-    enabled_by_default = [name for name in platforms if name not in set(experimental)]
-    if len(enabled_by_default) != 13:
+    if "vacuum" in platforms:
+        errors.append("vacuum must not be advertised without documented support")
+    if "lock" in platforms:
+        errors.append("lock must not be advertised without documented door-lock support")
+    if len(platforms) != 11:
         errors.append(
-            f"default enabled platform count changed: {len(enabled_by_default)}"
+            f"default enabled platform count changed: {len(platforms)}"
         )
+    forbidden_platforms = {
+        Path(platform).stem
+        for platform in FORBIDDEN_RUNTIME_PLATFORM_FILES
+        if Path(platform).stem in platforms
+    }
+    if forbidden_platforms:
+        errors.append(
+            "unsupported runtime platforms are enabled: "
+            f"{sorted(forbidden_platforms)}"
+        )
+    errors.extend(check_forbidden_runtime_platform_files(component_root))
+    return errors
+
+
+def check_forbidden_runtime_platform_files(component_root: Path) -> list[str]:
+    """Reject runtime platform files that Yeelight APIs do not back."""
+    errors: list[str] = []
+    for forbidden_name in sorted(FORBIDDEN_RUNTIME_PLATFORM_FILES):
+        path = component_root / forbidden_name
+        if path.exists():
+            errors.append(
+                f"unsupported runtime platform file must be removed: {forbidden_name}"
+            )
+    projector_root = component_root / "projector"
+    if projector_root.exists():
+        for forbidden_name in sorted(FORBIDDEN_RUNTIME_PLATFORM_FILES):
+            path = projector_root / forbidden_name
+            if path.exists():
+                errors.append(
+                    "unsupported projector platform file must be removed: "
+                    f"projector/{forbidden_name}"
+                )
     return errors
 
 

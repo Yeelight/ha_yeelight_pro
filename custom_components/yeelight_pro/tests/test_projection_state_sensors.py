@@ -104,11 +104,11 @@ def test_state_projectors_use_top_level_fallback_device_info() -> None:
     assert sensor.device_info is not None
     assert sensor.device_info["name"] == "门厅照度"
     assert sensor.device_info["identifiers"] == {(DOMAIN, "304784334")}
-    assert "suggested_area" not in sensor.device_info
+    assert sensor.device_info["suggested_area"] == "门厅"
     assert switch.device_info is not None
     assert switch.device_info["name"] == "墙壁开关1"
     assert switch.device_info["identifiers"] == {(DOMAIN, "304784336")}
-    assert "suggested_area" not in switch.device_info
+    assert switch.device_info["suggested_area"] == "客厅"
 
 
 def test_power_meter_projects_power_and_energy_sensors() -> None:
@@ -133,41 +133,174 @@ def test_power_meter_projects_power_and_energy_sensors() -> None:
     assert by_component["energy_consumption"].native_unit_of_measurement == "Wh"
 
 
-def test_dali_energy_projects_only_stable_power_and_energy_sensors() -> None:
-    """dali能量组件首版仅投影 ap/ae，避免单位未收敛字段误导用户。"""
+def test_contact_sensor_projects_battery_sensor_alongside_binary_state() -> None:
+    """电池类只读属性应作为独立 sensor 暴露，不能被主 binary_sensor 吞掉."""
     device = projection_payload(
-        device_id="dali-energy-1",
-        category="other",
-        component_id="dali_energy",
-        state={
-            "ap": 19,
-            "ae": 880,
-            "ot": 3600,
-            "sys_s": 2,
-            "esv": 2200,
-            "esvf": 50,
-            "temp": 31,
-            "ocp": 80,
-            "lsot": 1800,
-            "lsv": 360,
-            "lsc": 700,
-            "pf": 95,
-        },
-        component_category="dali energy",
+        device_id="contact-battery-1",
+        category="contact_sensor",
+        component_id="contact_sensor",
+        state={"dc": False, "alm": False, "bl": 86},
+        component_category="contact sensor",
     )
 
-    projections = project_sensors(device, domain=DOMAIN)
-    by_component = {projection.component_id: projection for projection in projections}
+    sensors = project_sensors(device, domain=DOMAIN)
 
-    assert set(by_component) == {"active_power", "active_energy"}
-    assert by_component["active_power"].native_value == 19
-    assert by_component["active_power"].device_class == "power"
-    assert by_component["active_power"].native_unit_of_measurement == "W"
-    assert by_component["active_power"].state_class == "measurement"
-    assert by_component["active_energy"].native_value == 880
-    assert by_component["active_energy"].device_class == "energy"
-    assert by_component["active_energy"].native_unit_of_measurement == "Wh"
-    assert by_component["active_energy"].state_class == "total_increasing"
+    assert [(item.component_id, item.native_value) for item in sensors] == [
+        ("battery", 86),
+    ]
+    assert sensors[0].device_class == "battery"
+    assert sensors[0].native_unit_of_measurement == "%"
+    assert sensors[0].entity_category == "diagnostic"
+
+
+def test_temperature_humidity_payload_projects_two_sensors() -> None:
+    """温湿度类运行时 payload 应按属性生成温度和湿度实体."""
+    device = projection_payload(
+        device_id="temp-humidity-1",
+        category="other",
+        component_id="temp_humidity",
+        state={"t": 24.5, "h": 58},
+        component_category="temperature humidity sensor",
+    )
+
+    sensors = project_sensors(device, domain=DOMAIN)
+    by_component = {item.component_id: item for item in sensors}
+
+    assert set(by_component) == {"temperature", "humidity"}
+    assert by_component["temperature"].native_value == 24.5
+    assert by_component["temperature"].device_class == "temperature"
+    assert by_component["humidity"].native_value == 58
+    assert by_component["humidity"].device_class == "humidity"
+
+
+def test_sensor_schema_projects_unknown_entity_without_runtime_value() -> None:
+    """传感类 schema 暂无当前值时仍声明实体，状态交给 HA 显示 unknown."""
+    device = projection_payload(
+        device_id="temp-humidity-empty",
+        category="other",
+        component_id="temp_humidity",
+        state={},
+        component_category="temperature humidity sensor",
+        properties=("t", "h"),
+    )
+
+    sensors = project_sensors(device, domain=DOMAIN)
+    by_component = {item.component_id: item for item in sensors}
+
+    assert set(by_component) == {"temperature", "humidity"}
+    assert by_component["temperature"].available is True
+    assert by_component["temperature"].native_value is None
+    assert by_component["temperature"].device_class == "temperature"
+    assert by_component["humidity"].available is True
+    assert by_component["humidity"].native_value is None
+    assert by_component["humidity"].device_class == "humidity"
+
+
+def test_multi_component_sensor_properties_keep_component_scope() -> None:
+    """同设备多组件同属性不能互相覆盖，否则 HA 设备页会少实体."""
+    device = projection_payload(
+        device_id="dual-lux",
+        category="other",
+        component_id="sensor_1",
+        state={"luminance": 120},
+        component_category="ambient light sensor",
+        properties=("luminance",),
+    )
+    device["ha_device_instance"]["components"].append({
+        "component_id": "sensor_2",
+        "name": "右侧",
+        "desc": "右侧",
+        "category": "ambient light sensor",
+        "available": True,
+        "state": {"luminance": 240},
+    })
+    device["ha_product_model"]["components"].append({
+        "component_id": "sensor_2",
+        "name": "右侧",
+        "desc": "右侧",
+        "category": "ambient light sensor",
+        "properties": [{"prop_id": "luminance", "access": "read"}],
+        "events": [],
+    })
+    device["ha_device_instance"]["components"][0]["name"] = "左侧"
+    device["ha_device_instance"]["components"][0]["desc"] = "左侧"
+    device["ha_product_model"]["components"][0]["name"] = "左侧"
+    device["ha_product_model"]["components"][0]["desc"] = "左侧"
+
+    sensors = project_sensors(device, domain=DOMAIN)
+
+    assert [
+        (item.component_id, item.unique_id, item.name, item.native_value)
+        for item in sensors
+    ] == [
+        ("sensor_1_illuminance", "yeelight_pro_dual-lux_sensor_1_illuminance", "左侧 光照", 120),
+        ("sensor_2_illuminance", "yeelight_pro_dual-lux_sensor_2_illuminance", "右侧 光照", 240),
+    ]
+
+
+def test_binary_sensor_schema_projects_unknown_entity_without_runtime_value() -> None:
+    """二态传感 schema 暂无当前值时仍声明实体，状态交给 HA 显示 unknown。"""
+    device = projection_payload(
+        device_id="human-empty",
+        category="human_sensor",
+        component_id="human_sensor",
+        state={},
+        component_category="human detection sensor",
+        properties=("mv", "alm"),
+    )
+
+    sensors = project_binary_sensors(device, domain=DOMAIN)
+    by_component = {item.component_id: item for item in sensors}
+
+    assert set(by_component) == {"motion", "tamper"}
+    assert by_component["motion"].available is True
+    assert by_component["motion"].is_on is None
+    assert by_component["motion"].device_class == "motion"
+    assert by_component["tamper"].available is True
+    assert by_component["tamper"].is_on is None
+    assert by_component["tamper"].device_class == "tamper"
+
+
+def test_multi_component_binary_sensor_properties_keep_component_scope() -> None:
+    """同设备多个人感组件都应生成 binary_sensor，而不是只保留一个 motion."""
+    device = projection_payload(
+        device_id="dual-motion",
+        category="human_sensor",
+        component_id="human_1",
+        state={"mv": True},
+        component_category="human detection sensor",
+        properties=("mv",),
+    )
+    device["ha_device_instance"]["components"].append({
+        "component_id": "human_2",
+        "name": "右侧",
+        "desc": "右侧",
+        "category": "human detection sensor",
+        "available": True,
+        "state": {"mv": False},
+    })
+    device["ha_product_model"]["components"].append({
+        "component_id": "human_2",
+        "name": "右侧",
+        "desc": "右侧",
+        "category": "human detection sensor",
+        "properties": [{"prop_id": "mv", "access": "read"}],
+        "events": [],
+    })
+    device["ha_device_instance"]["components"][0]["name"] = "左侧"
+    device["ha_device_instance"]["components"][0]["desc"] = "左侧"
+    device["ha_product_model"]["components"][0]["name"] = "左侧"
+    device["ha_product_model"]["components"][0]["desc"] = "左侧"
+
+    sensors = project_binary_sensors(device, domain=DOMAIN)
+
+    assert [
+        (item.component_id, item.unique_id, item.name, item.is_on)
+        for item in sensors
+    ] == [
+        ("human_1_motion", "yeelight_pro_dual-motion_human_1_motion", "左侧 人体移动", True),
+        ("human_2_motion", "yeelight_pro_dual-motion_human_2_motion", "右侧 人体移动", False),
+    ]
 
 
 def test_raw_params_and_component_state_merge_without_losing_unmodeled_params() -> None:

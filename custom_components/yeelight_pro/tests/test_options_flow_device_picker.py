@@ -85,8 +85,8 @@ async def test_options_flow_real_device_picker_loads_current_cloud_devices(
     }
     mock_client = AsyncMock()
     mock_client.get_devices.return_value = [
-        {"id": "dev-1", "name": "Kitchen"},
-        {"id": "dev-2", "name": "Bedroom"},
+        {"id": "dev-1", "name": "Kitchen", "category": "light"},
+        {"id": "dev-2", "name": "Bedroom", "category": "relay_switch"},
     ]
     mock_client_class.return_value = mock_client
     mock_get_session.return_value = MagicMock()
@@ -103,8 +103,8 @@ async def test_options_flow_real_device_picker_loads_current_cloud_devices(
     device_selector = schema[field]
     assert device_selector.config["multiple"] is True
     assert device_selector.config["options"] == [
-        {"value": "dev-2", "label": "Bedroom"},
-        {"value": "dev-1", "label": "Kitchen"},
+        {"value": "dev-2", "label": "Bedroom (易来开关设备)"},
+        {"value": "dev-1", "label": "Kitchen (易来照明设备)"},
     ]
     mock_client_class.assert_called_once()
     assert mock_client_class.call_args.kwargs["domain"] == "https://api.yeelight.com"

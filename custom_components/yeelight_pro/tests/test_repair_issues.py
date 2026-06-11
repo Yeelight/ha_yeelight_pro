@@ -33,7 +33,6 @@ def test_create_topology_changed_issue_uses_aggregate_counts(
         rooms=[{"id": "room-secret"}],
         groups=[{"id": "group-secret"}],
         scenes=[{"id": "scene-secret"}],
-        automations=[{"id": "automation-secret"}],
         topology_diff_summary=TopologyDiffSummary(
             previous_generation=3,
             current_generation=4,
@@ -44,7 +43,6 @@ def test_create_topology_changed_issue_uses_aggregate_counts(
                 "rooms": 0,
                 "groups": 0,
                 "scenes": 0,
-                "automations": 0,
             },
             removed={
                 "devices": 0,
@@ -53,7 +51,6 @@ def test_create_topology_changed_issue_uses_aggregate_counts(
                 "rooms": 0,
                 "groups": 0,
                 "scenes": 0,
-                "automations": 0,
             },
             metadata_changed={
                 "devices": 0,
@@ -62,7 +59,6 @@ def test_create_topology_changed_issue_uses_aggregate_counts(
                 "rooms": 0,
                 "groups": 0,
                 "scenes": 0,
-                "automations": 0,
             },
         ),
     )
@@ -101,7 +97,6 @@ def test_create_topology_changed_issue_uses_aggregate_counts(
                     "rooms": 0,
                     "groups": 0,
                     "scenes": 0,
-                    "automations": 0,
                 },
                 "removed": {
                     "devices": 0,
@@ -110,7 +105,6 @@ def test_create_topology_changed_issue_uses_aggregate_counts(
                     "rooms": 0,
                     "groups": 0,
                     "scenes": 0,
-                    "automations": 0,
                 },
                 "metadata_changed": {
                     "devices": 0,
@@ -119,7 +113,6 @@ def test_create_topology_changed_issue_uses_aggregate_counts(
                     "rooms": 0,
                     "groups": 0,
                     "scenes": 0,
-                    "automations": 0,
                 },
                 "total_added": 2,
                 "total_removed": 0,
@@ -132,7 +125,6 @@ def test_create_topology_changed_issue_uses_aggregate_counts(
             "rooms": 1,
             "groups": 1,
             "scenes": 1,
-            "automations": 1,
         },
         is_fixable=False,
         is_persistent=True,
@@ -145,7 +137,6 @@ def test_create_topology_changed_issue_uses_aggregate_counts(
             "rooms": "1",
             "groups": "1",
             "scenes": "1",
-            "automations": "1",
             "added": "2",
             "removed": "0",
             "metadata_changed": "1",
@@ -175,7 +166,6 @@ def test_create_topology_changed_issue_falls_back_to_empty_diff(
         rooms=[],
         groups=[],
         scenes=[],
-        automations=[],
     )
 
     with patch(
@@ -232,7 +222,6 @@ def test_create_topology_changed_issue_whitelists_diff_summary_fields(
         rooms=[],
         groups=[],
         scenes=[],
-        automations=[],
         topology_diff_summary=UnsafeTopologySummary(),
     )
 

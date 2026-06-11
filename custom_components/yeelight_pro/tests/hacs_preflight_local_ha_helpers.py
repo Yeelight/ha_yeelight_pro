@@ -155,6 +155,7 @@ def _write_local_ha_contract_fixture(
     _write_test_file(tests_root / "test_hacs_preflight_release_quality.py", "")
     _write_test_file(tests_root / "test_hacs_preflight_runtime_options.py", "")
     _write_test_file(tests_root / "test_entity_lifecycle_reconcile.py", "")
+    _write_test_file(tests_root / "test_entity_lifecycle_reconcile_display.py", "")
     _write_test_file(tests_root / "test_registry_cleanup_service.py", "")
     _write_test_file(tests_root.parent / "entry_migration.py", "")
     _write_test_file(tests_root.parent / "device_filter.py", "")

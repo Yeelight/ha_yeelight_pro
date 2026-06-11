@@ -12,7 +12,6 @@ from homeassistant.core import HomeAssistant
 from custom_components.yeelight_pro.const import (
     CONF_CONNECTION_MODE,
     CONF_DEBUG_MODE,
-    CONF_EXPERIMENTAL_PLATFORMS,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_HOUSE_ID,
     CONF_SCAN_INTERVAL,
@@ -22,6 +21,8 @@ from custom_components.yeelight_pro.const import (
     MAX_SCAN_INTERVAL,
 )
 from custom_components.yeelight_pro.core.client import YeelightProClient
+
+from .config_entry_lifecycle_helpers import register_config_entry
 
 
 def _config_entry_with_legacy_options() -> MagicMock:
@@ -38,7 +39,8 @@ def _config_entry_with_legacy_options() -> MagicMock:
     entry.options = {
         CONF_SCAN_INTERVAL: "999",
         CONF_DEBUG_MODE: "0",
-        CONF_EXPERIMENTAL_PLATFORMS: "false",
+        "future_option": "keep",
+        "experimental_platforms": "false",
         CONF_HIDE_UNKNOWN_ENTITIES: "false",
         CONF_TOPOLOGY_CHANGE_REPAIRS: "off",
     }
@@ -63,7 +65,6 @@ def _coordinator_for_setup() -> MagicMock:
     coordinator.rooms = []
     coordinator.groups = []
     coordinator.scenes = []
-    coordinator.automations = []
     coordinator.get_gateway_devices = MagicMock(return_value={})
     coordinator.topology_generation = 1
     return coordinator
@@ -76,6 +77,7 @@ async def test_setup_entry_normalizes_legacy_options(
     """Setup fallback should normalize legacy string options before use."""
     hass.data.setdefault(DOMAIN, {})
     entry = _config_entry_with_legacy_options()
+    register_config_entry(hass, entry)
 
     with patch(
         "custom_components.yeelight_pro.YeelightProClient",
@@ -107,9 +109,9 @@ async def test_setup_entry_normalizes_legacy_options(
     coordinator_options = coordinator_class.call_args.kwargs["options"]
     assert coordinator_options[CONF_SCAN_INTERVAL] == MAX_SCAN_INTERVAL
     assert coordinator_options[CONF_DEBUG_MODE] is False
-    assert coordinator_options[CONF_EXPERIMENTAL_PLATFORMS] is False
+    assert coordinator_options["future_option"] == "keep"
+    assert "experimental_platforms" not in coordinator_options
     assert coordinator_options[CONF_HIDE_UNKNOWN_ENTITIES] is False
     assert coordinator_options[CONF_TOPOLOGY_CHANGE_REPAIRS] is False
     assert forward_setups.await_args is not None
-    assert "vacuum" not in forward_setups.await_args.args[1]
     create_issue.assert_not_called()

@@ -29,8 +29,8 @@ async def test_cloud_devices_loads_real_devices_and_defaults_to_all(
     """设备 picker 应只读拉取当前家庭真实设备，并默认全选."""
     mock_client = AsyncMock()
     mock_client.get_devices.return_value = [
-        {"id": "dev-1", "name": "Light"},
-        {"id": "dev-2", "name": "Curtain"},
+        {"id": "dev-1", "name": "Light", "category": "light"},
+        {"id": "dev-2", "name": "Curtain", "category": "curtain"},
     ]
     mock_client_class.return_value = mock_client
     mock_get_session.return_value = MagicMock()
@@ -49,8 +49,8 @@ async def test_cloud_devices_loads_real_devices_and_defaults_to_all(
     device_selector = schema[field]
     assert device_selector.config["multiple"] is True
     assert device_selector.config["options"] == [
-        {"value": "dev-2", "label": "Curtain"},
-        {"value": "dev-1", "label": "Light"},
+        {"value": "dev-2", "label": "Curtain (窗帘)"},
+        {"value": "dev-1", "label": "Light (易来照明设备)"},
     ]
     mock_client.get_devices.assert_awaited_once_with(1)
     mock_client_class.assert_called_once()

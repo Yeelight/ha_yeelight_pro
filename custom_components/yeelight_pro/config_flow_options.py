@@ -10,7 +10,6 @@ from .const import (
     CONF_CLOUD_DOMAIN,
     CONF_DEBUG_MODE,
     CONF_DEVICE_IMPORT_FILTER,
-    CONF_EXPERIMENTAL_PLATFORMS,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_DEVICE_IMPORT_FILTER_PICKER,
     CONF_HOUSE_ID,
@@ -23,7 +22,6 @@ from .const import (
     CONF_TOPOLOGY_CHANGE_REPAIRS,
     CONNECTION_MODE_CLOUD,
     DEFAULT_DEBUG_MODE,
-    DEFAULT_EXPERIMENTAL_PLATFORMS,
     DEFAULT_HIDE_UNKNOWN_ENTITIES,
     DEFAULT_LIVE_UPDATES,
     DEFAULT_LOCAL_GATEWAY_CONTROL,
@@ -49,7 +47,6 @@ from .entry_migration import normalize_entry_options
 _OPTION_FORM_KEYS = (
     CONF_SCAN_INTERVAL,
     CONF_DEBUG_MODE,
-    CONF_EXPERIMENTAL_PLATFORMS,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
     CONF_LIVE_UPDATES,
@@ -79,13 +76,6 @@ def options_schema(options: Mapping[str, Any], entry: object | None = None) -> v
         vol.Required(
             CONF_DEBUG_MODE,
             default=normalized.get(CONF_DEBUG_MODE, DEFAULT_DEBUG_MODE),
-        ): bool,
-        vol.Required(
-            CONF_EXPERIMENTAL_PLATFORMS,
-            default=normalized.get(
-                CONF_EXPERIMENTAL_PLATFORMS,
-                DEFAULT_EXPERIMENTAL_PLATFORMS,
-            ),
         ): bool,
         vol.Required(
             CONF_HIDE_UNKNOWN_ENTITIES,
@@ -157,6 +147,7 @@ def merge_options(
 ) -> dict[str, Any]:
     """将可见表单字段合入既有 options，避免丢弃隐藏高级字段."""
     data = dict(current_options)
+    data.pop("experimental_platforms", None)
     normalized = normalize_entry_options(data)
     data.update({
         key: user_input[key] if key in user_input else normalized[key]

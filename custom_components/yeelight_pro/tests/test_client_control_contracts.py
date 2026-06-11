@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
@@ -202,3 +202,47 @@ async def test_client_control_property_methods_use_documented_contracts() -> Non
             "category": "light",
         },
     )
+
+
+@pytest.mark.asyncio
+async def test_client_control_device_splits_indexed_component_keys() -> None:
+    """设备实体控制键 N-prop 应拆成 OpenAPI index 字段。"""
+    client = YeelightProClient(
+        domain="https://api.yeelight.com/apis/iot",
+        access_token="test-token",
+        session=MagicMock(),
+    )
+
+    with patch.object(client, "_request", new_callable=AsyncMock) as mock_request:
+        await client.control_device(
+            house_id=12345,
+            device_id=67890,
+            params={"1-p": True, "1-l": 80, "2-p": False},
+            duration=250,
+        )
+
+    assert mock_request.await_args_list == [
+        call(
+            "POST",
+            "/v1/open/control/house/12345/control/2/67890/w/properties",
+            json={
+                "command": "set",
+                "params": [
+                    {"propName": "p", "value": True},
+                    {"propName": "l", "value": 80},
+                ],
+                "duration": 250,
+                "index": 1,
+            },
+        ),
+        call(
+            "POST",
+            "/v1/open/control/house/12345/control/2/67890/w/properties",
+            json={
+                "command": "set",
+                "params": [{"propName": "p", "value": False}],
+                "duration": 250,
+                "index": 2,
+            },
+        ),
+    ]

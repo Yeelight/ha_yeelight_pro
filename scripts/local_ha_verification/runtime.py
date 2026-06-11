@@ -8,6 +8,7 @@ from urllib.request import urlopen
 
 from .constants import BAD_LOG_MARKERS, YEELIGHT_LOG_MARKERS
 from .report import VerificationReport
+from .runtime_entities import verify_runtime_entity_counts
 
 
 def verify_docker(container: str, report: VerificationReport) -> None:
@@ -90,6 +91,26 @@ def verify_logs(container: str, report: VerificationReport, *, tail: int) -> Non
         report.fact("setup completion log found")
     else:
         report.warn("setup completion log not found in selected log tail")
+
+
+def verify_runtime_entities(
+    container: str,
+    report: VerificationReport,
+    *,
+    tail: int,
+    expected_entity_counts: dict[str, int],
+) -> None:
+    """Verify active entity distribution from recent runtime logs."""
+    result = _run(["docker", "logs", "--tail", str(tail), container], timeout=30)
+    if result.returncode != 0:
+        report.fail("docker logs could not be read for runtime entity counts")
+        return
+    lines = result.stdout.splitlines() + result.stderr.splitlines()
+    verify_runtime_entity_counts(
+        lines,
+        report,
+        expected_entity_counts=expected_entity_counts,
+    )
 
 
 def verify_synthetic_log_recovery(report: VerificationReport) -> None:

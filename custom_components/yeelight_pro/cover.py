@@ -74,8 +74,7 @@ class YeelightProCover(CoordinatorEntity, CoverEntity):
         projection = self._projection
         if projection is not None:
             return projection.name
-        device_data = self.coordinator.get_device(self._device_id)
-        return device_data.get("name", f"Cover {self._device_id}")
+        return "窗帘"
 
     @property
     def available(self) -> bool:

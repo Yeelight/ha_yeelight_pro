@@ -69,7 +69,6 @@ REQUIRED_I18N_LEAF_PATHS: set[tuple[str, ...]] = {
     ("config", "step", "reauth_confirm", "data", "access_token"),
     ("options", "step", "init", "data", "scan_interval"),
     ("options", "step", "init", "data", "debug_mode"),
-    ("options", "step", "init", "data", "experimental_platforms"),
     ("options", "step", "init", "data", "hide_unknown_entities"),
     ("options", "step", "init", "data", "topology_change_repairs"),
     (
@@ -96,6 +95,9 @@ REQUIRED_I18N_LEAF_PATHS: set[tuple[str, ...]] = {
     ("config", "abort", "already_configured"),
     ("config", "abort", "no_houses_found"),
     ("config", "abort", "reauth_successful"),
+    ("entity", "select", "active_room", "name"),
+    ("entity", "select", "active_group", "name"),
+    ("entity", "select", "active_scene", "name"),
     ("issues", "device_topology_changed", "title"),
     ("issues", "device_topology_changed", "description"),
 }

@@ -130,6 +130,53 @@ def test_dynamic_entities_skips_user_disabled_registry_entry(monkeypatch) -> Non
     add_entities.assert_not_called()
 
 
+def test_dynamic_entities_restores_integration_disabled_registry_entry(
+    monkeypatch,
+) -> None:
+    """集成自动禁用的 registry entry 当前又有候选时，应解除禁用并恢复运行态。"""
+    coordinator = MagicMock()
+    coordinator.hass = hass_with_state(None)
+    coordinator.items = ["one"]
+    entry = entry_with_unload_hook()
+    coordinator.async_add_listener = MagicMock(return_value=lambda: None)
+    add_entities = MagicMock()
+    registry = MagicMock()
+    entries = [
+        registry_entry(
+            unique_id="yeelight_pro_one",
+            entity_id="light.one",
+            domain="light",
+            disabled_by="integration",
+        )
+    ]
+    monkeypatch.setattr(
+        "custom_components.yeelight_pro.dynamic_entities.er.async_get",
+        lambda hass: registry,
+    )
+    monkeypatch.setattr(
+        "custom_components.yeelight_pro.dynamic_entities.er."
+        "async_entries_for_config_entry",
+        lambda entity_registry, entry_id: entries,
+    )
+
+    async_track_dynamic_entities(
+        entry,
+        coordinator,
+        add_entities,
+        lambda current: [DummyEntity(f"{DOMAIN}_{item}") for item in current.items],
+        logger=MagicMock(),
+        platform_name="light",
+    )
+
+    assert [entity.unique_id for entity in add_entities.call_args.args[0]] == [
+        "yeelight_pro_one"
+    ]
+    registry.async_update_entity.assert_called_once_with(
+        "light.one",
+        disabled_by=None,
+    )
+
+
 def test_dynamic_entities_readds_registered_entity_missing_runtime_state(monkeypatch) -> None:
     """已注册但当前 runtime state 缺失时，应允许提交实体恢复运行态。"""
     coordinator = MagicMock()
@@ -194,3 +241,43 @@ def test_dynamic_entities_skips_registered_entity_with_runtime_state(monkeypatch
 
     add_entities.assert_not_called()
 
+
+def test_dynamic_entities_readds_registered_entity_with_restored_state(
+    monkeypatch,
+) -> None:
+    """HA 仅从 registry 恢复的 state 不能阻止平台重新提供实体。"""
+    coordinator = MagicMock()
+    coordinator.hass = hass_with_state(
+        SimpleNamespace(
+            state="unavailable",
+            attributes={"restored": True},
+        )
+    )
+    coordinator.items = ["one"]
+    entry = entry_with_unload_hook()
+    coordinator.async_add_listener = MagicMock(return_value=lambda: None)
+    add_entities = MagicMock()
+    patch_entity_registry(
+        monkeypatch,
+        [
+            registry_entry(
+                unique_id="yeelight_pro_one",
+                entity_id="light.one",
+                domain="light",
+            )
+        ],
+    )
+
+    async_track_dynamic_entities(
+        entry,
+        coordinator,
+        add_entities,
+        lambda current: [DummyEntity(f"{DOMAIN}_{item}") for item in current.items],
+        logger=MagicMock(),
+        platform_name="light",
+    )
+
+    assert add_entities.call_count == 1
+    assert [entity.unique_id for entity in add_entities.call_args.args[0]] == [
+        "yeelight_pro_one"
+    ]

@@ -13,16 +13,11 @@ from .report import VerificationReport
 
 REQUIRED_CONFIG_ENTRY_OPTION_KEYS = {
     "debug_mode",
-    "experimental_platforms",
     "hide_unknown_entities",
     "scan_interval",
     "topology_change_repairs",
 }
 OPTIONAL_CONFIG_ENTRY_OPTION_KEYS = {"device_import_filter"}
-FORBIDDEN_CONFIG_ENTRY_OPTION_KEYS = {
-    "analytics_retention_days",
-    "analytics_runtime",
-}
 
 
 def verify_config_entry_options(
@@ -61,13 +56,6 @@ def verify_config_entry_options(
             f"{option_defaults['max_scan_interval']}"
         )
 
-    forbidden_by_key = _present_option_keys(
-        entry_list,
-        forbidden_keys=FORBIDDEN_CONFIG_ENTRY_OPTION_KEYS,
-    )
-    if forbidden_by_key:
-        report.fail(f"config entry options contain removed keys: {forbidden_by_key}")
-
     optional_missing_by_key = _missing_option_keys(
         entry_list,
         required_keys=OPTIONAL_CONFIG_ENTRY_OPTION_KEYS,
@@ -84,7 +72,6 @@ def verify_config_entry_options(
     report.fact(
         "config entry option summary: "
         f"debug_true={_true_option_count(entry_list, 'debug_mode')}, "
-        f"experimental_true={_true_option_count(entry_list, 'experimental_platforms')}, "
         f"hide_unknown_true={_true_option_count(entry_list, 'hide_unknown_entities')}, "
         f"topology_repairs_true={_true_option_count(entry_list, 'topology_change_repairs')}, "
         f"device_filter_enabled={enabled_filter_count}"
@@ -118,23 +105,6 @@ def _missing_option_keys(
     return dict(sorted(missing_counter.items()))
 
 
-def _present_option_keys(
-    entries: Iterable[Mapping[str, Any]],
-    *,
-    forbidden_keys: set[str],
-) -> dict[str, int]:
-    """Return forbidden option keys present in enabled entries."""
-    present_counter: Counter[str] = Counter()
-    for entry in entries:
-        options = entry.get("options")
-        if not isinstance(options, Mapping):
-            continue
-        for key in forbidden_keys:
-            if key in options:
-                present_counter[key] += 1
-    return dict(sorted(present_counter.items()))
-
-
 def _invalid_option_values(
     entries: Iterable[Mapping[str, Any]],
     option_defaults: Mapping[str, int | bool],
@@ -157,7 +127,6 @@ def _invalid_option_values(
             invalid_counter["scan_interval"] += 1
         for key in {
             "debug_mode",
-            "experimental_platforms",
             "hide_unknown_entities",
             "topology_change_repairs",
         }:
@@ -195,7 +164,6 @@ def _expected_option_defaults() -> dict[str, int | bool] | None:
         SOURCE_COMPONENT_ROOT / "const.py",
         {
             "DEFAULT_DEBUG_MODE",
-            "DEFAULT_EXPERIMENTAL_PLATFORMS",
             "DEFAULT_HIDE_UNKNOWN_ENTITIES",
             "DEFAULT_SCAN_INTERVAL",
             "DEFAULT_TOPOLOGY_CHANGE_REPAIRS",
@@ -205,9 +173,6 @@ def _expected_option_defaults() -> dict[str, int | bool] | None:
     )
     required = {
         "default_debug_mode": constants.get("DEFAULT_DEBUG_MODE"),
-        "default_experimental_platforms": constants.get(
-            "DEFAULT_EXPERIMENTAL_PLATFORMS"
-        ),
         "default_hide_unknown_entities": constants.get(
             "DEFAULT_HIDE_UNKNOWN_ENTITIES"
         ),

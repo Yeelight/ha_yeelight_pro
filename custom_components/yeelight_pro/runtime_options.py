@@ -7,7 +7,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .const import (
-    CONF_EXPERIMENTAL_PLATFORMS,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_LIVE_UPDATES,
     CONF_LOCAL_GATEWAY_CONTROL,
@@ -45,7 +44,6 @@ def options_require_reload(
     old = normalize_entry_options(old_options)
     new = normalize_entry_options(new_options)
     reload_keys = {
-        CONF_EXPERIMENTAL_PLATFORMS,
         CONF_HIDE_UNKNOWN_ENTITIES,
         CONF_LIVE_UPDATES,
         CONF_LOCAL_GATEWAY_CONTROL,

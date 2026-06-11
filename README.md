@@ -8,8 +8,7 @@ Yeelight Pro integration for Home Assistant. It supports Yeelight cloud and priv
 
 - Integration status: pre-release hardening
 - Verified tests: see [docs/TEST_REPORT.md](docs/TEST_REPORT.md)
-- Default enabled platforms: 13
-- Optional experimental platform: `vacuum`
+- Enabled Home Assistant platforms: 12
 - Update model: cloud polling, with configurable interval
 - HACS/community publication: release-review stage
 
@@ -18,7 +17,7 @@ Yeelight Pro integration for Home Assistant. It supports Yeelight cloud and priv
 - Cloud and private deployment setup
 - Reauthentication flow for expired or invalid tokens
 - Yeelight APP scan-login cloud setup through regional account APIs; QR-code login is the current primary cloud login UX
-- Configurable polling interval, debug mode, experimental platform loading, unknown capability filtering, manual non-destructive device import filtering, and topology Repairs notifications
+- Configurable polling interval, debug mode, unknown capability filtering, manual non-destructive device import filtering, live updates, local gateway control, and topology Repairs notifications
 - Canonical -> adapter -> converter -> projector -> entity architecture
 - Lightweight Yeelight IoT spec registry for category, component, property, event, protocol, and `nodeType` facts
 - Persistent Home Assistant `.storage` product schema cache for stable schema-aware projections across restarts
@@ -39,7 +38,7 @@ Yeelight Pro integration for Home Assistant. It supports Yeelight cloud and priv
 
 ## Supported Yeelight IoT Categories
 
-These are Yeelight IoT categories, not Home Assistant entity platforms.
+The table lists Yeelight IoT categories and their current Home Assistant projections.
 
 | Yeelight category | Default HA projection | Status |
 | --- | --- | --- |
@@ -55,9 +54,9 @@ These are Yeelight IoT categories, not Home Assistant entity platforms.
 | `knob_switch` | `event` + device triggers | Stable |
 | `other` | Known sensor fallback only | Conservative |
 
-`event`, `scene`, `button`, `select`, `number`, and `vacuum` are Home Assistant entity platforms or projection targets. They are not Yeelight IoT device categories. `vacuum` is opt-in experimental.
+Cloud scenes are exposed as `button` entities that call Yeelight scene execution.
 
-See [docs/IOT_SPEC_REGISTRY.md](docs/IOT_SPEC_REGISTRY.md) for the registry boundary and [docs/HA_XIAOMI_HOME_GAP_REVIEW.md](docs/HA_XIAOMI_HOME_GAP_REVIEW.md) for the ha_xiaomi_home architecture comparison and borrowed implementation ideas.
+See [docs/IOT_SPEC_REGISTRY.md](docs/IOT_SPEC_REGISTRY.md) for the registry boundary and release mapping contract.
 
 ## Installation
 
@@ -94,7 +93,6 @@ Open the integration options to configure:
 
 - Polling interval: 10-300 seconds, default 30 seconds
 - Debug mode: enables `yeelight_pro.debug_emit_event`
-- Experimental platforms: enables opt-in platforms such as `vacuum`
 - Hide unknown entities: keeps unmapped or low-confidence capabilities from being exposed as generic entities
 - Device import filtering: edit conservative manual rules or, for cloud
   entries, reopen the real device picker to adjust selected devices after setup

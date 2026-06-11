@@ -54,13 +54,13 @@ def test_required_release_file_guard_rejects_gitignored_docs(
     docs_root = root / "docs"
     docs_root.mkdir()
     _write_test_file(root / ".gitignore", "docs/\n")
-    _write_test_file(docs_root / "HA_XIAOMI_HOME_GAP_REVIEW.md", "")
+    _write_test_file(docs_root / "GOAL_COMPLETION_AUDIT.md", "")
     _write_test_file(docs_root / "IOT_SPEC_REGISTRY.md", "")
     monkeypatch.setattr(
         hacs_preflight_core,
         "REQUIRED_RELEASE_FILES",
         {
-            "docs/HA_XIAOMI_HOME_GAP_REVIEW.md",
+            "docs/GOAL_COMPLETION_AUDIT.md",
             "docs/IOT_SPEC_REGISTRY.md",
         },
     )
@@ -69,7 +69,7 @@ def test_required_release_file_guard_rejects_gitignored_docs(
     errors = hacs_preflight._check_exists()
 
     assert (
-        "required release file is git-ignored: docs/HA_XIAOMI_HOME_GAP_REVIEW.md"
+        "required release file is git-ignored: docs/GOAL_COMPLETION_AUDIT.md"
         in errors
     )
     assert "required release file is git-ignored: docs/IOT_SPEC_REGISTRY.md" in errors
@@ -88,17 +88,17 @@ def test_required_release_file_guard_allows_unignored_docs(
         "\n".join([
             "docs/",
             "!docs/",
-            "!docs/HA_XIAOMI_HOME_GAP_REVIEW.md",
+            "!docs/GOAL_COMPLETION_AUDIT.md",
             "!docs/IOT_SPEC_REGISTRY.md",
         ]),
     )
-    _write_test_file(docs_root / "HA_XIAOMI_HOME_GAP_REVIEW.md", "")
+    _write_test_file(docs_root / "GOAL_COMPLETION_AUDIT.md", "")
     _write_test_file(docs_root / "IOT_SPEC_REGISTRY.md", "")
     monkeypatch.setattr(
         hacs_preflight_core,
         "REQUIRED_RELEASE_FILES",
         {
-            "docs/HA_XIAOMI_HOME_GAP_REVIEW.md",
+            "docs/GOAL_COMPLETION_AUDIT.md",
             "docs/IOT_SPEC_REGISTRY.md",
         },
     )
@@ -186,6 +186,36 @@ def test_user_visible_error_redaction_guard_allows_constant_error_text(
     monkeypatch.setattr(hacs_preflight, "COMPONENT_ROOT", component_root)
 
     assert hacs_preflight._check_user_visible_error_redaction() == []
+
+
+def test_platform_guard_rejects_unsupported_runtime_platform_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """preflight 应拒绝易来协议无支撑的平台文件重新进入 runtime."""
+    component_root = tmp_path / "custom_components" / "yeelight_pro"
+    projector_root = component_root / "projector"
+    projector_root.mkdir(parents=True)
+    _write_test_file(component_root / "const.py", "PLATFORMS = ['light']\n")
+    _write_test_file(component_root / "lock.py", "")
+    _write_test_file(component_root / "scene.py", "")
+    _write_test_file(projector_root / "vacuum.py", "")
+    monkeypatch.setattr(hacs_preflight, "COMPONENT_ROOT", component_root)
+
+    errors = hacs_preflight._check_platform_constants()
+
+    assert (
+        "unsupported runtime platform file must be removed: lock.py"
+        in errors
+    )
+    assert (
+        "unsupported runtime platform file must be removed: scene.py"
+        in errors
+    )
+    assert (
+        "unsupported projector platform file must be removed: projector/vacuum.py"
+        in errors
+    )
 
 
 def test_forbidden_open_api_runtime_guard_rejects_house_transfer_endpoint(

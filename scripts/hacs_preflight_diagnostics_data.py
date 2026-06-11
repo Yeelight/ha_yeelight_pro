@@ -134,9 +134,8 @@ DIAGNOSTICS_CONTRACT_TEST_TOKENS = {
     "tests/test_diagnostic_summaries.py": {
         "entity_candidate_diagnostics": "entity candidate summaries are aggregate-only",
         "entity_import_filter_preview_diagnostics": "filter preview helper is covered",
+        "device_platforms": "device-sourced platform diagnostics remain explicit",
         "device-secret": "raw device identifier leakage regression marker",
-        "preview-automation-secret": (
-            "filter preview topology identifier leakage regression marker"
-        ),
+        "group-secret": "filter preview topology identifier leakage regression marker",
     },
 }

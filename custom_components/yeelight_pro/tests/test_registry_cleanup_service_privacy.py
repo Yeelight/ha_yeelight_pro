@@ -89,7 +89,7 @@ async def test_cleanup_registry_service_response_and_logs_are_identifier_safe(
     assert "entry-1" not in integration_logs
     assert "disabled=1" in integration_logs
     assert registry.updated_entities == [
-        (secret_entity_id, er.RegistryEntryDisabler.INTEGRATION)
+        (secret_entity_id, {"disabled_by": er.RegistryEntryDisabler.INTEGRATION})
     ]
     assert registry.removed_entity_ids == []
 

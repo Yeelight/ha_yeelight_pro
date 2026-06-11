@@ -15,7 +15,7 @@ class FakeEntityRegistry:
     def __init__(self, entries: list[SimpleNamespace]) -> None:
         self.entries = entries
         self.removed_entity_ids: list[str] = []
-        self.updated_entities: list[tuple[str, object | None]] = []
+        self.updated_entities: list[tuple[str, dict[str, object | None]]] = []
 
     def async_remove(self, entity_id: str) -> None:
         self.removed_entity_ids.append(entity_id)
@@ -25,13 +25,17 @@ class FakeEntityRegistry:
         entity_id: str,
         *,
         disabled_by: object | None = None,
+        **kwargs: object | None,
     ) -> SimpleNamespace:
-        self.updated_entities.append((entity_id, disabled_by))
+        update_kwargs = dict(kwargs)
+        update_kwargs["disabled_by"] = disabled_by
+        self.updated_entities.append((entity_id, update_kwargs))
         for entry in self.entries:
             if entry.entity_id == entity_id:
-                entry.disabled_by = disabled_by
+                for key, value in update_kwargs.items():
+                    setattr(entry, key, value)
                 return entry
-        return SimpleNamespace(entity_id=entity_id, disabled_by=disabled_by)
+        return SimpleNamespace(entity_id=entity_id, **update_kwargs)
 
 
 def lifecycle_coordinator(
@@ -44,12 +48,32 @@ def lifecycle_coordinator(
     return SimpleNamespace(
         data=data or {},
         scenes=scenes or [],
-        automations=[],
         groups=[],
         house_id=None,
         hide_unknown_entities=False,
         options=options or {},
     )
+
+
+def reconcile_diagnostics(
+    *,
+    active: int,
+    registry_entries: int,
+    stale: int,
+    pending_stale: int,
+    restored: int = 0,
+    metadata_updated: int = 0,
+) -> dict[str, int]:
+    """Build expected reconcile diagnostics with explicit changed fields."""
+    return {
+        "active": active,
+        "registry_entries": registry_entries,
+        "stale": stale,
+        "pending_stale": pending_stale,
+        "disabled": 0,
+        "restored": restored,
+        "metadata_updated": metadata_updated,
+    }
 
 
 def registry_entry(
@@ -58,6 +82,10 @@ def registry_entry(
     entity_id: str,
     domain: str,
     disabled_by: object | None = None,
+    original_name: str | None = None,
+    original_icon: str | None = None,
+    has_entity_name: bool | None = True,
+    entity_category: object | None = None,
 ) -> SimpleNamespace:
     """Build a focused registry entry without depending on HA internals."""
     return SimpleNamespace(
@@ -66,6 +94,10 @@ def registry_entry(
         entity_id=entity_id,
         domain=domain,
         disabled_by=disabled_by,
+        original_name=original_name,
+        original_icon=original_icon,
+        has_entity_name=has_entity_name,
+        entity_category=entity_category,
     )
 
 

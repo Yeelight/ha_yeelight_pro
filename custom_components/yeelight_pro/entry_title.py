@@ -9,10 +9,10 @@ from .const import (
     CONF_ACCOUNT_USERNAME,
     CONF_CLOUD_REGION,
     CONF_CONNECTION_MODE,
-    CONF_HOUSE_ID,
     CONF_PRIVATE_DOMAIN,
     CONNECTION_MODE_PRIVATE,
 )
+from .house_metadata import house_name_from_data
 
 REGION_LABELS = {
     "cn": "CN",
@@ -36,15 +36,15 @@ def _cloud_title(entry_data: Mapping[str, Any]) -> str:
         str(entry_data.get(CONF_CLOUD_REGION) or "").strip().lower(),
         str(entry_data.get(CONF_CLOUD_REGION) or "").strip().upper() or "CN",
     )
-    house_id = _required_text(entry_data.get(CONF_HOUSE_ID), "House")
-    title_parts = [part for part in (account, region, f"House {house_id}") if part]
+    house_name = house_name_from_data(entry_data)
+    title_parts = [part for part in (account, region, house_name) if part]
     return f"Yeelight Pro Cloud ({' · '.join(title_parts)})"
 
 
 def _private_title(entry_data: Mapping[str, Any]) -> str:
     private_domain = _required_text(entry_data.get(CONF_PRIVATE_DOMAIN), "Private")
-    house_id = _required_text(entry_data.get(CONF_HOUSE_ID), "House")
-    return f"Yeelight Pro Private ({private_domain} · House {house_id})"
+    house_name = house_name_from_data(entry_data)
+    return f"Yeelight Pro Private ({private_domain} · {house_name})"
 
 
 def _cloud_account_label(entry_data: Mapping[str, Any]) -> str:

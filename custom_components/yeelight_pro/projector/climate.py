@@ -11,6 +11,13 @@ from typing import Any, Mapping
 from homeassistant.components.climate import ClimateEntityFeature, HVACMode
 
 from ..canonical.models import ComponentInstanceModel, HADeviceInstanceModel
+from ..utils import to_category
+from .common import (
+    load_product_model,
+    payload_available,
+    product_component,
+    schema_backed_component_available,
+)
 from .device import flatten_instance_state, project_payload_device_info
 
 
@@ -37,22 +44,25 @@ def project_climate(
     """将协调器载荷投影为 Home Assistant climate 视图。"""
     instance = _load_instance(device_payload)
     component = _select_climate_component(instance)
-    if component is None and device_payload.get("type") != "climate":
+    if component is None and not _payload_is_climate(device_payload):
         return None
 
     device_id = str(device_payload.get("device_id", "unknown"))
     params = _runtime_state(device_payload, instance, component)
-    power = _bool(params.get("aco", params.get("p")), default=False)
-    available = _bool(device_payload.get("online"), default=False)
-    if instance is not None:
-        available = bool(instance.online)
+    power = _bool(params.get("aco", params.get("acp")), default=False)
+    available = payload_available(device_payload, instance)
     if instance is not None and component is not None:
-        available = bool(instance.online and component.available)
+        product_model = load_product_model(device_payload)
+        available = schema_backed_component_available(
+            payload_available(device_payload, instance),
+            component,
+            schema_component=product_component(product_model, component.component_id),
+        )
 
     return HAClimateProjection(
         component_id="climate",
         unique_id=f"{domain}_{device_id}_climate",
-        name=None,
+        name="温控",
         available=available,
         current_temperature=_float(params.get("acct", params.get("t"))),
         target_temperature=_float(params.get("actt")),
@@ -97,6 +107,16 @@ def _select_climate_component(
         ):
             return component
     return None
+
+
+def _payload_is_climate(device_payload: Mapping[str, Any]) -> bool:
+    """Return true only for documented climate/temp-control runtime categories."""
+    category = to_category(
+        device_payload.get("iot_category")
+        or device_payload.get("category")
+        or device_payload.get("type")
+    )
+    return category in {"climate", "temp_control", "air_conditioner", "bath_heater"}
 
 
 def _runtime_state(

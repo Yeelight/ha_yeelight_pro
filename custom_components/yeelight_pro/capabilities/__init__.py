@@ -7,6 +7,14 @@ from .mapping import (
     component_platform_hint,
     platform_for_category,
 )
+from .platform_contract import (
+    PLATFORM_CONTRACTS,
+    PlatformContract,
+    platform_candidates_for_payload,
+    platform_contracts,
+    platform_mapping_summary,
+    primary_platform_for_payload,
+)
 from .models import (
     ControlKey,
     IoTCategorySpec,
@@ -39,7 +47,9 @@ __all__ = [
     "IoTPropertySpec",
     "IoTProtocolSpec",
     "PROPERTY_CAPABILITIES",
+    "PLATFORM_CONTRACTS",
     "PropertyCapability",
+    "PlatformContract",
     "component_platform_hint",
     "connection_protocol",
     "format_component_property_key",
@@ -48,7 +58,11 @@ __all__ = [
     "node_type",
     "normalize_event_type",
     "parse_component_property_key",
+    "platform_candidates_for_payload",
+    "platform_contracts",
     "platform_for_category",
+    "platform_mapping_summary",
+    "primary_platform_for_payload",
     "property_capability",
     "property_spec",
     "validate_iot_registry",

@@ -14,7 +14,6 @@ from .const import (
     CONF_CONNECTION_MODE,
     CONF_DEVICE_IMPORT_FILTER,
     CONF_DEBUG_MODE,
-    CONF_EXPERIMENTAL_PLATFORMS,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_SCAN_INTERVAL,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
@@ -100,11 +99,6 @@ def _build_runtime_diagnostics(
             CONF_SCAN_INTERVAL: getattr(coordinator, "scan_interval", None),
             CONF_DEBUG_MODE: getattr(coordinator, "debug_mode", None),
             CONF_HIDE_UNKNOWN_ENTITIES: hide_unknown_entities,
-            CONF_EXPERIMENTAL_PLATFORMS: _entry_option(
-                runtime,
-                CONF_EXPERIMENTAL_PLATFORMS,
-                False,
-            ),
             CONF_TOPOLOGY_CHANGE_REPAIRS: _entry_option(
                 runtime,
                 CONF_TOPOLOGY_CHANGE_REPAIRS,
@@ -126,7 +120,6 @@ def _build_runtime_diagnostics(
             "rooms": safe_len(getattr(coordinator, "rooms", [])),
             "groups": safe_len(getattr(coordinator, "groups", [])),
             "scenes": safe_len(getattr(coordinator, "scenes", [])),
-            "automations": safe_len(getattr(coordinator, "automations", [])),
         },
         "availability": {
             "devices": availability_counts(devices),

@@ -10,6 +10,23 @@ from ..utils import to_str
 RUNTIME_EXCLUDED_COMPONENT_TYPES = {"global"}
 RUNTIME_EXCLUDED_KINDS = {"config", "diagnostic", "info"}
 RUNTIME_EXCLUDED_PROPERTY_TYPES = {"config"}
+SENSOR_PROPERTY_KEYS = {
+    "acct",
+    "ae",
+    "alm",
+    "ap",
+    "bl",
+    "curp",
+    "dc",
+    "h",
+    "iec",
+    "level",
+    "luminance",
+    "mv",
+    "rfhct",
+    "t",
+    "temp",
+}
 FALLBACK_RUNTIME_KEYS: dict[str, set[str]] = {
     "light": {"p", "sp", "l", "ct", "c", "m"},
     "fan": {"p", "lv", "dir", "m"},
@@ -19,7 +36,6 @@ FALLBACK_RUNTIME_KEYS: dict[str, set[str]] = {
     "sensor": {"t", "h", "luminance", "level"},
     "cover": {"cp", "tp"},
     "climate": {"acm", "actt", "acct", "acf", "aco"},
-    "lock": {"lock", "locked", "lck"},
 }
 INDEXED_RUNTIME_KEY_RE = re.compile(r"^\d+-(.+)$")
 STATELESS_ACTUATOR_CATEGORY_TOKENS = (
@@ -42,9 +58,6 @@ STATELESS_ACTUATOR_CATEGORY_TOKENS = (
     "curtain",
     "blind",
     "窗帘",
-    "lock",
-    "door lock",
-    "门锁",
     "climate",
     "air",
     "heater",
@@ -90,6 +103,8 @@ def should_include_runtime_component(
     if component_state:
         return True
     if bool(getattr(component, "events", None)):
+        return True
+    if looks_like_sensor_component(component):
         return True
     return looks_like_stateless_actuator_component(component)
 
@@ -138,6 +153,23 @@ def looks_like_stateless_actuator_component(component: Any) -> bool:
         token in haystack
         for haystack in haystacks
         for token in STATELESS_ACTUATOR_CATEGORY_TOKENS
+    )
+
+
+def looks_like_sensor_component(component: Any) -> bool:
+    """Return true for known read-only sensor components even before first value."""
+    category = (to_str(getattr(component, "category", None)) or "").lower()
+    component_id = (to_str(getattr(component, "component_id", None)) or "").lower()
+    haystacks = (category, component_id)
+    if any(
+        token in haystack
+        for haystack in haystacks
+        for token in ("sensor", "contact", "motion", "presence", "occupancy")
+    ):
+        return True
+    return any(
+        to_str(getattr(prop, "prop_id", None)) in SENSOR_PROPERTY_KEYS
+        for prop in getattr(component, "properties", []) or []
     )
 
 

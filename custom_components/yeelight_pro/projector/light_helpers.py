@@ -7,7 +7,7 @@ from typing import Any, Mapping
 from homeassistant.components.light import ColorMode
 
 from ..canonical.models import ComponentInstanceModel, ComponentModel
-from ..utils import to_int, to_str
+from ..utils import matches_category, to_category, to_int, to_str
 from .common import NumericRange, component_index, humanize_component_id
 
 DEFAULT_BRIGHTNESS_RANGE = (1, 100, 1)
@@ -46,7 +46,7 @@ def _infer_features_from_payload(
     product_type = device_payload.get("product_type")
     features: set[str] = set()
 
-    if "p" in state or "on" in state or device_payload.get("type") == "light":
+    if "p" in state or "on" in state or _payload_is_light(device_payload):
         features.add("onoff")
     if "l" in state or product_type in {2, 3, 4, 14, 30}:
         features.add("brightness")
@@ -56,6 +56,17 @@ def _infer_features_from_payload(
         features.add("rgb")
 
     return features
+
+
+def _payload_is_light(device_payload: Mapping[str, Any]) -> bool:
+    """Return true when payload identity is explicitly light-like."""
+    if to_category(device_payload.get("ha_platform")) == "light":
+        return True
+    category = to_category(device_payload.get("iot_category") or device_payload.get("category"))
+    return category == "light" or matches_category(
+        category,
+        LIGHT_CATEGORY_TOKENS,
+    )
 
 
 def _resolve_supported_color_modes(features: set[str]) -> set[ColorMode]:
@@ -251,11 +262,17 @@ def _project_icon(
     return "mdi:lightbulb"
 
 
-def _project_light_name(component: ComponentInstanceModel) -> str | None:
+def _project_light_name(component: ComponentInstanceModel, *, total: int = 1) -> str | None:
     """从组件 ID 推断灯光显示名称。"""
+    desc = to_str(getattr(component, "desc", None))
+    if desc and total > 1:
+        return desc.removesuffix("组件")
+
     index = component_index(component.component_id)
     if index is not None:
-        return str(index)
+        if total <= 1:
+            return None
+        return f"照明 {index}"
 
     lowered = component.component_id.lower()
     if lowered in {"light", "main", "main_light"}:
@@ -263,7 +280,7 @@ def _project_light_name(component: ComponentInstanceModel) -> str | None:
     if lowered.startswith("light_"):
         return lowered.removeprefix("light_").replace("_", " ").strip() or None
     if lowered.startswith("light"):
-        return None
+        return None if total <= 1 else "照明"
     return humanize_component_id(component.component_id)
 
 

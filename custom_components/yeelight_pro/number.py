@@ -1,6 +1,6 @@
 """Yeelight Pro number 平台.
 
-提供灯组亮度和色温的数值控制，以及自动化延时控制。
+提供灯组亮度和色温的数值控制。
 """
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from typing import Any
 
 from homeassistant.components.number import NumberEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -16,7 +17,13 @@ from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
 from .core.exceptions import YeelightProError
 from .dynamic_entities import async_track_dynamic_entities
+from .entity_category import ha_entity_category
 from .entity_errors import raise_service_error
+from .house_metadata import house_device_info
+from .projector.property_controls import (
+    HANumberControlProjection,
+    project_number_controls,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -52,6 +59,16 @@ def _iter_number_entities(coordinator: YeelightProCoordinator) -> list[NumberEnt
     """按当前拓扑生成 number 实体候选."""
     entities: list[NumberEntity] = []
 
+    for device_id, device_data in coordinator.data.items():
+        for projection in project_number_controls(device_data, domain=DOMAIN):
+            entities.append(
+                YeelightProDeviceNumber(
+                    coordinator,
+                    device_id,
+                    component_id=projection.component_id,
+                )
+            )
+
     for group in coordinator.groups:
         group_id = group.get("id")
         if not group_id:
@@ -67,6 +84,123 @@ def _iter_number_entities(coordinator: YeelightProCoordinator) -> list[NumberEnt
     return entities
 
 
+class YeelightProDeviceNumber(NumberEntity):
+    """设备级可写数值属性实体."""
+
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: YeelightProCoordinator,
+        device_id: int,
+        *,
+        component_id: str,
+    ) -> None:
+        """初始化设备数值属性实体."""
+        super().__init__()
+        self._coordinator = coordinator
+        self._device_id = device_id
+        self._component_id = component_id
+        projection = self._projection
+        self._attr_unique_id = (
+            projection.unique_id
+            if projection is not None
+            else f"{DOMAIN}_{device_id}_{component_id}"
+        )
+
+    @property
+    def _projection(self) -> HANumberControlProjection | None:
+        """返回最新设备数值投影."""
+        device = self._coordinator.get_device(self._device_id)
+        if not device:
+            return None
+        return next(
+            (
+                item
+                for item in project_number_controls(device, domain=DOMAIN)
+                if item.component_id == self._component_id
+            ),
+            None,
+        )
+
+    @property
+    def name(self) -> str | None:
+        """返回数值实体名称."""
+        projection = self._projection
+        return projection.name if projection is not None else None
+
+    @property
+    def available(self) -> bool:
+        """返回实体是否可用."""
+        projection = self._projection
+        return projection.available if projection is not None else False
+
+    @property
+    def icon(self) -> str | None:
+        """返回前端图标."""
+        projection = self._projection
+        return projection.icon if projection is not None else "mdi:numeric"
+
+    @property
+    def device_info(self) -> dict[str, Any]:
+        """返回设备信息."""
+        projection = self._projection
+        if projection is not None and projection.device_info is not None:
+            return projection.device_info
+        return {}
+
+    @property
+    def entity_category(self):
+        """返回实体分类."""
+        projection = self._projection
+        if projection is None:
+            return None
+        return ha_entity_category(projection.entity_category)
+
+    @property
+    def native_min_value(self) -> float | None:
+        """返回最小值."""
+        projection = self._projection
+        return projection.native_range.min if projection is not None else None
+
+    @property
+    def native_max_value(self) -> float | None:
+        """返回最大值."""
+        projection = self._projection
+        return projection.native_range.max if projection is not None else None
+
+    @property
+    def native_step(self) -> float | None:
+        """返回步进值."""
+        projection = self._projection
+        return projection.native_range.step if projection is not None else None
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        """返回单位."""
+        projection = self._projection
+        return projection.unit if projection is not None else None
+
+    @property
+    def native_value(self) -> float | None:
+        """返回当前数值."""
+        projection = self._projection
+        return projection.value if projection is not None else None
+
+    async def async_set_native_value(self, value: float) -> None:
+        """设置设备级数值属性."""
+        projection = self._projection
+        if projection is None:
+            raise_service_error("number.set_device_property", YeelightProError("projection unavailable"))
+        try:
+            await self._coordinator.async_control_device(
+                self._device_id,
+                {projection.control_key: value},
+            )
+        except YeelightProError as err:
+            raise_service_error("number.set_device_property", err)
+
+
 class YeelightProGroupBrightness(NumberEntity):
     """灯组亮度控制实体."""
 
@@ -76,6 +210,7 @@ class YeelightProGroupBrightness(NumberEntity):
     _attr_native_step = BRIGHTNESS_STEP
     _attr_native_unit_of_measurement = "%"
     _attr_icon = "mdi:brightness-percent"
+    _attr_entity_category = EntityCategory.CONFIG
 
     def __init__(
         self,
@@ -94,11 +229,7 @@ class YeelightProGroupBrightness(NumberEntity):
     @property
     def device_info(self) -> dict[str, Any]:
         """返回关联的家庭设备信息."""
-        return {
-            "identifiers": {(DOMAIN, str(self._coordinator.house_id))},
-            "name": f"Yeelight Pro {self._coordinator.house_id}",
-            "manufacturer": "Yeelight",
-        }
+        return house_device_info(self._coordinator, name_suffix="灯组")
 
     async def async_set_native_value(self, value: float) -> None:
         """设置灯组亮度."""
@@ -124,6 +255,7 @@ class YeelightProGroupColorTemp(NumberEntity):
     _attr_native_step = COLOR_TEMP_STEP
     _attr_native_unit_of_measurement = "K"
     _attr_icon = "mdi:thermometer"
+    _attr_entity_category = EntityCategory.CONFIG
 
     def __init__(
         self,
@@ -142,11 +274,7 @@ class YeelightProGroupColorTemp(NumberEntity):
     @property
     def device_info(self) -> dict[str, Any]:
         """返回关联的家庭设备信息."""
-        return {
-            "identifiers": {(DOMAIN, str(self._coordinator.house_id))},
-            "name": f"Yeelight Pro {self._coordinator.house_id}",
-            "manufacturer": "Yeelight",
-        }
+        return house_device_info(self._coordinator, name_suffix="灯组")
 
     async def async_set_native_value(self, value: float) -> None:
         """设置灯组色温."""

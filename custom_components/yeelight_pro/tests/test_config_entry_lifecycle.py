@@ -25,13 +25,16 @@ from .config_entry_lifecycle_helpers import (
     make_config_entry,
     make_coordinator,
     make_setup_coordinator,
+    register_config_entry,
 )
 
 
 @pytest.fixture
-def mock_config_entry() -> MagicMock:
+def mock_config_entry(hass: HomeAssistant) -> MagicMock:
     """Build a config entry test double."""
-    return make_config_entry()
+    entry = make_config_entry()
+    register_config_entry(hass, entry)
+    return entry
 
 
 @pytest.fixture
@@ -89,6 +92,7 @@ async def test_setup_entry_normalizes_legacy_cloud_entry(
     entry.options = {}
     entry.async_on_unload = MagicMock()
     entry.add_update_listener = MagicMock(return_value=MagicMock())
+    register_config_entry(hass, entry)
 
     with patch(
         "custom_components.yeelight_pro.YeelightProClient",
@@ -161,6 +165,7 @@ async def test_setup_entry_normalizes_legacy_open_api_client_id_alias(
     entry.options = {}
     entry.async_on_unload = MagicMock()
     entry.add_update_listener = MagicMock(return_value=MagicMock())
+    register_config_entry(hass, entry)
 
     with patch(
         "custom_components.yeelight_pro.YeelightProClient",

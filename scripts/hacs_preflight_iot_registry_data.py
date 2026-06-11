@@ -8,6 +8,15 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         "component_platform_hint": "component platform hints",
         "property_capability": "core property capability lookup",
     },
+    "test_platform_mapping_contract.py": {
+        "platform_candidates_for_payload": "payload-derived HA platform candidates",
+        "test_broad_cloud_light_contact_payload_maps_to_binary_and_sensor": (
+            "broad cloud light contact payload mapping guard"
+        ),
+        "test_broad_cloud_light_sensor_payload_maps_to_sensor_only": (
+            "broad cloud light sensor mapping guard"
+        ),
+    },
     "test_iot_registry_events.py": {
         "normalize_event_type": "runtime event alias normalization",
         "test_panel_click_and_hold_event_component_matrix_matches_iot_docs": (
@@ -124,14 +133,17 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         "test_bridge_protocol_metadata_does_not_enable_unknown_fallback_sensor": (
             "bridge protocol metadata projection boundary coverage"
         ),
-        "test_vacuum_projection_is_experimental_and_requires_explicit_vacuum_payload": (
-            "vacuum experimental projection boundary coverage"
+        "test_unsupported_vacuum_payload_does_not_project_entities": (
+            "unsupported vacuum projection boundary coverage"
         ),
         "CORE_IOT_DEVICE_CATEGORIES": "core IoT category exclusion coverage",
     },
     "test_projection_matrix.py": {
         "test_light_projection_uses_component_state_over_raw_params": (
             "light component-state merge coverage"
+        ),
+        "test_switch_light_component_projects_as_light": (
+            "switch light component identity coverage"
         ),
         "test_light_projection_preserves_gateway_via_device_info": (
             "gateway via_device projection coverage"
@@ -149,10 +161,43 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         "test_raw_params_and_component_state_merge_without_losing_unmodeled_params": (
             "raw params and component state merge coverage"
         ),
+        "test_sensor_schema_projects_unknown_entity_without_runtime_value": (
+            "schema-backed missing sensor value unknown-state coverage"
+        ),
+        "test_binary_sensor_schema_projects_unknown_entity_without_runtime_value": (
+            "schema-backed missing binary sensor value unknown-state coverage"
+        ),
+    },
+    "test_projection_entity_categories.py": {
+        "test_sensor_entity_exposes_ha_entity_category": (
+            "HA entity category projection coverage"
+        ),
+        "test_gateway_properties_project_diagnostic_sensors_only": (
+            "gateway diagnostic/config category projection coverage"
+        ),
+        "test_dali_energy_projects_runtime_diagnostic_sensors": (
+            "DALI runtime diagnostic entity category coverage"
+        ),
+    },
+    "test_device_payload_empty_values.py": {
+        "test_runtime_payloads_restore_empty_category_schema_and_metadata": (
+            "empty value control category schema restoration coverage"
+        ),
+        "test_runtime_payloads_keep_documented_sensor_entities_when_values_are_missing": (
+            "empty value documented sensor entity retention coverage"
+        ),
     },
     "test_entity_candidates.py": {
         "test_schema_unknown_actions_do_not_create_device_buttons": (
             "unknown action button fallback rejection coverage"
+        ),
+    },
+    "test_entity_candidate_scenes.py": {
+        "test_entity_candidates_project_cloud_scenes_as_buttons_only": (
+            "cloud scene button-only projection coverage"
+        ),
+        "test_entity_candidates_use_friendly_scene_fallback_name": (
+            "friendly cloud scene fallback name coverage"
         ),
     },
     "test_group_number_controls.py": {

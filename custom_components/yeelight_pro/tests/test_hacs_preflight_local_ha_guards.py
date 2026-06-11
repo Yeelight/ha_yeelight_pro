@@ -27,6 +27,7 @@ def test_local_ha_contract_tokens_are_split_by_release_and_runtime() -> None:
         "scripts/hacs_preflight_local_ha_runtime_sources.py",
         "scripts/hacs_preflight_local_ha_runtime_tests.py",
         "scripts/hacs_preflight_local_ha_runtime_verifier_sources.py",
+        "scripts/hacs_preflight_local_ha_runtime_verifier_storage.py",
         "scripts/hacs_preflight_local_ha_runtime_verifier_tests.py",
         "scripts/hacs_preflight_local_ha_protocol_contracts.py",
         "scripts/hacs_preflight_scan_login_contracts.py",

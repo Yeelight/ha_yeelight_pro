@@ -163,6 +163,9 @@ class SourceDeviceComponentInput:
     """适配器层标准化源侧设备组件运行时载荷。"""
 
     component_key: str
+    name: str | None = None
+    desc: str | None = None
+    index: int | None = None
     component_type: str | None = None
     category: str | None = None
     available: bool = True

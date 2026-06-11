@@ -39,6 +39,8 @@ from .config_flow_options import (
 from .core.client import YeelightProClient
 from .core.exceptions import AuthenticationError, ConnectionError
 from .scan_login_contract import iot_base_url
+from .house_metadata import house_name_from_choice
+from .house_metadata import friendly_house_name
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -56,12 +58,29 @@ def flow_error_from_exception(stage: str, err: Exception) -> str:
 def house_choices(houses: list[dict[str, Any]]) -> dict[Any, str]:
     """归一化开放平台不同字段形态的家庭选择项."""
     choices: dict[Any, str] = {}
+    unnamed_count = 0
     for house in houses:
         house_id = house.get("id") or house.get("houseId") or house.get("house_id")
         if house_id is None:
             continue
-        name = house.get("name") or house.get("houseName") or house.get("house_name")
-        choices[house_id] = str(name or f"House {house_id}")
+        name = (
+            house.get("name")
+            or house.get("houseName")
+            or house.get("house_name")
+            or house.get("projectName")
+            or house.get("project_name")
+        )
+        friendly_name = friendly_house_name(name)
+        if friendly_name:
+            label = friendly_name
+        else:
+            unnamed_count += 1
+            label = (
+                house_name_from_choice({}, house_id)
+                if unnamed_count == 1
+                else f"{house_name_from_choice({}, house_id)} {unnamed_count}"
+            )
+        choices[house_id] = label
     return dict(sorted(choices.items(), key=lambda item: str(item[1])))
 
 

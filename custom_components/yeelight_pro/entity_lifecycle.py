@@ -11,9 +11,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN
+from .entity_category import ha_entity_category
 from .entity_candidates import (
+    EntityCandidate,
     EntityCandidateCoordinator,
     EntityKey,
+    collect_entity_candidates,
     collect_entity_candidate_keys,
 )
 from .entity_lifecycle_cleanup import (
@@ -56,6 +59,8 @@ class EntityRegistryReconcileSummary:
     stale: int
     pending_stale: int
     disabled: int
+    restored: int = 0
+    metadata_updated: int = 0
 
     def as_diagnostics(self) -> dict[str, int]:
         """Return a diagnostics-safe aggregate payload."""
@@ -65,6 +70,8 @@ class EntityRegistryReconcileSummary:
             "stale": self.stale,
             "pending_stale": self.pending_stale,
             "disabled": self.disabled,
+            "restored": self.restored,
+            "metadata_updated": self.metadata_updated,
         }
 
 
@@ -106,7 +113,18 @@ def _registry_entry_domain(registry_entry: er.RegistryEntry) -> str | None:
 
 def _registry_entry_disabled_by_user(registry_entry: er.RegistryEntry) -> bool:
     """Return whether the registry entry was explicitly disabled by the user."""
-    return getattr(registry_entry, "disabled_by", None) == er.RegistryEntryDisabler.USER
+    return getattr(registry_entry, "disabled_by", None) in {
+        er.RegistryEntryDisabler.USER,
+        "user",
+    }
+
+
+def _registry_entry_disabled_by_integration(registry_entry: er.RegistryEntry) -> bool:
+    """Return whether the registry entry was automatically disabled by this integration."""
+    return getattr(registry_entry, "disabled_by", None) in {
+        er.RegistryEntryDisabler.INTEGRATION,
+        "integration",
+    }
 
 
 async def async_reconcile_entity_registry(
@@ -114,8 +132,9 @@ async def async_reconcile_entity_registry(
     entry: ConfigEntry,
     coordinator: EntityLifecycleCoordinator,
 ) -> set[str]:
-    """Track stale registry entries without mutating Home Assistant registries."""
-    active_entity_keys = collect_active_entity_keys(coordinator)
+    """Record stale integration registry entries without mutating user registries."""
+    active_entity_candidates = collect_entity_candidates(coordinator)
+    active_entity_keys = set(active_entity_candidates)
     registry_entries, stale_entries = _collect_registry_entries(
         hass,
         entry,
@@ -125,6 +144,16 @@ async def async_reconcile_entity_registry(
     pending_stale_keys = _pending_stale_entity_keys(coordinator)
     pending_stale_keys.intersection_update(stale_keys)
     pending_stale_keys.update(stale_keys)
+    restored = _restore_active_integration_entries(
+        hass,
+        registry_entries,
+        active_entity_keys,
+    )
+    metadata_updated = _sync_active_registry_metadata(
+        hass,
+        registry_entries,
+        active_entity_candidates,
+    )
 
     setattr(
         coordinator,
@@ -135,15 +164,19 @@ async def async_reconcile_entity_registry(
             stale=len(stale_keys),
             pending_stale=len(pending_stale_keys),
             disabled=0,
+            restored=restored,
+            metadata_updated=metadata_updated,
         ),
     )
     _LOGGER.info(
         "Reconciled Yeelight Pro entity registry for entry %s: active=%s "
-        "pending_stale=%s disabled=%s",
+        "pending_stale=%s disabled=%s restored=%s metadata_updated=%s",
         entry.entry_id,
         len(active_entity_keys),
         len(pending_stale_keys),
         0,
+        restored,
+        metadata_updated,
     )
     return {unique_id for _, unique_id in active_entity_keys}
 
@@ -168,6 +201,8 @@ def _collect_registry_entries(
         registry_entries.append(registry_entry)
         registry_key = (registry_domain, registry_entry.unique_id)
         if registry_key not in active_entity_keys:
+            if getattr(registry_entry, "disabled_by", None) is not None:
+                continue
             if _registry_entry_disabled_by_user(registry_entry):
                 continue
             stale_entries[registry_key] = registry_entry
@@ -182,3 +217,95 @@ def _pending_stale_entity_keys(coordinator: Any) -> set[EntityKey]:
     pending: set[EntityKey] = set()
     setattr(coordinator, _PENDING_STALE_ENTITY_KEYS, pending)
     return pending
+
+
+def _disable_stale_entries(
+    hass: HomeAssistant,
+    stale_entries: dict[EntityKey, er.RegistryEntry],
+) -> int:
+    """Mark stale entries disabled by integration while preserving registry data."""
+    if not stale_entries:
+        return 0
+    entity_registry = er.async_get(hass)
+    disabled = 0
+    for registry_entry in stale_entries.values():
+        if getattr(registry_entry, "disabled_by", None) is not None:
+            continue
+        entity_registry.async_update_entity(
+            registry_entry.entity_id,
+            disabled_by=er.RegistryEntryDisabler.INTEGRATION,
+        )
+        disabled += 1
+    return disabled
+
+
+def _restore_active_integration_entries(
+    hass: HomeAssistant,
+    registry_entries: list[er.RegistryEntry],
+    active_entity_keys: set[EntityKey],
+) -> int:
+    """Re-enable integration-disabled entries whose candidates are active again."""
+    if not registry_entries:
+        return 0
+    entity_registry = er.async_get(hass)
+    restored = 0
+    for registry_entry in registry_entries:
+        registry_domain = _registry_entry_domain(registry_entry)
+        if registry_domain is None:
+            continue
+        registry_key = (registry_domain, registry_entry.unique_id)
+        if (
+            registry_key not in active_entity_keys
+            or not _registry_entry_disabled_by_integration(registry_entry)
+        ):
+            continue
+        entity_registry.async_update_entity(
+            registry_entry.entity_id,
+            disabled_by=None,
+        )
+        restored += 1
+    return restored
+
+
+def _sync_active_registry_metadata(
+    hass: HomeAssistant,
+    registry_entries: list[er.RegistryEntry],
+    active_entity_candidates: dict[EntityKey, EntityCandidate],
+) -> int:
+    """Refresh integration-owned registry metadata for active entities."""
+    if not registry_entries:
+        return 0
+    entity_registry = er.async_get(hass)
+    updated = 0
+    for registry_entry in registry_entries:
+        registry_domain = _registry_entry_domain(registry_entry)
+        if registry_domain is None:
+            continue
+        candidate = active_entity_candidates.get((registry_domain, registry_entry.unique_id))
+        if candidate is None:
+            continue
+        kwargs = _active_metadata_update_kwargs(registry_entry, candidate)
+        if not kwargs:
+            continue
+        entity_registry.async_update_entity(registry_entry.entity_id, **kwargs)
+        updated += 1
+    return updated
+
+
+def _active_metadata_update_kwargs(
+    registry_entry: er.RegistryEntry,
+    candidate: EntityCandidate,
+) -> dict[str, Any]:
+    """Return safe registry metadata changes without touching user custom names."""
+    kwargs: dict[str, Any] = {}
+    if getattr(registry_entry, "original_name", None) != candidate.name:
+        kwargs["original_name"] = candidate.name
+    if getattr(registry_entry, "original_icon", None) != candidate.icon:
+        kwargs["original_icon"] = candidate.icon
+    category = ha_entity_category(candidate.entity_category)
+    current = getattr(registry_entry, "entity_category", None)
+    if current not in {category, getattr(category, "value", None)}:
+        kwargs["entity_category"] = category
+    if getattr(registry_entry, "has_entity_name", None) is not True:
+        kwargs["has_entity_name"] = True
+    return kwargs

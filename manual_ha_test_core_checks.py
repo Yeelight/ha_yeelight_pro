@@ -214,7 +214,6 @@ async def check_platform_entities() -> bool:
     print("\n🔍 测试平台实体...")
     try:
         from custom_components.yeelight_pro.const import (
-            EXPERIMENTAL_PLATFORMS,
             PLATFORMS,
             get_enabled_platforms,
         )
@@ -227,18 +226,18 @@ async def check_platform_entities() -> bool:
             "event",
             "fan",
             "light",
-            "lock",
             "number",
-            "scene",
             "select",
             "sensor",
             "switch",
-            "vacuum",
         ]
         for platform in expected_platforms:
             assert platform in PLATFORMS, f"缺少平台: {platform}"
         assert "text" not in PLATFORMS
-        assert "vacuum" in EXPERIMENTAL_PLATFORMS
+        assert "scene" not in PLATFORMS
+        assert "lock" not in PLATFORMS
+        assert "vacuum" not in PLATFORMS
+        assert "lock" not in get_enabled_platforms({})
         assert "vacuum" not in get_enabled_platforms({})
 
         for module_name in PLATFORMS:
@@ -248,7 +247,7 @@ async def check_platform_entities() -> bool:
             )
             print(f"  ✅ {module_name} 模块导入成功")
         print(f"  ✅ PLATFORMS 注册 {len(expected_platforms)} 个平台")
-        print("  ✅ vacuum 保持实验平台，默认不启用")
+        print("  ✅ 无文档支撑的平台未加载")
         return True
     except Exception as err:
         print_exception("平台实体测试失败", err)

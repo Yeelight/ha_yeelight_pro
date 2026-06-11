@@ -6,12 +6,17 @@ import logging
 from collections.abc import Callable, Mapping
 from typing import Any
 
-from ..capabilities.mapping import platform_for_category
 from ..converter.device import YeelightLanDeviceInstanceConverter
 from ..converter.product import (
     RuntimeInferredProductModelBuilder,
     YeelightProductSchemaConverter,
 )
+from ..capabilities.platform_contract import (
+    platform_candidates_for_payload,
+    primary_platform_for_payload,
+)
+from ..capabilities.registry import format_component_property_key
+from .device_classification import infer_iot_category
 from .device_metadata import attach_fallback_payload_metadata, enrich_payload_metadata
 from .exceptions import safe_error_summary
 from ..utils import to_bool, to_int
@@ -48,30 +53,34 @@ class DevicePayloadBuilder:
         """将 open API 格式转换为 projector 期望的格式."""
         normalized = dict(device)
 
-        if "category" in normalized and "type" not in normalized:
-            category = normalized["category"]
-            normalized["type"] = platform_for_category(category, default=category)
-
         if "id" in normalized and "device_id" not in normalized:
             normalized["device_id"] = normalized["id"]
 
         online = to_bool(normalized.get("online"), default=True)
 
-        if "properties" in normalized:
-            params: dict[str, Any] | None = (
-                {} if "params" not in normalized else None
-            )
-            for prop in normalized.get("properties", []):
-                if not isinstance(prop, Mapping):
-                    continue
-                prop_id = prop.get("propId")
-                value = prop.get("value")
-                if prop_id == "o":
-                    online = to_bool(value, default=online)
-                elif params is not None and prop_id and value is not None:
-                    params[str(prop_id)] = value
-            if params is not None:
-                normalized["params"] = params
+        params = _params(normalized)
+        has_property_source = "properties" in normalized or bool(
+            _subdevices(normalized.get("subDeviceList"))
+        )
+
+        for prop in _properties(normalized.get("properties")):
+            prop_id = _property_id(prop)
+            value = _property_value(prop)
+            if prop_id == "o":
+                online = to_bool(value, default=online)
+            elif prop_id and value is not None:
+                params[str(prop_id)] = value
+
+        for subdevice in _subdevices(normalized.get("subDeviceList")):
+            index = to_int(subdevice.get("index"))
+            for prop in _properties(subdevice.get("properties")):
+                prop_id = _property_id(prop)
+                value = _property_value(prop)
+                if prop_id and value is not None:
+                    params[format_component_property_key(index, prop_id)] = value
+
+        if params or has_property_source:
+            normalized["params"] = params
         normalized["online"] = online
 
         pid = to_int(normalized.get("pid"))
@@ -80,6 +89,18 @@ class DevicePayloadBuilder:
             product_schema = product_schemas.get(pid)
             if product_schema is not None:
                 normalized["product_schema"] = dict(product_schema)
+
+        iot_category = infer_iot_category(normalized)
+        if iot_category is not None:
+            normalized["iot_category"] = iot_category
+            normalized["category"] = iot_category
+
+        candidates = platform_candidates_for_payload(normalized)
+        if candidates:
+            normalized["ha_platform_candidates"] = list(candidates)
+        platform = primary_platform_for_payload(normalized)
+        if platform is not None:
+            normalized["ha_platform"] = platform
 
         return normalized
 
@@ -105,6 +126,7 @@ class DevicePayloadBuilder:
                     rooms=rooms,
                     areas=areas,
                 )
+                _attach_platform_metadata(normalized)
                 data[device_id] = normalized
 
         gateway_data: dict[int, dict[str, Any]] = {}
@@ -118,6 +140,7 @@ class DevicePayloadBuilder:
                     rooms=rooms,
                     areas=areas,
                 )
+                _attach_platform_metadata(normalized)
                 gateway_data[gateway_id] = normalized
                 data[gateway_id] = normalized
 
@@ -133,6 +156,9 @@ class DevicePayloadBuilder:
         """在载荷包含产品 schema 时生成规范产品与运行时实例."""
         product_schema = payload.get("product_schema")
         if isinstance(product_schema, Mapping):
+            if self._schema_conflicts_with_runtime_category(payload, product_schema):
+                self.attach_inferred_canonical_models(payload, rooms=rooms, areas=areas)
+                return
             self.attach_canonical_models(
                 payload,
                 product_schema,
@@ -207,3 +233,75 @@ class DevicePayloadBuilder:
                 "Failed to build Yeelight Pro inferred runtime model: %s",
                 safe_error_summary(err),
             )
+
+    def _schema_conflicts_with_runtime_category(
+        self,
+        payload: Mapping[str, Any],
+        product_schema: Mapping[str, Any],
+    ) -> bool:
+        """Return true when broad schema would hide a stricter runtime category."""
+        category = str(payload.get("iot_category") or payload.get("category") or "")
+        if category not in {"curtain", "temp_control", "scene_panel", "knob_switch"}:
+            return False
+        schema_categories = _schema_categories(product_schema)
+        if not schema_categories or category in schema_categories:
+            return False
+        return bool(schema_categories & {"relay_switch", "switch", "light", "other"})
+
+
+def _property_id(prop: Mapping[str, Any]) -> Any:
+    """Return the Yeelight property id from list/read response variants."""
+    return prop.get("propId", prop.get("propName"))
+
+
+def _property_value(prop: Mapping[str, Any]) -> Any:
+    """Return the Yeelight property value from list/read response variants."""
+    if "value" in prop:
+        return prop.get("value")
+    return prop.get("data")
+
+
+def _params(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Return a mutable runtime params copy."""
+    raw_params = payload.get("params")
+    return dict(raw_params) if isinstance(raw_params, Mapping) else {}
+
+
+def _properties(value: Any) -> list[Mapping[str, Any]]:
+    """Return property mappings from Open API response variants."""
+    return [item for item in value or [] if isinstance(item, Mapping)]
+
+
+def _subdevices(value: Any) -> list[Mapping[str, Any]]:
+    """Return sub-device mappings from Open API device-list rows."""
+    return [item for item in value or [] if isinstance(item, Mapping)]
+
+
+def _schema_categories(schema: Mapping[str, Any]) -> set[str]:
+    """Return category labels declared by a product schema."""
+    categories = {
+        str(category)
+        for category in (schema.get("category"),)
+        if category is not None and str(category)
+    }
+    for key in ("components", "customComponents"):
+        categories.update(
+            str(component["category"])
+            for component in _subdevices(schema.get(key))
+            if component.get("category") is not None and str(component.get("category"))
+        )
+    return categories
+
+
+def _attach_platform_metadata(payload: dict[str, Any]) -> None:
+    """Refresh HA platform hints after runtime schema inference."""
+    candidates = platform_candidates_for_payload(payload)
+    if candidates:
+        payload["ha_platform_candidates"] = list(candidates)
+    else:
+        payload.pop("ha_platform_candidates", None)
+    platform = primary_platform_for_payload(payload)
+    if platform is not None:
+        payload["ha_platform"] = platform
+    else:
+        payload.pop("ha_platform", None)

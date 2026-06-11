@@ -12,7 +12,6 @@ TOPOLOGY_COLLECTIONS = (
     "rooms",
     "groups",
     "scenes",
-    "automations",
 )
 
 TopologySnapshot = Mapping[str, Mapping[str, tuple[Any, ...]]]
@@ -131,7 +130,6 @@ def build_topology_snapshot(
     rooms: list[dict[str, Any]],
     groups: list[dict[str, Any]],
     scenes: list[dict[str, Any]],
-    automations: list[dict[str, Any]],
 ) -> dict[str, dict[str, tuple[Any, ...]]]:
     """Build a comparable topology snapshot without runtime state values."""
     return {
@@ -141,7 +139,6 @@ def build_topology_snapshot(
         "rooms": _named_collection_snapshot(rooms),
         "groups": _named_collection_snapshot(groups),
         "scenes": _named_collection_snapshot(scenes),
-        "automations": _named_collection_snapshot(automations),
     }
 
 
@@ -216,10 +213,8 @@ def _component_signature(components: Any) -> tuple[Any, ...]:
     )
 
 
-def _named_collection_snapshot(
-    items: list[dict[str, Any]],
-) -> dict[str, tuple[Any, ...]]:
-    """Return a diffable snapshot for area/room/group/scene/automation collections."""
+def _named_collection_snapshot(items: list[dict[str, Any]]) -> dict[str, tuple[Any, ...]]:
+    """Return a diffable snapshot for area/room/group/scene collections."""
     return {
         _named_item_key(item): _named_item_signature(item)
         for item in items

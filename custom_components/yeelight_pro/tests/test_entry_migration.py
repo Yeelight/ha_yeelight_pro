@@ -17,9 +17,9 @@ from custom_components.yeelight_pro.const import (
     CONF_CLOUD_REGION,
     CONF_CONNECTION_MODE,
     CONF_DEBUG_MODE,
-    CONF_EXPERIMENTAL_PLATFORMS,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_HOUSE_ID,
+    CONF_HOUSE_NAME,
     CONF_LIVE_UPDATES,
     CONF_LOCAL_GATEWAY_CONTROL,
     CONF_LOCAL_GATEWAY_HOST,
@@ -36,8 +36,8 @@ from custom_components.yeelight_pro.const import (
     CONNECTION_MODE_PRIVATE,
     DEFAULT_CLOUD_DOMAIN,
     DEFAULT_DEBUG_MODE,
-    DEFAULT_EXPERIMENTAL_PLATFORMS,
     DEFAULT_HIDE_UNKNOWN_ENTITIES,
+    DEFAULT_HOUSE_NAME,
     DEFAULT_LIVE_UPDATES,
     DEFAULT_LOCAL_GATEWAY_CONTROL,
     DEFAULT_LOCAL_GATEWAY_HOST,
@@ -78,7 +78,6 @@ def _expected_default_options() -> dict[str, object]:
     return {
         CONF_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL,
         CONF_DEBUG_MODE: DEFAULT_DEBUG_MODE,
-        CONF_EXPERIMENTAL_PLATFORMS: DEFAULT_EXPERIMENTAL_PLATFORMS,
         CONF_HIDE_UNKNOWN_ENTITIES: DEFAULT_HIDE_UNKNOWN_ENTITIES,
         CONF_TOPOLOGY_CHANGE_REPAIRS: DEFAULT_TOPOLOGY_CHANGE_REPAIRS,
         CONF_LIVE_UPDATES: DEFAULT_LIVE_UPDATES,
@@ -106,8 +105,7 @@ async def test_migrate_cloud_entry_aliases_and_option_defaults(
             "future_option": "keep",
             CONF_SCAN_INTERVAL: "45",
             CONF_DEBUG_MODE: "1",
-            CONF_EXPERIMENTAL_PLATFORMS: "false",
-            CONF_HIDE_UNKNOWN_ENTITIES: "0",
+                CONF_HIDE_UNKNOWN_ENTITIES: "0",
             CONF_TOPOLOGY_CHANGE_REPAIRS: "off",
         },
         version=1,
@@ -136,6 +134,7 @@ async def test_migrate_cloud_entry_aliases_and_option_defaults(
             CONF_TOKEN_EXPIRES_IN: None,
             CONF_TOKEN_TYPE: "",
             CONF_HOUSE_ID: 429392,
+            CONF_HOUSE_NAME: DEFAULT_HOUSE_NAME,
             CONF_CLOUD_REGION: "cn",
             CONF_OPEN_API_CLIENT_ID: "",
             CONF_ACCOUNT_USER_ID: None,
@@ -146,15 +145,14 @@ async def test_migrate_cloud_entry_aliases_and_option_defaults(
             "future_option": "keep",
             CONF_SCAN_INTERVAL: 45,
             CONF_DEBUG_MODE: True,
-            CONF_EXPERIMENTAL_PLATFORMS: False,
-            CONF_HIDE_UNKNOWN_ENTITIES: False,
+                CONF_HIDE_UNKNOWN_ENTITIES: False,
             CONF_TOPOLOGY_CHANGE_REPAIRS: False,
             CONF_LIVE_UPDATES: DEFAULT_LIVE_UPDATES,
             CONF_LOCAL_GATEWAY_CONTROL: DEFAULT_LOCAL_GATEWAY_CONTROL,
             CONF_LOCAL_GATEWAY_HOST: DEFAULT_LOCAL_GATEWAY_HOST,
             CONF_LOCAL_GATEWAY_PORT: DEFAULT_LOCAL_GATEWAY_PORT,
         },
-        title="Yeelight Pro Cloud (user-1 · CN · House 429392)",
+        title=f"Yeelight Pro Cloud (user-1 · CN · {DEFAULT_HOUSE_NAME})",
         unique_id="cloud:cn:user-1:429392",
         version=ENTRY_VERSION,
         minor_version=ENTRY_MINOR_VERSION,
@@ -192,6 +190,7 @@ async def test_migrate_private_entry_fills_domains_and_default_options(
         CONF_TOKEN_EXPIRES_IN: None,
         CONF_TOKEN_TYPE: "",
         CONF_HOUSE_ID: 1001,
+        CONF_HOUSE_NAME: DEFAULT_HOUSE_NAME,
         CONF_CLOUD_REGION: "cn",
         CONF_OPEN_API_CLIENT_ID: "",
         CONF_ACCOUNT_USER_ID: None,
@@ -199,7 +198,9 @@ async def test_migrate_private_entry_fills_domains_and_default_options(
         CONF_SCAN_LOGIN_DEVICE: "",
     }
     assert update["options"] == _expected_default_options()
-    assert update["title"] == "Yeelight Pro Private (10.0.0.10:8080 · House 1001)"
+    assert update["title"] == (
+        f"Yeelight Pro Private (10.0.0.10:8080 · {DEFAULT_HOUSE_NAME})"
+    )
     assert update["unique_id"] == "private:10.0.0.10:8080:1001"
     assert update["version"] == ENTRY_VERSION
     assert update["minor_version"] == ENTRY_MINOR_VERSION
@@ -218,6 +219,7 @@ async def test_migrate_current_entry_is_noop(hass: HomeAssistant) -> None:
             CONF_TOKEN_EXPIRES_IN: None,
             CONF_TOKEN_TYPE: "",
             CONF_HOUSE_ID: 429392,
+            CONF_HOUSE_NAME: DEFAULT_HOUSE_NAME,
             CONF_CLOUD_REGION: "cn",
             CONF_OPEN_API_CLIENT_ID: "",
             CONF_ACCOUNT_USER_ID: None,
@@ -227,8 +229,7 @@ async def test_migrate_current_entry_is_noop(hass: HomeAssistant) -> None:
         options={
             CONF_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL,
             CONF_DEBUG_MODE: DEFAULT_DEBUG_MODE,
-            CONF_EXPERIMENTAL_PLATFORMS: DEFAULT_EXPERIMENTAL_PLATFORMS,
-            CONF_HIDE_UNKNOWN_ENTITIES: DEFAULT_HIDE_UNKNOWN_ENTITIES,
+                CONF_HIDE_UNKNOWN_ENTITIES: DEFAULT_HIDE_UNKNOWN_ENTITIES,
             CONF_TOPOLOGY_CHANGE_REPAIRS: DEFAULT_TOPOLOGY_CHANGE_REPAIRS,
             CONF_LIVE_UPDATES: DEFAULT_LIVE_UPDATES,
             CONF_LOCAL_GATEWAY_CONTROL: DEFAULT_LOCAL_GATEWAY_CONTROL,
@@ -239,7 +240,7 @@ async def test_migrate_current_entry_is_noop(hass: HomeAssistant) -> None:
         minor_version=ENTRY_MINOR_VERSION,
         unique_id="cloud:cn:token-a2f2b0b588bcc84f:429392",
     )
-    entry.title = "Yeelight Pro Cloud (CN · House 429392)"
+    entry.title = f"Yeelight Pro Cloud (CN · {DEFAULT_HOUSE_NAME})"
     hass.config_entries.async_update_entry = MagicMock()
 
     assert await async_migrate_entry(hass, entry) is True
@@ -256,6 +257,7 @@ def test_normalize_entry_data_preserves_open_api_client_id_alias() -> None:
     })
 
     assert data[CONF_OPEN_API_CLIENT_ID] == "client-1"
+    assert data[CONF_HOUSE_NAME] == DEFAULT_HOUSE_NAME
 
 
 def test_normalize_entry_data_detects_region_from_cloud_domain() -> None:
@@ -347,7 +349,9 @@ async def test_migrate_legacy_cloud_entry_updates_region_account_unique_id(
 
     update = hass.config_entries.async_update_entry.call_args.kwargs
     assert update["unique_id"] == "cloud:us:122349:9"
-    assert update["title"] == "Yeelight Pro Cloud (UID 122349 · US · House 9)"
+    assert update["title"] == (
+        f"Yeelight Pro Cloud (UID 122349 · US · {DEFAULT_HOUSE_NAME})"
+    )
     assert update["minor_version"] == ENTRY_MINOR_VERSION
 
 
@@ -366,6 +370,7 @@ async def test_migrate_current_data_updates_legacy_title(
             CONF_TOKEN_EXPIRES_IN: None,
             CONF_TOKEN_TYPE: "",
             CONF_HOUSE_ID: 429392,
+            CONF_HOUSE_NAME: DEFAULT_HOUSE_NAME,
             CONF_CLOUD_REGION: "cn",
             CONF_OPEN_API_CLIENT_ID: "",
             CONF_ACCOUNT_USER_ID: None,
@@ -383,5 +388,5 @@ async def test_migrate_current_data_updates_legacy_title(
     assert await async_migrate_entry(hass, entry) is True
 
     update = hass.config_entries.async_update_entry.call_args.kwargs
-    assert update["title"] == "Yeelight Pro Cloud (CN · House 429392)"
+    assert update["title"] == f"Yeelight Pro Cloud (CN · {DEFAULT_HOUSE_NAME})"
     assert update["unique_id"] == "cloud:cn:token-a2f2b0b588bcc84f:429392"

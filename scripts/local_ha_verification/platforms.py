@@ -30,13 +30,6 @@ def verify_platform_options_alignment(
     if not platforms:
         report.fail("platform constants are empty")
         return
-    if not experimental.issubset(platforms):
-        report.fail(
-            "experimental platforms are not declared platforms: "
-            f"{sorted(experimental - platforms)}"
-        )
-        return
-
     expected_by_entry = [
         _enabled_platforms(entry.get("options"), platforms, experimental)
         for entry in entry_list
@@ -46,19 +39,13 @@ def verify_platform_options_alignment(
         domain for domain, count in entity_domain_counts.items() if count > 0
     }
     unexpected_domains = sorted(actual_domains - expected_union)
-    experimental_domains = sorted(actual_domains & (experimental - expected_union))
 
     if unexpected_domains:
         report.fail(
             "entity domains are not enabled by config entry options: "
             f"{unexpected_domains}"
         )
-    if experimental_domains:
-        report.fail(
-            "experimental entity domains present without opt-in: "
-            f"{experimental_domains}"
-        )
-    if not unexpected_domains and not experimental_domains:
+    if not unexpected_domains:
         report.fact(
             "platform options alignment: "
             f"default_enabled={len(platforms - experimental)}, "
@@ -93,9 +80,6 @@ def _enabled_platforms(
     experimental: set[str],
 ) -> set[str]:
     """Return enabled platform names for one installed config entry."""
-    option_map = options if isinstance(options, Mapping) else {}
-    if option_map.get("experimental_platforms", False) is True:
-        return set(platforms)
     return platforms - experimental
 
 
@@ -103,13 +87,12 @@ def _installed_platform_contract() -> tuple[set[str], set[str]] | None:
     """Read installed platform constants without importing Home Assistant."""
     constants = _literal_module_lists(
         SOURCE_COMPONENT_ROOT / "const.py",
-        {"PLATFORMS", "EXPERIMENTAL_PLATFORMS"},
+        {"PLATFORMS"},
     )
     platforms = constants.get("PLATFORMS")
-    experimental = constants.get("EXPERIMENTAL_PLATFORMS")
-    if platforms is None or experimental is None:
+    if platforms is None:
         return None
-    return (set(platforms), set(experimental))
+    return (set(platforms), set())
 
 
 def _literal_module_lists(path: Path, names: set[str]) -> dict[str, list[str]]:

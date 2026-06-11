@@ -10,6 +10,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
 from .dynamic_entities import async_track_dynamic_entities
+from .entity_category import ha_entity_category
 from .projector.binary_sensor import (
     HABinarySensorProjection,
     project_binary_sensors,
@@ -58,6 +59,7 @@ BINARY_SENSOR_DEVICE_CLASS_MAP = {
     "motion": BinarySensorDeviceClass.MOTION,
     "door": BinarySensorDeviceClass.DOOR,
     "tamper": BinarySensorDeviceClass.TAMPER,
+    "battery_charging": BinarySensorDeviceClass.BATTERY_CHARGING,
 }
 
 
@@ -137,9 +139,17 @@ class YeelightProBinarySensor(CoordinatorEntity, BinarySensorEntity):
         return projection.icon
 
     @property
-    def is_on(self) -> bool:
+    def entity_category(self):
+        """Return HA entity category for device page grouping."""
+        projection = self._projection
+        if projection is None:
+            return None
+        return ha_entity_category(projection.entity_category)
+
+    @property
+    def is_on(self) -> bool | None:
         """Return true if the binary sensor is on."""
         projection = self._projection
         if projection is None:
-            return False
+            return None
         return projection.is_on

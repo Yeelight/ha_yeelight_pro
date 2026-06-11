@@ -17,7 +17,6 @@ from custom_components.yeelight_pro.const import (
     CONF_DEVICE_IMPORT_FILTER_INCLUDE_CATEGORIES,
     CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES,
     CONF_DEVICE_IMPORT_FILTER_MODE,
-    CONF_EXPERIMENTAL_PLATFORMS,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_LIVE_UPDATES,
     CONF_LOCAL_GATEWAY_CONTROL,
@@ -30,7 +29,6 @@ from custom_components.yeelight_pro.const import (
     DEFAULT_LOCAL_GATEWAY_HOST,
     DEFAULT_LOCAL_GATEWAY_PORT,
     DEFAULT_SCAN_INTERVAL,
-    EXPERIMENTAL_PLATFORMS,
     PLATFORMS,
     get_enabled_platforms,
 )
@@ -52,7 +50,6 @@ async def test_options_flow_shows_defaults(mock_config_entry) -> None:
     defaults = {marker.schema: marker.default() for marker in schema}
     assert defaults[CONF_SCAN_INTERVAL] == DEFAULT_SCAN_INTERVAL
     assert defaults[CONF_DEBUG_MODE] is False
-    assert defaults[CONF_EXPERIMENTAL_PLATFORMS] is False
     assert defaults[CONF_HIDE_UNKNOWN_ENTITIES] is True
     assert defaults[CONF_TOPOLOGY_CHANGE_REPAIRS] is True
     assert defaults[CONF_LIVE_UPDATES] is False
@@ -76,7 +73,6 @@ async def test_options_flow_ignores_invalid_legacy_options(mock_config_entry) ->
     defaults = {marker.schema: marker.default() for marker in schema}
     assert defaults[CONF_SCAN_INTERVAL] == DEFAULT_SCAN_INTERVAL
     assert defaults[CONF_DEBUG_MODE] is False
-    assert defaults[CONF_EXPERIMENTAL_PLATFORMS] is False
     assert defaults[CONF_HIDE_UNKNOWN_ENTITIES] is True
     assert defaults[CONF_TOPOLOGY_CHANGE_REPAIRS] is True
 
@@ -91,7 +87,7 @@ async def test_options_flow_confirms_runtime_only_options(mock_config_entry) -> 
     mock_config_entry.options = {
         CONF_DEVICE_IMPORT_FILTER: import_filter,
         "future_option": "keep",
-        CONF_EXPERIMENTAL_PLATFORMS: False,
+        "experimental_platforms": True,
         CONF_HIDE_UNKNOWN_ENTITIES: True,
     }
     flow = YeelightProOptionsFlow(mock_config_entry)
@@ -99,7 +95,6 @@ async def test_options_flow_confirms_runtime_only_options(mock_config_entry) -> 
     result = await flow.async_step_init({
         CONF_SCAN_INTERVAL: 45,
         CONF_DEBUG_MODE: True,
-        CONF_EXPERIMENTAL_PLATFORMS: False,
         CONF_HIDE_UNKNOWN_ENTITIES: True,
         CONF_TOPOLOGY_CHANGE_REPAIRS: False,
     })
@@ -123,7 +118,6 @@ async def test_options_flow_confirms_runtime_only_options(mock_config_entry) -> 
         "future_option": "keep",
         CONF_SCAN_INTERVAL: 45,
         CONF_DEBUG_MODE: True,
-        CONF_EXPERIMENTAL_PLATFORMS: False,
         CONF_HIDE_UNKNOWN_ENTITIES: True,
         CONF_TOPOLOGY_CHANGE_REPAIRS: False,
         CONF_LIVE_UPDATES: DEFAULT_LIVE_UPDATES,
@@ -152,7 +146,6 @@ async def test_options_flow_background_runtime_options_require_reload(
     mock_config_entry.options = {
         CONF_SCAN_INTERVAL: 15,
         CONF_DEBUG_MODE: False,
-        CONF_EXPERIMENTAL_PLATFORMS: False,
         CONF_HIDE_UNKNOWN_ENTITIES: True,
         CONF_TOPOLOGY_CHANGE_REPAIRS: True,
         CONF_LIVE_UPDATES: False,
@@ -180,7 +173,6 @@ async def test_options_flow_confirms_reload_required_options(mock_config_entry) 
     mock_config_entry.options = {
         CONF_SCAN_INTERVAL: 15,
         CONF_DEBUG_MODE: False,
-        CONF_EXPERIMENTAL_PLATFORMS: False,
         CONF_HIDE_UNKNOWN_ENTITIES: True,
         CONF_TOPOLOGY_CHANGE_REPAIRS: True,
     }
@@ -189,7 +181,6 @@ async def test_options_flow_confirms_reload_required_options(mock_config_entry) 
     result = await flow.async_step_init({
         CONF_SCAN_INTERVAL: 15,
         CONF_DEBUG_MODE: False,
-        CONF_EXPERIMENTAL_PLATFORMS: True,
         CONF_HIDE_UNKNOWN_ENTITIES: False,
         CONF_TOPOLOGY_CHANGE_REPAIRS: True,
     })
@@ -197,7 +188,7 @@ async def test_options_flow_confirms_reload_required_options(mock_config_entry) 
     assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "confirm_reload"
     assert result["description_placeholders"] == {
-        "changed_count": "2",
+        "changed_count": "1",
     }
 
 
@@ -209,7 +200,6 @@ async def test_options_flow_manual_device_filter_requires_reload(
     mock_config_entry.options = {
         CONF_SCAN_INTERVAL: 15,
         CONF_DEBUG_MODE: False,
-        CONF_EXPERIMENTAL_PLATFORMS: False,
         CONF_HIDE_UNKNOWN_ENTITIES: True,
         CONF_TOPOLOGY_CHANGE_REPAIRS: True,
     }
@@ -218,7 +208,6 @@ async def test_options_flow_manual_device_filter_requires_reload(
     result = await flow.async_step_init({
         CONF_SCAN_INTERVAL: 15,
         CONF_DEBUG_MODE: False,
-        CONF_EXPERIMENTAL_PLATFORMS: False,
         CONF_HIDE_UNKNOWN_ENTITIES: True,
         CONF_TOPOLOGY_CHANGE_REPAIRS: True,
         CONF_DEVICE_IMPORT_FILTER_ENABLED: True,
@@ -267,7 +256,6 @@ async def test_options_flow_confirm_step_rechecks_reload_requirement(
     mock_config_entry.options = {
         CONF_SCAN_INTERVAL: 15,
         CONF_DEBUG_MODE: False,
-        CONF_EXPERIMENTAL_PLATFORMS: False,
         CONF_HIDE_UNKNOWN_ENTITIES: True,
         CONF_TOPOLOGY_CHANGE_REPAIRS: True,
     }
@@ -276,8 +264,7 @@ async def test_options_flow_confirm_step_rechecks_reload_requirement(
     result = await flow.async_step_init({
         CONF_SCAN_INTERVAL: 15,
         CONF_DEBUG_MODE: False,
-        CONF_EXPERIMENTAL_PLATFORMS: True,
-        CONF_HIDE_UNKNOWN_ENTITIES: True,
+        CONF_HIDE_UNKNOWN_ENTITIES: False,
         CONF_TOPOLOGY_CHANGE_REPAIRS: True,
     })
     assert result["step_id"] == "confirm_reload"
@@ -296,7 +283,6 @@ async def test_options_flow_confirm_step_rechecks_runtime_requirement(
     mock_config_entry.options = {
         CONF_SCAN_INTERVAL: 15,
         CONF_DEBUG_MODE: False,
-        CONF_EXPERIMENTAL_PLATFORMS: False,
         CONF_HIDE_UNKNOWN_ENTITIES: True,
         CONF_TOPOLOGY_CHANGE_REPAIRS: True,
     }
@@ -305,7 +291,6 @@ async def test_options_flow_confirm_step_rechecks_runtime_requirement(
     result = await flow.async_step_init({
         CONF_SCAN_INTERVAL: 45,
         CONF_DEBUG_MODE: False,
-        CONF_EXPERIMENTAL_PLATFORMS: False,
         CONF_HIDE_UNKNOWN_ENTITIES: True,
         CONF_TOPOLOGY_CHANGE_REPAIRS: True,
     })
@@ -317,16 +302,13 @@ async def test_options_flow_confirm_step_rechecks_runtime_requirement(
     assert result["step_id"] == "confirm_runtime"
 
 
-def test_enabled_platforms_hide_experimental_by_default() -> None:
-    """实验平台默认不加载，但仍保留在声明平台中供显式启用."""
+def test_enabled_platforms_match_supported_platforms() -> None:
+    """平台加载集合只来自当前受支持平台列表."""
     enabled = get_enabled_platforms({})
 
-    assert all(platform in PLATFORMS for platform in enabled)
-    assert all(platform in PLATFORMS for platform in EXPERIMENTAL_PLATFORMS)
-    assert not set(EXPERIMENTAL_PLATFORMS).intersection(enabled)
-    assert set(EXPERIMENTAL_PLATFORMS).issubset(
-        get_enabled_platforms({CONF_EXPERIMENTAL_PLATFORMS: True})
-    )
+    assert enabled == PLATFORMS
+    assert "vacuum" not in enabled
+    assert get_enabled_platforms({"experimental_platforms": True}) == PLATFORMS
 
 
 def test_coordinator_scan_interval_reads_entry_options(hass: HomeAssistant) -> None:

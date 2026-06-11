@@ -1,0 +1,191 @@
+"""运行时控制类属性模板。"""
+
+from __future__ import annotations
+
+from typing import Any, Final
+
+from .runtime_template_constants import (
+    DEFAULT_BRIGHTNESS_RANGE,
+    DEFAULT_COLOR_TEMP_RANGE_KELVIN,
+)
+
+RUNTIME_CONTROL_TEMPLATES: Final[dict[str, dict[str, dict[str, Any]]]] = {
+    "light": {
+        "p": {
+            "name": "开关",
+            "kind": "control",
+            "property_type": "apply",
+            "format": "boolean",
+            "access": "read_write",
+        },
+        "sp": {
+            "name": "软开关",
+            "kind": "control",
+            "property_type": "apply",
+            "format": "boolean",
+            "access": "read_write",
+        },
+        "l": {
+            "name": "亮度",
+            "kind": "control",
+            "property_type": "apply",
+            "format": "uint8",
+            "unit": "%",
+            "access": "read_write",
+            "value_range": DEFAULT_BRIGHTNESS_RANGE,
+        },
+        "ct": {
+            "name": "色温",
+            "kind": "control",
+            "property_type": "apply",
+            "format": "uint16",
+            "unit": "kelvin",
+            "access": "read_write",
+            "value_range": DEFAULT_COLOR_TEMP_RANGE_KELVIN,
+        },
+        "c": {
+            "name": "颜色",
+            "kind": "control",
+            "property_type": "apply",
+            "format": "uint32",
+            "access": "read_write",
+        },
+        "m": {
+            "name": "模式",
+            "kind": "state",
+            "property_type": "apply",
+            "format": "uint8",
+            "access": "read_write",
+        },
+    },
+    "fan": {
+        "p": {
+            "name": "开关",
+            "kind": "control",
+            "property_type": "apply",
+            "format": "boolean",
+            "access": "read_write",
+        },
+        "lv": {
+            "name": "风速",
+            "kind": "control",
+            "property_type": "apply",
+            "format": "uint8",
+            "access": "read_write",
+        },
+        "dir": {
+            "name": "风向",
+            "kind": "control",
+            "property_type": "apply",
+            "format": "string",
+            "access": "read_write",
+        },
+        "m": {
+            "name": "模式",
+            "kind": "control",
+            "property_type": "apply",
+            "format": "string",
+            "access": "read_write",
+        },
+    },
+    "switch": {
+        "p": {
+            "name": "开关",
+            "kind": "control",
+            "property_type": "apply",
+            "format": "boolean",
+            "access": "read_write",
+        },
+        "sp": {
+            "name": "软开关",
+            "kind": "control",
+            "property_type": "apply",
+            "format": "boolean",
+            "access": "read_write",
+        },
+        "on": {
+            "name": "开关",
+            "kind": "control",
+            "property_type": "apply",
+            "format": "boolean",
+            "access": "read_write",
+        },
+    },
+    "relay_switch": {
+        "p": {
+            "name": "开关",
+            "kind": "control",
+            "property_type": "apply",
+            "format": "boolean",
+            "access": "read_write",
+        },
+        "sp": {
+            "name": "软开关",
+            "kind": "control",
+            "property_type": "apply",
+            "format": "boolean",
+            "access": "read_write",
+        },
+        "l": {
+            "name": "亮度",
+            "kind": "control",
+            "property_type": "apply",
+            "format": "uint8",
+            "unit": "%",
+            "access": "read_write",
+            "value_range": DEFAULT_BRIGHTNESS_RANGE,
+        },
+    },
+    "cover": {
+        "cp": {
+            "name": "当前位置",
+            "kind": "state",
+            "property_type": "apply",
+            "format": "uint8",
+            "unit": "%",
+            "access": "read_only",
+        },
+        "tp": {
+            "name": "目标位置",
+            "kind": "control",
+            "property_type": "apply",
+            "format": "uint8",
+            "unit": "%",
+            "access": "read_write",
+        },
+    },
+    "curtain": {
+        "cp": {
+            "name": "当前位置",
+            "kind": "state",
+            "property_type": "apply",
+            "format": "uint8",
+            "unit": "%",
+            "access": "read_only",
+        },
+        "tp": {
+            "name": "目标位置",
+            "kind": "control",
+            "property_type": "apply",
+            "format": "uint8",
+            "unit": "%",
+            "access": "read_write",
+            "value_range": (0, 100, 1),
+        },
+        "rd": {
+            "name": "反向",
+            "kind": "config",
+            "property_type": "config",
+            "format": "uint8",
+            "access": "read_write",
+        },
+        "li": {
+            "name": "指示灯",
+            "kind": "config",
+            "property_type": "config",
+            "format": "uint8",
+            "access": "read_write",
+        },
+    },
+}
+

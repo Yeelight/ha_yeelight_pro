@@ -19,7 +19,6 @@ from custom_components.yeelight_pro.const import (
     CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES,
     CONF_DEVICE_IMPORT_FILTER_MODE,
     CONF_DEVICE_IMPORT_FILTER_PICKER,
-    CONF_EXPERIMENTAL_PLATFORMS,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_SCAN_INTERVAL,
     CONF_SCAN_LOGIN_QRCODE,
@@ -38,7 +37,6 @@ def test_translations_are_valid_and_key_aligned() -> None:
     required_paths = {
         ("options", "step", "init", "data", CONF_SCAN_INTERVAL),
         ("options", "step", "init", "data", CONF_DEBUG_MODE),
-        ("options", "step", "init", "data", CONF_EXPERIMENTAL_PLATFORMS),
         ("options", "step", "init", "data", CONF_HIDE_UNKNOWN_ENTITIES),
         ("options", "step", "init", "data", CONF_TOPOLOGY_CHANGE_REPAIRS),
         ("options", "step", "init", "data", CONF_DEVICE_IMPORT_FILTER_ENABLED),
@@ -83,6 +81,9 @@ def test_translations_are_valid_and_key_aligned() -> None:
         ("config", "step", "cloud_devices", "data", CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES),
         ("config", "progress", "cloud_scan_login_wait"),
         ("config", "step", "reauth_confirm", "data", "access_token"),
+        ("entity", "select", "active_room", "name"),
+        ("entity", "select", "active_group", "name"),
+        ("entity", "select", "active_scene", "name"),
         ("services", "debug_emit_event", "description"),
         ("services", "refresh", "description"),
         ("services", "refresh", "fields", "refresh_product_schemas", "name"),
@@ -177,7 +178,6 @@ def test_topology_repair_placeholders_match_translations(
             "rooms": {},
             "groups": {},
             "scenes": {},
-            "automations": {},
         },
     )()
 

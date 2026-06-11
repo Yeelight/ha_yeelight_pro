@@ -16,6 +16,8 @@ from homeassistant.helpers import (
 )
 
 from .const import DOMAIN
+from .device_display import registry_model_value
+from .ha_house_registry import sync_house_device
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -57,6 +59,12 @@ async def async_sync_gateway_devices(
     synced_gateways = 0
     synced_devices = 0
     source_device_ids: dict[str, str] = {}
+    should_resave_registry = not _method_supports(
+        device_registry.async_get_or_create,
+        "model_id",
+    )
+
+    _sync_house_device(device_registry, entry, coordinator)
 
     def _sync_device(device_payload: Mapping[str, Any], *, is_gateway: bool) -> bool:
         device_info = _device_info_from_payload(device_payload)
@@ -92,7 +100,7 @@ async def async_sync_gateway_devices(
             if value is not None:
                 kwargs[key] = value
         if _method_supports(device_registry.async_get_or_create, "model_id"):
-            model_id = device_info.get("model_id")
+            model_id = _public_model_id(device_info.get("model_id"))
             if model_id is not None:
                 kwargs["model_id"] = model_id
 
@@ -158,6 +166,8 @@ async def async_sync_gateway_devices(
             synced_devices,
             relinked_entities,
         )
+    if should_resave_registry:
+        device_registry.async_schedule_save()
 
 
 def active_device_identifiers(
@@ -168,6 +178,7 @@ def active_device_identifiers(
 
     if coordinator.house_id is not None:
         identifiers.add((DOMAIN, str(coordinator.house_id)))
+        identifiers.add((DOMAIN, f"house:{coordinator.house_id}"))
 
     for device_payload in coordinator.get_gateway_devices().values():
         identifiers.update(device_payload_identifiers(device_payload))
@@ -176,6 +187,21 @@ def active_device_identifiers(
         identifiers.update(device_payload_identifiers(device_payload))
 
     return identifiers
+
+
+def _sync_house_device(
+    device_registry: dr.DeviceRegistry,
+    entry: ConfigEntry,
+    coordinator: DeviceRegistryCoordinator,
+) -> None:
+    """Keep house-level helper entities off legacy placeholder device names."""
+    sync_house_device(
+        device_registry,
+        entry,
+        coordinator,
+        normalize_registry_pairs=normalize_registry_pairs,
+        sync_metadata=_sync_existing_device_metadata,
+    )
 
 
 def device_payload_identifiers(
@@ -244,14 +270,21 @@ def _sync_existing_device_metadata(
         ("hw_version", "hw_version"),
         ("configuration_url", "configuration_url"),
     ):
-        value = device_info.get(source_key)
+        value = (
+            registry_model_value(device_info, getattr(device_entry, target_key, None))
+            if source_key == "model"
+            else device_info.get(source_key)
+        )
         if value is not None and getattr(device_entry, target_key, None) != value:
             kwargs[target_key] = value
 
     if _method_supports(device_registry.async_update_device, "model_id"):
-        model_id = device_info.get("model_id")
-        if model_id is not None and getattr(device_entry, "model_id", None) != model_id:
+        current_model_id = getattr(device_entry, "model_id", None)
+        model_id = _public_model_id(device_info.get("model_id"))
+        if model_id is not None and current_model_id != model_id:
             kwargs["model_id"] = model_id
+        elif model_id is None and _is_internal_runtime_model_id(current_model_id):
+            kwargs["model_id"] = None
 
     missing_identifiers = identifiers - set(getattr(device_entry, "identifiers", set()))
     if missing_identifiers:
@@ -333,3 +366,18 @@ def _method_supports(method: Any, parameter_name: str) -> bool:
         return parameter_name in inspect.signature(method).parameters
     except (TypeError, ValueError):
         return False
+
+
+def _public_model_id(value: Any) -> str | None:
+    """Return a user-facing model_id, hiding internal runtime fallback ids."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text or _is_internal_runtime_model_id(text):
+        return None
+    return text
+
+
+def _is_internal_runtime_model_id(value: Any) -> bool:
+    """Return true for historical runtime-* implementation detail model ids."""
+    return isinstance(value, str) and value.startswith("runtime-")

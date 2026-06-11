@@ -14,6 +14,7 @@ from custom_components.yeelight_pro.core.exceptions import (
     RateLimitError,
     ServerError,
     TokenExpiredError,
+    safe_error_summary,
 )
 
 
@@ -104,6 +105,27 @@ async def test_client_request_redacts_open_api_body_error_message() -> None:
     assert "api.yeelight.com" not in message
     assert "12345" not in message
     assert "67890" not in message
+
+
+@pytest.mark.asyncio
+async def test_safe_error_summary_preserves_only_non_sensitive_error_code() -> None:
+    """用户可见服务错误应保留安全错误码，但不能泄漏 vendor payload."""
+    with pytest.raises(ServerError) as exc_info:
+        await _client({
+            "code": "500",
+            "msg": (
+                "token=secret-token https://api.yeelight.com "
+                "house=12345 scene=67890"
+            ),
+        })._request("POST", "/v1/open/control/house/12345/control/w/scenes/67890")
+
+    summary = safe_error_summary(exc_info.value)
+
+    assert summary == "ServerError code 500"
+    assert "secret-token" not in summary
+    assert "api.yeelight.com" not in summary
+    assert "12345" not in summary
+    assert "67890" not in summary
 
 
 @pytest.mark.asyncio

@@ -81,7 +81,7 @@ class TestProjectFans:
         assert isinstance(projection, HAFanProjection)
         assert projection.component_id == "fan_1"
         assert projection.unique_id == "yeelight_pro_fan-1_fan_1"
-        assert projection.name == "1"
+        assert projection.name == "第 1 键"
         assert projection.available is True
         assert projection.is_on is True
         assert projection.power_key == "1-p"

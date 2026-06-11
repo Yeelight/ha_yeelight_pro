@@ -7,7 +7,6 @@ from typing import Any
 from .const import (
     CONF_DEBUG_MODE,
     CONF_DEVICE_IMPORT_FILTER,
-    CONF_EXPERIMENTAL_PLATFORMS,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_LIVE_UPDATES,
     CONF_LOCAL_GATEWAY_CONTROL,
@@ -64,9 +63,6 @@ def option_status_diagnostics(
         ),
         "scan_interval_seconds": int(
             normalized_entry_options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
-        ),
-        "experimental_platforms_enabled": bool(
-            normalized_entry_options.get(CONF_EXPERIMENTAL_PLATFORMS, False)
         ),
         "hide_unknown_entities": bool(
             normalized_entry_options.get(CONF_HIDE_UNKNOWN_ENTITIES, False)

@@ -76,9 +76,9 @@ def test_light_projection_uses_top_level_fallback_device_info() -> None:
     assert projection.device_info is not None
     assert projection.device_info["identifiers"] == {(DOMAIN, "304784333")}
     assert projection.device_info["name"] == "客厅筒灯 1"
-    assert projection.device_info["model"] == "light"
+    assert projection.device_info["model"] == "筒灯"
     assert projection.device_info["model_id"] == "YL-200"
-    assert "suggested_area" not in projection.device_info
+    assert projection.device_info["suggested_area"] == "客厅"
 
 
 def test_color_light_without_temperature_projects_rgb_without_color_temp() -> None:
@@ -103,6 +103,24 @@ def test_color_light_without_temperature_projects_rgb_without_color_temp() -> No
     assert projection.max_mireds is None
     assert projection.supported_color_modes == {ColorMode.RGB}
     assert projection.color_mode == ColorMode.RGB
+
+
+def test_switch_light_component_projects_as_light() -> None:
+    """switch light 是灯光组件，不应被 switch token 误排除。"""
+    device = projection_payload(
+        device_id="switch-light-1",
+        category="light",
+        component_id="switch_light",
+        state={"p": True},
+        component_category="switch light",
+    )
+
+    projection = project_light(device, domain=DOMAIN)
+
+    assert projection is not None
+    assert projection.component_id == "switch_light"
+    assert projection.supported_color_modes == {ColorMode.ONOFF}
+    assert project_switches(device, domain=DOMAIN) == []
 
 
 def test_curtain_projects_cover() -> None:

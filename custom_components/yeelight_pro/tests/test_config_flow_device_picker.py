@@ -23,8 +23,64 @@ def test_device_choices_normalize_open_api_rows() -> None:
 
     assert [(item.device_id, item.label) for item in choices] == [
         ("1", "Ceiling (Living)"),
-        ("dev-2", "Wall Switch (switch)"),
+        ("dev-2", "Wall Switch (易来开关设备)"),
     ]
+
+
+def test_device_choices_use_friendly_type_labels() -> None:
+    """设备 picker 的括号类型应使用产品/品类友好名，不显示裸 category."""
+    choices = device_choices([
+        {
+            "id": "dev-1",
+            "name": "三键智能开关",
+            "category": "relay_switch",
+            "model": "relay_switch",
+            "roomName": "玄关",
+        },
+        {
+            "id": "dev-2",
+            "name": "客厅主灯",
+            "category": "light",
+            "productName": "E20 射灯",
+            "roomName": "客厅",
+        },
+    ])
+
+    labels = {item.device_id: item.label for item in choices}
+    assert labels == {
+        "dev-1": "三键智能开关 (三键开关 / 玄关)",
+        "dev-2": "客厅主灯 (E20 射灯 / 客厅)",
+    }
+    assert "relay_switch" not in " ".join(labels.values())
+    assert "light" not in " ".join(labels.values())
+
+
+def test_device_choices_use_openapi_room_aliases() -> None:
+    """真实设备 picker 应显示 OpenAPI 房间/区域别名，不只依赖 roomName."""
+    choices = device_choices([
+        {
+            "id": "dev-1",
+            "deviceName": "厨房双键开关",
+            "category": "relay_switch",
+            "model": "relay_switch",
+            "room": "厨房",
+        },
+        {
+            "id": "dev-2",
+            "deviceName": "过道筒灯",
+            "category": "light",
+            "model": "light",
+            "areaName": "过道",
+        },
+    ])
+
+    labels = {item.device_id: item.label for item in choices}
+    assert labels == {
+        "dev-1": "厨房双键开关 (双键开关 / 厨房)",
+        "dev-2": "过道筒灯 (筒灯 / 过道)",
+    }
+    assert "relay_switch" not in " ".join(labels.values())
+    assert "light" not in " ".join(labels.values())
 
 
 def test_cloud_devices_schema_uses_multi_select_options() -> None:
@@ -43,8 +99,8 @@ def test_cloud_devices_schema_uses_multi_select_options() -> None:
     assert device_selector.selector_type == "select"
     assert device_selector.config["multiple"] is True
     assert device_selector.config["options"] == [
-        {"value": "dev-2", "label": "Curtain"},
-        {"value": "dev-1", "label": "Light"},
+        {"value": "dev-2", "label": "Curtain (窗帘)"},
+        {"value": "dev-1", "label": "Light (易来照明设备)"},
     ]
 
 

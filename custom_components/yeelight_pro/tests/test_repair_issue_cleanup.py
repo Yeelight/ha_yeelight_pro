@@ -41,7 +41,6 @@ def test_create_topology_changed_issue_deletes_stale_entry_issues(
         rooms=[],
         groups=[],
         scenes=[],
-        automations=[],
     )
     current_issue_id = _issue_id(HASHED_ENTRY_SCOPE, 5)
     issue_registry = SimpleNamespace(

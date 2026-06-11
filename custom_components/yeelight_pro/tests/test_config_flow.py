@@ -34,7 +34,7 @@ def test_house_choices_normalize_cloud_api_variants() -> None:
     assert choices == {
         "house-a": "Alpha",
         3: "Beta",
-        "house-b": "House house-b",
+        "house-b": "易来家庭",
     }
 
 

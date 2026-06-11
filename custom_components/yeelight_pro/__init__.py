@@ -98,8 +98,7 @@ async def _async_post_manual_refresh(
     """Run registry maintenance after a manual refresh."""
     hass = coordinator.hass
     previous_generation = coordinator.topology_generation
-    await _async_sync_gateway_devices(hass, entry, coordinator)
-    await async_reconcile_entity_registry(hass, entry, coordinator)
+    await _async_run_registry_maintenance(hass, entry, coordinator)
     if (
         coordinator.topology_generation != previous_generation
         and _topology_change_repairs_enabled(entry)
@@ -151,6 +150,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         client=client,
         house_id=house_id,
         options=_entry_options(entry),
+        entry_data=entry_data,
     )
 
     # 首次数据更新
@@ -206,6 +206,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # 设置平台
     await hass.config_entries.async_forward_entry_setups(entry, platforms)
+    await _async_run_registry_maintenance(hass, entry, coordinator)
 
     _LOGGER.info(
         "Yeelight Pro integration setup complete for house %s (%s mode)",
@@ -214,6 +215,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
 
     return True
+
+
+async def _async_run_registry_maintenance(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    coordinator: YeelightProCoordinator,
+) -> None:
+    """Synchronize HA device/entity registry metadata for the loaded entry."""
+    await _async_sync_gateway_devices(hass, entry, coordinator)
+    await async_reconcile_entity_registry(hass, entry, coordinator)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

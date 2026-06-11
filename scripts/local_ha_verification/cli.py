@@ -24,10 +24,18 @@ from .runtime import (
     verify_docker,
     verify_ha_url,
     verify_logs,
+    verify_runtime_entities,
     verify_synthetic_log_recovery,
 )
 from .services import verify_services
 from .storage import verify_product_schema_cache, verify_storage
+
+DRIFT_EXCLUDED_METRICS = frozenset({
+    "entity_device_links",
+    "entity_registry_disabled_by",
+    "retained_entities",
+    "retained_entity_domains",
+})
 
 
 def parse_domain_counts(value: str) -> dict[str, int]:
@@ -148,6 +156,12 @@ def _run_once(args: argparse.Namespace) -> VerificationReport:
     if not args.skip_docker:
         verify_docker(args.container, report)
         verify_logs(args.container, report, tail=args.log_tail)
+        verify_runtime_entities(
+            args.container,
+            report,
+            tail=args.log_tail,
+            expected_entity_counts=args.expected_domain_counts,
+        )
     verify_synthetic_log_recovery(report)
     if not args.skip_url:
         verify_ha_url(args.ha_url, report)
@@ -177,7 +191,8 @@ def _verify_stable_metrics(reports: list[VerificationReport]) -> None:
     baseline = reports[0].metrics
     drift_messages: list[str] = []
     for index, report in enumerate(reports[1:], start=2):
-        for metric_name in sorted(set(baseline) | set(report.metrics)):
+        metric_names = (set(baseline) | set(report.metrics)) - DRIFT_EXCLUDED_METRICS
+        for metric_name in sorted(metric_names):
             message = _metric_drift_message(
                 metric_name,
                 baseline,

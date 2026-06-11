@@ -12,16 +12,21 @@ from typing import Any, Protocol
 
 from .const import CONF_DEVICE_IMPORT_FILTER, DEFAULT_HIDE_UNKNOWN_ENTITIES, DOMAIN
 from .device_filter import matches_device_import_filter
+from .entity_category import ENTITY_CATEGORY_CONFIG, ENTITY_CATEGORY_DIAGNOSTIC
 from .projector.binary_sensor import project_binary_sensors
 from .projector.climate import project_climate
 from .projector.cover import project_cover
 from .projector.event import project_events
 from .projector.fan import project_fans
-from .projector.light import project_light
-from .projector.lock import project_lock
+from .projector.light import project_lights
+from .projector.property_controls import (
+    project_number_controls,
+    project_select_controls,
+    project_switch_controls,
+)
 from .projector.sensor import project_sensors
 from .projector.switch import project_switches
-from .projector.vacuum import project_vacuum
+from .scene_helpers import scene_row_id
 
 
 EntityKey = tuple[str, str]
@@ -32,7 +37,6 @@ class EntityCandidateCoordinator(Protocol):
 
     data: Mapping[Any, Mapping[str, Any]]
     scenes: list[dict[str, Any]]
-    automations: list[dict[str, Any]]
     groups: list[dict[str, Any]]
     house_id: int | None
     hide_unknown_entities: bool
@@ -47,6 +51,9 @@ class EntityCandidate:
     source: str
     device_id: str | None = None
     component_id: str | None = None
+    name: str | None = None
+    icon: str | None = None
+    entity_category: str | None = None
     available: bool = True
     availability_reason: str | None = None
 
@@ -72,7 +79,6 @@ def iter_entity_candidates(
             hide_unknown_entities=hide_unknown_entities,
         )
     yield from _iter_scene_candidates(coordinator.scenes)
-    yield from _iter_automation_candidates(coordinator.automations)
     yield from _iter_group_candidates(coordinator.groups)
     yield from _iter_house_select_candidates(coordinator.house_id)
 
@@ -85,8 +91,7 @@ def iter_device_entity_candidates(
     """Yield entity candidates projected from one runtime device payload."""
     device_id = _device_id(device_payload)
 
-    light = project_light(device_payload, domain=DOMAIN)
-    if light is not None:
+    for light in project_lights(device_payload, domain=DOMAIN):
         yield _candidate("light", light.unique_id, "device", device_id, light)
 
     for fan_projection in project_fans(device_payload, domain=DOMAIN):
@@ -106,10 +111,6 @@ def iter_device_entity_candidates(
     if climate is not None:
         yield _candidate("climate", climate.unique_id, "device", device_id, climate)
 
-    lock = project_lock(device_payload, domain=DOMAIN)
-    if lock is not None:
-        yield _candidate("lock", lock.unique_id, "device", device_id, lock)
-
     for switch_projection in project_switches(device_payload, domain=DOMAIN):
         yield _candidate(
             "switch",
@@ -117,6 +118,33 @@ def iter_device_entity_candidates(
             "device",
             device_id,
             switch_projection,
+        )
+
+    for switch_control in project_switch_controls(device_payload, domain=DOMAIN):
+        yield _candidate(
+            "switch",
+            switch_control.unique_id,
+            "device",
+            device_id,
+            switch_control,
+        )
+
+    for number_projection in project_number_controls(device_payload, domain=DOMAIN):
+        yield _candidate(
+            "number",
+            number_projection.unique_id,
+            "device",
+            device_id,
+            number_projection,
+        )
+
+    for select_projection in project_select_controls(device_payload, domain=DOMAIN):
+        yield _candidate(
+            "select",
+            select_projection.unique_id,
+            "device",
+            device_id,
+            select_projection,
         )
 
     for sensor_projection in project_sensors(
@@ -150,16 +178,19 @@ def iter_device_entity_candidates(
             event_projection,
         )
 
-    vacuum = project_vacuum(device_payload, domain=DOMAIN)
-    if vacuum is not None:
-        yield _candidate("vacuum", vacuum.unique_id, "device", device_id, vacuum)
-
 
 def collect_entity_candidate_keys(
     coordinator: EntityCandidateCoordinator,
 ) -> set[EntityKey]:
     """Return all active HA registry keys from projected candidates."""
     return {candidate.key for candidate in iter_entity_candidates(coordinator)}
+
+
+def collect_entity_candidates(
+    coordinator: EntityCandidateCoordinator,
+) -> dict[EntityKey, EntityCandidate]:
+    """Return active HA registry candidates keyed by domain and unique id."""
+    return {candidate.key: candidate for candidate in iter_entity_candidates(coordinator)}
 
 
 def _candidate(
@@ -177,35 +208,33 @@ def _candidate(
         source=source,
         device_id=device_id,
         component_id=_projection_component_id(projection),
+        name=_projection_name(projection),
+        icon=_projection_icon(projection),
+        entity_category=(
+            _projection_entity_category(projection)
+            or _platform_entity_category(platform)
+        ),
         available=available,
         availability_reason=None if available else "unavailable",
     )
 
 
 def _iter_scene_candidates(scenes: list[dict[str, Any]]) -> Iterator[EntityCandidate]:
-    """Yield candidates for Yeelight scenes."""
+    """Yield action candidates for Yeelight cloud scenes."""
     for scene in scenes:
-        scene_id = scene.get("id") or scene.get("sceneId")
+        scene_id = scene_row_id(scene)
         if not scene_id:
             continue
         unique_id = f"{DOMAIN}_scene_{scene_id}"
-        yield EntityCandidate("button", unique_id, "scene", component_id=str(scene_id))
-        yield EntityCandidate("scene", unique_id, "scene", component_id=str(scene_id))
-
-
-def _iter_automation_candidates(
-    automations: list[dict[str, Any]],
-) -> Iterator[EntityCandidate]:
-    """Yield candidates for Yeelight automations."""
-    for automation in automations:
-        auto_id = automation.get("id") or automation.get("automationId")
-        if auto_id:
-            yield EntityCandidate(
-                "button",
-                f"{DOMAIN}_automation_{auto_id}",
-                "automation",
-                component_id=str(auto_id),
-            )
+        yield EntityCandidate(
+            "button",
+            unique_id,
+            "scene",
+            component_id=str(scene_id),
+            name=_scene_name(scene, scene_id),
+            icon="mdi:palette",
+            entity_category=ENTITY_CATEGORY_CONFIG,
+        )
 
 
 def _iter_group_candidates(groups: list[dict[str, Any]]) -> Iterator[EntityCandidate]:
@@ -219,12 +248,18 @@ def _iter_group_candidates(groups: list[dict[str, Any]]) -> Iterator[EntityCandi
             f"{DOMAIN}_group_{group_id}_brightness",
             "group",
             component_id=str(group_id),
+            name=f"{_group_name(group, group_id)} 亮度",
+            icon="mdi:brightness-percent",
+            entity_category=ENTITY_CATEGORY_CONFIG,
         )
         yield EntityCandidate(
             "number",
             f"{DOMAIN}_group_{group_id}_color_temp",
             "group",
             component_id=str(group_id),
+            name=f"{_group_name(group, group_id)} 色温",
+            icon="mdi:thermometer",
+            entity_category=ENTITY_CATEGORY_CONFIG,
         )
 
 
@@ -234,12 +269,20 @@ def _iter_house_select_candidates(
     """Yield fixed house-level select candidates."""
     if not house_id:
         return
-    for selector in ("room", "group", "scene"):
+    selector_names = {
+        "room": ("当前房间", "mdi:floor-plan"),
+        "group": ("当前灯组", "mdi:lightbulb-group"),
+        "scene": ("当前场景", "mdi:palette"),
+    }
+    for selector, (name, icon) in selector_names.items():
         yield EntityCandidate(
             "select",
             f"{DOMAIN}_{house_id}_select_{selector}",
             "house",
             component_id=selector,
+            name=name,
+            icon=icon,
+            entity_category=ENTITY_CATEGORY_CONFIG,
         )
 
 
@@ -260,6 +303,49 @@ def _projection_component_id(projection: Any) -> str | None:
     return component_id if isinstance(component_id, str) and component_id else None
 
 
+def _projection_name(projection: Any) -> str | None:
+    """Return a registry-safe projected entity name."""
+    name = getattr(projection, "name", None)
+    return name if isinstance(name, str) and name.strip() else None
+
+
+def _projection_icon(projection: Any) -> str | None:
+    """Return a registry-safe projected entity icon."""
+    icon = getattr(projection, "icon", None)
+    return icon if isinstance(icon, str) and icon.strip() else None
+
+
+def _projection_entity_category(projection: Any) -> str | None:
+    """Return an internal entity category from projector projections."""
+    category = getattr(projection, "entity_category", None)
+    return category if category in {ENTITY_CATEGORY_CONFIG, ENTITY_CATEGORY_DIAGNOSTIC} else None
+
+
+def _platform_entity_category(platform: str) -> str | None:
+    """Return the category implied by helper platforms."""
+    if platform == "event":
+        return ENTITY_CATEGORY_DIAGNOSTIC
+    return None
+
+
+def _scene_name(scene: Mapping[str, Any], scene_id: str) -> str:
+    """Return a user-facing scene action name."""
+    for key in ("name", "sceneName", "scene_name"):
+        value = scene.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return f"情景 {scene_id}"
+
+
+def _group_name(group: Mapping[str, Any], group_id: Any) -> str:
+    """Return a user-facing group name."""
+    for key in ("name", "groupName", "group_name"):
+        value = group.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return f"灯组 {group_id}"
+
+
 def _device_id(device_payload: Mapping[str, Any]) -> str | None:
     """Return a stable source device id for diagnostics/debug consumers."""
     value = device_payload.get("device_id")
@@ -270,6 +356,7 @@ __all__ = [
     "EntityCandidate",
     "EntityCandidateCoordinator",
     "EntityKey",
+    "collect_entity_candidates",
     "collect_entity_candidate_keys",
     "iter_device_entity_candidates",
     "iter_entity_candidates",

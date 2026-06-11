@@ -12,12 +12,11 @@ from custom_components.yeelight_pro.entity_lifecycle import (
 from .entity_lifecycle_helpers import lifecycle_coordinator
 
 
-def test_collect_active_entity_keys_keeps_scene_button_and_scene_separate() -> None:
-    """Scene buttons and scene entities share ids but are different HA entities."""
+def test_collect_active_entity_keys_projects_cloud_scenes_as_buttons_only() -> None:
+    """云端情景只作为 button active key，旧 scene 实体应进入 stale 审计."""
     coordinator = SimpleNamespace(
         data={},
         scenes=[{"id": "scene_1"}],
-        automations=[{"id": "auto_1"}],
         groups=[{"id": "group_1"}],
         house_id=12345,
     )
@@ -25,18 +24,16 @@ def test_collect_active_entity_keys_keeps_scene_button_and_scene_separate() -> N
     keys = collect_active_entity_keys(coordinator)
 
     assert ("button", "yeelight_pro_scene_scene_1") in keys
-    assert ("scene", "yeelight_pro_scene_scene_1") in keys
-    assert ("button", "yeelight_pro_automation_auto_1") in keys
     assert ("number", "yeelight_pro_group_group_1_brightness") in keys
     assert ("number", "yeelight_pro_group_group_1_color_temp") in keys
     assert ("select", "yeelight_pro_12345_select_room") in keys
     assert ("select", "yeelight_pro_12345_select_group") in keys
     assert ("select", "yeelight_pro_12345_select_scene") in keys
-    assert len(keys) == 8
+    assert len(keys) == 6
 
 
-def test_collect_active_entity_keys_includes_experimental_vacuum() -> None:
-    """实验 vacuum 平台也必须参与生命周期 active key 计算."""
+def test_collect_active_entity_keys_excludes_unsupported_vacuum_payload() -> None:
+    """无易来文档支撑的 vacuum-like payload 不能进入 active key。"""
     coordinator = lifecycle_coordinator(
         data={
             88: {
@@ -51,7 +48,7 @@ def test_collect_active_entity_keys_includes_experimental_vacuum() -> None:
 
     keys = collect_active_entity_keys(coordinator)
 
-    assert ("vacuum", "yeelight_pro_88_vacuum") in keys
+    assert keys == set()
 
 
 def test_collect_active_entity_unique_ids_preserves_legacy_unique_id_view() -> None:
@@ -59,7 +56,6 @@ def test_collect_active_entity_unique_ids_preserves_legacy_unique_id_view() -> N
     coordinator = SimpleNamespace(
         data={},
         scenes=[{"id": "scene_1"}],
-        automations=[],
         groups=[],
         house_id=None,
     )

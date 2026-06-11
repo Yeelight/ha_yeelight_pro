@@ -10,7 +10,8 @@ All notable changes to the Yeelight Pro integration will be documented in this f
 - Preserved authentication failures as `ConfigEntryAuthFailed` so Home Assistant can trigger reauthentication.
 - Made `pytest -q` reproducible from the integration root through local `pyproject.toml` settings.
 - Aligned the runtime platform set, release package, and documentation around the current Home Assistant projection surface.
-- Fixed entity-registry reconciliation so scene buttons and scene entities with the same scene id are tracked separately.
+- Fixed entity-registry reconciliation so cloud scene buttons stay active while removed native `scene.*` entities are treated as stale cleanup candidates.
+- Refreshed integration-owned entity registry metadata for active entities, including friendly multi-key switch names and cloud-scene button icons, without overwriting user custom names.
 - Connected official Yeelight product schemas to the coordinator's canonical product and runtime device-instance payloads, so projector layers consume the same schema-aware path in production and tests.
 - Hardened diagnostics redaction for device-import filter form-only fields so room, gateway, product, and device identifiers cannot leak if those fields reach diagnostics.
 - Rejected malformed WebSocket push node lists consistently for both `prop` and `event` payload adapters instead of partially swallowing bad frames.
@@ -18,15 +19,15 @@ All notable changes to the Yeelight Pro integration will be documented in this f
 
 ### Added
 
-- Options flow for polling interval, debug mode, experimental platforms, unknown capability handling, manual non-destructive device import filtering, and topology Repairs notifications.
-- Runtime platform filtering; `vacuum` is opt-in experimental instead of enabled by default.
+- Options flow for polling interval, debug mode, unknown capability handling, live updates, local gateway control, manual non-destructive device import filtering, and topology Repairs notifications.
+- Runtime platform filtering keeps the loaded Home Assistant platform set aligned with documented Yeelight capabilities.
 - Lightweight capability registries for IoT category mapping, property semantics, and event aliases.
 - Persistent Home Assistant `.storage` product schema cache so temporary schema endpoint failures or Home Assistant restarts do not immediately degrade canonical device projections.
 - Home Assistant diagnostics export with sensitive config redaction and aggregate runtime counts.
 - Diagnostics aggregates for IoT registry health, spec correction, projected entity candidates, option/runtime alignment, and non-destructive device/entity import filter previews.
 - No-network Yeelight WebSocket received-payload adapters for documented `prop` and `event` payloads, routed through the shared runtime state/event bridge.
 - Optional Home Assistant Repairs issue for post-setup Yeelight device topology changes, enabled by default and controlled from integration options.
-- Read-only manual refresh service, borrowing the ha_xiaomi_home refresh/reconciliation idea without adding a new write path.
+- Read-only manual refresh service with registry reconciliation and no new write path.
 - Simplified Chinese translation file aligned with `strings.json` and `en.json`.
 - P0 regression tests for control URLs, auth lifecycle, platform imports, options, capability mapping, translations, and Yeelight IoT category projection.
 - Release package structure checker at `scripts/check_release_zip.py`.

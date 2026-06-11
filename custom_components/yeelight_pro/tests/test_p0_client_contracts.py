@@ -1,6 +1,7 @@
 """P0 Open API client public-entry and path contract tests."""
 from __future__ import annotations
 
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -30,10 +31,6 @@ def test_client_keeps_open_api_methods_after_helper_split() -> None:
         "read_nodes_property",
         "read_nodes_properties",
         "get_scenes",
-        "get_automations",
-        "enable_automation",
-        "disable_automation",
-        "trigger_automation",
         "get_areas",
         "get_house_snapshot",
     }
@@ -93,6 +90,7 @@ async def test_client_control_methods_use_explicit_house_id() -> None:
             "POST",
             "/v1/open/control/house/12345/control/w/scenes/scene_1",
         )
+        assert cast(Any, mock_request.await_args).kwargs == {}
 
     with patch.object(client, "_request", new_callable=AsyncMock) as mock_request:
         await client.control_group(
@@ -211,35 +209,4 @@ async def test_client_read_property_methods_use_documented_contracts() -> None:
             "POST",
             "/v1/open/control/house/12345/control/4/r/properties",
             json={"resIds": ["g1", "g2"], "properties": ["p", "l"]},
-        )
-
-
-@pytest.mark.asyncio
-async def test_client_automation_action_methods_use_stable_paths() -> None:
-    """自动化动作入口必须保留稳定路径，支撑 button 平台触发."""
-    client = YeelightProClient(
-        domain="https://api.yeelight.com/apis/iot",
-        access_token="test-token",
-        session=MagicMock(),
-    )
-
-    with patch.object(client, "_request", new_callable=AsyncMock) as mock_request:
-        await client.enable_automation("auto_1")
-        mock_request.assert_awaited_once_with(
-            "POST",
-            "/v1/automation/auto_1/enable",
-        )
-
-    with patch.object(client, "_request", new_callable=AsyncMock) as mock_request:
-        await client.disable_automation("auto_1")
-        mock_request.assert_awaited_once_with(
-            "POST",
-            "/v1/automation/auto_1/disable",
-        )
-
-    with patch.object(client, "_request", new_callable=AsyncMock) as mock_request:
-        await client.trigger_automation("auto_1")
-        mock_request.assert_awaited_once_with(
-            "POST",
-            "/v1/automation/auto_1/trigger",
         )

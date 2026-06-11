@@ -10,14 +10,11 @@ import pytest
 
 from homeassistant.exceptions import HomeAssistantError
 
+from custom_components.yeelight_pro.button import YeelightProSceneButton
 from custom_components.yeelight_pro.core.exceptions import YeelightProError
 from custom_components.yeelight_pro.light import YeelightProLight
 from custom_components.yeelight_pro.number import YeelightProGroupBrightness
-from custom_components.yeelight_pro.scene import YeelightProScene
-from custom_components.yeelight_pro.vacuum import (
-    ERROR_INVALID_VACUUM_FAN_SPEED,
-    YeelightProVacuum,
-)
+from custom_components.yeelight_pro.switch import YeelightProSwitch
 
 
 SENSITIVE_VALUES = ("secret-token", "api.yeelight.com", "12345", "67890")
@@ -55,14 +52,15 @@ def _light_payload() -> dict[str, Any]:
     }
 
 
-def _vacuum_payload() -> dict[str, Any]:
-    """Build a minimal experimental vacuum payload."""
+def _switch_payload() -> dict[str, Any]:
+    """Build a minimal relay-switch payload."""
     return {
         "device_id": 12345,
-        "name": "Leaky 67890 Vacuum",
-        "type": "vacuum",
+        "name": "Leaky 67890 Switch",
+        "category": "relay_switch",
+        "type": "switch",
         "online": True,
-        "params": {"status": "idle", "battery": 80, "fan_speed": 1},
+        "params": {"1-p": False},
     }
 
 
@@ -81,21 +79,23 @@ async def test_light_control_error_is_redacted() -> None:
 
 
 @pytest.mark.asyncio
-async def test_scene_entity_error_is_redacted() -> None:
-    """Scene entity errors should not expose scene names, IDs, or raw details."""
+async def test_scene_button_error_is_redacted() -> None:
+    """Cloud-scene button errors should not expose scene names, IDs, or raw details."""
     coordinator = MagicMock()
     coordinator.house_id = 12345
     coordinator.async_execute_scene = AsyncMock(side_effect=_sensitive_error())
-    scene = YeelightProScene(
+    button = YeelightProSceneButton(
         coordinator,
-        "67890",
-        name="Secret Scene secret-token api.yeelight.com 12345",
+        {
+            "id": "67890",
+            "name": "Secret Scene secret-token api.yeelight.com 12345",
+        },
     )
 
     with pytest.raises(HomeAssistantError) as exc_info:
-        await scene.async_activate()
+        await button.async_press()
 
-    _assert_redacted(exc_info.value, action="scene.activate")
+    _assert_redacted(exc_info.value, action="button.execute_scene")
 
 
 @pytest.mark.asyncio
@@ -117,42 +117,14 @@ async def test_group_number_error_is_redacted() -> None:
 
 
 @pytest.mark.asyncio
-async def test_vacuum_control_error_is_redacted() -> None:
-    """Experimental vacuum control errors should hide device vendor details."""
+async def test_switch_control_error_is_redacted() -> None:
+    """Switch control errors should hide device vendor details."""
     coordinator = MagicMock()
-    coordinator.get_device.return_value = _vacuum_payload()
+    coordinator.get_device.return_value = _switch_payload()
     coordinator.async_control_device = AsyncMock(side_effect=_sensitive_error())
-    vacuum = YeelightProVacuum(coordinator, 12345)
+    switch = YeelightProSwitch(coordinator, 12345, component_id="switch_1")
 
     with pytest.raises(HomeAssistantError) as exc_info:
-        await vacuum.async_start()
+        await switch.async_turn_on()
 
-    _assert_redacted(exc_info.value, action="vacuum.start")
-
-
-@pytest.mark.asyncio
-async def test_vacuum_invalid_fan_speed_error_is_redacted() -> None:
-    """Vacuum fan speed validation errors should not echo user input."""
-    coordinator = MagicMock()
-    coordinator.get_device.return_value = _vacuum_payload()
-    coordinator.async_control_device = AsyncMock()
-    vacuum = YeelightProVacuum(coordinator, 12345)
-    fan_speed = "secret-token api.yeelight.com 12345"
-
-    with pytest.raises(HomeAssistantError) as exc_info:
-        await vacuum.async_set_fan_speed(fan_speed)
-
-    message = str(exc_info.value)
-    formatted = "".join(
-        traceback.format_exception(
-            type(exc_info.value),
-            exc_info.value,
-            exc_info.value.__traceback__,
-        )
-    )
-    assert ERROR_INVALID_VACUUM_FAN_SPEED in message
-    assert "secret-token" not in message
-    assert "api.yeelight.com" not in message
-    assert "secret-token" not in formatted
-    assert "api.yeelight.com" not in formatted
-    coordinator.async_control_device.assert_not_awaited()
+    _assert_redacted(exc_info.value, action="switch.turn_on")

@@ -4,36 +4,45 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from ..canonical.models import ComponentModel, PropertyModel, ValueRangeModel
+from ..canonical.models import ComponentModel, EventModel, PropertyModel, ValueRangeModel
 from .runtime_templates import INDEXED_SWITCH_KEY_RE, RUNTIME_PROPERTY_TEMPLATES
+from .runtime_subdevices import infer_subdevice_components as _infer_subdevice_components
 
 
 def infer_runtime_components(payload: Mapping[str, Any]) -> list[ComponentModel]:
     """从载荷推断组件列表。"""
+    subdevice_components = infer_subdevice_components(payload)
+    if subdevice_components:
+        return subdevice_components
+
     raw_params = payload.get("params")
     params: Mapping[str, Any] = raw_params if isinstance(raw_params, Mapping) else {}
     device_type = string_value(payload.get("type"))
-    category = string_value(payload.get("category"))
+    category = string_value(payload.get("iot_category")) or string_value(
+        payload.get("category")
+    )
+    template_key = category or device_type
 
-    if device_type == "switch":
+    if template_key in {"relay_switch", "switch"}:
         indexed_components = infer_indexed_switch_components(category, params)
         if indexed_components:
             return indexed_components
 
-    properties = infer_runtime_properties(device_type, params)
-    if not properties:
+    properties = infer_runtime_properties(template_key, params, payload=payload)
+    events = infer_runtime_events(template_key)
+    if not properties and not events:
         return []
 
-    component_id = default_component_id(device_type)
+    component_id = default_component_id(category or device_type)
     return [
         ComponentModel(
             component_id=component_id,
             name=component_id,
             component_type="custom",
             category=category or device_type,
-            capabilities=infer_runtime_capabilities(device_type, properties),
+            capabilities=infer_runtime_capabilities(template_key, properties),
             properties=properties,
-            events=[],
+            events=events,
             actions=[],
         )
     ]
@@ -57,7 +66,7 @@ def infer_indexed_switch_components(
     for index in sorted(buckets):
         properties = []
         for prop in sorted(buckets[index]):
-            property_model = build_runtime_property_model(prop, "switch")
+            property_model = build_runtime_property_model(prop, "relay_switch")
             if property_model is not None:
                 properties.append(property_model)
         if not properties:
@@ -79,22 +88,40 @@ def infer_indexed_switch_components(
 
 
 def infer_runtime_properties(
-    device_type: str | None,
+    template_key: str | None,
     params: Mapping[str, Any],
+    *,
+    payload: Mapping[str, Any] | None = None,
 ) -> list[PropertyModel]:
     """根据设备类型和运行时参数推断属性列表。"""
-    templates = RUNTIME_PROPERTY_TEMPLATES.get(device_type or "")
+    templates = RUNTIME_PROPERTY_TEMPLATES.get(template_key or "")
     if not templates:
         return []
 
+    source_props: set[str]
+    if params:
+        source_props = _runtime_property_ids_from_params(params)
+    elif _can_infer_empty_template(template_key, payload=payload):
+        source_props = _empty_template_property_ids(template_key, payload, templates)
+    else:
+        source_props = set()
+
     properties: list[PropertyModel] = []
     for prop_id in templates:
-        if prop_id not in params:
+        if prop_id not in source_props:
             continue
-        property_model = build_runtime_property_model(prop_id, device_type or "")
+        property_model = build_runtime_property_model(prop_id, template_key or "")
         if property_model is not None:
             properties.append(property_model)
     return properties
+
+
+def infer_runtime_events(template_key: str | None) -> list[EventModel]:
+    """根据运行时品类补齐文档支持的事件模型。"""
+    return [
+        EventModel(name=name, semantic=name, params=[])
+        for name in RUNTIME_EVENT_TEMPLATES.get(template_key or "", ())
+    ]
 
 
 def build_runtime_property_model(
@@ -142,7 +169,7 @@ def infer_runtime_capabilities(
         if "c" in prop_ids:
             capabilities.append("rgb")
         return capabilities
-    if device_type == "switch":
+    if device_type in {"relay_switch", "switch"}:
         return ["onoff"]
     if device_type == "fan":
         capabilities = ["onoff"]
@@ -153,24 +180,142 @@ def infer_runtime_capabilities(
         if "m" in prop_ids:
             capabilities.append("mode")
         return capabilities
-    if device_type == "cover":
+    if device_type in {"cover", "curtain"}:
         return ["position"]
-    if device_type == "binary_sensor":
+    if device_type in {"binary_sensor", "contact_sensor", "human_sensor"}:
         return sorted(prop_ids)
-    if device_type == "sensor":
+    if device_type in {"sensor", "light_sensor", "other"}:
         return sorted(prop_ids)
-    if device_type == "climate":
+    if device_type in {"climate", "temp_control"}:
         return sorted(prop_ids)
-    if device_type == "lock":
-        return ["lock"]
     return []
+
+
+def _can_infer_empty_template(
+    template_key: str | None,
+    *,
+    payload: Mapping[str, Any] | None = None,
+) -> bool:
+    """Return true for documented categories where identity alone implies schema."""
+    if template_key == "other":
+        return _has_sensor_identity_hint(payload)
+    return template_key in {
+        "binary_sensor",
+        "climate",
+        "contact_sensor",
+        "cover",
+        "curtain",
+        "fan",
+        "human_sensor",
+        "light",
+        "light_sensor",
+        "knob_switch",
+        "relay_switch",
+        "scene_panel",
+        "sensor",
+        "switch",
+        "temp_control",
+    }
+
+
+def _has_sensor_identity_hint(payload: Mapping[str, Any] | None) -> bool:
+    """Return true when names imply documented read-only sensor properties."""
+    if payload is None:
+        return False
+    text = " ".join(
+        value
+        for key in ("name", "deviceName", "device_name", "n", "modelName", "model_name")
+        if (value := string_value(payload.get(key)))
+    ).lower()
+    return any(
+        token in text
+        for token in (
+            "温湿度",
+            "温度传感",
+            "湿度传感",
+            "照度",
+            "光照",
+            "temperature sensor",
+            "humidity sensor",
+            "illuminance",
+            "light sensor",
+        )
+    )
+
+
+def _empty_template_property_ids(
+    template_key: str | None,
+    payload: Mapping[str, Any] | None,
+    templates: Mapping[str, Any],
+) -> set[str]:
+    """Return precise empty-template props for broad sensor fallbacks."""
+    if template_key != "other":
+        return set(templates)
+    return _sensor_identity_property_ids(payload)
+
+
+def _sensor_identity_property_ids(payload: Mapping[str, Any] | None) -> set[str]:
+    """Return documented sensor props implied by names when values are absent."""
+    if payload is None:
+        return set()
+    text = " ".join(
+        value
+        for key in ("name", "deviceName", "device_name", "n", "modelName", "model_name")
+        if (value := string_value(payload.get(key)))
+    ).lower()
+    props: set[str] = set()
+    if any(token in text for token in ("温湿度", "温度传感", "temperature sensor")):
+        props.add("t")
+    if any(token in text for token in ("温湿度", "湿度传感", "humidity sensor")):
+        props.add("h")
+    if any(token in text for token in ("照度", "光照", "illuminance", "light sensor")):
+        props.add("luminance")
+    return props
+
+
+def _runtime_property_ids_from_params(params: Mapping[str, Any]) -> set[str]:
+    """Return property ids from direct and indexed runtime params."""
+    return {str(prop).split("-", 1)[-1] for prop in params}
 
 
 def default_component_id(device_type: str | None) -> str:
     """获取默认组件标识。"""
+    if device_type == "relay_switch":
+        return "switch"
+    if device_type == "contact_sensor":
+        return "contact_sensor"
+    if device_type == "human_sensor":
+        return "human_sensor"
+    if device_type == "light_sensor":
+        return "light_sensor"
+    if device_type == "curtain":
+        return "curtain"
+    if device_type == "temp_control":
+        return "temp_control"
+    if device_type == "scene_panel":
+        return "scene_panel"
+    if device_type == "knob_switch":
+        return "knob_switch"
     if device_type:
         return device_type
     return "main"
+
+
+RUNTIME_EVENT_TEMPLATES = {
+    "scene_panel": ("click", "hold", "release_after_hold"),
+    "knob_switch": ("knob_spin", "multi_spin", "absolut_spin"),
+}
+
+
+def infer_subdevice_components(payload: Mapping[str, Any]) -> list[ComponentModel]:
+    """从 OpenAPI ``subDeviceList`` 构建组件模型。"""
+    return _infer_subdevice_components(
+        payload,
+        build_property=build_runtime_property_model,
+        infer_capabilities=infer_runtime_capabilities,
+        default_component_id=default_component_id,
+        string_value=string_value,
+    )
 
 
 def string_value(value: Any) -> str | None:
@@ -186,7 +331,9 @@ __all__ = [
     "default_component_id",
     "infer_indexed_switch_components",
     "infer_runtime_capabilities",
+    "infer_subdevice_components",
     "infer_runtime_components",
+    "infer_runtime_events",
     "infer_runtime_properties",
     "string_value",
 ]

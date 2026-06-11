@@ -17,6 +17,7 @@ from .const import (
     CONF_CLOUD_REGION,
     CONF_DEVICE_IMPORT_FILTER,
     CONF_HOUSE_ID,
+    CONF_HOUSE_NAME,
     CONF_OPEN_API_CLIENT_ID,
     CONF_PRIVATE_DOMAIN,
     CONF_REFRESH_TOKEN,
@@ -63,6 +64,7 @@ from .entry_migration import (
     ENTRY_VERSION,
 )
 from .entry_title import config_entry_title
+from .house_metadata import house_name_from_choice
 from .options_flow import YeelightProOptionsFlow
 
 
@@ -86,6 +88,7 @@ class YeelightProConfigFlow(
         self._token_expires_in: int | None = None
         self._token_type = ""
         self._house_id = None
+        self._house_name = ""
         self._cloud_region = DEFAULT_CLOUD_REGION
         self._cloud_auth_method = CLOUD_AUTH_METHOD_SCAN_LOGIN
         self._account_user_id: int | None = None
@@ -96,6 +99,7 @@ class YeelightProConfigFlow(
         self._scan_login_account_key = UNKNOWN_ACCOUNT_KEY
         self._open_api_client_id = ""
         self._device_choices: tuple[DevicePickerChoice, ...] = ()
+        self._house_choices: dict[Any, str] = {}
         self._selected_device_ids: list[str] = []
         self._reauth_entry_data: dict[str, Any] = {}
         self._reauth_in_progress = False
@@ -186,6 +190,10 @@ class YeelightProConfigFlow(
 
         if user_input is not None:
             self._house_id = user_input[CONF_HOUSE_ID]
+            self._house_name = house_name_from_choice(
+                self._house_choices,
+                self._house_id,
+            )
             return await self.async_step_cloud_devices()
 
         try:
@@ -198,6 +206,7 @@ class YeelightProConfigFlow(
         except Exception as err:
             errors["base"] = flow_error_from_exception("cloud houses", err)
             house_choices = {}
+        self._house_choices = dict(house_choices)
 
         if not house_choices and not errors:
             return self.async_abort(reason="no_houses_found")
@@ -259,6 +268,7 @@ class YeelightProConfigFlow(
                 self._domain = user_input[CONF_PRIVATE_DOMAIN]
                 self._access_token = user_input[CONF_ACCESS_TOKEN]
                 self._house_id = user_input[CONF_HOUSE_ID]
+                self._house_name = ""
                 await async_validate_auth(
                     self.hass,
                     domain=self._domain,
@@ -300,6 +310,7 @@ class YeelightProConfigFlow(
             CONF_TOKEN_EXPIRES_IN: self._token_expires_in,
             CONF_TOKEN_TYPE: self._token_type,
             CONF_HOUSE_ID: self._house_id,
+            CONF_HOUSE_NAME: self._house_name,
             CONF_OPEN_API_CLIENT_ID: self._open_api_client_id,
             CONF_ACCOUNT_USER_ID: self._account_user_id,
             CONF_ACCOUNT_USERNAME: self._account_username,

@@ -10,14 +10,28 @@ from homeassistant.components.event import EventDeviceClass
 from ..canonical.models import ComponentInstanceModel, ComponentModel, HAProductModel
 from ..capabilities.events import normalize_event_type
 from ..capabilities.registry import iot_registry
-from ..utils import matches_category, to_category, to_str
-from .common import component_index, humanize_component_id
+from ..device_display import channel_name_label
+from ..utils import matches_category, to_bool, to_category, to_str
+from .common import component_index, humanize_component_id, schema_backed_component_available
+from .device import project_payload_device_info
 
 # 事件型组件 token。
 EVENT_COMPONENT_TOKENS = ("scene_panel", "knob_switch", "button", "remote", "knob", "dial")
 BUTTON_COMPONENT_TOKENS = ("scene_panel", "button", "remote")
 MOTION_COMPONENT_TOKENS = ("motion", "presence", "occupancy")
 DOORBELL_COMPONENT_TOKENS = ("doorbell",)
+SCENE_PANEL_FALLBACK_EVENTS = ("click", "hold", "release_after_hold")
+KNOB_SWITCH_FALLBACK_EVENTS = ("knob_spin", "multi_spin", "absolut_spin")
+EVENT_DEVICE_NAME_TOKENS = (
+    "全面屏",
+    "智慧屏",
+    "智能面板",
+    "情景面板",
+    "控制面板",
+    "scene panel",
+    "control panel",
+)
+KNOB_DEVICE_NAME_TOKENS = ("旋钮", "knob", "dial")
 
 
 def event_components(
@@ -51,11 +65,21 @@ def event_types(component: ComponentModel) -> list[str]:
     return projected
 
 
-def event_name(component: ComponentModel, *, total: int) -> str | None:
+def event_name(
+    component: ComponentModel,
+    *,
+    total: int,
+    device_payload: Mapping[str, Any] | None = None,
+) -> str | None:
     """生成 event 实体名称。"""
     index = component_index(component.component_id)
-    if index is not None and total > 1:
-        return str(index)
+    if index is not None:
+        channel = channel_name_label(
+            index=index,
+            component=component,
+            device_payload=device_payload,
+        )
+        return f"{channel}事件" if channel else None
     if total <= 1:
         return None
 
@@ -100,11 +124,52 @@ def event_icon(component: ComponentModel, product_model: HAProductModel) -> str 
     return None
 
 
-def component_available(component: ComponentInstanceModel | None) -> bool:
+def component_available(
+    component: ComponentInstanceModel | None,
+    schema_component: ComponentModel | None = None,
+) -> bool:
     """判断组件实例是否可用。"""
-    if component is None:
-        return True
-    return bool(component.available)
+    return schema_backed_component_available(
+        True,
+        component,
+        schema_component=schema_component,
+    )
+
+
+def event_fallback_projection(
+    device_payload: Mapping[str, Any],
+    product_model: HAProductModel,
+    instance: Any,
+    *,
+    domain: str,
+) -> Any | None:
+    """为缺少 schema events 的已知事件输入设备生成保守 event 投影。"""
+    event_types = _fallback_event_types(device_payload, product_model)
+    if not event_types:
+        return None
+
+    from .event import HAEventProjection
+
+    component_id = _fallback_component_id(product_model)
+    source_device_id = (
+        instance.device_id
+        if instance is not None
+        else str(device_payload.get("device_id", "unknown"))
+    )
+    available = to_bool(
+        instance.online if instance is not None else device_payload.get("online"),
+        default=True,
+    )
+    return HAEventProjection(
+        component_id=component_id,
+        unique_id=f"{domain}_{source_device_id}_{component_id}_event",
+        name=_fallback_event_name(component_id, device_payload, product_model),
+        available=available,
+        event_types=list(event_types),
+        device_info=project_payload_device_info(device_payload, instance),
+        device_class=EventDeviceClass.BUTTON,
+        icon="mdi:gesture-tap-button",
+    )
 
 
 def _should_project_event_component(
@@ -144,6 +209,89 @@ def _should_project_event_component(
         return True
 
     return has_registry_supported_events or has_known_registry_events
+
+
+def _fallback_event_types(
+    device_payload: Mapping[str, Any],
+    product_model: HAProductModel,
+) -> tuple[str, ...]:
+    """Return default events only for documented event-input categories."""
+    tokens = _fallback_identity_tokens(device_payload, product_model)
+    if matches_category(tokens, ("knob_switch",)) or matches_category(
+        tokens,
+        KNOB_DEVICE_NAME_TOKENS,
+    ):
+        return KNOB_SWITCH_FALLBACK_EVENTS
+    if matches_category(tokens, ("scene_panel",)) or matches_category(
+        tokens,
+        EVENT_DEVICE_NAME_TOKENS,
+    ):
+        return SCENE_PANEL_FALLBACK_EVENTS
+    return ()
+
+
+def _fallback_component_id(product_model: HAProductModel) -> str:
+    """Return a stable component id for fallback event entities."""
+    for component in product_model.components:
+        tokens = _event_identity_tokens(component, product_model)
+        if matches_category(tokens, ("knob_switch",)) or matches_category(
+            tokens,
+            KNOB_DEVICE_NAME_TOKENS,
+        ):
+            return component.component_id
+        if matches_category(tokens, ("scene_panel",)) or matches_category(
+            tokens,
+            EVENT_DEVICE_NAME_TOKENS,
+        ):
+            return component.component_id
+    category = to_category(product_model.product.category)
+    if matches_category(category, ("knob_switch",)) or matches_category(
+        category,
+        KNOB_DEVICE_NAME_TOKENS,
+    ):
+        return "knob_switch"
+    return "scene_panel"
+
+
+def _fallback_event_name(
+    component_id: str,
+    device_payload: Mapping[str, Any],
+    product_model: HAProductModel,
+) -> str:
+    """Return readable fallback event names instead of the generic 事件."""
+    index = component_index(component_id)
+    channel = channel_name_label(index=index)
+    tokens = _fallback_identity_tokens(device_payload, product_model)
+    if matches_category(tokens, ("knob_switch",)) or matches_category(
+        tokens,
+        KNOB_DEVICE_NAME_TOKENS,
+    ):
+        return f"{channel}旋钮事件" if channel else "旋钮事件"
+    if channel:
+        return f"{channel}事件"
+    if matches_category(tokens, EVENT_DEVICE_NAME_TOKENS):
+        return "面板事件"
+    return "设备事件"
+
+
+def _fallback_identity_tokens(
+    device_payload: Mapping[str, Any],
+    product_model: HAProductModel,
+) -> str:
+    """Combine product and runtime identity fields for fallback event detection."""
+    return " ".join(
+        value
+        for value in (
+            to_category(device_payload.get("iot_category")),
+            to_category(device_payload.get("category")),
+            to_category(product_model.product.category),
+            to_category(product_model.product.model),
+            to_category(device_payload.get("name")),
+            to_category(device_payload.get("deviceName")),
+            to_category(device_payload.get("n")),
+        )
+        if value
+    )
 
 
 def _has_registry_supported_events(component: ComponentModel) -> bool:

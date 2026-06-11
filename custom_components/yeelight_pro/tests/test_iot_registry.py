@@ -35,7 +35,6 @@ HA_ENTITY_PLATFORMS_NOT_IOT_CATEGORIES = {
     "button",
     "select",
     "number",
-    "vacuum",
     "text",
 }
 
@@ -229,4 +228,3 @@ def test_color_light_without_temperature_matches_iot_csv_boundary() -> None:
     color_temp = registry.property_spec("ct")
     assert color_temp is not None
     assert "color light without temperature" not in color_temp.components
-

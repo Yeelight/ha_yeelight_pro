@@ -50,7 +50,6 @@ def translation_payload() -> dict[str, Any]:
     option_data = {
         "scan_interval": "Scan interval",
         "debug_mode": "Debug mode",
-        "experimental_platforms": "Experimental platforms",
         "hide_unknown_entities": "Hide unknown entities",
         "topology_change_repairs": "Topology repairs",
         "live_updates": "Live updates",
@@ -187,6 +186,13 @@ def translation_payload() -> dict[str, Any]:
                 }
             }
         },
+        "entity": {
+            "select": {
+                "active_room": {"name": "Active room"},
+                "active_group": {"name": "Active group"},
+                "active_scene": {"name": "Active scene"},
+            }
+        },
         "services": service_translation_payload(),
         "issues": {
             "device_topology_changed": {
@@ -194,7 +200,7 @@ def translation_payload() -> dict[str, Any]:
                 "description": (
                     "Device topology changed: {added} {removed} "
                     "{metadata_changed} {devices} {gateways} {areas} "
-                    "{rooms} {groups} {scenes} {automations}."
+                    "{rooms} {groups} {scenes}."
                 ),
             }
         },
@@ -225,6 +231,9 @@ def chinese_translation_payload() -> dict[str, Any]:
     payload["selector"]["cloud_auth_method"]["options"][
         "scan_login"
     ] = "易来 APP 扫码登录"
+    payload["entity"]["select"]["active_room"]["name"] = "当前房间"
+    payload["entity"]["select"]["active_group"]["name"] = "当前灯组"
+    payload["entity"]["select"]["active_scene"]["name"] = "当前场景"
     return payload
 
 

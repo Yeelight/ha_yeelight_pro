@@ -14,11 +14,9 @@ from .device import (
 )
 from .event import HAEventProjection, HADeviceTriggerProjection, project_device_triggers, project_events
 from .fan import HAFanProjection, project_fans
-from .light import HALightProjection, LIGHT_COLOR_MODE_HINT_KEY, project_light
-from .lock import HALockProjection, project_lock
+from .light import HALightProjection, LIGHT_COLOR_MODE_HINT_KEY, project_light, project_lights
 from .sensor import HASensorProjection, project_sensors
 from .switch import HASwitchProjection, project_switches
-from .vacuum import HAVacuumProjection, project_vacuum
 
 __all__ = [
     "flatten_instance_state",
@@ -29,10 +27,8 @@ __all__ = [
     "HAFanProjection",
     "HAEventProjection",
     "HALightProjection",
-    "HALockProjection",
     "HASensorProjection",
     "HASwitchProjection",
-    "HAVacuumProjection",
     "LIGHT_COLOR_MODE_HINT_KEY",
     "project_binary_sensors",
     "project_climate",
@@ -44,8 +40,7 @@ __all__ = [
     "project_events",
     "project_fans",
     "project_light",
-    "project_lock",
+    "project_lights",
     "project_sensors",
     "project_switches",
-    "project_vacuum",
 ]

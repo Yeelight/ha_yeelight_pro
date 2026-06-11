@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 
 class YeelightProError(Exception):
     """Yeelight Pro 集成基础异常."""
@@ -47,6 +49,13 @@ class ServerError(YeelightProError):
     """服务器错误."""
 
 
+_SAFE_CODE_RE = re.compile(r"\b(?:code|HTTP)\s+([0-9]{3,5})\b", re.IGNORECASE)
+
+
 def safe_error_summary(err: BaseException) -> str:
     """Return a log-safe error summary without vendor payload details."""
-    return type(err).__name__
+    summary = type(err).__name__
+    match = _SAFE_CODE_RE.search(str(err))
+    if match:
+        return f"{summary} code {match.group(1)}"
+    return summary

@@ -82,13 +82,14 @@ class YeelightLanDeviceAdapter:
     ) -> SourceDeviceInfoInput | None:
         """适配设备信息，优先使用显式 device_info，回退到 payload 推断。"""
         if device_info:
+            device_info_model_id = to_str(device_info.get("model_id"))
             return SourceDeviceInfoInput(
                 identifiers=normalize_pair_list(device_info.get("identifiers")),
                 connections=normalize_pair_list(device_info.get("connections")),
                 via_device=normalize_pair(device_info.get("via_device")),
                 manufacturer=to_str(device_info.get("manufacturer")),
                 model=to_str(device_info.get("model")),
-                model_id=to_str(device_info.get("model_id")) or model_id,
+                model_id=_public_model_id(device_info_model_id),
                 name=to_str(device_info.get("name")) or name,
                 serial_number=to_str(device_info.get("serial_number")),
                 sw_version=to_str(device_info.get("sw_version")),
@@ -128,7 +129,7 @@ class YeelightLanDeviceAdapter:
             identifiers=identifiers,
             connections=connections,
             manufacturer="Yeelight" if model_id else None,
-            model_id=model_id,
+            model_id=_public_model_id(model_id),
             name=name,
         )
 
@@ -145,6 +146,8 @@ class YeelightLanDeviceAdapter:
             return [
                 SourceDeviceComponentInput(
                     component_key=fallback_component_key(payload),
+                    name=to_str(payload.get("componentName", payload.get("component_name"))),
+                    desc=to_str(payload.get("desc")),
                     category=to_str(payload.get("category")),
                     available=online,
                     state=fallback_runtime_state(payload, params),
@@ -216,6 +219,9 @@ class YeelightLanDeviceAdapter:
             components.append(
                 SourceDeviceComponentInput(
                     component_key=component.component_id,
+                    name=component.name,
+                    desc=component.desc,
+                    index=component.index,
                     component_type=component.component_type,
                     category=component.category,
                     available=online,
@@ -242,3 +248,10 @@ def scaled_runtime_value(value: Any, prop: Any | None) -> Any:
         zoom=getattr(prop, "zoom", 1),
         scale=getattr(prop, "scale", 1),
     )
+
+
+def _public_model_id(value: str | None) -> str | None:
+    """Hide internal runtime-* model ids from HA device registry metadata."""
+    if value is None or value.startswith("runtime-"):
+        return None
+    return value

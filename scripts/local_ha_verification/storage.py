@@ -11,12 +11,19 @@ from .constants import DOMAIN
 from .options import verify_config_entry_options
 from .platforms import verify_platform_options_alignment
 from .report import VerificationReport
+from .storage_device_quality import verify_device_registry_quality
+from .storage_entity_quality import verify_entity_registry_quality
 from .storage_entries import (
     verify_config_entry_migration,
     verify_config_entry_titles,
     verify_config_entry_unique_ids,
 )
-from .storage_helpers import read_json, safe_storage_items, sensitive_cache_hits, storage_path
+from .storage_helpers import (
+    read_json,
+    safe_storage_items,
+    sensitive_cache_hits,
+    storage_path,
+)
 
 
 def verify_storage(
@@ -84,33 +91,43 @@ def verify_storage(
     else:
         report.fact(f"device registry entries: {len(devices)}")
     report.metric("devices", len(devices))
-    _verify_device_registry_quality(devices, report)
+    verify_device_registry_quality(devices, report)
 
     counts = _entity_counts(entity_entries)
     entity_total = sum(counts.values())
-    if entity_total != expected_entities:
-        report.fail(f"entity count mismatch: expected {expected_entities}, got {entity_total}")
+    if entity_total < expected_entities:
+        report.fail(
+            "entity registry retained count below active baseline: "
+            f"expected at least {expected_entities}, got {entity_total}"
+        )
     else:
-        report.fact(f"entity registry entries: {entity_total}")
-    report.metric("entities", entity_total)
+        report.fact(f"entity registry retained entries: {entity_total}")
+    report.metric("retained_entities", entity_total)
 
     if counts.get("text", 0):
         report.fail("text entities are present for Yeelight Pro")
     else:
         report.fact("text entities: 0")
-
     expected_counts = Counter(expected_entity_counts)
-    if Counter(counts) != expected_counts:
+    missing_counts = {
+        domain: expected_count - counts.get(domain, 0)
+        for domain, expected_count in expected_counts.items()
+        if counts.get(domain, 0) < expected_count
+    }
+    if missing_counts:
         report.fail(
-            "entity domain distribution mismatch: "
-            f"expected {dict(sorted(expected_counts.items()))}, "
+            "entity registry retained domain count below active baseline: "
+            f"missing {dict(sorted(missing_counts.items()))}, "
             f"got {dict(sorted(counts.items()))}"
         )
     else:
-        report.fact(f"entity domains: {dict(sorted(counts.items()))}")
-    report.metric("entity_domains", dict(sorted(counts.items())))
-    _verify_entity_device_links(entity_entries, report)
-    verify_platform_options_alignment(enabled_entries, counts, report)
+        report.fact(f"entity registry retained domains: {dict(sorted(counts.items()))}")
+    disabled_counts = _disabled_by_counts(entity_entries)
+    report.fact(f"entity registry disabled_by: {dict(sorted(disabled_counts.items()))}")
+    report.metric("retained_entity_domains", dict(sorted(counts.items())))
+    report.metric("entity_registry_disabled_by", dict(sorted(disabled_counts.items())))
+    verify_entity_registry_quality(config_dir, entity_entries, report)
+    verify_platform_options_alignment(enabled_entries, expected_counts, report)
 
 
 def verify_product_schema_cache(config_dir: Path, report: VerificationReport) -> None:
@@ -190,129 +207,12 @@ def _entity_counts(entities: Iterable[Mapping[str, Any]]) -> Counter[str]:
     return counter
 
 
-def _verify_device_registry_quality(
-    devices: list[Mapping[str, Any]],
-    report: VerificationReport,
-) -> None:
-    """Verify source devices expose friendly metadata in HA's registry."""
-    source_devices = [device for device in devices if _is_source_device(device)]
-    if not source_devices:
-        report.fail("device registry has no Yeelight Pro source devices")
-        report.metric(
-            "device_registry_quality",
-            {
-                "source_devices": 0,
-                "missing_name": 0,
-                "missing_model": 0,
-                "missing_area": 0,
-            },
-        )
-        return
-
-    missing_name = sum(1 for device in source_devices if not _device_name(device))
-    missing_model = sum(1 for device in source_devices if not device.get("model"))
-    missing_area = sum(
-        1
-        for device in source_devices
-        if not device.get("area_id") and not device.get("suggested_area")
-    )
-    if missing_name:
-        report.fail(
-            "device registry source devices missing friendly names: "
-            f"{missing_name}/{len(source_devices)}"
-        )
-    if missing_model:
-        report.fail(
-            "device registry source devices missing model metadata: "
-            f"{missing_model}/{len(source_devices)}"
-        )
-    if missing_area:
-        report.fail(
-            "device registry source devices missing area metadata: "
-            f"{missing_area}/{len(source_devices)}"
-        )
-    if not missing_name and not missing_model and not missing_area:
-        report.fact(
-            "device registry source metadata: "
-            f"{len(source_devices)} named/modelled/area-linked devices"
-        )
-    report.metric(
-        "device_registry_quality",
-        {
-            "source_devices": len(source_devices),
-            "missing_name": missing_name,
-            "missing_model": missing_model,
-            "missing_area": missing_area,
-        },
-    )
-
-
-def _verify_entity_device_links(
-    entities: Iterable[Mapping[str, Any]],
-    report: VerificationReport,
-) -> None:
-    """Verify device-backed Yeelight entities are linked to HA devices."""
-    device_backed_entries = [
-        entity
-        for entity in entities
-        if entity.get("platform") == DOMAIN
-        and _source_device_id_from_unique_id(entity.get("unique_id"))
-    ]
-    missing_device_id = sum(
-        1 for entity in device_backed_entries if not entity.get("device_id")
-    )
-    if missing_device_id:
-        report.fail(
-            "device-backed entity registry entries missing device_id: "
-            f"{missing_device_id}/{len(device_backed_entries)}"
-        )
-    elif device_backed_entries:
-        report.fact(
-            "device-backed entity registry links: "
-            f"{len(device_backed_entries)} linked"
-        )
-    report.metric(
-        "entity_device_links",
-        {
-            "device_backed_entities": len(device_backed_entries),
-            "missing_device_id": missing_device_id,
-        },
-    )
-
-
-def _is_source_device(device: Mapping[str, Any]) -> bool:
-    """Return true for source devices, excluding house/gateway aggregate entries."""
-    identifiers = device.get("identifiers")
-    if not isinstance(identifiers, list):
-        return False
-    for identifier in identifiers:
-        if not (
-            isinstance(identifier, (list, tuple))
-            and len(identifier) == 2
-            and identifier[0] == DOMAIN
-        ):
+def _disabled_by_counts(entities: Iterable[Mapping[str, Any]]) -> Counter[str]:
+    """Return disabled_by aggregate counts for Yeelight Pro registry entries."""
+    counter: Counter[str] = Counter()
+    for entity in entities:
+        if entity.get("platform") != DOMAIN:
             continue
-        value = str(identifier[1])
-        if value.startswith("device:"):
-            return True
-    return False
-
-
-def _device_name(device: Mapping[str, Any]) -> str | None:
-    """Return the effective HA device display name."""
-    for key in ("name_by_user", "name"):
-        value = device.get(key)
-        if isinstance(value, str) and value.strip():
-            return value.strip()
-    return None
-
-
-def _source_device_id_from_unique_id(value: Any) -> str | None:
-    """Extract source device id from Yeelight entity unique_id."""
-    if not isinstance(value, str):
-        return None
-    prefix = f"{DOMAIN}_"
-    if not value.startswith(prefix):
-        return None
-    source_device_id = value[len(prefix):].split("_", 1)[0]
-    return source_device_id if source_device_id.isdigit() else None
+        disabled_by = entity.get("disabled_by")
+        counter[str(disabled_by or "enabled")] += 1
+    return counter

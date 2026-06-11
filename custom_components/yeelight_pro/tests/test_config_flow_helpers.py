@@ -15,7 +15,6 @@ from custom_components.yeelight_pro.const import (
     CONF_DEVICE_IMPORT_FILTER_INCLUDE_CATEGORIES,
     CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES,
     CONF_DEVICE_IMPORT_FILTER_MODE,
-    CONF_EXPERIMENTAL_PLATFORMS,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_LIVE_UPDATES,
     CONF_LOCAL_GATEWAY_CONTROL,
@@ -36,7 +35,7 @@ def test_options_schema_normalizes_legacy_visible_defaults() -> None:
     schema = options_schema({
         CONF_SCAN_INTERVAL: "999",
         CONF_DEBUG_MODE: "0",
-        CONF_EXPERIMENTAL_PLATFORMS: "false",
+        "experimental_platforms": "true",
         CONF_HIDE_UNKNOWN_ENTITIES: "false",
         CONF_TOPOLOGY_CHANGE_REPAIRS: "off",
     }).schema
@@ -44,9 +43,9 @@ def test_options_schema_normalizes_legacy_visible_defaults() -> None:
     defaults = {marker.schema: marker.default() for marker in schema}
     assert defaults[CONF_SCAN_INTERVAL] == MAX_SCAN_INTERVAL
     assert defaults[CONF_DEBUG_MODE] is False
-    assert defaults[CONF_EXPERIMENTAL_PLATFORMS] is False
     assert defaults[CONF_HIDE_UNKNOWN_ENTITIES] is False
     assert defaults[CONF_TOPOLOGY_CHANGE_REPAIRS] is False
+    assert "experimental_platforms" not in defaults
 
 
 def test_options_schema_exposes_device_filter_defaults() -> None:
@@ -88,7 +87,6 @@ def test_merge_options_preserves_hidden_advanced_keys() -> None:
         {
             CONF_SCAN_INTERVAL: 45,
             CONF_DEBUG_MODE: True,
-            CONF_EXPERIMENTAL_PLATFORMS: True,
             CONF_HIDE_UNKNOWN_ENTITIES: False,
             CONF_TOPOLOGY_CHANGE_REPAIRS: False,
             CONF_DEVICE_IMPORT_FILTER_ENABLED: False,
@@ -102,7 +100,6 @@ def test_merge_options_preserves_hidden_advanced_keys() -> None:
         "future_option": "keep",
         CONF_SCAN_INTERVAL: 45,
         CONF_DEBUG_MODE: True,
-        CONF_EXPERIMENTAL_PLATFORMS: True,
         CONF_HIDE_UNKNOWN_ENTITIES: False,
         CONF_TOPOLOGY_CHANGE_REPAIRS: False,
         CONF_LIVE_UPDATES: DEFAULT_LIVE_UPDATES,
@@ -124,14 +121,14 @@ def test_merge_options_writes_manual_device_filter_config() -> None:
         {
             CONF_SCAN_INTERVAL: 15,
             CONF_DEBUG_MODE: False,
-            CONF_EXPERIMENTAL_PLATFORMS: False,
+            "experimental_platforms": True,
             CONF_HIDE_UNKNOWN_ENTITIES: True,
             CONF_TOPOLOGY_CHANGE_REPAIRS: True,
         },
         {
             CONF_SCAN_INTERVAL: 15,
             CONF_DEBUG_MODE: False,
-            CONF_EXPERIMENTAL_PLATFORMS: False,
+            "experimental_platforms": True,
             CONF_HIDE_UNKNOWN_ENTITIES: True,
             CONF_TOPOLOGY_CHANGE_REPAIRS: True,
             CONF_DEVICE_IMPORT_FILTER_ENABLED: True,
@@ -149,6 +146,7 @@ def test_merge_options_writes_manual_device_filter_config() -> None:
     }
     assert CONF_DEVICE_IMPORT_FILTER_ENABLED not in result
     assert CONF_DEVICE_IMPORT_FILTER_INCLUDE_CATEGORIES not in result
+    assert "experimental_platforms" not in result
 
 
 def test_merge_options_canonicalizes_legacy_device_filter_input() -> None:
@@ -157,14 +155,12 @@ def test_merge_options_canonicalizes_legacy_device_filter_input() -> None:
         {
             CONF_SCAN_INTERVAL: 15,
             CONF_DEBUG_MODE: False,
-            CONF_EXPERIMENTAL_PLATFORMS: False,
             CONF_HIDE_UNKNOWN_ENTITIES: True,
             CONF_TOPOLOGY_CHANGE_REPAIRS: True,
         },
         {
             CONF_SCAN_INTERVAL: 15,
             CONF_DEBUG_MODE: False,
-            CONF_EXPERIMENTAL_PLATFORMS: False,
             CONF_HIDE_UNKNOWN_ENTITIES: True,
             CONF_TOPOLOGY_CHANGE_REPAIRS: True,
             CONF_DEVICE_IMPORT_FILTER_ENABLED: "false",

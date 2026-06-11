@@ -20,11 +20,19 @@ LIFECYCLE_CONTRACT_TOKENS = {
         "async_sync_gateway_devices": "gateway/source device registry sync",
         "active_device_identifiers": "active device identifier guard",
         "device_payload_identifiers": "payload identifier extraction guard",
+        "sync_house_device": "house helper registry sync integration",
+    },
+    "ha_house_registry.py": {
+        "sync_house_device": "house helper registry sync facade",
+        "_house_device_entries": "legacy house helper registry matcher",
+        "_safe_house_identifiers": "duplicate house helper identifier guard",
+        "is_house_placeholder_name": "house placeholder user-name cleanup guard",
     },
     "entity_lifecycle.py": {
         "async_reconcile_entity_registry": "entity registry reconcile hook",
         "entity_lifecycle_cleanup": "cleanup helper facade imports",
         "_registry_entry_disabled_by_user": "user-disabled entity preservation",
+        "_restore_active_integration_entries": "active integration-disabled entity restoration",
         "EntityRegistryReconcileSummary": "aggregate diagnostics summary",
         "collect_entity_candidate_keys": "filtered candidate lifecycle source",
     },
@@ -68,9 +76,33 @@ LIFECYCLE_CONTRACT_TOKENS = {
             "missing runtime fail-closed coverage"
         ),
     },
+    "tests/test_ha_device_registry.py": {
+        "test_sync_gateway_devices_updates_legacy_house_placeholder_devices": (
+            "legacy house helper placeholder migration coverage"
+        ),
+        "House 12345": "legacy house placeholder fixture",
+        "Yeelight Pro 家庭": "friendly house helper model assertion",
+    },
+    "tests/ha_device_registry_helpers.py": {
+        "DeviceRegistryCoordinator": "shared HA device registry coordinator helper",
+        "fallback_device_payload": "shared fallback metadata-only device fixture",
+        "device_payload": "shared canonical device registry fixture",
+    },
+    "tests/test_ha_device_registry_metadata.py": {
+        "test_sync_gateway_devices_normalizes_canonical_generic_model": (
+            "canonical generic model metadata cleanup coverage"
+        ),
+        "test_sync_gateway_devices_replaces_generic_model_label_without_model_id": (
+            "legacy generic model metadata cleanup coverage"
+        ),
+        "relay_switch": "generic model fixture",
+        "双键开关": "friendly switch model assertion",
+    },
     "tests/entity_lifecycle_helpers.py": {
         "FakeEntityRegistry": "shared lifecycle registry fake",
         "patch_entity_registry": "shared lifecycle registry patch helper",
+        "reconcile_diagnostics": "shared lifecycle diagnostics helper",
+        '"pending_stale": pending_stale': "stale entity pending diagnostics helper",
     },
     "tests/registry_cleanup_service_helpers.py": {
         "install_cleanup_runtime": "cleanup service runtime test helper",
@@ -91,12 +123,34 @@ LIFECYCLE_CONTRACT_TOKENS = {
         "test_reconcile_clears_pending_when_stale_registry_entry_is_active_again": (
             "active-again stale pending reset coverage"
         ),
-        "test_reconcile_keeps_same_unique_id_in_other_domain": (
-            "domain-scoped unique-id coverage"
+        "test_reconcile_preserves_active_user_disabled_entry": (
+            "active user-disabled entity preservation coverage"
+        ),
+        "test_reconcile_marks_removed_scene_domain_stale_when_button_is_active": (
+            "removed scene platform stale coverage"
         ),
         "test_reconcile_treats_filtered_device_entities_as_stale_without_removal": (
             "filtered device stale-without-removal coverage"
         ),
+    },
+    "tests/test_entity_lifecycle_reconcile_metadata.py": {
+        "test_reconcile_refreshes_active_registry_original_name_and_icon": (
+            "active registry metadata refresh coverage"
+        ),
+        "test_reconcile_does_not_refresh_removed_scene_domain_metadata": (
+            "removed scene metadata stale coverage"
+        ),
+        "metadata_updated=1": "active metadata updated diagnostics coverage",
+    },
+    "tests/test_entity_lifecycle_reconcile_display.py": {
+        "test_reconcile_marks_extra_double_switch_channel_stale_and_updates_names": (
+            "generated switch channel display-name cleanup coverage"
+        ),
+        "test_reconcile_clears_generated_single_light_original_name": (
+            "generated single-light display-name cleanup coverage"
+        ),
+        "左键": "friendly positional switch channel assertion",
+        "照明": "legacy generated light name fixture",
     },
     "tests/test_registry_cleanup_service.py": {
         "test_cleanup_registry_service_dry_run_returns_audit_id": (
@@ -138,8 +192,8 @@ LIFECYCLE_CONTRACT_TOKENS = {
         "removed_entity_ids == []": "cleanup privacy no-removal coverage",
     },
     "tests/test_entity_lifecycle.py": {
-        "test_collect_active_entity_keys_keeps_scene_button_and_scene_separate": (
-            "domain-scoped active key coverage"
+        "test_collect_active_entity_keys_projects_cloud_scenes_as_buttons_only": (
+            "cloud-scene button-only active key coverage"
         ),
         "test_entity_registry_reconcile_diagnostics_ignores_foreign_summary": (
             "diagnostics summary type guard coverage"

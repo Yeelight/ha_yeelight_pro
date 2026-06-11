@@ -34,9 +34,7 @@ _TOPOLOGY_DIFF_COUNT_KEYS = frozenset(
         "total_changes",
     }
 )
-_TOPOLOGY_CANDIDATE_SOURCES = frozenset(
-    {"scene", "group", "automation", "house"}
-)
+_TOPOLOGY_CANDIDATE_SOURCES = frozenset({"scene", "group", "house"})
 
 
 def mapping_values(value: Any) -> list[Mapping[str, Any]]:
@@ -148,7 +146,6 @@ class _CandidateCoordinator:
     ) -> None:
         self.data = data
         self.scenes = _list_attr(coordinator, "scenes")
-        self.automations = _list_attr(coordinator, "automations")
         self.groups = _list_attr(coordinator, "groups")
         self.house_id = getattr(coordinator, "house_id", None)
         self.hide_unknown_entities = bool(
@@ -163,6 +160,7 @@ def _entity_candidate_summary(
     return {
         "total": len(candidates),
         "platforms": _candidate_counter(candidates, "platform"),
+        "device_platforms": _candidate_platforms_by_source(candidates, "device"),
         "sources": _candidate_counter(candidates, "source"),
         "source_classes": _candidate_source_classes(candidates),
         "duplicate_key_count": _duplicate_candidate_key_count(candidates),
@@ -184,6 +182,17 @@ def _candidate_counter(
         if isinstance(value, str) and value:
             counter[value] += 1
     return dict(counter)
+
+
+def _candidate_platforms_by_source(
+    candidates: list[EntityCandidate],
+    source: str,
+) -> dict[str, int]:
+    """Count candidate platforms for one aggregate source class."""
+    return _candidate_counter(
+        [candidate for candidate in candidates if candidate.source == source],
+        "platform",
+    )
 
 
 def _candidate_source_classes(candidates: list[EntityCandidate]) -> dict[str, int]:

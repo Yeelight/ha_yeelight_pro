@@ -93,8 +93,8 @@ def test_main_fails_when_repeat_metrics_drift(
     """repeat 模式应阻断关键聚合指标漂移."""
     run_once = Mock(
         side_effect=[
-            _passing_report("first", metrics={"entities": 140}),
-            _passing_report("second", metrics={"entities": 139}),
+            _passing_report("first", metrics={"runtime_entities": 171}),
+            _passing_report("second", metrics={"runtime_entities": 170}),
         ]
     )
     monkeypatch.setattr(sys, "argv", ["verify_local_ha.py", "--repeat", "2"])
@@ -103,7 +103,10 @@ def test_main_fails_when_repeat_metrics_drift(
     assert cli.main() == 1
 
     output = capsys.readouterr().out
-    assert "stable metric drift in run 2: entities expected 140, got 139" in output
+    assert (
+        "stable metric drift in run 2: runtime_entities expected 171, got 170"
+        in output
+    )
     assert "Local HA verification failed." in output
 
 
@@ -114,8 +117,8 @@ def test_main_reports_stable_metrics_when_repeat_metrics_match(
     """repeat 模式应明确记录关键聚合指标未漂移."""
     run_once = Mock(
         side_effect=[
-            _passing_report("first", metrics={"entities": 140}),
-            _passing_report("second", metrics={"entities": 140}),
+            _passing_report("first", metrics={"runtime_entities": 171}),
+            _passing_report("second", metrics={"runtime_entities": 171}),
         ]
     )
     monkeypatch.setattr(sys, "argv", ["verify_local_ha.py", "--repeat", "2"])

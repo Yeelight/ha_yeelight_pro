@@ -18,7 +18,6 @@ EMPTY_TOPOLOGY: dict[str, Any] = {
     "rooms": [],
     "groups": [],
     "scenes": [],
-    "automations": [],
 }
 
 
@@ -51,7 +50,6 @@ def _update(
     rooms: list[dict[str, Any]] | None = None,
     groups: list[dict[str, Any]] | None = None,
     scenes: list[dict[str, Any]] | None = None,
-    automations: list[dict[str, Any]] | None = None,
 ) -> None:
     """用默认空拓扑降低单测噪音."""
     tracker.update(
@@ -61,7 +59,6 @@ def _update(
         rooms=rooms or EMPTY_TOPOLOGY["rooms"],
         groups=groups or EMPTY_TOPOLOGY["groups"],
         scenes=scenes or EMPTY_TOPOLOGY["scenes"],
-        automations=automations or EMPTY_TOPOLOGY["automations"],
     )
 
 

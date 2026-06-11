@@ -109,7 +109,7 @@ def test_registry_validation_detects_duplicate_and_unknown_references() -> None:
 
 @pytest.mark.parametrize(
     "platform",
-    ["event", "scene", "button", "select", "number", "vacuum", "text"],
+    ["event", "scene", "button", "select", "number", "text"],
 )
 def test_registry_validation_guards_ha_platform_categories(platform: str) -> None:
     """HA 实体平台不能被误登记为 Yeelight IoT 品类."""

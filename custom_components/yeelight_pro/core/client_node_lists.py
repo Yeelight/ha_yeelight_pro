@@ -5,7 +5,6 @@ from __future__ import annotations
 from .client_node_base import YeelightProNodeRequestMixin
 from .client_paths import (
     house_areas_path,
-    house_automations_path,
     house_devices_path,
     house_gateways_path,
     house_groups_path,
@@ -56,10 +55,6 @@ class YeelightProNodeListMixin(YeelightProNodeRequestMixin):
     async def get_scenes(self, house_id: int) -> list[dict[str, object]]:
         """获取场景列表."""
         return await self._get_paginated_rows(house_scenes_path(house_id))
-
-    async def get_automations(self, house_id: int) -> list[dict[str, object]]:
-        """获取自动化列表."""
-        return await self._get_paginated_rows(house_automations_path(house_id))
 
     async def get_areas(self, house_id: int) -> list[dict[str, object]]:
         """获取区域列表."""

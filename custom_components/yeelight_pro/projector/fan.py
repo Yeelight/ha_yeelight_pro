@@ -15,7 +15,9 @@ from .common import (
     NumericRange,
     load_instance as _load_instance,
     load_product_model as _load_product_model,
+    payload_available,
     product_component as _product_component,
+    schema_backed_component_available,
 )
 from .device import project_payload_device_info
 from .fan_helpers import (
@@ -125,7 +127,11 @@ def project_fans(device_payload: Mapping[str, Any], *, domain: str) -> list[HAFa
                 component_id=component.component_id,
                 unique_id=f"{domain}_{instance.device_id}_{component.component_id}",
                 name=_project_fan_name(component),
-                available=bool(instance.online and component.available),
+                available=schema_backed_component_available(
+                    payload_available(device_payload, instance),
+                    component,
+                    schema_component=product_component,
+                ),
                 is_on=_is_on(state, power_key, speed_key, mode_key),
                 percentage=_project_percentage(state, speed_key, speed_range),
                 speed_count=_speed_count(speed_range),
@@ -175,8 +181,8 @@ def _project_legacy_fan(
     return HAFanProjection(
         component_id="fan",
         unique_id=f"{domain}_{device_id}_fan",
-        name=None,
-        available=to_bool(device_payload.get("online"), default=False),
+        name="风扇",
+        available=to_bool(device_payload.get("online"), default=True),
         is_on=_is_on(params, "p" if "p" in params else None, speed_key, mode_key),
         percentage=_project_percentage(params, speed_key, speed_range),
         speed_count=_speed_count(speed_range),

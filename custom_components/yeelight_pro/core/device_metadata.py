@@ -8,6 +8,11 @@ from typing import Any
 from ..canonical.models import HAProductModel, ProductModel
 from ..const import DOMAIN
 from ..utils import to_str
+from .device_classification import (
+    friendly_model_id,
+    is_generic_model_label,
+)
+from ..device_display import device_model_name
 
 _DEVICE_NAME_KEYS = ("name", "deviceName", "device_name", "n")
 _ROOM_NAME_KEYS = ("roomName", "room_name", "room")
@@ -74,7 +79,7 @@ def build_fallback_device_info(
             model_id=_fallback_model_id(payload),
             manufacturer="Yeelight",
             model=_fallback_model_name(payload),
-            category=_first_text(payload, ("category", "type")),
+            category=_first_text(payload, ("iot_category", "category", "type")),
         ),
         components=[],
         device_actions=[],
@@ -177,7 +182,14 @@ def _model_id(
     payload: Mapping[str, Any],
     product_model: HAProductModel,
 ) -> str | None:
-    return _first_text(payload, ("model_id", "modelId")) or product_model.product.model_id
+    payload_copy = dict(payload)
+    product_model_id = product_model.product.model_id
+    if product_model_id and not product_model_id.startswith("runtime-"):
+        payload_copy["model_id"] = product_model_id
+    elif "model_id" not in payload_copy and product_model_id:
+        payload_copy["model_id"] = product_model_id
+    model_id = friendly_model_id(payload_copy)
+    return None if model_id.startswith("runtime-") else model_id
 
 
 def _model_name(
@@ -185,31 +197,29 @@ def _model_name(
     product_model: HAProductModel,
 ) -> str | None:
     return (
-        _first_text(payload, ("model", "modelName", "productName"))
-        or product_model.product.model
-        or _nested_text(payload, "product_schema", ("name", "model", "modelName"))
-        or _first_text(payload, ("category", "type"))
+        _specific_text(payload, ("model", "modelName", "productName"))
+        or _specific_product_model(payload, product_model)
+        or _specific_nested_text(payload, "product_schema", ("name", "model", "modelName"))
+        or device_model_name(payload)
     )
 
 
 def _fallback_model_id(payload: Mapping[str, Any]) -> str:
-    return (
-        _first_text(payload, ("model_id", "modelId"))
-        or (f"YL-{pid}" if (pid := _first_text(payload, ("pid", "productId"))) else None)
-        or (
-            f"runtime-{category}"
-            if (category := _first_text(payload, ("category", "type")))
-            else None
-        )
-        or "runtime-device"
-    )
+    return friendly_model_id(payload)
 
 
 def _fallback_model_name(payload: Mapping[str, Any]) -> str:
-    return (
-        _first_text(payload, ("model", "modelName", "productName", "category", "type"))
-        or "Yeelight Pro Device"
-    )
+    return device_model_name(payload)
+
+
+def _specific_product_model(
+    payload: Mapping[str, Any],
+    product_model: HAProductModel,
+) -> str | None:
+    model = product_model.product.model
+    if model and not is_generic_model_label(model):
+        return model
+    return device_model_name(payload)
 
 
 def _room_name(
@@ -305,6 +315,26 @@ def _nested_text(
     if not isinstance(nested, Mapping):
         return None
     return _first_text(nested, nested_keys)
+
+
+def _specific_text(payload: Mapping[str, Any], keys: tuple[str, ...]) -> str | None:
+    """Return the first non-generic text value for product model metadata."""
+    value = _first_text(payload, keys)
+    if value is None or is_generic_model_label(value):
+        return None
+    return value
+
+
+def _specific_nested_text(
+    payload: Mapping[str, Any],
+    key: str,
+    nested_keys: tuple[str, ...],
+) -> str | None:
+    """Return the first non-generic nested product model value."""
+    value = _nested_text(payload, key, nested_keys)
+    if value is None or is_generic_model_label(value):
+        return None
+    return value
 
 
 def _list_text(value: Any) -> list[str]:

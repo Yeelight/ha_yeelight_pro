@@ -23,6 +23,7 @@ from custom_components.yeelight_pro.const import (
     CONF_TOPOLOGY_CHANGE_REPAIRS,
     CONNECTION_MODE_CLOUD,
     DOMAIN,
+    PLATFORMS,
 )
 from custom_components.yeelight_pro.diagnostics import (
     async_get_config_entry_diagnostics,
@@ -81,10 +82,9 @@ async def test_diagnostics_returns_sane_unloaded_entry(
         "runtime_reload_required": True,
         "platforms_match_options": False,
         "loaded_platform_count": 0,
-        "expected_platform_count": 13,
+        "expected_platform_count": len(PLATFORMS),
         "debug_mode_enabled": True,
         "scan_interval_seconds": 15,
-        "experimental_platforms_enabled": False,
         "hide_unknown_entities": False,
         "topology_change_repairs": False,
         "live_updates_enabled": False,

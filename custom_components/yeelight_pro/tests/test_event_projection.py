@@ -134,6 +134,24 @@ def test_contact_sensor_declared_events_project_event_and_trigger() -> None:
     )
 
 
+def test_scene_panel_fallback_event_uses_panel_name() -> None:
+    """缺少显式 schema events 时，事件实体也不能显示为泛泛的“事件”."""
+    device = projection_payload(
+        device_id="scene-panel-fallback-1",
+        category="scene_panel",
+        component_id="scene_panel",
+        state={},
+        component_category="scene_panel",
+    )
+    device["ha_product_model"]["components"][0]["events"] = []
+    device["name"] = "客厅智能面板"
+
+    events = project_events(device, domain=DOMAIN)
+
+    assert len(events) == 1
+    assert events[0].name == "面板事件"
+
+
 def test_power_alarm_schema_events_project_without_static_component_claim() -> None:
     """power 告警类事件仅在产品 schema 显式声明时暴露自动化入口。"""
     device = projection_payload(

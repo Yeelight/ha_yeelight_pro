@@ -16,6 +16,7 @@ from custom_components.yeelight_pro.config_flow_scan_login_helpers import (
 from custom_components.yeelight_pro.const import (
     CONF_CLOUD_REGION,
     CONF_DEVICE_IMPORT_FILTER,
+    CONF_HOUSE_NAME,
     CONF_OPEN_API_CLIENT_ID,
     CONF_PRIVATE_DOMAIN,
     CONF_REFRESH_TOKEN,
@@ -53,7 +54,7 @@ async def test_create_entry_persists_open_api_client_id(config_flow) -> None:
 
     set_unique_id.assert_awaited_once_with("cloud:cn:client-from-token:1")
     assert result["type"] == FlowResultType.CREATE_ENTRY
-    assert result["title"] == "Yeelight Pro Cloud (CN · House 1)"
+    assert result["title"] == "Yeelight Pro Cloud (CN · 易来家庭)"
     assert result["data"][CONF_OPEN_API_CLIENT_ID] == "client-from-token"
     assert result["options"][CONF_DEVICE_IMPORT_FILTER] == {
         "enabled": False,
@@ -88,7 +89,7 @@ async def test_create_entry_manual_token_unique_id_uses_redacted_token_fingerpri
     set_unique_id.assert_awaited_once()
     unique_id = set_unique_id.call_args.args[0]
     assert result["type"] == FlowResultType.CREATE_ENTRY
-    assert result["title"] == "Yeelight Pro Cloud (CN · House 1)"
+    assert result["title"] == "Yeelight Pro Cloud (CN · 易来家庭)"
     assert unique_id.startswith("cloud:cn:token-")
     assert unique_id.endswith(":1")
     assert "manual-access-token-account-a" not in unique_id
@@ -189,7 +190,7 @@ async def test_create_entry_persists_scan_login_token_metadata(config_flow) -> N
     assert result["data"][CONF_REFRESH_TOKEN] == "scan-refresh"
     assert result["data"][CONF_TOKEN_TYPE] == "bearer"
     assert result["data"][CONF_SCAN_LOGIN_DEVICE] == "ha-device"
-    assert result["title"] == "Yeelight Pro Cloud (user-1 · SG · House 7)"
+    assert result["title"] == "Yeelight Pro Cloud (user-1 · SG · 易来家庭)"
 
 
 @pytest.mark.asyncio
@@ -213,7 +214,7 @@ async def test_create_entry_private_title_includes_endpoint_and_house(
         result = await config_flow._create_entry()
 
     assert result["type"] == FlowResultType.CREATE_ENTRY
-    assert result["title"] == "Yeelight Pro Private (10.0.0.10:8080 · House 1001)"
+    assert result["title"] == "Yeelight Pro Private (10.0.0.10:8080 · 易来家庭)"
     assert result["data"][CONF_PRIVATE_DOMAIN] == "10.0.0.10:8080"
 
 
@@ -226,6 +227,33 @@ def test_config_entry_title_does_not_expose_token_fingerprint() -> None:
         "access_token": "secret-access-token",
     })
 
-    assert title == "Yeelight Pro Cloud (EU · House 8)"
+    assert title == "Yeelight Pro Cloud (EU · 易来家庭)"
     assert "secret-access-token" not in title
     assert "token-" not in title
+
+
+@pytest.mark.asyncio
+async def test_create_entry_uses_friendly_cloud_house_name(config_flow) -> None:
+    """云端家庭名应写入 entry 并用于 HA 集成标题."""
+    config_flow._connection_mode = CONNECTION_MODE_CLOUD
+    config_flow._domain = "https://api.yeelight.com/apis/iot"
+    config_flow._cloud_region = "cn"
+    config_flow._access_token = "scan-access-token"
+    config_flow._house_id = 1
+    config_flow._house_name = "绿地中央公园"
+    config_flow._open_api_client_id = "client-from-token"
+    config_flow._scan_login_account_key = "client-from-token"
+
+    with patch.object(
+        config_flow,
+        "async_set_unique_id",
+        AsyncMock(),
+    ), patch.object(
+        config_flow,
+        "_abort_if_unique_id_configured",
+    ):
+        result = await config_flow._create_entry()
+
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert result["title"] == "Yeelight Pro Cloud (CN · 绿地中央公园)"
+    assert result["data"][CONF_HOUSE_NAME] == "绿地中央公园"

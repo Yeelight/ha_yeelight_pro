@@ -11,6 +11,7 @@ from ..capabilities.registry import (
     format_component_property_key,
     platform_for_category,
 )
+from ..device_display import channel_name_label, switch_channel_count_hint
 from ..utils import matches_category, to_category, to_int
 from .common import component_index
 
@@ -19,20 +20,35 @@ DIRECT_SWITCH_PROPS = ("p", "sp")
 SWITCH_TOKENS = ("switch", "relay", "outlet")
 LIGHT_TOKENS = ("light", "lamp")
 EVENT_INPUT_TOKENS = ("scene_panel", "knob_switch", "button", "remote", "knob", "dial")
+EVENT_INPUT_NAME_TOKENS = ("全面屏", "智慧屏", "智能面板", "情景面板", "控制面板")
+SWITCH_PARENT_CATEGORIES = {"relay_switch", "switch", "outlet"}
+NON_SWITCH_PARENT_CATEGORIES = {
+    "binary_sensor",
+    "climate",
+    "contact_sensor",
+    "cover",
+    "curtain",
+    "fan",
+    "gateway",
+    "human_sensor",
+    "knob_switch",
+    "light",
+    "light_sensor",
+    "scene_panel",
+    "sensor",
+    "temp_control",
+}
 NON_SWITCH_TOKENS = (
     "fan",
     "ceiling fan",
     "cover",
     "curtain",
     "blind",
-    "lock",
-    "door lock",
     "climate",
     "heater",
     "风扇",
     "吊扇",
     "窗帘",
-    "门锁",
     "空调",
     "浴霸",
     "情景",
@@ -40,13 +56,28 @@ NON_SWITCH_TOKENS = (
 )
 
 
+def _allows_switch_projection(device_payload: Mapping[str, Any]) -> bool:
+    """Return false when the parent device category owns another HA platform."""
+    parent_category = to_category(
+        device_payload.get("iot_category") or device_payload.get("category")
+    )
+    if parent_category in NON_SWITCH_PARENT_CATEGORIES:
+        return False
+    return True
+
+
 def _allows_raw_switch_fallback(device_payload: Mapping[str, Any]) -> bool:
     """Return true when legacy raw params belong to a known switch device."""
-    if device_payload.get("type") in {"switch", "outlet"}:
+    if not _allows_switch_projection(device_payload):
+        return False
+
+    parent_category = to_category(
+        device_payload.get("iot_category") or device_payload.get("category")
+    )
+    if parent_category in SWITCH_PARENT_CATEGORIES:
         return True
 
-    category = to_category(device_payload.get("category"))
-    if platform_for_category(category) == "switch":
+    if platform_for_category(parent_category) == "switch":
         return True
 
     component_hint_values = (
@@ -54,7 +85,12 @@ def _allows_raw_switch_fallback(device_payload: Mapping[str, Any]) -> bool:
         device_payload.get("component"),
         device_payload.get("component_name"),
     )
-    return any(component_platform_hint(value) == "switch" for value in component_hint_values)
+    if any(component_platform_hint(value) == "switch" for value in component_hint_values):
+        return True
+
+    if parent_category:
+        return False
+    return device_payload.get("type") in {"switch", "outlet"}
 
 
 def _component_state_key_map(
@@ -82,7 +118,11 @@ def _looks_like_switch_component(component: ComponentInstanceModel) -> bool:
     lowered = component.component_id.lower()
     category = to_category(component.category)
 
+    if component_platform_hint(component) == "event":
+        return False
     if matches_category(category, EVENT_INPUT_TOKENS):
+        return False
+    if matches_category(category, EVENT_INPUT_NAME_TOKENS):
         return False
     if any(token in lowered for token in EVENT_INPUT_TOKENS):
         return False
@@ -120,7 +160,6 @@ def _looks_like_switch_component(component: ComponentInstanceModel) -> bool:
         "direction",
         "mode",
         "position",
-        "lock",
     }
     if non_switch_features & features:
         return False
@@ -143,6 +182,14 @@ def _extract_indexed_switch_keys(state: Mapping[str, Any]) -> list[str]:
     keys = [str(key) for key in state.keys() if RAW_SWITCH_KEY_RE.match(str(key))]
     keys.sort(key=_raw_switch_sort_key)
     return keys
+
+
+def _switch_channel_allowed(device_payload: Mapping[str, Any], index: int | None) -> bool:
+    """Return false when product naming explicitly limits switch channel count."""
+    if index is None:
+        return True
+    count = switch_channel_count_hint(device_payload)
+    return count is None or index <= count
 
 
 def _resolve_component_control_key(
@@ -173,18 +220,33 @@ def _component_id_from_raw_key(raw_key: str) -> str:
     return f"switch_{match.group('index')}"
 
 
+def _index_from_raw_key(raw_key: str) -> int | None:
+    """Return indexed switch key index from N-p/N-sp control keys."""
+    match = RAW_SWITCH_KEY_RE.match(raw_key)
+    if match is None:
+        return None
+    return to_int(match.group("index"))
+
+
 def _build_switch_name(
-    base_name: str | None, component_id: str, control_key: str
+    base_name: str | None,
+    component_id: str,
+    control_key: str,
+    component: ComponentInstanceModel | None = None,
+    *,
+    device_payload: Mapping[str, Any] | None = None,
 ) -> str | None:
-    """构建 switch 显示名称，返回索引字符串或 None."""
+    """构建 switch 显示名称，避免裸数字通道名."""
     index = component_index(component_id)
     if index is None:
         match = RAW_SWITCH_KEY_RE.match(control_key)
         if match:
             index = to_int(match.group("index"))
-    if index is None:
-        return None
-    return str(index)
+    return channel_name_label(
+        index=index,
+        component=component,
+        device_payload=device_payload,
+    )
 
 
 def _params(device_payload: Mapping[str, Any]) -> dict[str, Any]:

@@ -20,16 +20,16 @@ from .diagnostics_helpers import (
 def test_option_status_reports_unloaded_runtime() -> None:
     """未加载 runtime 时仍应输出可判断的 options 状态."""
     entry = build_diagnostics_entry()
+    expected_platform_count = len(get_enabled_platforms(entry.options))
 
     assert option_status_diagnostics(entry, {}, None) == {
         "runtime_loaded": False,
         "runtime_reload_required": True,
         "platforms_match_options": False,
         "loaded_platform_count": 0,
-        "expected_platform_count": 13,
+        "expected_platform_count": expected_platform_count,
         "debug_mode_enabled": True,
         "scan_interval_seconds": 15,
-        "experimental_platforms_enabled": False,
         "hide_unknown_entities": False,
         "topology_change_repairs": False,
         "live_updates_enabled": False,
@@ -64,16 +64,16 @@ def test_option_status_reports_loaded_runtime_alignment() -> None:
     runtime = {
         "platforms": get_enabled_platforms(entry.options),
     }
+    expected_platform_count = len(get_enabled_platforms(entry.options))
 
     assert option_status_diagnostics(entry, runtime, coordinator) == {
         "runtime_loaded": True,
         "runtime_reload_required": False,
         "platforms_match_options": True,
-        "loaded_platform_count": 13,
-        "expected_platform_count": 13,
+        "loaded_platform_count": expected_platform_count,
+        "expected_platform_count": expected_platform_count,
         "debug_mode_enabled": True,
         "scan_interval_seconds": 15,
-        "experimental_platforms_enabled": False,
         "hide_unknown_entities": False,
         "topology_change_repairs": False,
         "live_updates_enabled": False,

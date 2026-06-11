@@ -9,7 +9,16 @@ LOCAL_HA_RUNTIME_VERIFIER_TEST_TOKENS = {
         ),
         "test_verify_local_ha_runtime.py": "runtime verifier test coverage",
         "test_verify_local_ha_storage.py": "storage verifier test coverage",
+        "test_verify_local_ha_storage_cleanup.py": (
+            "storage cleanup verifier test coverage"
+        ),
+        "test_verify_local_ha_storage_quality.py": (
+            "storage quality verifier test coverage"
+        ),
         "test_verify_local_ha_schema_cache.py": "schema cache verifier test coverage",
+        "test_verify_local_ha_config_entries.py": (
+            "config-entry storage verifier test coverage"
+        ),
     },
     "custom_components/yeelight_pro/tests/test_verify_local_ha.py": {
         "runtime_diff": "runtime drift unit coverage",
@@ -17,6 +26,9 @@ LOCAL_HA_RUNTIME_VERIFIER_TEST_TOKENS = {
         "ha_device_registry": "HA device registry module presence coverage",
         "test_required_modules_include_config_flow_options_helper": (
             "config flow options helper module presence coverage"
+        ),
+        "test_required_modules_include_runtime_template_helpers": (
+            "runtime template helper module presence coverage"
         ),
         "test_required_modules_include_protocol_contract_modules": (
             "protocol modules install-state coverage"
@@ -37,8 +49,8 @@ LOCAL_HA_RUNTIME_VERIFIER_TEST_TOKENS = {
         "ha_device_registry.py": "new runtime module sync coverage",
         "text.py": "forbidden legacy text platform sync regression marker",
     },
-    "custom_components/yeelight_pro/tests/test_verify_local_ha_storage.py": {
-        "verify_storage": "aggregate storage coverage",
+    "custom_components/yeelight_pro/tests/test_verify_local_ha_config_entries.py": {
+        "verify_storage": "config-entry storage verifier coverage",
         "test_verify_storage_rejects_unmigrated_config_entry_version": (
             "config entry migration version coverage"
         ),
@@ -54,14 +66,55 @@ LOCAL_HA_RUNTIME_VERIFIER_TEST_TOKENS = {
         "test_verify_storage_rejects_invalid_option_values": (
             "config entry option bounds coverage"
         ),
+    },
+    "custom_components/yeelight_pro/tests/test_verify_local_ha_storage.py": {
+        "verify_storage": "aggregate storage coverage",
+        "test_verify_storage_allows_cleanup_b_retained_disabled_entities": (
+            "cleanup B retained registry coverage"
+        ),
         "test_verify_storage_reports_platform_options_alignment": (
             "platform/options alignment coverage"
         ),
-        "test_verify_storage_rejects_experimental_domain_without_opt_in": (
-            "experimental platform disabled coverage"
+        "test_verify_storage_rejects_unsupported_platform_domain": (
+            "unsupported platform domain coverage"
         ),
         "test_verify_storage_reports_missing_files_without_raw_payload": (
             "sanitized storage failure coverage"
+        ),
+    },
+    "custom_components/yeelight_pro/tests/test_verify_local_ha_storage_quality.py": {
+        "test_verify_storage_rejects_source_devices_missing_registry_metadata": (
+            "source-device registry metadata coverage"
+        ),
+        "test_verify_storage_rejects_chinese_generic_source_device_models": (
+            "Chinese generic source-device model rejection coverage"
+        ),
+        "灯具": "Chinese light generic model fixture",
+        "继电器开关": "Chinese relay-switch generic model fixture",
+        "test_verify_storage_rejects_house_placeholder_device_names": (
+            "house placeholder device-name rejection coverage"
+        ),
+        "generated house helper names": "house placeholder verifier failure message",
+        "test_verify_storage_rejects_device_backed_entities_without_device_id": (
+            "device-backed entity registry coverage"
+        ),
+        "test_verify_storage_rejects_raw_numeric_entity_names": (
+            "raw numeric channel/entity-name rejection coverage"
+        ),
+        "test_verify_storage_rejects_unavailable_yeelight_restore_states": (
+            "Yeelight restore-state unavailable rejection coverage"
+        ),
+        "raw channel/action names": "raw numeric entity-name failure message",
+        "restored states are unavailable": (
+            "Yeelight restore-state unavailable failure message"
+        ),
+    },
+    "custom_components/yeelight_pro/tests/test_verify_local_ha_storage_cleanup.py": {
+        "test_verify_storage_fails_for_enabled_legacy_scene_entities": (
+            "legacy native scene registry failure coverage"
+        ),
+        "legacy native scene registry entries": (
+            "legacy scene cleanup verifier failure message"
         ),
     },
     "custom_components/yeelight_pro/tests/test_verify_local_ha_schema_cache.py": {
@@ -148,6 +201,7 @@ LOCAL_HA_RUNTIME_VERIFIER_TEST_TOKENS = {
         "test_main_runs_requested_repeat_count": "repeat execution coverage",
         "test_main_fails_when_any_repeat_run_fails": "repeat failure aggregation coverage",
         "test_main_fails_when_repeat_metrics_drift": "repeat drift failure coverage",
+        "runtime_entities": "active runtime metric drift coverage",
         "test_main_reports_stable_metrics_when_repeat_metrics_match": (
             "repeat stable metric success coverage"
         ),
@@ -168,6 +222,18 @@ LOCAL_HA_RUNTIME_VERIFIER_TEST_TOKENS = {
         ),
         "test_verify_logs_fails_for_error_after_latest_recovery": (
             "post-recovery error ordering coverage"
+        ),
+        "test_verify_runtime_entity_counts_accepts_active_distribution": (
+            "active runtime entity distribution coverage"
+        ),
+        "test_verify_runtime_entity_counts_normalizes_spaced_platform_logs": (
+            "spaced binary sensor runtime log coverage"
+        ),
+        "test_verify_runtime_entity_counts_rejects_old_switch_leak": (
+            "old switch leak runtime failure coverage"
+        ),
+        "test_verify_runtime_entity_counts_rejects_reconcile_total_mismatch": (
+            "active reconcile total mismatch coverage"
         ),
         "test_verify_synthetic_log_recovery_records_contract_fact": (
             "synthetic recovery success coverage"

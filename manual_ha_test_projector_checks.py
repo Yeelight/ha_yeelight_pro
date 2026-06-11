@@ -48,17 +48,14 @@ async def _check_extra_projectors(device: dict[str, object], *, domain: str) -> 
     from custom_components.yeelight_pro.projector.climate import project_climate
     from custom_components.yeelight_pro.projector.cover import project_cover
     from custom_components.yeelight_pro.projector.event import project_events
-    from custom_components.yeelight_pro.projector.lock import project_lock
 
     binary_sensors = project_binary_sensors(device, domain=domain)
     cover = project_cover(device, domain=domain)
     climate = project_climate(device, domain=domain)
-    lock = project_lock(device, domain=domain)
     events = project_events(device, domain=domain)
     assert isinstance(binary_sensors, list)
     assert isinstance(events, list)
     print(f"  ✅ 二值传感器投影: 返回 {len(binary_sensors)} 个")
     print(f"  ✅ 窗帘投影: {'成功' if cover else '返回 None'}")
     print(f"  ✅ 空调投影: {'成功' if climate else '返回 None'}")
-    print(f"  ✅ 门锁投影: {'成功' if lock else '返回 None'}")
     print(f"  ✅ 事件投影: 返回 {len(events)} 个")

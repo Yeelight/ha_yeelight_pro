@@ -5,8 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
-from custom_components.yeelight_pro.capabilities.mapping import platform_for_category
-
 DOMAIN = "yeelight_pro"
 
 
@@ -16,7 +14,6 @@ class LifecycleCoordinator:
 
     data: Mapping[Any, Mapping[str, Any]]
     scenes: list[dict[str, Any]] = field(default_factory=list)
-    automations: list[dict[str, Any]] = field(default_factory=list)
     groups: list[dict[str, Any]] = field(default_factory=list)
     house_id: int | None = None
     hide_unknown_entities: bool = True
@@ -30,6 +27,7 @@ def projection_payload(
     state: dict,
     params: dict | None = None,
     product_events: list[dict] | None = None,
+    properties: tuple[str, ...] = (),
     product_type: int | None = None,
     online: bool = True,
     component_category: str | None = None,
@@ -40,8 +38,9 @@ def projection_payload(
         "id": device_id,
         "device_id": device_id,
         "name": f"设备 {device_id}",
+        "iot_category": category,
         "category": category,
-        "type": platform_for_category(category, default=category),
+        "type": category,
         "online": online,
         "product_type": product_type,
         "params": dict(params or {}),
@@ -76,6 +75,15 @@ def projection_payload(
                 {
                     "component_id": component_id,
                     "category": component_category,
+                    "properties": [
+                        {
+                            "prop_id": prop,
+                            "kind": "state",
+                            "property_type": "apply",
+                            "access": "read_only",
+                        }
+                        for prop in properties
+                    ],
                     "events": list(product_events or []),
                 }
             ],

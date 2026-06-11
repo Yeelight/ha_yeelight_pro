@@ -20,7 +20,6 @@ class AuxiliaryData:
     rooms: list[dict[str, Any]]
     groups: list[dict[str, Any]]
     scenes: list[dict[str, Any]]
-    automations: list[dict[str, Any]]
 
 
 async def async_fetch_auxiliary_data(
@@ -53,12 +52,6 @@ async def async_fetch_auxiliary_data(
             client.get_scenes,
             house_id,
             current.scenes,
-        ),
-        automations=await _fetch_list(
-            "automations",
-            client.get_automations,
-            house_id,
-            current.automations,
         ),
     )
 

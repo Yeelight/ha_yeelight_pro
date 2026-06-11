@@ -7,6 +7,7 @@ from typing import Any, Mapping
 from homeassistant.components.fan import DIRECTION_FORWARD, DIRECTION_REVERSE, FanEntityFeature
 
 from ..canonical.models import ComponentInstanceModel, ComponentModel
+from ..device_display import channel_name_label
 from ..utils import matches_category, to_bool, to_category, to_int, to_str
 from .common import NumericRange, component_index, humanize_component_id
 from .fan_value_helpers import (
@@ -273,7 +274,7 @@ def _range_from_mapping(payload: Mapping[str, Any]) -> NumericRange | None:
 def _project_fan_name(component: ComponentInstanceModel) -> str | None:
     index = component_index(component.component_id)
     if index is not None:
-        return str(index)
+        return channel_name_label(index=index, component=component)
 
     lowered = component.component_id.lower()
     if lowered in {"fan", "main_fan", "fan_main"}:

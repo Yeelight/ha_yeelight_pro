@@ -68,7 +68,13 @@ from scripts.local_ha_verification.runtime import (  # noqa: E402
     verify_docker,
     verify_ha_url,
     verify_logs,
+    verify_runtime_entities,
     verify_synthetic_log_recovery,
+)
+from scripts.local_ha_verification.runtime_entities import (  # noqa: E402
+    latest_reconciled_active_count,
+    runtime_entity_counts,
+    verify_runtime_entity_counts,
 )
 from scripts.local_ha_verification.services import (  # noqa: E402
     registered_service_names,
@@ -130,7 +136,11 @@ __all__ = [
     "verify_installation",
     "verify_config_entry_options",
     "verify_logs",
+    "verify_runtime_entities",
     "verify_synthetic_log_recovery",
+    "verify_runtime_entity_counts",
+    "runtime_entity_counts",
+    "latest_reconciled_active_count",
     "verify_platform_options_alignment",
     "verify_product_schema_cache",
     "verify_service_schema_contracts",

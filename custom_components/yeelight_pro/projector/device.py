@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
+from ..core.device_classification import is_generic_model_label
 from ..canonical.models import DeviceInfoModel, HADeviceInstanceModel
+from ..device_display import device_model_name
 
 
 def project_device_info(instance: HADeviceInstanceModel) -> dict[str, Any] | None:
@@ -63,10 +65,18 @@ def project_device_info_model(device_info: DeviceInfoModel | None) -> dict[str, 
         "hw_version",
         "configuration_url",
         "entry_type",
+        "suggested_area",
     ):
         value = getattr(device_info, key)
         if value is not None:
             projected[key] = value
+
+    source = projected | {
+        "name": device_info.name,
+        "model": device_info.model,
+        "model_id": device_info.model_id,
+    }
+    _normalize_projected_model(projected, source)
 
     return projected or None
 
@@ -92,10 +102,13 @@ def _project_mapping_device_info(device_info: Mapping[str, Any]) -> dict[str, An
         "hw_version",
         "configuration_url",
         "entry_type",
+        "suggested_area",
     ):
         value = device_info.get(key)
         if value is not None:
             projected[key] = value
+
+    _normalize_projected_model(projected, device_info)
 
     return projected or None
 
@@ -115,6 +128,22 @@ def _project_pair(value: Any) -> tuple[str, str] | None:
     if isinstance(value, (list, tuple)) and len(value) == 2:
         return (str(value[0]), str(value[1]))
     return None
+
+
+def _normalize_projected_model(
+    projected: dict[str, Any],
+    source: Mapping[str, Any],
+) -> None:
+    """Replace broad fallback model labels before they reach device registry."""
+    model = projected.get("model")
+    if model is None or not is_generic_model_label(model):
+        return
+
+    normalized = device_model_name(source)
+    if normalized and not is_generic_model_label(normalized):
+        projected["model"] = normalized
+        return
+    projected.pop("model", None)
 
 
 def flatten_instance_state(instance: HADeviceInstanceModel | None) -> dict[str, Any]:

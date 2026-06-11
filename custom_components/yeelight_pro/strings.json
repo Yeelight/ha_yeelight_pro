@@ -87,11 +87,10 @@
     "step": {
       "init": {
         "title": "Yeelight Pro 选项",
-        "description": "调整运行时刷新、调试和实验能力。",
+        "description": "调整运行时刷新、调试、实时更新和设备导入过滤。",
         "data": {
           "scan_interval": "轮询间隔（秒）",
           "debug_mode": "启用调试服务",
-          "experimental_platforms": "启用实验平台",
           "hide_unknown_entities": "隐藏未知能力实体",
           "topology_change_repairs": "设备拓扑变化时创建 Repairs 提示",
           "device_import_filter_enabled": "启用设备导入过滤",
@@ -160,6 +159,19 @@
       }
     }
   },
+  "entity": {
+    "select": {
+      "active_room": {
+        "name": "当前房间"
+      },
+      "active_group": {
+        "name": "当前灯组"
+      },
+      "active_scene": {
+        "name": "当前场景"
+      }
+    }
+  },
   "services": {
     "assign_areas": {
       "name": "批量分配区域",
@@ -205,7 +217,7 @@
   "issues": {
     "device_topology_changed": {
       "title": "Yeelight Pro 设备清单已更新",
-      "description": "Yeelight Pro 检测到设备或拓扑信息发生变化，并已自动同步 Home Assistant 设备和实体注册表。\n\n本次变化摘要：新增 {added}，移除 {removed}，元数据变化 {metadata_changed}。\n\n当前聚合数量：设备 {devices}，网关 {gateways}，区域 {areas}，房间 {rooms}，灯组 {groups}，场景 {scenes}，自动化 {automations}。\n\n如果设备或实体显示不符合预期，请进入该集成页面检查实体列表，必要时重新加载集成。"
+      "description": "Yeelight Pro 检测到设备或拓扑信息发生变化，并已自动同步 Home Assistant 设备和实体注册表。\n\n本次变化摘要：新增 {added}，移除 {removed}，元数据变化 {metadata_changed}。\n\n当前聚合数量：设备 {devices}，网关 {gateways}，区域 {areas}，房间 {rooms}，灯组 {groups}，场景 {scenes}。\n\n如果设备或实体显示不符合预期，请进入该集成页面检查实体列表，必要时重新加载集成。"
     }
   }
 }

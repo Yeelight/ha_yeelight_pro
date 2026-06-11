@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any, Mapping
-
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import (
     area_registry as ar,
@@ -13,71 +11,17 @@ from homeassistant.helpers import (
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.yeelight_pro.const import DOMAIN
-from custom_components.yeelight_pro.ha_device_registry import (
-    async_sync_gateway_devices,
+from custom_components.yeelight_pro.ha_device_registry import async_sync_gateway_devices
+
+from .ha_device_registry_helpers import (
+    DeviceRegistryCoordinator,
+    device_payload,
+    fallback_device_payload,
 )
-
-
-class _Coordinator:
-    data: Mapping[Any, Mapping[str, Any]]
-    house_id: int | None
-
-    def __init__(
-        self,
-        data: Mapping[Any, Mapping[str, Any]],
-        gateways: Mapping[Any, Mapping[str, Any]] | None = None,
-    ) -> None:
-        self.data = data
-        self.house_id = 12345
-        self._gateways = gateways or {}
-
-    def get_gateway_devices(self) -> Mapping[Any, Mapping[str, Any]]:
-        return dict(self._gateways)
 
 
 def _entry() -> MockConfigEntry:
     return MockConfigEntry(domain=DOMAIN, entry_id="entry-1")
-
-
-def _device_payload(
-    *,
-    identifier: str,
-    name: str = "客厅主灯",
-    model: str = "智能筒灯",
-    suggested_area: str = "客厅",
-) -> dict:
-    return {
-        "ha_device_instance": {
-            "device_info": {
-                "identifiers": [[DOMAIN, identifier]],
-                "manufacturer": "Yeelight",
-                "model": model,
-                "model_id": "YL-100",
-                "name": name,
-                "suggested_area": suggested_area,
-            }
-        }
-    }
-
-
-def _fallback_device_payload(
-    *,
-    identifier: str,
-    name: str = "墙壁开关1",
-    model: str = "relay_switch",
-    suggested_area: str = "客厅",
-) -> dict:
-    return {
-        "device_info": {
-            "identifiers": [[DOMAIN, identifier], [DOMAIN, f"device:{identifier}"]],
-            "manufacturer": "Yeelight",
-            "model": model,
-            "model_id": "YL-201",
-            "name": name,
-            "suggested_area": suggested_area,
-        },
-        "device_id": int(identifier),
-    }
 
 
 async def test_sync_gateway_devices_sets_area_id_from_existing_suggested_area(
@@ -87,7 +31,9 @@ async def test_sync_gateway_devices_sets_area_id_from_existing_suggested_area(
     entry = _entry()
     entry.add_to_hass(hass)
     area = ar.async_get(hass).async_create("客厅")
-    coordinator = _Coordinator({"device-1": _device_payload(identifier="387958")})
+    coordinator = DeviceRegistryCoordinator({
+        "device-1": device_payload(identifier="387958")
+    })
 
     await async_sync_gateway_devices(hass, entry, coordinator)
 
@@ -105,7 +51,9 @@ async def test_sync_gateway_devices_creates_area_from_source_room_name(
     entry = _entry()
     entry.add_to_hass(hass)
     area_registry = ar.async_get(hass)
-    coordinator = _Coordinator({"device-1": _device_payload(identifier="387958")})
+    coordinator = DeviceRegistryCoordinator({
+        "device-1": device_payload(identifier="387958")
+    })
 
     await async_sync_gateway_devices(hass, entry, coordinator)
 
@@ -131,7 +79,9 @@ async def test_sync_gateway_devices_does_not_override_user_area(
         name="旧名称",
     )
     device_registry.async_update_device(existing.id, area_id=user_area.id)
-    coordinator = _Coordinator({"device-1": _device_payload(identifier="387958")})
+    coordinator = DeviceRegistryCoordinator({
+        "device-1": device_payload(identifier="387958")
+    })
 
     await async_sync_gateway_devices(hass, entry, coordinator)
 
@@ -147,8 +97,8 @@ async def test_sync_gateway_devices_uses_metadata_only_fallback_device_info(
     entry = _entry()
     entry.add_to_hass(hass)
     area = ar.async_get(hass).async_create("客厅")
-    coordinator = _Coordinator(
-        {"device-1": _fallback_device_payload(identifier="304784336")}
+    coordinator = DeviceRegistryCoordinator(
+        {"device-1": fallback_device_payload(identifier="304784336")}
     )
 
     await async_sync_gateway_devices(hass, entry, coordinator)
@@ -158,7 +108,7 @@ async def test_sync_gateway_devices_uses_metadata_only_fallback_device_info(
     )
     assert device is not None
     assert device.name == "墙壁开关1"
-    assert device.model == "relay_switch"
+    assert device.model == "墙壁开关"
     assert device.area_id == area.id
 
 
@@ -176,8 +126,8 @@ async def test_sync_gateway_devices_relinks_existing_device_entities(
         config_entry=entry,
     )
     assert entity_entry.device_id is None
-    coordinator = _Coordinator(
-        {"device-1": _fallback_device_payload(identifier="304784336")}
+    coordinator = DeviceRegistryCoordinator(
+        {"device-1": fallback_device_payload(identifier="304784336")}
     )
 
     await async_sync_gateway_devices(hass, entry, coordinator)
@@ -189,3 +139,54 @@ async def test_sync_gateway_devices_relinks_existing_device_entities(
     assert device is not None
     assert updated_entity is not None
     assert updated_entity.device_id == device.id
+
+
+async def test_sync_gateway_devices_updates_legacy_house_placeholder_devices(
+    hass: HomeAssistant,
+) -> None:
+    """旧家庭壳设备不能继续显示 Yeelight Pro/House 加 id 的占位名."""
+    entry = _entry()
+    entry.add_to_hass(hass)
+    device_registry = dr.async_get(hass)
+    legacy = device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, "12345")},
+        manufacturer="Yeelight",
+        name="Yeelight Pro 12345",
+    )
+    device_registry.async_update_device(legacy.id, name_by_user="House 12345")
+    coordinator = DeviceRegistryCoordinator({})
+
+    await async_sync_gateway_devices(hass, entry, coordinator)
+
+    updated = device_registry.async_get(legacy.id)
+    assert updated is not None
+    assert updated.name == "绿地中央公园"
+    assert updated.name_by_user is None
+    assert updated.model == "Yeelight Pro 家庭"
+    assert (DOMAIN, "12345") in updated.identifiers
+    assert (DOMAIN, "house:12345") in updated.identifiers
+
+
+async def test_sync_gateway_devices_schedules_save_to_drop_legacy_unknown_fields(
+    hass: HomeAssistant,
+    monkeypatch,
+) -> None:
+    """当前 HA 不支持 model_id 时，应重写 registry 以丢弃旧未知字段."""
+    entry = _entry()
+    entry.add_to_hass(hass)
+    device_registry = dr.async_get(hass)
+    save_calls = 0
+
+    def _record_save() -> None:
+        nonlocal save_calls
+        save_calls += 1
+
+    monkeypatch.setattr(device_registry, "async_schedule_save", _record_save)
+    coordinator = DeviceRegistryCoordinator(
+        {"device-1": fallback_device_payload(identifier="304784336")}
+    )
+
+    await async_sync_gateway_devices(hass, entry, coordinator)
+
+    assert save_calls >= 1

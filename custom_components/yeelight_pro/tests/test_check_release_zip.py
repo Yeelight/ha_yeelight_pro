@@ -11,15 +11,23 @@ def test_release_zip_required_files_include_runtime_contracts() -> None:
     """发布 zip 校验必须覆盖关键运行时和协议边界文件。"""
     assert {
         "custom_components/yeelight_pro/capabilities/spec_correction_normalizers.py",
+        "custom_components/yeelight_pro/capabilities/ha_core_platforms.py",
         "custom_components/yeelight_pro/converter/runtime_inference_helpers.py",
+        "custom_components/yeelight_pro/converter/runtime_template_controls.py",
+        "custom_components/yeelight_pro/converter/runtime_template_hvac.py",
+        "custom_components/yeelight_pro/converter/runtime_template_sensors.py",
+        "custom_components/yeelight_pro/converter/runtime_templates.py",
+        "custom_components/yeelight_pro/converter/runtime_subdevices.py",
         "custom_components/yeelight_pro/config_flow_account.py",
         "custom_components/yeelight_pro/config_flow_device_picker.py",
         "custom_components/yeelight_pro/config_flow_options.py",
+        "custom_components/yeelight_pro/device_display.py",
         "custom_components/yeelight_pro/core/client_node_base.py",
         "custom_components/yeelight_pro/core/client_node_api.py",
         "custom_components/yeelight_pro/core/client_node_lists.py",
         "custom_components/yeelight_pro/core/client_node_properties.py",
         "custom_components/yeelight_pro/core/coordinator_controls.py",
+        "custom_components/yeelight_pro/core/device_classification_categories.py",
         "custom_components/yeelight_pro/core/device_metadata.py",
         "custom_components/yeelight_pro/core/lan_control.py",
         "custom_components/yeelight_pro/core/scan_login.py",
@@ -27,6 +35,7 @@ def test_release_zip_required_files_include_runtime_contracts() -> None:
         "custom_components/yeelight_pro/debug_service.py",
         "custom_components/yeelight_pro/diagnostics.py",
         "custom_components/yeelight_pro/entry_title.py",
+        "custom_components/yeelight_pro/entity_category.py",
         "custom_components/yeelight_pro/lan_contract.py",
         "custom_components/yeelight_pro/lan_methods.py",
         "custom_components/yeelight_pro/lan_payload.py",
@@ -73,6 +82,31 @@ def test_validate_existing_zip_rejects_unsafe_paths() -> None:
     assert (
         "directory entry is not allowed: custom_components/yeelight_pro/tests/"
     ) in errors
+
+
+def test_validate_existing_zip_rejects_unsupported_runtime_platform_files() -> None:
+    """发布 zip 不能重新带入易来协议无支撑的平台文件."""
+    names = {
+        *check_release_zip.REQUIRED_FILES,
+        "custom_components/yeelight_pro/lock.py",
+        "custom_components/yeelight_pro/scene.py",
+        "custom_components/yeelight_pro/projector/vacuum.py",
+    }
+
+    errors = check_release_zip._validate_names(names)
+
+    assert (
+        "forbidden release file: custom_components/yeelight_pro/lock.py"
+        in errors
+    )
+    assert (
+        "forbidden release file: custom_components/yeelight_pro/scene.py"
+        in errors
+    )
+    assert (
+        "forbidden release file: custom_components/yeelight_pro/projector/vacuum.py"
+        in errors
+    )
 
 
 def test_write_zip_returns_validated_runtime_names(tmp_path: Path) -> None:

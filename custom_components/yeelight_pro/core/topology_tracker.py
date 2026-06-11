@@ -41,7 +41,6 @@ class TopologyTracker:
         rooms: list[dict[str, Any]],
         groups: list[dict[str, Any]],
         scenes: list[dict[str, Any]],
-        automations: list[dict[str, Any]],
     ) -> None:
         """Update generation only when topology signature changes."""
         snapshot = build_topology_snapshot(
@@ -51,7 +50,6 @@ class TopologyTracker:
             rooms=rooms,
             groups=groups,
             scenes=scenes,
-            automations=automations,
         )
         signature = topology_snapshot_signature(snapshot)
         if signature == self._signature:
@@ -72,4 +70,3 @@ class TopologyTracker:
             previous_generation=previous_generation,
             current_generation=self._generation,
         )
-

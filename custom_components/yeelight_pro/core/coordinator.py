@@ -27,6 +27,7 @@ from .exceptions import (
     ConnectionError,
     safe_error_summary,
 )
+from .property_hydration import async_hydrate_device_properties
 from .coordinator_runtime import CoordinatorRuntimeMixin
 from .runtime_bridge import RuntimeEventDeduper
 from .runtime_state import RuntimeStateStore
@@ -50,9 +51,11 @@ class YeelightProCoordinator(
         client: YeelightProClient,
         house_id: int,
         options: Mapping[str, Any] | None = None,
+        entry_data: Mapping[str, Any] | None = None,
     ):
         """初始化协调器."""
         self.options = dict(options or {})
+        self.entry_data = dict(entry_data or {})
         super().__init__(
             hass,
             _LOGGER,
@@ -67,7 +70,6 @@ class YeelightProCoordinator(
         self.rooms: list[dict[str, Any]] = []
         self.groups: list[dict[str, Any]] = []
         self.scenes: list[dict[str, Any]] = []
-        self.automations: list[dict[str, Any]] = []
         self._runtime_state = RuntimeStateStore()
         self._push_event_deduper = RuntimeEventDeduper()
         self._topology_tracker = TopologyTracker()
@@ -115,6 +117,12 @@ class YeelightProCoordinator(
             product_schemas = await self._async_get_product_schemas(
                 [*devices, *gateways]
             )
+            devices = await async_hydrate_device_properties(
+                self.client,
+                house_id=self.house_id,
+                devices=devices,
+                product_schemas=product_schemas,
+            )
 
             await self._async_fetch_auxiliary_data()
 
@@ -133,14 +141,13 @@ class YeelightProCoordinator(
 
             _LOGGER.debug(
                 "Updated %s devices, %s gateways, %s areas, %s rooms, "
-                "%s groups, %s scenes, %s automations",
+                "%s groups, %s scenes",
                 len(data),
                 len(gateway_data),
                 len(self.areas),
                 len(self.rooms),
                 len(self.groups),
                 len(self.scenes),
-                len(self.automations),
             )
             return data
 
@@ -153,7 +160,7 @@ class YeelightProCoordinator(
             raise self._update_failed("Error communicating with API", err) from None
 
     async def _async_fetch_auxiliary_data(self) -> None:
-        """获取 areas/rooms/groups/scenes/automations 辅助数据."""
+        """获取 areas/rooms/groups/scenes 辅助数据."""
         auxiliary = await async_fetch_auxiliary_data(
             self.client,
             self.house_id,
@@ -162,14 +169,12 @@ class YeelightProCoordinator(
                 rooms=self.rooms,
                 groups=self.groups,
                 scenes=self.scenes,
-                automations=self.automations,
             ),
         )
         self.areas = auxiliary.areas
         self.rooms = auxiliary.rooms
         self.groups = auxiliary.groups
         self.scenes = auxiliary.scenes
-        self.automations = auxiliary.automations
 
     async def _async_get_gateways(self) -> list[dict[str, Any]]:
         """获取网关列表，普通失败降级为空列表."""
@@ -216,7 +221,6 @@ class YeelightProCoordinator(
             rooms=self.rooms,
             groups=self.groups,
             scenes=self.scenes,
-            automations=self.automations,
         )
 
     def get_device(self, device_id: int) -> dict[str, Any] | None:

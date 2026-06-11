@@ -65,6 +65,9 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         "hacs_preflight_local_ha_runtime_verifier_sources.py": (
             "runtime verifier source token split coverage"
         ),
+        "hacs_preflight_local_ha_runtime_verifier_storage.py": (
+            "runtime verifier storage token split coverage"
+        ),
         "hacs_preflight_local_ha_runtime_core_tests.py": (
             "runtime core test token split coverage"
         ),
@@ -102,6 +105,10 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         "_is_ignored_by_gitignore": "required release gitignore evaluator",
         "check_json": "metadata JSON release guard",
         "check_platform_constants": "platform constant release guard",
+        "FORBIDDEN_RUNTIME_PLATFORM_FILES": "unsupported runtime platform denylist",
+        "check_forbidden_runtime_platform_files": (
+            "unsupported runtime platform file guard"
+        ),
         "check_python_file_line_counts": "Python source line-count release guard",
         "_iter_line_count_python_files": "root Python line-count coverage",
         "RELEASE_QUALITY_GATE_TOKENS": "release quality gate token source",
@@ -134,9 +141,7 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
             "runtime options contract preflight helper"
         ),
         "async_attach_trigger": "device trigger attach coverage guard",
-        "CONF_EXPERIMENTAL_PLATFORMS": (
-            "runtime options platform reload token guard"
-        ),
+        "CONF_HIDE_UNKNOWN_ENTITIES": "runtime options reload token guard",
         "test_debug_service.py": "debug service runtime-option guard",
         "debug service is gated by debug_mode": "debug service mode gate token",
     },
@@ -151,6 +156,7 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         "FORBIDDEN_PARTS": "release zip forbidden directory guard",
         "FORBIDDEN_SUFFIXES": "release zip generated suffix guard",
         "REQUIRED_FILES": "release zip required runtime file guard",
+        "entity_category.py": "entity category helper zip required file guard",
         "client_node_api.py": "Open API node helper zip required file guard",
         "client_node_base.py": "Open API node base helper zip required file guard",
         "client_node_lists.py": "Open API node list helper zip required file guard",
@@ -161,8 +167,22 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         "runtime_inference_helpers.py": (
             "runtime inference helper zip required file guard"
         ),
+        "runtime_template_controls.py": (
+            "runtime control template zip required file guard"
+        ),
+        "runtime_template_sensors.py": (
+            "runtime sensor template zip required file guard"
+        ),
+        "runtime_template_hvac.py": (
+            "runtime HVAC template zip required file guard"
+        ),
+        "runtime_templates.py": "runtime template facade zip required file guard",
+        "runtime_subdevices.py": "OpenAPI sub-device helper zip required file guard",
         "scan_login_contract.py": "scan-login contract zip required file guard",
         "projector/event_helpers.py": "event projector helper zip required file guard",
+        "projector/property_control_common.py": (
+            "property control common helper zip required file guard"
+        ),
         "projector/sensor_helpers.py": "sensor projector helper zip required file guard",
         "name.endswith(\"/\")": "release zip directory entry guard",
         "\"..\" in path.parts": "release zip ZipSlip guard",
@@ -284,8 +304,8 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         ),
     },
     "custom_components/yeelight_pro/tests/test_hacs_preflight_release_claims.py": {
-        "test_gap_review_is_scanned_for_stale_release_claims": (
-            "ha_xiaomi_home gap review claim guard coverage"
+        "test_top_level_goal_audit_is_scanned_for_stale_release_claims": (
+            "goal audit claim guard coverage"
         ),
         "test_all_top_level_docs_are_scanned_for_stale_release_claims": (
             "top-level docs claim scan coverage"

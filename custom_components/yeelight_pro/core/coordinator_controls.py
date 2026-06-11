@@ -9,7 +9,6 @@ from .commands import (
     async_control_group as async_execute_control_group,
     async_execute_scene as async_execute_scene_command,
     async_toggle_device as async_execute_toggle_device,
-    async_trigger_automation as async_trigger_automation_command,
 )
 from .device_payload import DevicePayloadBuilder
 from .exceptions import DeviceNotFoundError
@@ -121,16 +120,6 @@ class CoordinatorControlMixin:
                 house_id=self.house_id,
                 scene_id=scene_id,
             )
-
-    async def async_trigger_automation(
-        self: _ControlCoordinator,
-        automation_id: str,
-    ) -> None:
-        """Manually trigger an automation."""
-        await async_trigger_automation_command(
-            self.client,
-            automation_id=automation_id,
-        )
 
     async def async_control_group(
         self: _ControlCoordinator,

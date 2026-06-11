@@ -37,11 +37,10 @@ _SPLIT_CONFIG_FLOW_CONTRACT_TEST_TOKENS = {
         "CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES": (
             "manual device filter id coverage"
         ),
-        "get_enabled_platforms": "experimental platform default gate coverage",
-        "test_enabled_platforms_hide_experimental_by_default": (
-            "experimental platform default-off coverage"
+        "get_enabled_platforms": "runtime platform set coverage",
+        "test_enabled_platforms_match_supported_platforms": (
+            "unsupported platform removal coverage"
         ),
-        "EXPERIMENTAL_PLATFORMS": "experimental platform constant coverage",
     },
     "tests/test_options_flow_device_picker.py": {
         "test_options_flow_cloud_entry_shows_real_device_picker_opener": (
@@ -59,6 +58,7 @@ _SPLIT_CONFIG_FLOW_CONTRACT_TEST_TOKENS = {
         "test_options_flow_real_device_picker_load_error_is_redacted": (
             "options real-device picker redaction coverage"
         ),
+        "易来开关设备": "options picker friendly type label coverage",
         "CONF_DEVICE_IMPORT_FILTER_PICKER": "options picker opener field coverage",
         "Kitchen Secret": "options picker label privacy marker",
     },
@@ -157,6 +157,9 @@ _SPLIT_CONFIG_FLOW_CONTRACT_TEST_TOKENS = {
         "test_device_choices_normalize_open_api_rows": (
             "device picker Open API row normalization coverage"
         ),
+        "test_device_choices_use_friendly_type_labels": (
+            "device picker friendly type label coverage"
+        ),
         "test_cloud_devices_schema_uses_multi_select_options": (
             "device picker multi-select schema coverage"
         ),
@@ -174,6 +177,7 @@ _SPLIT_CONFIG_FLOW_CONTRACT_TEST_TOKENS = {
     "config_flow_device_picker.py": {
         "async_load_device_choices": "cloud device picker API loader",
         "get_devices(house_id)": "cloud device picker uses house device list",
+        "device_type_label": "cloud device picker friendly type summary",
         "device_import_filter_for_selected_devices": (
             "cloud device picker filter builder"
         ),

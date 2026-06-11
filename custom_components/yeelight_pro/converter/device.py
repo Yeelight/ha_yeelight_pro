@@ -72,6 +72,9 @@ class CanonicalDeviceInstanceBuilder:
         return ComponentInstanceModel.from_dict(
             {
                 "component_id": payload.component_key,
+                "name": payload.name,
+                "desc": payload.desc,
+                "index": payload.index,
                 "component_type": payload.component_type,
                 "category": payload.category,
                 "available": payload.available,

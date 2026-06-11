@@ -104,7 +104,7 @@ async def test_cleanup_registry_service_confirm_disables_stale_entities(
     assert response["disabled_entities"] == 1
     assert response["stale_devices"] == 0
     assert registry.updated_entities == [
-        ("scene.stale", er.RegistryEntryDisabler.INTEGRATION)
+        ("scene.stale", {"disabled_by": er.RegistryEntryDisabler.INTEGRATION})
     ]
     assert registry.removed_entity_ids == []
     audit = getattr(coordinator, "_yeelight_pro_last_entity_registry_cleanup_audit")
@@ -167,7 +167,7 @@ async def test_cleanup_registry_service_disables_entities_excluded_by_import_fil
     assert dry_run["entries"][0]["entity_domains"] == {"light": 1}
     assert response["disabled_entities"] == 1
     assert registry.updated_entities == [
-        ("light.blocked", er.RegistryEntryDisabler.INTEGRATION)
+        ("light.blocked", {"disabled_by": er.RegistryEntryDisabler.INTEGRATION})
     ]
     assert registry.removed_entity_ids == []
 

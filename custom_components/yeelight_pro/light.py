@@ -23,7 +23,7 @@ from .entity_errors import raise_service_error
 from .projector.light import (
     HALightProjection,
     NumericRange,
-    project_light,
+    project_lights,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -56,21 +56,36 @@ def _iter_light_entities(coordinator: YeelightProCoordinator) -> list["YeelightP
     """按当前拓扑生成灯光实体候选。"""
     lights: list[YeelightProLight] = []
     for device_id, device_data in coordinator.data.items():
-        if project_light(device_data, domain=DOMAIN) is not None:
-            lights.append(YeelightProLight(coordinator, device_id))
+        for projection in project_lights(device_data, domain=DOMAIN):
+            lights.append(
+                YeelightProLight(
+                    coordinator,
+                    device_id,
+                    component_id=projection.component_id,
+                )
+            )
     return lights
 
 
 class YeelightProLight(CoordinatorEntity, LightEntity):
     """Yeelight Pro 灯光实体。"""
 
-    def __init__(self, coordinator: YeelightProCoordinator, device_id: int) -> None:
+    def __init__(
+        self,
+        coordinator: YeelightProCoordinator,
+        device_id: int,
+        *,
+        component_id: str | None = None,
+    ) -> None:
         """初始化灯光实体。"""
         super().__init__(coordinator)
         self._device_id = device_id
+        self._component_id = component_id
         projection = self._projection
         self._attr_unique_id = (
-            projection.unique_id if projection is not None else f"{DOMAIN}_{device_id}_light"
+            projection.unique_id
+            if projection is not None
+            else f"{DOMAIN}_{device_id}_{component_id or 'light'}"
         )
         self._attr_has_entity_name = True
 
@@ -80,7 +95,13 @@ class YeelightProLight(CoordinatorEntity, LightEntity):
         device = self.coordinator.get_device(self._device_id)
         if not device:
             return None
-        return project_light(device, domain=DOMAIN)
+        projections = project_lights(device, domain=DOMAIN)
+        if self._component_id is None:
+            return projections[0] if projections else None
+        return next(
+            (item for item in projections if item.component_id == self._component_id),
+            None,
+        )
 
     @property
     def icon(self) -> str | None:
@@ -104,10 +125,7 @@ class YeelightProLight(CoordinatorEntity, LightEntity):
         projection = self._projection
         if projection is not None:
             return projection.name
-        device_data = self.coordinator.get_device(self._device_id)
-        if device_data:
-            return device_data.get("name", f"Light {self._device_id}")
-        return f"Light {self._device_id}"
+        return "照明"
 
     @property
     def available(self) -> bool:
@@ -186,12 +204,15 @@ class YeelightProLight(CoordinatorEntity, LightEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """开启灯光。"""
-        params: dict[str, Any] = {"p": True}
         projection = self._projection
+        params: dict[str, Any] = {
+            (projection.power_key if projection is not None else "p"): True
+        }
 
         # 设置亮度
         if ATTR_BRIGHTNESS in kwargs:
-            params["l"] = self._brightness_from_ha(
+            brightness_key = projection.brightness_key if projection is not None else "l"
+            params[brightness_key] = self._brightness_from_ha(
                 kwargs[ATTR_BRIGHTNESS],
                 projection.brightness_range if projection is not None else None,
             )
@@ -203,7 +224,7 @@ class YeelightProLight(CoordinatorEntity, LightEntity):
             and ColorMode.COLOR_TEMP in projection.supported_color_modes
         ):
             kelvin = int(kwargs[ATTR_COLOR_TEMP_KELVIN])
-            params["ct"] = self._clamp_color_temp_kelvin(
+            params[projection.color_temp_key] = self._clamp_color_temp_kelvin(
                 kelvin,
                 projection.color_temp_range_kelvin,
             )
@@ -212,7 +233,7 @@ class YeelightProLight(CoordinatorEntity, LightEntity):
         if ATTR_RGB_COLOR in kwargs:
             r, g, b = kwargs[ATTR_RGB_COLOR]
             color = (r << 16) | (g << 8) | b
-            params["c"] = color
+            params[projection.rgb_key if projection is not None else "c"] = color
 
         try:
             await self.coordinator.async_control_device(self._device_id, params)
@@ -221,9 +242,11 @@ class YeelightProLight(CoordinatorEntity, LightEntity):
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """关闭灯光。"""
+        projection = self._projection
+        power_key = projection.power_key if projection is not None else "p"
         try:
             await self.coordinator.async_control_device(
-                self._device_id, {"p": False}
+                self._device_id, {power_key: False}
             )
         except YeelightProError as err:
             raise_service_error("light.turn_off", err)

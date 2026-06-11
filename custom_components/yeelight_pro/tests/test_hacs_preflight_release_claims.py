@@ -9,11 +9,11 @@ import pytest
 from scripts import hacs_preflight
 
 
-def test_gap_review_is_scanned_for_stale_release_claims(
+def test_top_level_goal_audit_is_scanned_for_stale_release_claims(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """ha_xiaomi_home gap review 必须纳入 release-facing claim guard."""
+    """目标审计文档必须纳入 release-facing claim guard."""
     root = tmp_path
     docs_root = root / "docs"
     docs_root.mkdir()
@@ -22,7 +22,7 @@ def test_gap_review_is_scanned_for_stale_release_claims(
     _write_test_file(root / "CHANGELOG.md", "")
     _write_test_file(root / "RELEASE_GUIDE.md", "")
     _write_test_file(
-        docs_root / "HA_XIAOMI_HOME_GAP_REVIEW.md",
+        docs_root / "GOAL_COMPLETION_AUDIT.md",
         "live WebSocket is implemented",
     )
     _write_test_file(docs_root / "IOT_SPEC_REGISTRY.md", "")
@@ -31,7 +31,7 @@ def test_gap_review_is_scanned_for_stale_release_claims(
     errors = hacs_preflight._check_readme_claims()
 
     assert (
-        "stale release claim in docs/HA_XIAOMI_HOME_GAP_REVIEW.md: "
+        "stale release claim in docs/GOAL_COMPLETION_AUDIT.md: "
         "live WebSocket is implemented"
     ) in errors
 
@@ -220,10 +220,6 @@ def test_release_claim_guard_rejects_obsolete_oauth_decision_claims(
     _write_test_file(root / "CHANGELOG.md", "")
     _write_test_file(root / "RELEASE_GUIDE.md", "")
     _write_test_file(
-        docs_root / "HA_XIAOMI_HOME_GAP_REVIEW.md",
-        "Home Assistant OAuth product approval",
-    )
-    _write_test_file(
         docs_root / "MIGRATION_PLAN.md",
         "Home Assistant OAuth 取舍",
     )
@@ -236,7 +232,6 @@ def test_release_claim_guard_rejects_obsolete_oauth_decision_claims(
 
     errors = hacs_preflight._check_readme_claims()
 
-    assert any("docs/HA_XIAOMI_HOME_GAP_REVIEW.md" in error for error in errors)
     assert any("docs/MIGRATION_PLAN.md: Home Assistant OAuth 取舍" in error for error in errors)
     assert any(
         "docs/PROJECT_SUMMARY.md: Home Assistant OAuth 登录是否仍作为扫码登录之外的目标"

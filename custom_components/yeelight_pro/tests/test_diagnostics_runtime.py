@@ -11,12 +11,12 @@ from homeassistant.core import HomeAssistant
 from custom_components.yeelight_pro.capabilities import iot_registry
 from custom_components.yeelight_pro.const import (
     CONF_DEBUG_MODE,
-    CONF_EXPERIMENTAL_PLATFORMS,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_SCAN_INTERVAL,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
     CONNECTION_MODE_CLOUD,
     DOMAIN,
+    PLATFORMS,
 )
 from custom_components.yeelight_pro import _OptionalRuntimeStartupFailure
 from custom_components.yeelight_pro.diagnostics import (
@@ -59,7 +59,7 @@ async def test_diagnostics_reports_aggregate_runtime_data(
         "last_update_success": True,
         "last_exception_type": None,
         "loaded_platform_count": 2,
-        "expected_platform_count": 13,
+        "expected_platform_count": len(PLATFORMS),
         "platforms_match_options": False,
         "push": None,
         "lan": None,
@@ -69,7 +69,6 @@ async def test_diagnostics_reports_aggregate_runtime_data(
         CONF_SCAN_INTERVAL: 15,
         CONF_DEBUG_MODE: True,
         CONF_HIDE_UNKNOWN_ENTITIES: False,
-        CONF_EXPERIMENTAL_PLATFORMS: False,
         CONF_TOPOLOGY_CHANGE_REPAIRS: False,
     }
     assert data["runtime"]["option_status"] == {
@@ -77,10 +76,9 @@ async def test_diagnostics_reports_aggregate_runtime_data(
         "runtime_reload_required": True,
         "platforms_match_options": False,
         "loaded_platform_count": 2,
-        "expected_platform_count": 13,
+        "expected_platform_count": len(PLATFORMS),
         "debug_mode_enabled": True,
         "scan_interval_seconds": 15,
-        "experimental_platforms_enabled": False,
         "hide_unknown_entities": False,
         "topology_change_repairs": False,
         "live_updates_enabled": False,
@@ -102,7 +100,6 @@ async def test_diagnostics_reports_aggregate_runtime_data(
         "rooms": 1,
         "groups": 1,
         "scenes": 1,
-        "automations": 1,
     }
     assert data["runtime"]["availability"] == {
         "devices": {"online": 1, "offline": 1, "unknown": 0},
@@ -149,35 +146,36 @@ async def test_diagnostics_reports_aggregate_runtime_data(
         "writable_properties": 2,
     }
     assert data["runtime"]["entity_candidates"] == {
-        "total": 8,
+        "total": 6,
         "platforms": {
-            "button": 2,
+            "button": 1,
             "number": 2,
-            "scene": 1,
             "select": 3,
         },
+        "device_platforms": {},
         "sources": {
-            "automation": 1,
             "group": 2,
             "house": 3,
-            "scene": 2,
+            "scene": 1,
         },
         "source_classes": {
-            "topology": 8,
+            "topology": 6,
         },
         "duplicate_key_count": 0,
         "availability": {
-            "available": 8,
+            "available": 6,
             "unavailable": 0,
         },
     }
     assert data["runtime"]["entity_registry_reconcile"] == {
-        "active": 140,
-        "registry_entries": 140,
+        "active": 150,
+        "registry_entries": 150,
         "stale": 0,
-        "pending_stale": 0,
-        "disabled": 0,
-    }
+            "pending_stale": 0,
+            "disabled": 0,
+            "restored": 0,
+            "metadata_updated": 0,
+        }
     assert data["runtime"]["entity_registry_cleanup_audit"] == {
         "audit_id": "audit-safe-1",
         "status": "dry_run",
@@ -215,25 +213,24 @@ async def test_diagnostics_reports_aggregate_runtime_data(
         },
     }
     assert data["runtime"]["entity_import_filter_preview"] == {
-        "total": 8,
+        "total": 6,
         "platforms": {
-            "button": 2,
+            "button": 1,
             "number": 2,
-            "scene": 1,
             "select": 3,
         },
+        "device_platforms": {},
         "sources": {
-            "automation": 1,
             "group": 2,
             "house": 3,
-            "scene": 2,
+            "scene": 1,
         },
         "source_classes": {
-            "topology": 8,
+            "topology": 6,
         },
         "duplicate_key_count": 0,
         "availability": {
-            "available": 8,
+            "available": 6,
             "unavailable": 0,
         },
     }
@@ -272,9 +269,7 @@ async def test_diagnostics_reports_safe_runtime_health(
             "event",
             "fan",
             "light",
-            "lock",
             "number",
-            "scene",
             "select",
             "sensor",
             "switch",
@@ -286,8 +281,8 @@ async def test_diagnostics_reports_safe_runtime_health(
     assert data["runtime"]["health"] == {
         "last_update_success": False,
         "last_exception_type": "RuntimeError",
-        "loaded_platform_count": 13,
-        "expected_platform_count": 13,
+        "loaded_platform_count": 11,
+        "expected_platform_count": 11,
         "platforms_match_options": True,
         "push": None,
         "lan": None,

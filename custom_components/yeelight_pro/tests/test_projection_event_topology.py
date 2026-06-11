@@ -45,6 +45,51 @@ def test_scene_panel_projects_events_not_sensors() -> None:
     assert project_sensors(device, domain=DOMAIN) == []
 
 
+def test_scene_panel_button_property_does_not_project_as_switch() -> None:
+    """情景按键的 p/m 属性属于事件输入，不应显示成普通开关控制。"""
+    device = projection_payload(
+        device_id="panel-button-1",
+        category="scene_panel",
+        component_id="button_1",
+        state={"p": True, "m": 1},
+        product_type=128,
+        component_category="scene control button",
+        product_events=[
+            {"event_id": 1, "name": "click"},
+            {"event_id": 2, "name": "hold"},
+        ],
+    )
+
+    events = project_events(device, domain=DOMAIN)
+
+    assert len(events) == 1
+    assert events[0].name == "第 1 键事件"
+    assert events[0].event_types == ["click", "hold"]
+    assert project_switches(device, domain=DOMAIN) == []
+
+
+def test_three_key_scene_panel_event_names_use_positions() -> None:
+    """三键情景面板事件应显示左中右，不应继续暴露第 1/2/3 键。"""
+    device = projection_payload(
+        device_id="panel-button-3",
+        category="scene_panel",
+        component_id="scene_control_button_2",
+        state={"p": True},
+        product_type=128,
+        component_category="scene control button",
+        product_events=[{"event_id": 1, "name": "click"}],
+    )
+    device["name"] = "玄关三键情景面板"
+    device["ha_device_instance"]["name"] = "玄关三键情景面板"
+    device["ha_device_instance"]["device_info"]["name"] = "玄关三键情景面板"
+
+    events = project_events(device, domain=DOMAIN)
+
+    assert len(events) == 1
+    assert events[0].name == "中键事件"
+    assert project_switches(device, domain=DOMAIN) == []
+
+
 def test_gateway_only_provides_topology_device_info() -> None:
     """网关类应作为拓扑父设备存在，不生成普通控制实体。"""
     device = projection_payload(

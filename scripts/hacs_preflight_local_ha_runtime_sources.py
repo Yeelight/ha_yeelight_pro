@@ -14,6 +14,12 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "custom_components/yeelight_pro/projector/event_helpers.py": (
             "event projector source token coverage"
         ),
+        "custom_components/yeelight_pro/projector/property_controls.py": (
+            "writable property control projector source token coverage"
+        ),
+        "custom_components/yeelight_pro/projector/property_control_common.py": (
+            "writable property control shared helper coverage"
+        ),
     },
     "custom_components/yeelight_pro/core/schema_cache.py": {
         "_json_safe_schema": "schema cache JSON-safe object guard",
@@ -57,9 +63,33 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
     "custom_components/yeelight_pro/core/device_metadata.py": {
         "build_device_info": "HA device metadata builder",
         "enrich_payload_metadata": "runtime payload metadata enrichment",
+        "device_model_name": "friendly model display helper reuse",
         "_device_identifiers": "legacy and fallback device identifier guard",
         "_room_name": "room and area suggested_area resolver",
         "_area_name_by_room_id": "area roomIds fallback resolver",
+    },
+    "custom_components/yeelight_pro/device_display.py": {
+        "device_type_label": "friendly picker device type summary",
+        "channel_name_label": "friendly sub-entity channel label",
+        "_CATEGORY_LABELS": "category label registry",
+    },
+    "custom_components/yeelight_pro/device_channels.py": {
+        "channel_name_label": "friendly sub-entity channel label",
+        "switch_channel_count_hint": "switch channel count inference",
+        "_CHANNEL_LABELS": "indexed switch channel label registry",
+        "_POSITIONAL_CHANNEL_LABELS": "physical switch position label registry",
+    },
+    "custom_components/yeelight_pro/entity_category.py": {
+        "entity_category_for_property": "projection entity category resolver",
+        "ha_entity_category": "HA EntityCategory conversion helper",
+        "CONFIG_PROPERTIES": "config property category registry",
+        "DIAGNOSTIC_PROPERTIES": "diagnostic property category registry",
+    },
+    "custom_components/yeelight_pro/ha_house_registry.py": {
+        "sync_house_device": "house helper registry sync facade",
+        "_house_device_entries": "legacy house helper registry matcher",
+        "_safe_house_identifiers": "duplicate house helper identifier guard",
+        "is_house_placeholder_name": "placeholder house device name cleanup guard",
     },
     "custom_components/yeelight_pro/__init__.py": {
         "_async_start_optional_lan_runtime": "optional LAN runtime startup boundary",
@@ -115,11 +145,53 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "runtime_state": "sensor runtime state merge helper",
         "is_event_style_device": "sensor event-input filter helper",
     },
+    "custom_components/yeelight_pro/projector/property_controls.py": {
+        "project_number_controls": "device number control projection helper",
+        "project_select_controls": "device select control projection helper",
+        "project_switch_controls": "device switch config control projection helper",
+        "HASwitchControlProjection": "documented bool config switch projection model",
+    },
+    "custom_components/yeelight_pro/projector/property_control_common.py": {
+        "is_writable_auxiliary_property": "main-entity duplicate property guard",
+        "is_writable_auxiliary_bool_property": "writable bool config property guard",
+        "format_component_property_key": "indexed Yeelight control key formatter",
+        "MAIN_ENTITY_PROPS": "main entity property exclusion registry",
+        "AUXILIARY_BOOL_CONFIG_PROPS": "documented bool config property registry",
+    },
     "custom_components/yeelight_pro/converter/runtime_inference_helpers.py": {
         "infer_runtime_components": "runtime component inference helper",
+        "infer_subdevice_components": "OpenAPI sub-device inference facade",
         "infer_indexed_switch_components": "indexed switch inference helper",
         "build_runtime_property_model": "runtime template property builder",
         "infer_runtime_capabilities": "runtime capability inference helper",
         "RUNTIME_PROPERTY_TEMPLATES": "runtime inference template registry use",
+    },
+    "custom_components/yeelight_pro/converter/runtime_templates.py": {
+        "RUNTIME_CONTROL_TEMPLATES": "runtime control template split import",
+        "RUNTIME_SENSOR_TEMPLATES": "runtime sensor template split import",
+        "RUNTIME_HVAC_TEMPLATES": "runtime HVAC template split import",
+        "INDEXED_SWITCH_KEY_RE": "runtime indexed switch regex facade",
+        "RUNTIME_PROPERTY_TEMPLATES": "runtime template facade registry",
+    },
+    "custom_components/yeelight_pro/converter/runtime_template_controls.py": {
+        "RUNTIME_CONTROL_TEMPLATES": "runtime control template registry",
+        "DEFAULT_BRIGHTNESS_RANGE": "runtime brightness range reuse",
+        "DEFAULT_COLOR_TEMP_RANGE_KELVIN": "runtime color-temperature range reuse",
+    },
+    "custom_components/yeelight_pro/converter/runtime_template_sensors.py": {
+        "RUNTIME_SENSOR_TEMPLATES": "runtime sensor template registry",
+        "\"contact_sensor\"": "runtime contact sensor template coverage",
+        "\"human_sensor\"": "runtime human sensor template coverage",
+        "\"light_sensor\"": "runtime light sensor template coverage",
+    },
+    "custom_components/yeelight_pro/converter/runtime_template_hvac.py": {
+        "RUNTIME_HVAC_TEMPLATES": "runtime HVAC template registry",
+        "\"temp_control\"": "runtime temp-control template coverage",
+    },
+    "custom_components/yeelight_pro/converter/runtime_subdevices.py": {
+        "infer_subdevice_components": "OpenAPI sub-device component builder",
+        "_events_by_subdevice_index": "OpenAPI keyN event component scoping",
+        "_component_id": "OpenAPI indexed component id builder",
+        "_property_from_openapi": "OpenAPI property metadata preservation",
     },
 }

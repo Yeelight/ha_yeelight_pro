@@ -41,7 +41,6 @@ async def test_auxiliary_areas_fall_back_to_empty_list_on_error(
         ("get_rooms", "rooms", [{"id": "room-1", "name": "Living"}]),
         ("get_groups", "groups", [{"id": "group-1", "name": "Main"}]),
         ("get_scenes", "scenes", [{"id": "scene-1", "name": "Movie"}]),
-        ("get_automations", "automations", [{"id": "auto-1", "name": "Evening"}]),
     ],
 )
 async def test_auxiliary_data_keeps_previous_successful_value_on_error(

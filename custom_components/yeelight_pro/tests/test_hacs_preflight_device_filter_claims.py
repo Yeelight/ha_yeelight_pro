@@ -27,7 +27,7 @@ def test_release_claim_guard_rejects_destructive_device_filter_claims(
     _write_test_file(root / "CHANGELOG.md", "")
     _write_test_file(root / "RELEASE_GUIDE.md", "")
     _write_test_file(
-        docs_root / "HA_XIAOMI_HOME_GAP_REVIEW.md",
+        docs_root / "GOAL_COMPLETION_AUDIT.md",
         "device import filter cleans device registry",
     )
     _write_test_file(
@@ -43,7 +43,7 @@ def test_release_claim_guard_rejects_destructive_device_filter_claims(
         for error in errors
     )
     assert any("README_zh.md: 设备导入过滤会清理既有实体" in error for error in errors)
-    assert any("HA_XIAOMI_HOME_GAP_REVIEW.md" in error for error in errors)
+    assert any("GOAL_COMPLETION_AUDIT.md" in error for error in errors)
     assert all("docs/iot" not in error for error in errors)
 
 

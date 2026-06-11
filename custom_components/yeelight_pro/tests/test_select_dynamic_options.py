@@ -40,6 +40,7 @@ def _assert_input_not_echoed(error: HomeAssistantError, *, expected: str) -> Non
 @pytest.mark.asyncio
 async def test_room_select_uses_latest_coordinator_rooms(mock_coordinator) -> None:
     """房间选项和当前值必须跟随 coordinator.rooms 更新."""
+    mock_coordinator.entry_data = {"house_name": "绿地中央公园"}
     mock_coordinator.rooms = [
         {"id": "room_1", "name": "客厅"},
         {"id": "room_2", "name": "卧室"},
@@ -58,6 +59,11 @@ async def test_room_select_uses_latest_coordinator_rooms(mock_coordinator) -> No
     ]
     assert select.options == ["书房"]
     assert select.current_option is None
+    assert select.device_info["name"] == "绿地中央公园"
+    assert select.device_info["identifiers"] == {
+        ("yeelight_pro", "12345"),
+        ("yeelight_pro", "house:12345"),
+    }
 
     await select.async_select_option("书房")
     assert select.current_option == "书房"
@@ -134,7 +140,7 @@ async def test_scene_select_uses_latest_coordinator_scenes(mock_coordinator) -> 
     """场景选项和最后执行值必须跟随 coordinator.scenes 更新."""
     mock_coordinator.scenes = [
         {"id": "scene_1", "name": "回家"},
-        {"id": "scene_2", "name": "离家"},
+        {"sceneId": "scene_2", "sceneName": "离家"},
     ]
     select = YeelightProSceneSelect(mock_coordinator, mock_coordinator.scenes)
     _disable_state_write(select)
@@ -147,7 +153,7 @@ async def test_scene_select_uses_latest_coordinator_scenes(mock_coordinator) -> 
     assert select.current_option == "离家"
 
     mock_coordinator.scenes = [
-        {"id": "scene_3", "name": "观影"},
+        {"scene_id": "scene_3", "name": "观影"},
     ]
     assert select.options == ["观影"]
     assert select.current_option is None

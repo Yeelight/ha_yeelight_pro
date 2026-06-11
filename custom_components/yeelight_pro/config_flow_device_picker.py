@@ -13,6 +13,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES
 from .core.client import YeelightProClient
+from .device_display import device_name_label, device_type_label
 from .device_filter import canonical_device_import_filter
 from .utils import to_str
 
@@ -140,16 +141,19 @@ def _device_id(device: Mapping[str, Any]) -> str | None:
 
 def _device_label(device: Mapping[str, Any], device_id: str) -> str:
     """Return a readable label without storing raw device payloads."""
-    name = (
-        to_str(device.get("name"))
-        or to_str(device.get("deviceName"))
-        or to_str(device.get("device_name"))
-        or f"Device {device_id}"
-    )
-    category = to_str(device.get("category"))
-    room = to_str(device.get("roomName")) or to_str(device.get("room_name"))
-    details = " / ".join(item for item in (category, room) if item)
+    name = device_name_label(device, device_id)
+    device_type = device_type_label(device)
+    room = _room_label(device)
+    details = " / ".join(item for item in (device_type, room) if item)
     return f"{name} ({details})" if details else name
+
+
+def _room_label(device: Mapping[str, Any]) -> str | None:
+    """Return the first supported Open API room/area label."""
+    for key in ("roomName", "room_name", "room", "areaName", "area_name", "area"):
+        if value := to_str(device.get(key)):
+            return value
+    return None
 
 
 __all__ = [

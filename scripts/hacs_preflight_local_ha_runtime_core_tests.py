@@ -187,6 +187,22 @@ LOCAL_HA_RUNTIME_CORE_TEST_TOKENS = {
             "filtered device automatic reconcile non-disable coverage"
         ),
     },
+    "custom_components/yeelight_pro/tests/test_entity_lifecycle_reconcile_metadata.py": {
+        "test_reconcile_refreshes_active_registry_original_name_and_icon": (
+            "active registry metadata refresh coverage"
+        ),
+        "test_reconcile_does_not_refresh_removed_scene_domain_metadata": (
+            "removed scene metadata stale coverage"
+        ),
+    },
+    "custom_components/yeelight_pro/tests/test_entity_lifecycle_reconcile_display.py": {
+        "test_reconcile_marks_extra_double_switch_channel_stale_and_updates_names": (
+            "generated switch channel display-name cleanup coverage"
+        ),
+        "test_reconcile_clears_generated_single_light_original_name": (
+            "generated single-light display-name cleanup coverage"
+        ),
+    },
     "custom_components/yeelight_pro/tests/test_p0_ha_runtime.py": {
         "test_coordinator_control_device_uses_connected_lan_runtime": (
             "connected LAN device control route coverage"

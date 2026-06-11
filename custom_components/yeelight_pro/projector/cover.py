@@ -9,6 +9,13 @@ from ..canonical.models import ComponentInstanceModel
 from homeassistant.components.cover import CoverDeviceClass
 
 from ..canonical.models import HADeviceInstanceModel
+from ..utils import to_category
+from .common import (
+    load_product_model,
+    payload_available,
+    product_component,
+    schema_backed_component_available,
+)
 from .device import flatten_instance_state, project_payload_device_info
 
 
@@ -34,23 +41,26 @@ def project_cover(device_payload: Mapping[str, Any], *, domain: str) -> HACoverP
     """将协调器载荷投影为 Home Assistant cover 实体."""
     instance = _load_instance(device_payload)
     component = _select_cover_component(instance)
-    if component is None and device_payload.get("type") != "cover":
+    if component is None and not _payload_is_cover(device_payload):
         return None
 
     device_id = str(device_payload.get("device_id", "unknown"))
     params = _runtime_state(device_payload, instance, component)
     current_position = _clamp_position(_int(params.get("cp")))
     target_position = _clamp_position(_int(params.get("tp")))
-    available = _bool(device_payload.get("online"), default=False)
-    if instance is not None:
-        available = bool(instance.online)
+    available = payload_available(device_payload, instance)
     if instance is not None and component is not None:
-        available = bool(instance.online and component.available)
+        product_model = load_product_model(device_payload)
+        available = schema_backed_component_available(
+            payload_available(device_payload, instance),
+            component,
+            schema_component=product_component(product_model, component.component_id),
+        )
 
     return HACoverProjection(
         component_id="cover",
         unique_id=f"{domain}_{device_id}_cover",
-        name=None,
+        name="窗帘",
         available=available,
         current_cover_position=current_position,
         target_cover_position=target_position,
@@ -114,6 +124,16 @@ def _select_cover_component(
         ):
             return component
     return None
+
+
+def _payload_is_cover(device_payload: Mapping[str, Any]) -> bool:
+    """Return true only for documented cover/curtain runtime categories."""
+    category = to_category(
+        device_payload.get("iot_category")
+        or device_payload.get("category")
+        or device_payload.get("type")
+    )
+    return category in {"cover", "curtain", "blind"}
 
 
 def _runtime_state(

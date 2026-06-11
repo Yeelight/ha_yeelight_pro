@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
+from scripts.hacs_preflight_local_ha_runtime_verifier_storage import (
+    LOCAL_HA_RUNTIME_VERIFIER_STORAGE_TOKENS,
+)
+
 LOCAL_HA_RUNTIME_VERIFIER_SOURCE_TOKENS = {
     "scripts/hacs_preflight_local_ha_runtime_verifier_sources.py": {
         "LOCAL_HA_RUNTIME_VERIFIER_SOURCE_TOKENS": (
             "runtime verifier source token registry"
+        ),
+        "LOCAL_HA_RUNTIME_VERIFIER_STORAGE_TOKENS": (
+            "storage verifier source token registry import"
         ),
         "scripts/verify_local_ha.py": "verify-local-ha source token coverage",
         "scripts/local_ha_verification/diagnostics.py": (
@@ -14,14 +21,8 @@ LOCAL_HA_RUNTIME_VERIFIER_SOURCE_TOKENS = {
         "scripts/local_ha_verification/diagnostics_websocket.py": (
             "diagnostics WebSocket verifier source token coverage"
         ),
-        "scripts/local_ha_verification/storage.py": (
-            "storage verifier source token coverage"
-        ),
-        "scripts/local_ha_verification/storage_entries.py": (
-            "storage entry verifier source token coverage"
-        ),
-        "scripts/local_ha_verification/storage_helpers.py": (
-            "storage helper verifier source token coverage"
+        "scripts/local_ha_verification/runtime_entities.py": (
+            "runtime entity verifier source token coverage"
         ),
     },
     "scripts/verify_local_ha.py": {
@@ -40,6 +41,7 @@ LOCAL_HA_RUNTIME_VERIFIER_SOURCE_TOKENS = {
         "verify_required_modules": "installed support module presence export",
         "verify_product_schema_cache": "product schema privacy scan export",
         "verify_synthetic_log_recovery": "synthetic runtime recovery verifier export",
+        "verify_runtime_entity_counts": "active runtime entity verifier export",
     },
     "scripts/verify_local_ha_soak.py": {
         "scripts.local_ha_verification.cli": "dedicated soak uses shared CLI",
@@ -194,42 +196,6 @@ LOCAL_HA_RUNTIME_VERIFIER_SOURCE_TOKENS = {
         "async_create_issue": "Repair issue source call target",
         "translation_placeholders": "Repair placeholder source keyword",
     },
-    "scripts/local_ha_verification/storage.py": {
-        "safe_storage_items": "sanitized storage read failure handling",
-        "verify_config_entry_migration": "config entry migration verifier call",
-        "verify_config_entry_unique_ids": "config entry unique-id verifier call",
-        "verify_config_entry_options": "config entry option verifier call",
-        "verify_platform_options_alignment": "platform/options verifier call",
-        "verify_storage": "aggregate HA storage verification",
-        "verify_product_schema_cache": "product schema privacy scan",
-        "sensitive_cache_hits": "structured schema cache privacy scan",
-        "schema values are not objects": "schema cache object-shape guard",
-        "product_schema_cache": "schema cache stability metric",
-        "entity_domains": "entity domain stability metric",
-    },
-    "scripts/local_ha_verification/storage_entries.py": {
-        "REQUIRED_CONFIG_ENTRY_DATA_KEYS": "config entry required data keys",
-        "OPTIONAL_CONFIG_ENTRY_DATA_KEYS": "config entry optional data keys",
-        "verify_config_entry_titles": "config entry title verifier call",
-        "verify_config_entry_migration": "config entry migration status check",
-        "verify_config_entry_unique_ids": "config entry unique-id isolation check",
-        "_expected_config_entry_title": "config entry expected title helper",
-        "_expected_config_entry_unique_id": "config entry expected unique-id helper",
-        "_expected_entry_version": "config entry version constant parser",
-        "config_entry_unique_ids": "config entry unique-id stability metric",
-        "config_entry_titles": "config entry title stability metric",
-        "config_entry_versions": "config entry version stability metric",
-        "optional_config_entry_missing_keys": "optional config data metric key",
-    },
-    "scripts/local_ha_verification/storage_helpers.py": {
-        "storage_path": "HA storage path helper",
-        "read_json": "storage JSON object reader",
-        "storage_items": "storage list item reader",
-        "safe_storage_items": "sanitized storage read helper",
-        "sensitive_cache_hits": "structured schema cache privacy helper",
-        "SENSITIVE_CACHE_MARKERS": "sensitive key marker denylist use",
-        "SENSITIVE_CACHE_VALUE_PATTERNS": "sensitive value pattern denylist use",
-    },
     "scripts/local_ha_verification/options.py": {
         "verify_config_entry_options": "config entry option status check",
         "REQUIRED_CONFIG_ENTRY_OPTION_KEYS": "config entry required option keys",
@@ -244,8 +210,8 @@ LOCAL_HA_RUNTIME_VERIFIER_SOURCE_TOKENS = {
         "installed_enabled_platforms": "installed enabled platform helper",
         "_installed_platform_contract": "literal platform constants parser",
         "_literal_module_lists": "literal string-list AST parser",
-        "experimental entity domains present without opt-in": (
-            "experimental platform runtime guard"
+        "entity domains are not enabled by config entry options": (
+            "unsupported platform runtime guard"
         ),
         "platform_options": "platform/options stability metric",
     },
@@ -275,12 +241,25 @@ LOCAL_HA_RUNTIME_VERIFIER_SOURCE_TOKENS = {
     },
     "scripts/local_ha_verification/runtime.py": {
         "verify_logs": "Yeelight Pro log failure scan",
+        "verify_runtime_entities": "active runtime entity verification orchestration",
+        "verify_runtime_entity_counts": "runtime entity count helper call",
         "verify_synthetic_log_recovery": "synthetic recovery classification check",
         "synthetic_runtime_recovery": "synthetic recovery stability metric",
         "bad_line_entries": "indexed runtime log error scan",
         "recovery_index > index": "time-ordered recovery validation",
         "verify_docker": "local Docker health check",
         "verify_ha_url": "local HA reachability check",
+    },
+    "scripts/local_ha_verification/runtime_entities.py": {
+        "ADDED_ENTITIES_RE": "English active platform add log parser",
+        "ZH_ADDED_ENTITIES_RE": "Chinese active platform add log parser",
+        "RECONCILED_ACTIVE_RE": "entity registry reconcile active parser",
+        "_normalize_domain": "spaced platform log domain normalizer",
+        "verify_runtime_entity_counts": "active runtime entity distribution verifier",
+        "runtime_entity_counts": "active platform count aggregator",
+        "latest_reconciled_active_count": "latest active reconcile count helper",
+        "runtime_entity_domains": "active runtime domain stability metric",
+        "runtime active entity total mismatch": "active/reconcile mismatch guard",
     },
     "scripts/local_ha_verification/constants.py": {
         "BAD_LOG_MARKERS": "runtime error marker denylist",
@@ -301,6 +280,21 @@ LOCAL_HA_RUNTIME_VERIFIER_SOURCE_TOKENS = {
         "converter.runtime_inference_helpers": (
             "runtime inference helper module presence check"
         ),
+        "converter.runtime_template_controls": (
+            "runtime control template module presence check"
+        ),
+        "converter.runtime_template_sensors": (
+            "runtime sensor template module presence check"
+        ),
+        "converter.runtime_template_hvac": (
+            "runtime HVAC template module presence check"
+        ),
+        "converter.runtime_templates": (
+            "runtime template facade module presence check"
+        ),
+        "converter.runtime_subdevices": (
+            "OpenAPI sub-device helper module presence check"
+        ),
         "lan_contract": "LAN contract module presence check",
         "lan_methods": "LAN method constants module presence check",
         "lan_payload": "LAN payload adapter module presence check",
@@ -317,6 +311,7 @@ LOCAL_HA_RUNTIME_VERIFIER_SOURCE_TOKENS = {
         "projector.event_helpers": "event projector helper runtime module presence check",
         "projector.sensor_helpers": "sensor projector helper runtime module presence check",
         "ha_device_registry": "HA device registry sync module presence check",
+        "ha_house_registry": "HA house helper registry module presence check",
         "SENSITIVE_CACHE_MARKERS": "sensitive marker denylist",
         "SENSITIVE_CACHE_VALUE_PATTERNS": "sensitive value pattern denylist",
     },
@@ -332,11 +327,17 @@ LOCAL_HA_RUNTIME_VERIFIER_SOURCE_TOKENS = {
         "stable metric drift": "multi-run drift failure message",
         "time.monotonic": "bounded soak monotonic clock",
         "_run_once": "single-run verification orchestration",
+        "DRIFT_EXCLUDED_METRICS": "retained registry drift exclusion contract",
         "verify_flow_contracts": "flow contract check orchestration",
         "verify_i18n_contracts": "i18n contract check orchestration",
         "verify_diagnostics_capabilities": "diagnostics check orchestration",
         "verify_installation": "install check orchestration",
         "verify_storage": "storage check orchestration",
+        "verify_runtime_entities": "active runtime entity check orchestration",
         "verify_synthetic_log_recovery": "synthetic recovery check orchestration",
     },
 }
+
+LOCAL_HA_RUNTIME_VERIFIER_SOURCE_TOKENS.update(
+    LOCAL_HA_RUNTIME_VERIFIER_STORAGE_TOKENS
+)

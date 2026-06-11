@@ -62,22 +62,6 @@ async def async_execute_scene(
         ) from None
 
 
-async def async_trigger_automation(
-    client: YeelightProClient,
-    *,
-    automation_id: str,
-) -> None:
-    """Trigger an automation with coordinator-level error semantics."""
-    try:
-        await client.trigger_automation(automation_id)
-    except YeelightProError:
-        raise
-    except Exception as err:
-        raise CommandError(
-            f"Failed to trigger automation: {safe_error_summary(err)}"
-        ) from None
-
-
 async def async_control_group(
     client: YeelightProClient,
     *,

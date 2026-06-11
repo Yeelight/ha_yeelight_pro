@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any, Mapping
 
+from ..utils import to_bool
 from .models import _dict, _list
 
 @dataclass(slots=True)
@@ -98,6 +99,9 @@ class ComponentInstanceModel:
     """Canonical component runtime state."""
 
     component_id: str
+    name: str | None = None
+    desc: str | None = None
+    index: int | None = None
     component_type: str | None = None
     category: str | None = None
     available: bool = True
@@ -108,9 +112,12 @@ class ComponentInstanceModel:
     def from_dict(cls, payload: Mapping[str, Any]) -> ComponentInstanceModel:
         return cls(
             component_id=str(payload.get("component_id", payload.get("componentId", ""))),
+            name=payload.get("name"),
+            desc=payload.get("desc"),
+            index=payload.get("index"),
             component_type=payload.get("component_type", payload.get("componentType")),
             category=payload.get("category"),
-            available=bool(payload.get("available", True)),
+            available=to_bool(payload.get("available"), default=True),
             instance_capabilities=InstanceCapabilitiesModel.from_dict(
                 payload.get("instance_capabilities", payload.get("instanceCapabilities"))
             ),
@@ -132,14 +139,17 @@ class HADeviceInstanceModel:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert model to a plain dict."""
-        return asdict(self)
+        payload = asdict(self)
+        if isinstance(payload.get("device_info"), dict):
+            payload["device_info"] = _compact_device_info(payload["device_info"])
+        return payload
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> HADeviceInstanceModel:
         return cls(
             device_id=str(payload.get("device_id", payload.get("deviceId", ""))),
             name=payload.get("name"),
-            online=bool(payload.get("online", True)),
+            online=to_bool(payload.get("online"), default=True),
             product_ref=_dict(payload.get("product_ref", payload.get("productRef"))),
             device_info=DeviceInfoModel.from_dict(payload.get("device_info", payload.get("deviceInfo"))),
             components=[
@@ -149,3 +159,20 @@ class HADeviceInstanceModel:
             ],
             extensions=_dict(payload.get("extensions")),
         )
+
+
+def _compact_device_info(value: Any) -> Any:
+    """Remove empty optional values from exported device_info dictionaries."""
+    if isinstance(value, dict):
+        return {
+            key: compacted
+            for key, item in value.items()
+            if (compacted := _compact_device_info(item)) not in (None, [], {})
+        }
+    if isinstance(value, list):
+        return [
+            compacted
+            for item in value
+            if (compacted := _compact_device_info(item)) not in (None, [], {})
+        ]
+    return value

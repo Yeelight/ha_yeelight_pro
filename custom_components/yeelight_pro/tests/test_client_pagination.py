@@ -138,12 +138,12 @@ async def test_client_paginated_rows_accepts_string_total() -> None:
             {"data": {"rows": [{"id": 2}], "total": "2"}},
         ]
 
-        rows = await client.get_automations(12345)
+        rows = await client.get_areas(12345)
 
     assert rows == [{"id": 1}, {"id": 2}]
     assert [call.args for call in mock_request.await_args_list] == [
-        ("GET", "/v1/automations/12345/r/list/1/200"),
-        ("GET", "/v1/automations/12345/r/list/2/200"),
+        ("GET", "/v1/open/node/house/12345/areas/r/list/1/200"),
+        ("GET", "/v1/open/node/house/12345/areas/r/list/2/200"),
     ]
 
 
@@ -176,7 +176,6 @@ async def test_client_paginated_rows_stops_on_empty_page() -> None:
         ("get_rooms", "/v1/open/node/house/12345/rooms/r/list"),
         ("get_groups", "/v1/open/node/house/12345/groups/r/list"),
         ("get_scenes", "/v1/open/node/house/12345/scenes/r/list"),
-        ("get_automations", "/v1/automations/12345/r/list"),
     ],
 )
 async def test_client_list_methods_use_paginated_endpoints(

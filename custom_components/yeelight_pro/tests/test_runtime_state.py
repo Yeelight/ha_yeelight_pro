@@ -99,6 +99,31 @@ def test_merge_runtime_state_into_payload_updates_flat_and_canonical_state() -> 
     assert instance["components"][0]["state"] == {"p": False, "l": 80}
 
 
+def test_merge_runtime_state_parses_string_online_values() -> None:
+    """WebSocket/LAN 增量在线状态字符串也必须按布尔语义解析."""
+    device: dict[str, Any] = {
+        "id": 1,
+        "online": True,
+        "ha_device_instance": {
+            "online": True,
+            "components": [
+                {
+                    "component_id": "light_1",
+                    "available": True,
+                    "state": {"p": True},
+                }
+            ],
+        },
+    }
+
+    merge_runtime_state_into_payload(device, {}, online="false")
+
+    assert device["online"] is False
+    instance = device["ha_device_instance"]
+    assert instance["online"] is False
+    assert instance["components"][0]["available"] is False
+
+
 def test_merge_runtime_state_into_payload_routes_indexed_component_keys() -> None:
     """indexed key 只能写入匹配组件，避免多路组件互相污染."""
     device: dict[str, Any] = {

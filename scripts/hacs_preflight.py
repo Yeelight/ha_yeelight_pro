@@ -187,7 +187,7 @@ def _run_checks() -> list[tuple[str, list[str]]]:
         ("Python file line counts", _check_python_file_line_counts()),
         ("release quality gates", _check_release_quality_gates()),
         ("IoT registry integrity", _check_iot_registry_integrity()),
-        ("automation contract tests", _check_automation_contract_tests()),
+        ("device-trigger automation contract tests", _check_automation_contract_tests()),
         ("IoT registry contract tests", _check_iot_registry_contract_tests()),
         ("runtime options contract tests", _check_runtime_options_contract_tests()),
         ("split contract tests", _check_split_contract_tests()),

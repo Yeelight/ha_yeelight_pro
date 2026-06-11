@@ -105,7 +105,6 @@ def build_empty_diagnostics_coordinator(
     coordinator.rooms = []
     coordinator.groups = []
     coordinator.scenes = []
-    coordinator.automations = []
     return coordinator
 
 

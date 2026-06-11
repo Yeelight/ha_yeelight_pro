@@ -5,7 +5,6 @@
 - Do not commit Yeelight tokens, Home Assistant credentials, house IDs, IPs tied to a user, or raw device payloads.
 - Use sanitized fixtures for device samples.
 - Keep Yeelight IoT categories separate from Home Assistant entity platforms in docs and tests.
-- Treat `vacuum` as experimental unless real Yeelight payloads prove the mapping.
 - Do not document local gateway discovery, multi-account-in-one-entry UX, or full rules/spec filters as implemented until code and tests exist.
 
 ## Test Commands

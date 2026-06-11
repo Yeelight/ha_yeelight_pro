@@ -73,6 +73,61 @@ def test_switch_reads_projection_state(mock_coordinator) -> None:
     assert switch.icon == "mdi:light-switch"
     assert switch.device_info is not None
     assert (DOMAIN, "12345") in switch.device_info["identifiers"]
+    assert switch.entity_category is None
+
+
+def test_indexed_switch_entity_uses_friendly_channel_name(mock_coordinator) -> None:
+    """多键开关子实体名称不能显示裸数字."""
+    mock_coordinator.get_device.return_value = _switch_payload(
+        component_id="switch_3",
+        state={"p": True},
+        params={"3-p": True},
+    )
+    switch = YeelightProSwitch(
+        mock_coordinator,
+        12345,
+        component_id="switch_3",
+    )
+
+    assert switch.name == "第 3 键"
+
+
+def test_generated_numeric_component_name_is_replaced_by_channel_label(
+    mock_coordinator,
+) -> None:
+    """产品 schema 给出 1/2/3 这种组件名时仍显示中文通道名."""
+    payload = _switch_payload(
+        component_id="switch_2",
+        state={"p": True},
+        params={"2-p": True},
+    )
+    payload["ha_device_instance"]["components"][0]["name"] = "2"
+    mock_coordinator.get_device.return_value = payload
+    switch = YeelightProSwitch(
+        mock_coordinator,
+        12345,
+        component_id="switch_2",
+    )
+
+    assert switch.name == "第 2 键"
+
+
+def test_numeric_component_id_is_replaced_by_channel_label(mock_coordinator) -> None:
+    """组件 ID 本身为 1/2/3 时也不能在 HA 里显示裸数字."""
+    payload = _switch_payload(
+        component_id="3",
+        state={"p": True},
+        params={"3-p": True},
+    )
+    payload["ha_device_instance"]["components"][0]["name"] = "3"
+    mock_coordinator.get_device.return_value = payload
+    switch = YeelightProSwitch(
+        mock_coordinator,
+        12345,
+        component_id="3",
+    )
+
+    assert switch.name == "第 3 键"
 
 
 @pytest.mark.asyncio

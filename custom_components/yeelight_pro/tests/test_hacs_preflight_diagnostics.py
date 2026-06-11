@@ -191,7 +191,7 @@ def _write_diagnostics_contract_tests(
         (
             "entity_candidate_diagnostics "
             "entity_import_filter_preview_diagnostics device-secret "
-            "preview-automation-secret"
+            "group-secret device_platforms"
         ),
     )
     _write_test_file(tests_root / "test_diagnostic_options.py", option_tokens)

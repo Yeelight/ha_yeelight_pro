@@ -117,7 +117,7 @@ def merge_runtime_state_into_payload(
         device_params.update(dict(params))
 
     if online is not None:
-        device["online"] = bool(online)
+        device["online"] = to_bool(online, default=True)
 
     if rebuild_canonical is not None and isinstance(device.get("product_schema"), Mapping):
         rebuild_canonical(device)
@@ -142,7 +142,7 @@ def merge_runtime_state_into_canonical_payload(
         return
 
     if online is not None:
-        instance["online"] = bool(online)
+        instance["online"] = to_bool(online, default=True)
 
     components = instance.get("components")
     if not isinstance(components, list):
@@ -152,7 +152,7 @@ def merge_runtime_state_into_canonical_payload(
         if not isinstance(component, dict):
             continue
         if online is not None:
-            component["available"] = bool(online)
+            component["available"] = to_bool(online, default=True)
         state = component.setdefault("state", {})
         if not isinstance(state, dict):
             state = {}

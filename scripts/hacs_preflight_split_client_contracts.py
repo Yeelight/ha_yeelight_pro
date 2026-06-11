@@ -99,6 +99,9 @@ SPLIT_CLIENT_CONTRACT_TEST_TOKENS = {
         "/v1/open/control/house/12345/control/w/scenes/scene_1": (
             "documented scene execution endpoint coverage"
         ),
+        "cast(Any, mock_request.await_args).kwargs == {}": (
+            "documented scene execution empty body coverage"
+        ),
         "control_node_properties": (
             "client single-node multi-property control entrypoint coverage"
         ),
@@ -110,16 +113,9 @@ SPLIT_CLIENT_CONTRACT_TEST_TOKENS = {
         "test_client_read_property_methods_use_documented_contracts": (
             "documented read property variants client coverage"
         ),
-        "test_client_automation_action_methods_use_stable_paths": (
-            "automation action client path coverage"
-        ),
-        "enable_automation": "automation enable client entrypoint coverage",
-        "disable_automation": "automation disable client entrypoint coverage",
-        "trigger_automation": "automation trigger client entrypoint coverage",
         "/r/properties": "read properties endpoint coverage",
         "propNames": "read properties body field coverage",
         "resIds": "multi-node read body field coverage",
-        "/v1/automation/auto_1/trigger": "automation trigger path assertion",
     },
     "tests/test_p0_control_auth.py": {
         "test_client_request_preserves_auth_error_classification": (

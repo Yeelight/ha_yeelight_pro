@@ -14,6 +14,7 @@ from .device import project_payload_device_info
 from .event_helpers import component_available as _component_available
 from .event_helpers import event_components as _event_components
 from .event_helpers import event_device_class as _event_device_class
+from .event_helpers import event_fallback_projection as _event_fallback_projection
 from .event_helpers import event_icon as _event_icon
 from .event_helpers import event_name as _event_name
 from .event_helpers import event_types as _event_types
@@ -56,7 +57,7 @@ def project_events(device_payload: Mapping[str, Any], *, domain: str) -> list[HA
     )
     available = to_bool(
         instance.online if instance is not None else device_payload.get("online"),
-        default=False,
+        default=True,
     )
     instance_components = {
         component.component_id: component for component in (instance.components if instance else [])
@@ -72,14 +73,26 @@ def project_events(device_payload: Mapping[str, Any], *, domain: str) -> list[HA
             HAEventProjection(
                 component_id=component.component_id,
                 unique_id=f"{domain}_{source_device_id}_{component.component_id}_event",
-                name=_event_name(component, total=total),
-                available=available and _component_available(component_instance),
+                name=_event_name(component, total=total, device_payload=device_payload),
+                available=available and _component_available(
+                    component_instance,
+                    component,
+                ),
                 event_types=_event_types(component),
                 device_info=device_info,
                 device_class=_event_device_class(component, product_model),
                 icon=_event_icon(component, product_model),
             )
         )
+    if not projections:
+        fallback = _event_fallback_projection(
+            device_payload,
+            product_model,
+            instance,
+            domain=domain,
+        )
+        if fallback is not None:
+            projections.append(fallback)
     return projections
 
 

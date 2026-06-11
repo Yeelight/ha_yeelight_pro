@@ -4,9 +4,7 @@ from __future__ import annotations
 import pytest
 
 from custom_components.yeelight_pro.core.client_paths import (
-    automation_action_path,
     house_areas_path,
-    house_automations_path,
     house_devices_path,
     house_gateways_path,
     house_groups_path,
@@ -115,12 +113,10 @@ def test_client_paths_match_open_api_contract() -> None:
         "/v1/open/node/house/12345/groups/r/list?roomId=room_1"
     )
     assert house_scenes_path(12345) == "/v1/open/node/house/12345/scenes/r/list"
-    assert house_automations_path(12345) == "/v1/automations/12345/r/list"
     assert house_snapshot_path(12345) == "/v1/open/node/house/12345/r/info"
     assert scene_execute_path(12345, "scene_1") == (
         "/v1/open/control/house/12345/control/w/scenes/scene_1"
     )
-    assert automation_action_path("auto_1", "trigger") == "/v1/automation/auto_1/trigger"
     assert paginated_path("/v1/example", page=2, page_size=50) == "/v1/example/2/50"
     assert paginated_path(
         "/v1/example?roomId=678",

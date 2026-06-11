@@ -21,7 +21,7 @@ class RuntimeInferredProductModelBuilder:
 
     def build(self, payload: Mapping[str, Any]) -> HAProductModel | None:
         """从运行时载荷推断并构建产品模型。"""
-        model_id = string_value(payload.get("model_id")) or _runtime_model_id(payload)
+        model_id = _model_id(payload)
         if not model_id:
             return None
 
@@ -29,15 +29,17 @@ class RuntimeInferredProductModelBuilder:
         if not components:
             return None
 
-        product_type = string_value(payload.get("type")) or "unknown"
-        category = string_value(payload.get("category"))
+        iot_category = string_value(payload.get("iot_category")) or string_value(
+            payload.get("category")
+        )
+        product_type = iot_category or string_value(payload.get("type")) or "unknown"
 
         return HAProductModel(
             schema_version="runtime-v1",
             product=ProductModel(
                 model_id=model_id,
                 manufacturer="Yeelight",
-                model=category or string_value(payload.get("name")) or model_id,
+                model=iot_category or string_value(payload.get("name")) or model_id,
                 description="Runtime inferred product model",
                 category=product_type,
                 categories=[product_type] if product_type != "unknown" else [],
@@ -140,7 +142,32 @@ def _runtime_model_id(payload: Mapping[str, Any]) -> str | None:
     pid = string_value(payload.get("pid"))
     if pid:
         return f"YL-{pid}"
+    product_id = string_value(payload.get("productId") or payload.get("product_id"))
+    if product_id:
+        return f"YL-{product_id}"
     category = string_value(payload.get("category")) or string_value(payload.get("type"))
     if category:
         return f"runtime-{category}"
+    return None
+
+
+def _model_id(payload: Mapping[str, Any]) -> str | None:
+    """Return the best registry-facing model id for runtime-inferred models."""
+    product_model_id = _product_model_id(payload)
+    if product_model_id is not None:
+        return product_model_id
+    explicit = string_value(payload.get("model_id"))
+    if explicit and not explicit.startswith("runtime-"):
+        return explicit
+    return explicit or _runtime_model_id(payload)
+
+
+def _product_model_id(payload: Mapping[str, Any]) -> str | None:
+    """Return a product-id based model id when OpenAPI exposes a product key."""
+    pid = string_value(payload.get("pid"))
+    if pid:
+        return f"YL-{pid}"
+    product_id = string_value(payload.get("productId") or payload.get("product_id"))
+    if product_id:
+        return f"YL-{product_id}"
     return None

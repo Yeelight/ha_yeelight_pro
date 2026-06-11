@@ -18,6 +18,7 @@ CONF_REFRESH_TOKEN = "refresh_token"
 CONF_TOKEN_EXPIRES_IN = "token_expires_in"
 CONF_TOKEN_TYPE = "token_type"
 CONF_HOUSE_ID = "house_id"
+CONF_HOUSE_NAME = "house_name"
 CONF_ACCOUNT_USER_ID = "account_user_id"
 CONF_ACCOUNT_USERNAME = "account_username"
 CONF_CLOUD_AUTH_METHOD = "cloud_auth_method"
@@ -50,7 +51,6 @@ CLOUD_REGION_BASE_DOMAINS = {
 # 选项键
 CONF_SCAN_INTERVAL = "scan_interval"
 CONF_DEBUG_MODE = "debug_mode"
-CONF_EXPERIMENTAL_PLATFORMS = "experimental_platforms"
 CONF_HIDE_UNKNOWN_ENTITIES = "hide_unknown_entities"
 CONF_TOPOLOGY_CHANGE_REPAIRS = "topology_change_repairs"
 CONF_DEVICE_IMPORT_FILTER = "device_import_filter"
@@ -81,13 +81,13 @@ CONF_LOCAL_GATEWAY_PORT = "local_gateway_port"
 # 默认域名
 DEFAULT_CLOUD_DOMAIN = "https://api.yeelight.com/apis/iot"
 DEFAULT_PRIVATE_DOMAIN = "192.168.1.100:8080"
+DEFAULT_HOUSE_NAME = "易来家庭"
 
 # 默认配置
 DEFAULT_SCAN_INTERVAL = 30  # 秒
 MIN_SCAN_INTERVAL = 10
 MAX_SCAN_INTERVAL = 300
 DEFAULT_DEBUG_MODE = False
-DEFAULT_EXPERIMENTAL_PLATFORMS = False
 DEFAULT_HIDE_UNKNOWN_ENTITIES = True
 DEFAULT_TOPOLOGY_CHANGE_REPAIRS = True
 DEFAULT_LIVE_UPDATES = False
@@ -107,25 +107,15 @@ PLATFORMS = [
     "event",
     "fan",
     "light",
-    "lock",
     "number",
-    "scene",
     "select",
     "sensor",
     "switch",
-    "vacuum",
 ]
-
-EXPERIMENTAL_PLATFORMS = ["vacuum"]
-
 
 def get_enabled_platforms(options: Mapping | None = None) -> list[str]:
     """根据配置选项返回应加载的平台列表."""
-    options = options if isinstance(options, Mapping) else {}
-    if options.get(CONF_EXPERIMENTAL_PLATFORMS, DEFAULT_EXPERIMENTAL_PLATFORMS):
-        return list(PLATFORMS)
-    experimental = set(EXPERIMENTAL_PLATFORMS)
-    return [platform for platform in PLATFORMS if platform not in experimental]
+    return list(PLATFORMS)
 
 # 事件类型
 DEVICE_EVENT_TYPE = f"{DOMAIN}_device_event"

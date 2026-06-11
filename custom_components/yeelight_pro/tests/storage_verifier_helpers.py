@@ -9,7 +9,7 @@ from typing import Any
 from scripts.verify_local_ha import DEFAULT_ENTITY_COUNTS
 
 
-def write_storage(config_dir: Path, key: str, data: dict[str, Any]) -> None:
+def write_storage(config_dir: Path, key: str, data: Any) -> None:
     """Write a minimal Home Assistant storage file."""
     storage_dir = config_dir / ".storage"
     storage_dir.mkdir(exist_ok=True)
@@ -23,9 +23,9 @@ def config_entry() -> dict[str, Any]:
         "domain": "yeelight_pro",
         "disabled_by": None,
         "unique_id": "cloud:cn:122349:1",
-        "title": "Yeelight Pro Cloud (secret-user · CN · House 1)",
+        "title": "Yeelight Pro Cloud (secret-user · CN · 绿地中央公园)",
         "version": 1,
-        "minor_version": 6,
+        "minor_version": 8,
         "data": {
             "access_token": "secret-token",
             "account_user_id": 122349,
@@ -34,6 +34,7 @@ def config_entry() -> dict[str, Any]:
             "cloud_region": "cn",
             "connection_mode": "cloud",
             "house_id": 1,
+            "house_name": "绿地中央公园",
             "open_api_client_id": "",
             "private_domain": "",
             "refresh_token": "secret-refresh",
@@ -43,7 +44,6 @@ def config_entry() -> dict[str, Any]:
         },
         "options": {
             "debug_mode": False,
-            "experimental_platforms": False,
             "hide_unknown_entities": True,
             "scan_interval": 30,
             "topology_change_repairs": True,
@@ -62,7 +62,8 @@ def yeelight_devices() -> list[dict[str, Any]]:
             ],
             "name": "客厅筒灯 1",
             "manufacturer": "Yeelight",
-            "model": "light",
+            "model": "筒灯",
+            "model_id": "YL-100",
             "area_id": "ke_ting",
         },
         {
@@ -73,7 +74,8 @@ def yeelight_devices() -> list[dict[str, Any]]:
             ],
             "name": "墙壁开关1",
             "manufacturer": "Yeelight",
-            "model": "relay_switch",
+            "model": "墙壁开关",
+            "model_id": "YL-201",
             "suggested_area": "客厅",
         },
     ]
@@ -92,6 +94,13 @@ def yeelight_entities() -> list[dict[str, str | None]]:
             }
             for index in range(count)
         )
+    for entity in entities:
+        translation_key = _translation_key(entity.get("unique_id"))
+        if translation_key is not None:
+            entity["translation_key"] = translation_key
+        entity_category = _entity_category(entity.get("entity_id"))
+        if entity_category is not None:
+            entity["entity_category"] = entity_category
     return entities
 
 
@@ -101,6 +110,9 @@ def _unique_id(domain: str, index: int) -> str:
         source_id = "304784333" if domain == "light" else "304784336"
         component = "light" if domain == "light" else "switch"
         return f"yeelight_pro_{source_id}_{component}_{index}"
+    if domain == "select":
+        selector = ("room", "group", "scene")[index]
+        return f"yeelight_pro_1_select_{selector}"
     return f"yeelight_pro_topology_{domain}_{index}"
 
 
@@ -110,4 +122,29 @@ def _device_id(domain: str, index: int) -> str | None:
         return "device-registry-1"
     if domain == "switch":
         return "device-registry-2"
+    return None
+
+
+def _translation_key(unique_id: str | None) -> str | None:
+    """Return HA translation keys for static house-level selectors."""
+    if unique_id is None:
+        return None
+    if unique_id.endswith("_select_room"):
+        return "active_room"
+    if unique_id.endswith("_select_group"):
+        return "active_group"
+    if unique_id.endswith("_select_scene"):
+        return "active_scene"
+    return None
+
+
+def _entity_category(entity_id: str | None) -> str | None:
+    """Return expected HA entity category for helper fixture domains."""
+    if entity_id is None or "." not in entity_id:
+        return None
+    domain = entity_id.split(".", 1)[0]
+    if domain in {"button", "number", "select"}:
+        return "config"
+    if domain in {"binary_sensor", "event", "sensor"}:
+        return "diagnostic"
     return None

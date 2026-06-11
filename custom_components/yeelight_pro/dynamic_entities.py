@@ -141,16 +141,59 @@ def _should_skip_registered_entity(
     """Return true when HA registry/runtime already owns this entity."""
     if registry_entry is None:
         return False
-    if getattr(registry_entry, "disabled_by", None) is not None:
+    if _registry_entry_disabled_by_user(registry_entry):
+        return True
+    disabled_by = getattr(registry_entry, "disabled_by", None)
+    if _registry_entry_disabled_by_integration(registry_entry):
+        _restore_integration_disabled_entry(hass, registry_entry)
+    elif disabled_by is not None:
         return True
     entity_id = getattr(registry_entry, "entity_id", None)
     states = getattr(hass, "states", None)
     state_get = getattr(states, "get", None)
-    return bool(
-        isinstance(entity_id, str)
-        and callable(state_get)
-        and state_get(entity_id) is not None
-    )
+    if not isinstance(entity_id, str) or not callable(state_get):
+        return False
+    state = state_get(entity_id)
+    if state is None:
+        return False
+    if _runtime_state_is_restored(state):
+        return False
+    return True
+
+
+def _runtime_state_is_restored(state: Any) -> bool:
+    """Return true when HA only restored an entity from registry history."""
+    attributes = getattr(state, "attributes", None)
+    return isinstance(attributes, Mapping) and attributes.get("restored") is True
+
+
+def _registry_entry_disabled_by_user(registry_entry: er.RegistryEntry) -> bool:
+    """Return whether the registry entry was explicitly disabled by the user."""
+    return getattr(registry_entry, "disabled_by", None) in {
+        er.RegistryEntryDisabler.USER,
+        "user",
+    }
+
+
+def _registry_entry_disabled_by_integration(registry_entry: er.RegistryEntry) -> bool:
+    """Return whether the registry entry was automatically disabled by this integration."""
+    return getattr(registry_entry, "disabled_by", None) in {
+        er.RegistryEntryDisabler.INTEGRATION,
+        "integration",
+    }
+
+
+def _restore_integration_disabled_entry(
+    hass: HomeAssistant | None,
+    registry_entry: er.RegistryEntry,
+) -> None:
+    """Re-enable entries disabled by this integration when the entity is active again."""
+    if not _registry_entry_disabled_by_integration(registry_entry):
+        return
+    entity_id = getattr(registry_entry, "entity_id", None)
+    if hass is None or not isinstance(entity_id, str):
+        return
+    er.async_get(hass).async_update_entity(entity_id, disabled_by=None)
 
 
 def _registry_entry_domain(registry_entry: Any) -> str | None:

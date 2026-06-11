@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ACCESS_TOKEN
 from homeassistant.core import HomeAssistant
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.yeelight_pro.const import (
     CONF_CONNECTION_MODE,
@@ -35,6 +36,16 @@ def make_config_entry() -> MagicMock:
     return entry
 
 
+def register_config_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Register a matching HA config entry for registry-backed setup paths."""
+    MockConfigEntry(
+        domain=DOMAIN,
+        entry_id=entry.entry_id,
+        data=dict(entry.data),
+        options=dict(entry.options),
+    ).add_to_hass(hass)
+
+
 def make_client() -> AsyncMock:
     """Build a client test double."""
     client = AsyncMock(spec=YeelightProClient)
@@ -47,7 +58,6 @@ def make_client() -> AsyncMock:
     client.control_device.return_value = True
     client.execute_scene.return_value = True
     client.get_scenes.return_value = []
-    client.get_automations.return_value = []
     client.get_groups.return_value = []
     client.get_rooms.return_value = []
     client.get_areas.return_value = []
@@ -61,14 +71,12 @@ def make_coordinator(hass: HomeAssistant, client: AsyncMock) -> MagicMock:
     coordinator.client = client
     coordinator.data = {}
     coordinator.scenes = []
-    coordinator.automations = []
     coordinator.areas = []
     coordinator.rooms = []
     coordinator.groups = []
     coordinator.house_id = 12345
     coordinator.async_config_entry_first_refresh = AsyncMock()
     coordinator.async_execute_scene = AsyncMock()
-    coordinator.async_trigger_automation = AsyncMock()
     coordinator.async_control_device = AsyncMock()
     coordinator.async_toggle_device = AsyncMock()
     return coordinator
@@ -85,7 +93,6 @@ def make_setup_coordinator() -> MagicMock:
     coordinator.rooms = []
     coordinator.groups = []
     coordinator.scenes = []
-    coordinator.automations = []
     coordinator.get_gateway_devices = MagicMock(return_value={})
     coordinator.topology_generation = 0
     coordinator.async_add_listener = MagicMock(return_value=MagicMock())

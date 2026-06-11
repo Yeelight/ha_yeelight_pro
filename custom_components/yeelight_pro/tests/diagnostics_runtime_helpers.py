@@ -27,7 +27,6 @@ def build_aggregate_runtime_coordinator(
                 "rooms": 0,
                 "groups": 0,
                 "scenes": 0,
-                "automations": 0,
             },
             removed={
                 "devices": 0,
@@ -36,7 +35,6 @@ def build_aggregate_runtime_coordinator(
                 "rooms": 0,
                 "groups": 0,
                 "scenes": 0,
-                "automations": 0,
             },
             metadata_changed={
                 "devices": 0,
@@ -45,7 +43,6 @@ def build_aggregate_runtime_coordinator(
                 "rooms": 1,
                 "groups": 0,
                 "scenes": 0,
-                "automations": 0,
             },
         ),
         product_schema_cache_size=2,
@@ -144,11 +141,10 @@ def build_aggregate_runtime_coordinator(
     coordinator.areas = [{"id": "area-secret", "name": "Floor 1"}]
     coordinator.groups = [{"id": "group-secret"}]
     coordinator.scenes = [{"id": "scene-secret"}]
-    coordinator.automations = [{"id": "automation-secret"}]
     coordinator._yeelight_pro_last_entity_registry_reconcile_summary = (
         EntityRegistryReconcileSummary(
-            active=140,
-            registry_entries=140,
+            active=150,
+            registry_entries=150,
             stale=0,
             pending_stale=0,
             disabled=0,
@@ -185,7 +181,6 @@ def aggregate_runtime_secret_markers() -> tuple[str, ...]:
         "room-secret",
         "group-secret",
         "scene-secret",
-        "automation-secret",
         "api.yeelight.com/apis/iot/house/429392",
         "duplicate category",
         "references unknown",

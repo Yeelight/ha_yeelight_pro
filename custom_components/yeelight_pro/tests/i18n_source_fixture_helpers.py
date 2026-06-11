@@ -53,7 +53,6 @@ def write_repair_issue_source(
         '                "rooms": counts["rooms"],',
         '                "groups": counts["groups"],',
         '                "scenes": counts["scenes"],',
-        '                "automations": counts["automations"],',
         '                "added": diff_summary["total_added"],',
         '                "removed": diff_summary["total_removed"],',
         '                "metadata_changed": diff_summary["total_metadata_changed"],',

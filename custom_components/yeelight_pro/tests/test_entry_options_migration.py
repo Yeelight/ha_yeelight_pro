@@ -11,7 +11,6 @@ from custom_components.yeelight_pro.const import (
     CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES,
     CONF_DEVICE_IMPORT_FILTER_INCLUDE_ROOMS,
     CONF_DEVICE_IMPORT_FILTER_MODE,
-    CONF_EXPERIMENTAL_PLATFORMS,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_LIVE_UPDATES,
     CONF_LOCAL_GATEWAY_CONTROL,
@@ -86,19 +85,6 @@ def test_normalize_entry_options_migrates_legacy_device_filter_form_keys() -> No
     assert CONF_DEVICE_IMPORT_FILTER_EXCLUDE_CATEGORIES not in options
 
 
-def test_normalize_entry_options_removes_legacy_analytics_options() -> None:
-    """已移除的 analytics options 不应继续留在 config entry 存储中."""
-    options = normalize_entry_options({
-        "analytics_retention_days": 30,
-        "analytics_runtime": True,
-        CONF_SCAN_INTERVAL: 30,
-    })
-
-    assert "analytics_retention_days" not in options
-    assert "analytics_runtime" not in options
-    assert options[CONF_SCAN_INTERVAL] == 30
-
-
 def test_normalize_entry_options_disables_filter_without_effective_rules() -> None:
     """只有无效维度或空值时不应保存启用态过滤."""
     options = normalize_entry_options({
@@ -134,7 +120,6 @@ def test_normalize_entry_options_parses_string_bools(
     """字符串 bool 不能按 Python truthiness 误判."""
     options = normalize_entry_options({
         CONF_DEBUG_MODE: raw,
-        CONF_EXPERIMENTAL_PLATFORMS: raw,
         CONF_HIDE_UNKNOWN_ENTITIES: raw,
         CONF_TOPOLOGY_CHANGE_REPAIRS: raw,
         CONF_LIVE_UPDATES: raw,
@@ -144,7 +129,6 @@ def test_normalize_entry_options_parses_string_bools(
     })
 
     assert options[CONF_DEBUG_MODE] is expected
-    assert options[CONF_EXPERIMENTAL_PLATFORMS] is expected
     assert options[CONF_HIDE_UNKNOWN_ENTITIES] is expected
     assert options[CONF_TOPOLOGY_CHANGE_REPAIRS] is expected
     assert options[CONF_LIVE_UPDATES] is expected

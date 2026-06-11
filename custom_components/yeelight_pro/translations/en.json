@@ -87,11 +87,10 @@
     "step": {
       "init": {
         "title": "Yeelight Pro Options",
-        "description": "Adjust runtime refresh, debug, and experimental capabilities.",
+        "description": "Adjust runtime refresh, debug, live updates, and device import filtering.",
         "data": {
           "scan_interval": "Polling interval (seconds)",
           "debug_mode": "Enable debug services",
-          "experimental_platforms": "Enable experimental platforms",
           "hide_unknown_entities": "Hide unknown capability entities",
           "topology_change_repairs": "Create Repairs issue on device topology changes",
           "device_import_filter_enabled": "Enable device import filter",
@@ -160,6 +159,19 @@
       }
     }
   },
+  "entity": {
+    "select": {
+      "active_room": {
+        "name": "Active room"
+      },
+      "active_group": {
+        "name": "Active group"
+      },
+      "active_scene": {
+        "name": "Active scene"
+      }
+    }
+  },
   "services": {
     "assign_areas": {
       "name": "Assign Areas",
@@ -205,7 +217,7 @@
   "issues": {
     "device_topology_changed": {
       "title": "Yeelight Pro device list changed",
-      "description": "Yeelight Pro detected a device or topology change and automatically synchronized the Home Assistant device and entity registries.\n\nChange summary: added {added}, removed {removed}, metadata changed {metadata_changed}.\n\nCurrent aggregate counts: devices {devices}, gateways {gateways}, areas {areas}, rooms {rooms}, groups {groups}, scenes {scenes}, automations {automations}.\n\nIf devices or entities do not look right, open the integration page to review the entity list and reload the integration if needed."
+      "description": "Yeelight Pro detected a device or topology change and automatically synchronized the Home Assistant device and entity registries.\n\nChange summary: added {added}, removed {removed}, metadata changed {metadata_changed}.\n\nCurrent aggregate counts: devices {devices}, gateways {gateways}, areas {areas}, rooms {rooms}, groups {groups}, scenes {scenes}.\n\nIf devices or entities do not look right, open the integration page to review the entity list and reload the integration if needed."
     }
   }
 }

@@ -13,6 +13,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
 from .dynamic_entities import async_track_dynamic_entities
+from .entity_category import ha_entity_category
 from .projector.sensor import HASensorProjection, project_sensors
 
 _LOGGER = logging.getLogger(__name__)
@@ -157,6 +158,14 @@ class YeelightProSensor(CoordinatorEntity, SensorEntity):
         if projection is None or projection.state_class is None:
             return None
         return SENSOR_STATE_CLASS_MAP.get(projection.state_class)
+
+    @property
+    def entity_category(self):
+        """返回实体分类，用于 HA 设备页分组."""
+        projection = self._projection
+        if projection is None:
+            return None
+        return ha_entity_category(projection.entity_category)
 
     @property
     def icon(self) -> str | None:

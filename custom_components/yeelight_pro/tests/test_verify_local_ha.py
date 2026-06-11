@@ -104,6 +104,26 @@ def test_required_modules_include_runtime_inference_helper() -> None:
     )
 
 
+def test_required_modules_include_device_classification_categories() -> None:
+    """本地 HA 安装态必须保留设备分类别名词表."""
+    assert (
+        "custom_components.yeelight_pro.core.device_classification_categories"
+        in REQUIRED_RUNTIME_MODULES
+    )
+
+
+def test_required_modules_include_runtime_template_helpers() -> None:
+    """本地 HA 安装态必须保留运行时模板拆分模块."""
+    expected_modules = {
+        "custom_components.yeelight_pro.converter.runtime_template_constants",
+        "custom_components.yeelight_pro.converter.runtime_template_controls",
+        "custom_components.yeelight_pro.converter.runtime_template_hvac",
+        "custom_components.yeelight_pro.converter.runtime_template_sensors",
+        "custom_components.yeelight_pro.converter.runtime_templates",
+    }
+    assert expected_modules <= set(REQUIRED_RUNTIME_MODULES)
+
+
 def test_required_modules_include_config_flow_options_helper() -> None:
     """本地 HA 安装态必须保留拆分后的 options flow helper."""
     assert (
@@ -132,6 +152,14 @@ def test_required_modules_include_sensor_projector_helper() -> None:
     """本地 HA 安装态必须保留拆分后的 sensor projector helper."""
     assert (
         "custom_components.yeelight_pro.projector.sensor_helpers"
+        in REQUIRED_RUNTIME_MODULES
+    )
+
+
+def test_required_modules_include_entity_category_helper() -> None:
+    """本地 HA 安装态必须保留实体分类 helper。"""
+    assert (
+        "custom_components.yeelight_pro.entity_category"
         in REQUIRED_RUNTIME_MODULES
     )
 

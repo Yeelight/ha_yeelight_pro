@@ -74,7 +74,6 @@ def async_create_topology_changed_issue(
                 "rooms": counts["rooms"],
                 "groups": counts["groups"],
                 "scenes": counts["scenes"],
-                "automations": counts["automations"],
                 "added": diff_summary["total_added"],
                 "removed": diff_summary["total_removed"],
                 "metadata_changed": diff_summary["total_metadata_changed"],
@@ -181,7 +180,6 @@ def _topology_counts(coordinator: Any) -> dict[str, int]:
         "rooms": _safe_len(getattr(coordinator, "rooms", [])),
         "groups": _safe_len(getattr(coordinator, "groups", [])),
         "scenes": _safe_len(getattr(coordinator, "scenes", [])),
-        "automations": _safe_len(getattr(coordinator, "automations", [])),
     }
 
 

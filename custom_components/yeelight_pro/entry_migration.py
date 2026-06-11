@@ -16,9 +16,9 @@ from .const import (
     CONF_CONNECTION_MODE,
     CONF_DEBUG_MODE,
     CONF_DEVICE_IMPORT_FILTER,
-    CONF_EXPERIMENTAL_PLATFORMS,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_HOUSE_ID,
+    CONF_HOUSE_NAME,
     CONF_LIVE_UPDATES,
     CONF_LOCAL_GATEWAY_CONTROL,
     CONF_LOCAL_GATEWAY_HOST,
@@ -36,8 +36,8 @@ from .const import (
     DEFAULT_CLOUD_DOMAIN,
     DEFAULT_CLOUD_REGION,
     DEFAULT_DEBUG_MODE,
-    DEFAULT_EXPERIMENTAL_PLATFORMS,
     DEFAULT_HIDE_UNKNOWN_ENTITIES,
+    DEFAULT_HOUSE_NAME,
     DEFAULT_LIVE_UPDATES,
     DEFAULT_LOCAL_GATEWAY_CONTROL,
     DEFAULT_LOCAL_GATEWAY_HOST,
@@ -53,13 +53,10 @@ from .device_filter_options import (
     stored_device_import_filter_options,
 )
 from .entry_title import config_entry_title
+from .house_metadata import friendly_house_name
 
 ENTRY_VERSION = 1
-ENTRY_MINOR_VERSION = 6
-REMOVED_OPTION_KEYS = frozenset({
-    "analytics_retention_days",
-    "analytics_runtime",
-})
+ENTRY_MINOR_VERSION = 8
 
 
 async def async_migrate_config_entry(
@@ -133,6 +130,17 @@ def normalize_entry_data(value: Mapping[str, Any]) -> dict[str, Any]:
         CONF_HOUSE_ID: _coerce_house_id(
             _first_value(source, CONF_HOUSE_ID, "houseId", "house_id", "home_id")
         ),
+        CONF_HOUSE_NAME: friendly_house_name(
+            _first_value(
+                source,
+                CONF_HOUSE_NAME,
+                "houseName",
+                "house_name",
+                "home_name",
+                "projectName",
+                "project_name",
+            )
+        ) or DEFAULT_HOUSE_NAME,
         CONF_CLOUD_REGION: _cloud_region(source, cloud_domain),
         CONF_OPEN_API_CLIENT_ID: _string(
             _first_value(source, CONF_OPEN_API_CLIENT_ID, "clientId", "client_id")
@@ -164,10 +172,6 @@ def normalize_entry_options(value: Any) -> dict[str, Any]:
             options.get(CONF_DEBUG_MODE),
             default=DEFAULT_DEBUG_MODE,
         ),
-        CONF_EXPERIMENTAL_PLATFORMS: _coerce_bool(
-            options.get(CONF_EXPERIMENTAL_PLATFORMS),
-            default=DEFAULT_EXPERIMENTAL_PLATFORMS,
-        ),
         CONF_HIDE_UNKNOWN_ENTITIES: _coerce_bool(
             options.get(CONF_HIDE_UNKNOWN_ENTITIES),
             default=DEFAULT_HIDE_UNKNOWN_ENTITIES,
@@ -194,9 +198,8 @@ def normalize_entry_options(value: Any) -> dict[str, Any]:
             maximum=65535,
         ),
     }
-    for key in REMOVED_OPTION_KEYS:
-        data.pop(key, None)
     filter_config = stored_device_import_filter_options(options)
+    data.pop("experimental_platforms", None)
     for key in device_filter_form_keys():
         data.pop(key, None)
     if filter_config is not None:

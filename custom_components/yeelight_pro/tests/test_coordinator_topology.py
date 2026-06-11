@@ -160,3 +160,4 @@ async def test_topology_generation_tracks_area_changes(
     summary = coordinator.topology_diff_summary
     assert summary.added["areas"] == 1
     assert summary.total_added == 1
+

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..capabilities.registry import parse_component_property_key
 from .client_helpers import (
     control_nodes_property_body,
     control_properties_body,
@@ -14,7 +15,6 @@ from .client_helpers import (
 )
 from .client_node_base import YeelightProNodeRequestMixin
 from .client_paths import (
-    automation_action_path,
     node_properties_control_path,
     node_properties_read_path,
     node_property_control_path,
@@ -27,7 +27,7 @@ from .client_paths import (
 
 
 class YeelightProNodePropertyMixin(YeelightProNodeRequestMixin):
-    """开放平台节点属性控制、读取、场景和自动化动作接口."""
+    """开放平台节点属性控制、读取和场景接口."""
 
     async def control_device(
         self,
@@ -37,14 +37,16 @@ class YeelightProNodePropertyMixin(YeelightProNodeRequestMixin):
         duration: int = 500,
     ) -> bool:
         """控制设备."""
-        await self._control_node_properties(
-            house_id=house_id,
-            node_kind="device",
-            resource_id=device_id,
-            command="set",
-            params=params,
-            duration=duration,
-        )
+        for index, indexed_params in _group_params_by_component_index(params).items():
+            await self._control_node_properties(
+                house_id=house_id,
+                node_kind="device",
+                resource_id=device_id,
+                command="set",
+                params=indexed_params,
+                duration=duration,
+                index=index,
+            )
         return True
 
     async def toggle_device(
@@ -270,6 +272,7 @@ class YeelightProNodePropertyMixin(YeelightProNodeRequestMixin):
         duration: int,
         params: dict[str, Any] | None = None,
         properties: list[str] | None = None,
+        index: int | None = None,
     ) -> None:
         """按开放平台 nodeType 统一下发节点属性控制."""
         await self.control_node_properties(
@@ -280,19 +283,18 @@ class YeelightProNodePropertyMixin(YeelightProNodeRequestMixin):
             params=params,
             properties=properties,
             duration=duration,
+            index=index,
         )
 
-    async def enable_automation(self, automation_id: str) -> bool:
-        """启用自动化."""
-        await self._request("POST", automation_action_path(automation_id, "enable"))
-        return True
 
-    async def disable_automation(self, automation_id: str) -> bool:
-        """禁用自动化."""
-        await self._request("POST", automation_action_path(automation_id, "disable"))
-        return True
-
-    async def trigger_automation(self, automation_id: str) -> bool:
-        """手动触发自动化."""
-        await self._request("POST", automation_action_path(automation_id, "trigger"))
-        return True
+def _group_params_by_component_index(
+    params: dict[str, Any],
+) -> dict[int | None, dict[str, Any]]:
+    """把 ``1-p`` 风格控制键拆成 OpenAPI index + propName。"""
+    grouped: dict[int | None, dict[str, Any]] = {}
+    for raw_key, value in params.items():
+        control_key = parse_component_property_key(raw_key)
+        grouped.setdefault(control_key.component_index, {})[
+            control_key.prop_name
+        ] = value
+    return grouped

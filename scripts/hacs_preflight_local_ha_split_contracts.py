@@ -47,6 +47,12 @@ LOCAL_HA_SPLIT_CONTRACT_TOKENS = {
         "options real-device picker API coverage": (
             "options picker API coverage reason"
         ),
+        "device picker friendly type label coverage": (
+            "config-flow picker friendly type label reason"
+        ),
+        "options picker friendly type label coverage": (
+            "options picker friendly type label reason"
+        ),
         "Repairs placeholder runtime coverage": "Repair placeholder coverage reason",
     },
     "scripts/hacs_preflight_split_client_contracts.py": {

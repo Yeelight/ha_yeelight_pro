@@ -1,4 +1,4 @@
-"""Automation and runtime-option preflight checks for Yeelight Pro."""
+"""Device-trigger automation and runtime-option preflight checks for Yeelight Pro."""
 
 from __future__ import annotations
 
@@ -6,7 +6,11 @@ from pathlib import Path
 
 
 def check_automation_contract_tests(component_root: Path) -> list[str]:
-    """Ensure release-sensitive automation entry points have tests."""
+    """Ensure HA device-trigger automation contracts stay tested.
+
+    Yeelight cloud automations are intentionally not projected because the
+    public Open API material does not provide a list/trigger contract.
+    """
     errors: list[str] = []
     device_trigger = component_root / "device_trigger.py"
     device_trigger_test = component_root / "tests" / "test_device_trigger.py"
@@ -61,6 +65,38 @@ def check_automation_contract_tests(component_root: Path) -> list[str]:
         },
         "device_trigger_helpers.py",
     ))
+    errors.extend(_cloud_automation_runtime_errors(component_root))
+    return errors
+
+
+def _cloud_automation_runtime_errors(component_root: Path) -> list[str]:
+    """Block unsupported Yeelight cloud-automation runtime helpers."""
+    checks = {
+        "core/client_node_lists.py": {
+            "get_automations": "cloud automation list API is not documented",
+            "house_automations_path": "cloud automation list path is not documented",
+        },
+        "core/auxiliary_data.py": {
+            "automations:": "cloud automations must not be cached as topology",
+            "client.get_automations": "cloud automation fetch is not documented",
+        },
+        "entity_candidates.py": {
+            "_iter_automation_candidates": "cloud automations must not create entities",
+            '"automation"': "cloud automation candidate source is unsupported",
+        },
+    }
+    errors: list[str] = []
+    for relative_path, forbidden_tokens in checks.items():
+        path = component_root / relative_path
+        if not path.exists():
+            continue
+        content = path.read_text(encoding="utf-8")
+        errors.extend(
+            f"{relative_path} contains unsupported Yeelight cloud automation runtime: "
+            f"{reason}: {token}"
+            for token, reason in forbidden_tokens.items()
+            if token in content
+        )
     return errors
 
 
@@ -105,7 +141,6 @@ def check_runtime_options_contract_tests(component_root: Path) -> list[str]:
     errors.extend(_missing_tokens(
         source,
         {
-            "CONF_EXPERIMENTAL_PLATFORMS": "reload on platform set changes",
             "CONF_HIDE_UNKNOWN_ENTITIES": "reload on entity projection changes",
             "CONF_LIVE_UPDATES": "reload on WebSocket live update changes",
             "CONF_LOCAL_GATEWAY_CONTROL": "reload on local gateway runtime toggle",
@@ -160,6 +195,7 @@ def check_runtime_options_contract_tests(component_root: Path) -> list[str]:
             "test_options_flow_real_device_picker_load_error_is_redacted": (
                 "options picker redaction coverage"
             ),
+            "易来开关设备": "options picker friendly type label coverage",
             "CONF_DEVICE_IMPORT_FILTER_PICKER": "options picker opener coverage",
             "Kitchen Secret": "options picker label privacy marker",
         },

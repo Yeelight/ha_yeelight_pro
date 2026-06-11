@@ -30,7 +30,6 @@ def test_entity_candidate_diagnostics_are_aggregate_only() -> None:
             },
         },
         scenes=[{"id": "scene-secret"}],
-        automations=[],
         groups=[],
         house_id=None,
         hide_unknown_entities=True,
@@ -39,25 +38,26 @@ def test_entity_candidate_diagnostics_are_aggregate_only() -> None:
     summary = entity_candidate_diagnostics(coordinator)
 
     assert summary == {
-        "total": 5,
+        "total": 3,
         "platforms": {
             "button": 1,
-            "scene": 1,
             "switch": 2,
-            "vacuum": 1,
+        },
+        "device_platforms": {
+            "switch": 2,
         },
         "sources": {
-            "device": 3,
-            "scene": 2,
+            "device": 2,
+            "scene": 1,
         },
         "source_classes": {
-            "device": 3,
-            "topology": 2,
+            "device": 2,
+            "topology": 1,
         },
         "duplicate_key_count": 0,
         "availability": {
-            "available": 4,
-            "unavailable": 1,
+            "available": 3,
+            "unavailable": 0,
         },
     }
     assert "device-secret-1" not in str(summary)
@@ -87,7 +87,6 @@ def test_entity_import_filter_preview_counts_visible_device_entities_only() -> N
             },
         },
         scenes=[{"id": "scene-secret"}],
-        automations=[{"id": "preview-automation-secret"}],
         groups=[{"id": "group-secret"}],
         house_id=12345,
         hide_unknown_entities=True,
@@ -102,28 +101,29 @@ def test_entity_import_filter_preview_counts_visible_device_entities_only() -> N
     )
 
     assert summary == {
-        "total": 9,
+        "total": 7,
         "platforms": {
-            "button": 2,
+            "button": 1,
             "number": 2,
-            "scene": 1,
             "select": 3,
             "switch": 1,
         },
+        "device_platforms": {
+            "switch": 1,
+        },
         "sources": {
-            "automation": 1,
             "device": 1,
             "group": 2,
             "house": 3,
-            "scene": 2,
+            "scene": 1,
         },
         "source_classes": {
             "device": 1,
-            "topology": 8,
+            "topology": 6,
         },
         "duplicate_key_count": 0,
         "availability": {
-            "available": 9,
+            "available": 7,
             "unavailable": 0,
         },
     }
@@ -135,7 +135,6 @@ def test_entity_import_filter_preview_counts_visible_device_entities_only() -> N
         "device-secret-2",
         "scene-secret",
         "group-secret",
-        "preview-automation-secret",
         "12345",
     ):
         assert raw_marker not in dumped
@@ -161,7 +160,6 @@ def test_entity_candidate_diagnostics_count_duplicate_keys_safely() -> None:
             },
         },
         scenes=[],
-        automations=[{"id": "automation-secret"}],
         groups=[],
         house_id=None,
         hide_unknown_entities=True,
@@ -169,13 +167,14 @@ def test_entity_candidate_diagnostics_count_duplicate_keys_safely() -> None:
 
     summary = entity_candidate_diagnostics(coordinator)
 
-    assert summary["total"] == 3
+    assert summary["total"] == 2
     assert summary["duplicate_key_count"] == 1
+    assert summary["device_platforms"] == {
+        "switch": 2,
+    }
     assert summary["source_classes"] == {
         "device": 2,
-        "topology": 1,
     }
     dumped = str(summary)
     assert "duplicate-secret-device" not in dumped
-    assert "automation-secret" not in dumped
     assert "yeelight_pro_duplicate-secret-device_switch_1" not in dumped

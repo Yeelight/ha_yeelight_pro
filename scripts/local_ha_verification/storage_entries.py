@@ -20,6 +20,7 @@ REQUIRED_CONFIG_ENTRY_DATA_KEYS = {
     "cloud_region",
     "connection_mode",
     "house_id",
+    "house_name",
     "private_domain",
 }
 OPTIONAL_CONFIG_ENTRY_DATA_KEYS = {
@@ -134,6 +135,7 @@ def verify_config_entry_titles(
 ) -> None:
     """Verify stored entry titles are descriptive without exposing secrets."""
     invalid_count = 0
+    placeholder_count = 0
     cloud_count = 0
     private_count = 0
     for entry in entries:
@@ -141,6 +143,8 @@ def verify_config_entry_titles(
         if expected_title is None:
             invalid_count += 1
             continue
+        if _has_house_placeholder_name(entry):
+            placeholder_count += 1
         if expected_title.startswith("Yeelight Pro Cloud"):
             cloud_count += 1
         if expected_title.startswith("Yeelight Pro Private"):
@@ -148,10 +152,10 @@ def verify_config_entry_titles(
         if entry.get("title") != expected_title:
             invalid_count += 1
 
-    if invalid_count:
+    if invalid_count or placeholder_count:
         report.fail(
-            "config entry title mismatch: "
-            f"{invalid_count} enabled entry/entries"
+            "config entry title or house name mismatch: "
+            f"invalid={invalid_count}, placeholders={placeholder_count}"
         )
     else:
         report.fact(
@@ -183,7 +187,7 @@ def _expected_config_entry_title(entry: Mapping[str, Any]) -> str | None:
         region_label = _region_title_label(cloud_region)
         parts = [
             part
-            for part in (account_label, region_label, f"House {house_id}")
+            for part in (account_label, region_label, _house_title_label(data))
             if part
         ]
         return f"Yeelight Pro Cloud ({' · '.join(parts)})"
@@ -191,8 +195,57 @@ def _expected_config_entry_title(entry: Mapping[str, Any]) -> str | None:
         private_domain = data.get("private_domain")
         if not _has_value(private_domain) or not _has_value(house_id):
             return None
-        return f"Yeelight Pro Private ({private_domain} · House {house_id})"
+        return f"Yeelight Pro Private ({private_domain} · {_house_title_label(data)})"
     return None
+
+
+def _house_title_label(data: Mapping[str, Any]) -> str:
+    """Return stored friendly house name, never a raw house id."""
+    house_name = data.get("house_name")
+    if _has_value(house_name) and not _is_house_placeholder_name(house_name):
+        return str(house_name).strip()
+    return "易来家庭"
+
+
+def _has_house_placeholder_name(entry: Mapping[str, Any]) -> bool:
+    """Return whether title or stored data still uses generated house labels."""
+    title = entry.get("title")
+    data = entry.get("data")
+    if _is_house_placeholder_name(title):
+        return True
+    if isinstance(data, Mapping):
+        return _is_house_placeholder_name(data.get("house_name"))
+    return False
+
+
+def _is_house_placeholder_name(value: Any) -> bool:
+    """Return true for labels such as House 123 or Yeelight Pro 123."""
+    if not _has_value(value):
+        return False
+    text = str(value).strip().lower()
+    parts = text.replace("(", " ").replace(")", " ").replace("·", " ").split()
+    for index, part in enumerate(parts[:-1]):
+        if part in {"house", "home", "project"} and _looks_like_identifier(parts[index + 1]):
+            return True
+        if (
+            part == "yeelight"
+            and index + 2 < len(parts)
+            and parts[index + 1] == "pro"
+            and _looks_like_identifier(parts[index + 2])
+        ):
+            return True
+    return False
+
+
+def has_generated_house_placeholder(value: Any) -> bool:
+    """Return true for generated house labels in storage values."""
+    return _is_house_placeholder_name(value)
+
+
+def _looks_like_identifier(value: str) -> bool:
+    """Return whether a title token looks like a generated id."""
+    token = value.strip(",:;[]{}")
+    return token.isdecimal() or any(char.isdigit() for char in token)
 
 
 def _expected_config_entry_unique_id(entry: Mapping[str, Any]) -> str | None:

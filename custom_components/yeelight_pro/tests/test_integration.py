@@ -62,11 +62,6 @@ async def test_coordinator_services(mock_coordinator: MagicMock) -> None:
     await mock_coordinator.async_execute_scene(scene_id="scene_1")
     mock_coordinator.async_execute_scene.assert_called_once_with(scene_id="scene_1")
 
-    await mock_coordinator.async_trigger_automation(automation_id="auto_1")
-    mock_coordinator.async_trigger_automation.assert_called_once_with(
-        automation_id="auto_1"
-    )
-
     await mock_coordinator.async_control_device(
         device_id=12345,
         params={"power": "on"},
