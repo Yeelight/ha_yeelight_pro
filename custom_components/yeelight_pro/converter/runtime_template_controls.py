@@ -55,37 +55,7 @@ RUNTIME_CONTROL_TEMPLATES: Final[dict[str, dict[str, dict[str, Any]]]] = {
             "kind": "state",
             "property_type": "apply",
             "format": "uint8",
-            "access": "read_write",
-        },
-    },
-    "fan": {
-        "p": {
-            "name": "开关",
-            "kind": "control",
-            "property_type": "apply",
-            "format": "boolean",
-            "access": "read_write",
-        },
-        "lv": {
-            "name": "风速",
-            "kind": "control",
-            "property_type": "apply",
-            "format": "uint8",
-            "access": "read_write",
-        },
-        "dir": {
-            "name": "风向",
-            "kind": "control",
-            "property_type": "apply",
-            "format": "string",
-            "access": "read_write",
-        },
-        "m": {
-            "name": "模式",
-            "kind": "control",
-            "property_type": "apply",
-            "format": "string",
-            "access": "read_write",
+            "access": "read_only",
         },
     },
     "switch": {
@@ -98,13 +68,6 @@ RUNTIME_CONTROL_TEMPLATES: Final[dict[str, dict[str, dict[str, Any]]]] = {
         },
         "sp": {
             "name": "软开关",
-            "kind": "control",
-            "property_type": "apply",
-            "format": "boolean",
-            "access": "read_write",
-        },
-        "on": {
-            "name": "开关",
             "kind": "control",
             "property_type": "apply",
             "format": "boolean",

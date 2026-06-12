@@ -15,7 +15,7 @@ from ..capabilities.platform_contract import (
     platform_candidates_for_payload,
     primary_platform_for_payload,
 )
-from ..capabilities.registry import format_component_property_key
+from ..capabilities.registry import format_component_property_key, normalize_product_pid
 from .device_classification import infer_iot_category
 from .device_runtime_capabilities import schema_conflicts_with_runtime_category
 from .device_metadata import attach_fallback_payload_metadata, enrich_payload_metadata
@@ -53,6 +53,7 @@ class DevicePayloadBuilder:
     ) -> dict[str, Any]:
         """将 open API 格式转换为 projector 期望的格式."""
         normalized = dict(device)
+        _remember_source_category(normalized)
 
         if "id" in normalized and "device_id" not in normalized:
             normalized["device_id"] = normalized["id"]
@@ -84,7 +85,7 @@ class DevicePayloadBuilder:
             normalized["params"] = params
         normalized["online"] = online
 
-        pid = to_int(normalized.get("pid"))
+        pid = normalize_product_pid(normalized.get("pid"))
         if pid is not None:
             normalized["pid"] = pid
             product_schema = product_schemas.get(pid)
@@ -92,16 +93,9 @@ class DevicePayloadBuilder:
                 normalized["product_schema"] = dict(product_schema)
 
         iot_category = infer_iot_category(normalized)
-        if iot_category is not None:
-            normalized["iot_category"] = iot_category
-            normalized["category"] = iot_category
+        _set_effective_iot_category(normalized, iot_category)
 
-        candidates = platform_candidates_for_payload(normalized)
-        if candidates:
-            normalized["ha_platform_candidates"] = list(candidates)
-        platform = primary_platform_for_payload(normalized)
-        if platform is not None:
-            normalized["ha_platform"] = platform
+        refresh_classification_metadata(normalized)
 
         return normalized
 
@@ -129,7 +123,7 @@ class DevicePayloadBuilder:
                     rooms=rooms,
                     areas=areas,
                 )
-                _attach_platform_metadata(normalized)
+                refresh_classification_metadata(normalized)
                 data[device_id] = normalized
 
         gateway_data: dict[int, dict[str, Any]] = {}
@@ -145,7 +139,7 @@ class DevicePayloadBuilder:
                     rooms=rooms,
                     areas=areas,
                 )
-                _attach_platform_metadata(normalized)
+                refresh_classification_metadata(normalized)
                 gateway_data[gateway_id] = normalized
                 data[gateway_id] = normalized
 
@@ -247,6 +241,7 @@ class DevicePayloadBuilder:
         """Return true when broad schema would hide a stricter runtime category."""
         category = str(
             payload.get("iot_specific_category")
+            or payload.get("effective_category")
             or payload.get("iot_category")
             or payload.get("category")
             or ""
@@ -286,8 +281,32 @@ def _subdevices(value: Any) -> list[Mapping[str, Any]]:
     return [item for item in value or [] if isinstance(item, Mapping)]
 
 
-def _attach_platform_metadata(payload: dict[str, Any]) -> None:
-    """Refresh HA platform hints after runtime schema inference."""
+def _remember_source_category(payload: dict[str, Any]) -> None:
+    """保留开放平台原始品类，能力推断结果写入独立字段."""
+    if "category" not in payload:
+        return
+    category = payload.get("category")
+    payload.setdefault("source_category", category)
+    payload.setdefault("original_category", category)
+
+
+def _set_effective_iot_category(
+    payload: dict[str, Any],
+    iot_category: str | None,
+) -> None:
+    """写入能力推断后的有效品类，但不覆盖原始 category."""
+    if iot_category is None:
+        payload.pop("effective_category", None)
+        return
+    payload["iot_category"] = iot_category
+    payload["effective_category"] = iot_category
+
+
+def refresh_classification_metadata(payload: dict[str, Any]) -> None:
+    """Refresh IoT category and HA platform hints after schema inference."""
+    _remember_source_category(payload)
+    iot_category = infer_iot_category(payload)
+    _set_effective_iot_category(payload, iot_category)
     candidates = platform_candidates_for_payload(payload)
     if candidates:
         payload["ha_platform_candidates"] = list(candidates)

@@ -41,6 +41,7 @@ async def test_reconcile_renames_legacy_channel_entity_ids(
                 "device_id": "311884747",
                 "id": 311884747,
                 "name": "厨房双键开关",
+                "pid": 854018,
                 "category": "relay_switch",
                 "type": "switch",
                 "online": True,
@@ -131,7 +132,7 @@ async def test_reconcile_preserves_user_named_legacy_entity_id(
         (
             "switch.chu_fang_shuang_jian_kai_guan_1",
             {
-                "original_name": "左键",
+                "original_name": "回路 1",
                 "original_icon": "mdi:light-switch",
                 "disabled_by": None,
             },
@@ -157,7 +158,7 @@ async def test_reconcile_uses_global_entity_ids_for_legacy_migration(
         global_entries=[
             registry_entry(
                 unique_id="other_unique_id",
-                entity_id="switch.chu_fang_shuang_jian_kai_guan_zuo_jian",
+                entity_id="switch.chu_fang_shuang_jian_kai_guan_di_1_lu",
                 domain="switch",
             )
         ],
@@ -193,8 +194,8 @@ async def test_reconcile_uses_global_entity_ids_for_legacy_migration(
         (
             "switch.chu_fang_shuang_jian_kai_guan_1",
             {
-                "new_entity_id": "switch.chu_fang_shuang_jian_kai_guan_zuo_jian_2",
-                "original_name": "左键",
+                    "new_entity_id": "switch.chu_fang_shuang_jian_kai_guan_hui_lu_1",
+                    "original_name": "回路 1",
                 "original_icon": "mdi:light-switch",
                 "disabled_by": None,
             },
@@ -217,7 +218,7 @@ async def test_reconcile_keeps_metadata_cleanup_when_entity_id_migration_is_reje
                 original_icon=None,
             )
         ],
-        rejected_new_entity_ids={"switch.chu_fang_shuang_jian_kai_guan_zuo_jian"},
+        rejected_new_entity_ids={"switch.chu_fang_shuang_jian_kai_guan_hui_lu_1"},
     )
     coordinator = lifecycle_coordinator(
         data={
@@ -244,10 +245,10 @@ async def test_reconcile_keeps_metadata_cleanup_when_entity_id_migration_is_reje
         (
             "switch.chu_fang_shuang_jian_kai_guan_1",
             {
-                "original_name": "左键",
+                "original_name": "回路 1",
                 "original_icon": "mdi:light-switch",
                 "disabled_by": None,
             },
         )
     ]
-    assert registry.entries[0].original_name == "左键"
+    assert registry.entries[0].original_name == "回路 1"

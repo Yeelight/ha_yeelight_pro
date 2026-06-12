@@ -66,6 +66,12 @@ def async_track_dynamic_entities(
                 if unique_id in fallback_submitted_unique_ids:
                     continue
                 fallback_submitted_unique_ids.add(unique_id)
+            elif _registry_entry_owned_by_other_entry(registry_entry, config_entry):
+                logger.debug(
+                    "Skipping %s entity already owned by another config entry",
+                    platform_name,
+                )
+                continue
             elif _should_skip_registered_entity(
                 getattr(coordinator, "hass", None),
                 registry_entry,
@@ -122,16 +128,43 @@ def _registry_entries_by_unique_id(
     config_entry: ConfigEntry,
     entity_domain: str,
 ) -> dict[str, er.RegistryEntry] | None:
-    """Return registry entries for this config entry and HA entity domain."""
+    """Return Yeelight registry entries for this HA entity domain."""
     if hass is None:
         return None
     entity_registry = er.async_get(hass)
-    entries = er.async_entries_for_config_entry(entity_registry, config_entry.entry_id)
+    entries = list(_registry_entries(entity_registry))
+    if not entries:
+        entries = er.async_entries_for_config_entry(
+            entity_registry,
+            config_entry.entry_id,
+        )
     return {
         entry.unique_id: entry
         for entry in entries
         if entry.platform == DOMAIN and _registry_entry_domain(entry) == entity_domain
     }
+
+
+def _registry_entries(entity_registry: er.EntityRegistry) -> Iterable[er.RegistryEntry]:
+    """Return all known registry entries when HA exposes a global index."""
+    entries = getattr(entity_registry, "entities", None)
+    values = getattr(entries, "values", None)
+    if callable(values):
+        return values()
+    return ()
+
+
+def _registry_entry_owned_by_other_entry(
+    registry_entry: er.RegistryEntry | None,
+    config_entry: ConfigEntry,
+) -> bool:
+    """Return true when an existing entity belongs to another config entry."""
+    if registry_entry is None:
+        return False
+    owner_entry_id = getattr(registry_entry, "config_entry_id", None)
+    if not isinstance(owner_entry_id, str) or not owner_entry_id:
+        return False
+    return owner_entry_id != config_entry.entry_id
 
 
 def _should_skip_registered_entity(

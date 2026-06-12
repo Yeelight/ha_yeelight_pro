@@ -242,6 +242,40 @@ def test_dynamic_entities_skips_registered_entity_with_runtime_state(monkeypatch
     add_entities.assert_not_called()
 
 
+def test_dynamic_entities_skips_unique_id_owned_by_another_entry(monkeypatch) -> None:
+    """云端/LAN 多 entry 不能重复提交同一个 HA unique_id。"""
+    coordinator = MagicMock()
+    coordinator.hass = hass_with_state(None)
+    coordinator.items = ["one"]
+    entry = entry_with_unload_hook()
+    entry.entry_id = "lan_entry"
+    coordinator.async_add_listener = MagicMock(return_value=lambda: None)
+    add_entities = MagicMock()
+    patch_entity_registry(
+        monkeypatch,
+        [],
+        global_entries=[
+            registry_entry(
+                unique_id="yeelight_pro_one",
+                entity_id="light.one",
+                domain="light",
+                config_entry_id="cloud_entry",
+            )
+        ],
+    )
+
+    async_track_dynamic_entities(
+        entry,
+        coordinator,
+        add_entities,
+        lambda current: [DummyEntity(f"{DOMAIN}_{item}") for item in current.items],
+        logger=MagicMock(),
+        platform_name="light",
+    )
+
+    add_entities.assert_not_called()
+
+
 def test_dynamic_entities_readds_registered_entity_with_restored_state(
     monkeypatch,
 ) -> None:

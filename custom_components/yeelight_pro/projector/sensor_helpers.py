@@ -10,13 +10,18 @@ from ..canonical.models import (
     HADeviceInstanceModel,
     HAProductModel,
 )
-from ..utils import matches_category, to_category, to_int
+from ..utils import matches_category, to_category
 from .common import schema_backed_component_available
 from .device import flatten_instance_state
+from .event_input import (
+    EVENT_INPUT_CATEGORIES,
+    EVENT_STYLE_PRODUCT_TYPES,
+    is_event_input_component_context,
+    is_event_input_device,
+)
 from .sensor_metadata import (
     DALI_ENERGY_COMPONENT,
     DALI_ENERGY_PROJECTED_PROPS,
-    GATEWAY_CONFIG_SENSOR_PROPS,
     REGISTRY_SENSOR_PROPS,
     SENSOR_LABELS,
     SensorSpec,
@@ -27,18 +32,6 @@ from .sensor_metadata import (
     state_class_for_device_class,
 )
 
-LEGACY_SENSOR_SPECS: dict[str, dict[str, str | None]] = {
-    "level": {
-        "component_id": "light_level",
-        "label": "光感等级",
-        "device_class": None,
-        "unit": None,
-        "icon": "mdi:brightness-6",
-    },
-}
-
-EVENT_STYLE_PRODUCT_TYPES = {128, 132}
-EVENT_INPUT_TOKENS = ("情景", "scene", "scene_panel", "panel", "旋钮", "knob", "knob_switch")
 UNSUPPORTED_SENSOR_TOKENS = ("vacuum",)
 
 
@@ -51,14 +44,6 @@ def sensor_specs(params: Mapping[str, Any]) -> dict[str, SensorSpec]:
         spec = registry_sensor_spec(key)
         if spec is not None:
             specs[key] = spec
-    for key, raw_spec in LEGACY_SENSOR_SPECS.items():
-        specs[key] = SensorSpec(
-            component_id=str(raw_spec["component_id"]),
-            label=str(raw_spec["label"]),
-            device_class=string_value(raw_spec["device_class"]),
-            unit=string_value(raw_spec["unit"]),
-            icon=string_value(raw_spec["icon"]),
-        )
     return specs
 
 
@@ -74,7 +59,7 @@ def sensor_spec_keys_for_instance(
     if product_model is not None:
         keys.update(_product_property_keys(product_model))
     return tuple(
-        key for key in REGISTRY_SENSOR_PROPS | set(LEGACY_SENSOR_SPECS) if key in keys
+        key for key in REGISTRY_SENSOR_PROPS if key in keys
     )
 
 
@@ -184,20 +169,14 @@ def _component_property_keys(component: Any) -> set[str]:
 
 def is_event_style_device(device_payload: Mapping[str, Any]) -> bool:
     """判断设备是否为情景面板、旋钮等事件输入设备。"""
-    product_type = to_int(device_payload.get("product_type"))
-    if product_type in EVENT_STYLE_PRODUCT_TYPES:
-        return True
+    return is_event_input_device(device_payload)
 
-    product_model = device_payload.get("ha_product_model")
-    if isinstance(product_model, Mapping):
-        product = product_model.get("product")
-        if isinstance(product, Mapping):
-            category = to_category(product.get("category"))
-            if category and matches_category(category, EVENT_INPUT_TOKENS):
-                return True
 
-    category = to_category(device_payload.get("category"))
-    return bool(category) and matches_category(category, EVENT_INPUT_TOKENS)
+def is_event_style_component(component: ComponentInstanceModel | None) -> bool:
+    """Return true when this specific component is an event input."""
+    if component is None:
+        return False
+    return is_event_input_component_context(component.category, component.component_id)
 
 
 def is_unsupported_sensor_device(device_payload: Mapping[str, Any]) -> bool:
@@ -231,10 +210,8 @@ def string_value(value: Any) -> str | None:
 __all__ = [
     "DALI_ENERGY_COMPONENT",
     "DALI_ENERGY_PROJECTED_PROPS",
-    "EVENT_INPUT_TOKENS",
+    "EVENT_INPUT_CATEGORIES",
     "EVENT_STYLE_PRODUCT_TYPES",
-    "GATEWAY_CONFIG_SENSOR_PROPS",
-    "LEGACY_SENSOR_SPECS",
     "REGISTRY_SENSOR_PROPS",
     "SENSOR_LABELS",
     "SensorSpec",
@@ -242,6 +219,7 @@ __all__ = [
     "component_for_prop",
     "device_name",
     "is_event_style_device",
+    "is_event_style_component",
     "is_unsupported_sensor_device",
     "icon_for_property",
     "projection_available",

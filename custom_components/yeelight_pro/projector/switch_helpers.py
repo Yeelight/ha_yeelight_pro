@@ -14,14 +14,13 @@ from ..capabilities.registry import (
 from ..device_display import channel_name_label, switch_channel_count_hint
 from ..utils import matches_category, to_category, to_int
 from .common import component_index
+from .event_input import is_event_input_category, is_event_input_component
 
 RAW_SWITCH_KEY_RE = re.compile(r"^(?P<index>\d+)-(?P<prop>p|sp)$")
 DIRECT_SWITCH_PROPS = ("p", "sp")
-SWITCH_TOKENS = ("switch", "relay", "outlet")
+SWITCH_TOKENS = ("switch", "relay")
 LIGHT_TOKENS = ("light", "lamp")
-EVENT_INPUT_TOKENS = ("scene_panel", "knob_switch", "button", "remote", "knob", "dial")
-EVENT_INPUT_NAME_TOKENS = ("全面屏", "智慧屏", "智能面板", "情景面板", "控制面板")
-SWITCH_PARENT_CATEGORIES = {"relay_switch", "switch", "outlet"}
+SWITCH_PARENT_CATEGORIES = {"relay_switch", "switch"}
 NON_SWITCH_PARENT_CATEGORIES = {
     "binary_sensor",
     "climate",
@@ -39,8 +38,6 @@ NON_SWITCH_PARENT_CATEGORIES = {
     "temp_control",
 }
 NON_SWITCH_TOKENS = (
-    "fan",
-    "ceiling fan",
     "cover",
     "curtain",
     "blind",
@@ -51,8 +48,6 @@ NON_SWITCH_TOKENS = (
     "窗帘",
     "空调",
     "浴霸",
-    "情景",
-    "旋钮",
 )
 
 
@@ -64,6 +59,16 @@ def _allows_switch_projection(device_payload: Mapping[str, Any]) -> bool:
     if parent_category in NON_SWITCH_PARENT_CATEGORIES:
         return False
     return True
+
+
+def _allows_component_switch_projection(
+    device_payload: Mapping[str, Any],
+    instance: HADeviceInstanceModel,
+) -> bool:
+    """Allow schema-backed switch components on mixed-category products."""
+    if _allows_switch_projection(device_payload):
+        return True
+    return any(_looks_like_switch_component(component) for component in instance.components)
 
 
 def _allows_raw_switch_fallback(device_payload: Mapping[str, Any]) -> bool:
@@ -90,7 +95,7 @@ def _allows_raw_switch_fallback(device_payload: Mapping[str, Any]) -> bool:
 
     if parent_category:
         return False
-    return device_payload.get("type") in {"switch", "outlet"}
+    return device_payload.get("type") == "switch"
 
 
 def _component_state_key_map(
@@ -120,11 +125,9 @@ def _looks_like_switch_component(component: ComponentInstanceModel) -> bool:
 
     if component_platform_hint(component) == "event":
         return False
-    if matches_category(category, EVENT_INPUT_TOKENS):
+    if is_event_input_category(category):
         return False
-    if matches_category(category, EVENT_INPUT_NAME_TOKENS):
-        return False
-    if any(token in lowered for token in EVENT_INPUT_TOKENS):
+    if is_event_input_component(component.component_id):
         return False
     if matches_category(category, LIGHT_TOKENS + ("灯", "灯带", "彩光", "色温")):
         return False

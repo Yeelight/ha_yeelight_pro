@@ -135,7 +135,7 @@ def _project_legacy_light(
             else None
         ),
     )
-    is_on = to_bool(state.get("p", state.get("on")))
+    is_on = to_bool(state.get("p"))
     device_id = str(device_payload.get("device_id", "unknown"))
 
     return HALightProjection(
@@ -193,7 +193,7 @@ def _project_instance_light(
             else None
         ),
     )
-    is_on = to_bool(state.get("p", state.get("on")))
+    is_on = to_bool(state.get("p"))
 
     return HALightProjection(
         component_id=component.component_id,
@@ -328,12 +328,8 @@ def _payload_can_project_light(
     """Avoid projecting broad cloud ``type=light`` rows as real lights."""
     if state_blocks_light_projection(device_payload, state):
         return False
-    if not {"p", "l", "ct", "c", "on", "brightness", "color_temp_kelvin", "rgb"} & set(state):
+    if not {"p", "l", "ct", "c"} & set(state):
         return False
-
-    ha_platform = to_category(device_payload.get("ha_platform"))
-    if ha_platform == "light":
-        return True
 
     category = to_category(device_payload.get("iot_category") or device_payload.get("category"))
     if category == "light" or matches_category(category, LIGHT_CATEGORY_TOKENS):
@@ -351,7 +347,7 @@ def _legacy_type_light_has_controls(
         return False
     if to_category(device_payload.get("category")):
         return False
-    return bool({"l", "ct", "c", "brightness", "color_temp_kelvin", "rgb"} & set(state))
+    return bool({"l", "ct", "c"} & set(state))
 
 
 def _component_control_key(component: ComponentInstanceModel, prop: str) -> str:

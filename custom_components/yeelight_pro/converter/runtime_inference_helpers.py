@@ -9,10 +9,13 @@ from ..capabilities.events import normalize_event_type
 from ..event_identity import SAFETY_EVENT_COMPONENT_ID, SAFETY_EVENT_TYPES
 from .openapi_properties import openapi_runtime_properties
 from .runtime_templates import INDEXED_SWITCH_KEY_RE, RUNTIME_PROPERTY_TEMPLATES
+from .runtime_template_selector import (
+    runtime_property_ids_from_params,
+    runtime_template_key,
+)
 from .runtime_subdevices import infer_subdevice_components as _infer_subdevice_components
 
 EVENT_ONLY_EMPTY_TEMPLATE_CATEGORIES = {"knob_switch", "scene_panel"}
-FRESH_AIR_PROPS = frozenset({"vmcp", "vmcf"})
 STATE_EMPTY_TEMPLATE_CATEGORIES = {
     "climate",
     "contact_sensor",
@@ -34,10 +37,12 @@ def infer_runtime_components(payload: Mapping[str, Any]) -> list[ComponentModel]
     raw_params = payload.get("params")
     params: Mapping[str, Any] = raw_params if isinstance(raw_params, Mapping) else {}
     device_type = string_value(payload.get("type"))
-    category = string_value(payload.get("iot_category")) or string_value(
-        payload.get("category")
+    category = (
+        string_value(payload.get("effective_category"))
+        or string_value(payload.get("iot_category"))
+        or string_value(payload.get("category"))
     )
-    template_key = _runtime_template_key(category or device_type, params)
+    template_key = runtime_template_key(category or device_type, params)
 
     if template_key in {"relay_switch", "switch"}:
         indexed_components = infer_indexed_switch_components(category, params)
@@ -53,7 +58,9 @@ def infer_runtime_components(payload: Mapping[str, Any]) -> list[ComponentModel]
 
     component_id = _runtime_event_component_id(template_key, payload)
     component_name = "新风" if component_id == "fresh_air" else component_id
-    component_category = "fresh air" if component_id == "fresh_air" else template_key
+    component_category = (
+        "temp_control" if component_id == "fresh_air" else template_key
+    )
     return [
         ComponentModel(
             component_id=component_id,
@@ -120,7 +127,7 @@ def infer_runtime_properties(
 
     source_props: set[str]
     if params:
-        source_props = _runtime_property_ids_from_params(params)
+        source_props = runtime_property_ids_from_params(params)
     elif _payload_event_models(payload):
         source_props = set()
     elif _can_infer_empty_template(template_key, payload=payload):
@@ -218,15 +225,6 @@ def infer_runtime_capabilities(
         if "vmcf" in prop_ids:
             capabilities.append("speed")
         return capabilities
-    if device_type == "fan":
-        capabilities = ["onoff"]
-        if "lv" in prop_ids:
-            capabilities.append("speed")
-        if "dir" in prop_ids:
-            capabilities.append("direction")
-        if "m" in prop_ids:
-            capabilities.append("mode")
-        return capabilities
     if device_type in {"cover", "curtain"}:
         return ["position"]
     if device_type in {"binary_sensor", "contact_sensor", "human_sensor"}:
@@ -275,20 +273,6 @@ def _runtime_event_component_id(
     return default_component_id(template_key)
 
 
-def _runtime_property_ids_from_params(params: Mapping[str, Any]) -> set[str]:
-    """Return property ids from direct and indexed runtime params."""
-    return {str(prop).split("-", 1)[-1] for prop in params}
-
-
-def _runtime_template_key(
-    template_key: str | None,
-    params: Mapping[str, Any],
-) -> str | None:
-    if _runtime_property_ids_from_params(params) & FRESH_AIR_PROPS:
-        return "fresh_air"
-    return template_key
-
-
 def default_component_id(device_type: str | None) -> str:
     """获取默认组件标识。"""
     if device_type == "relay_switch":
@@ -316,7 +300,7 @@ def default_component_id(device_type: str | None) -> str:
 
 RUNTIME_EVENT_TEMPLATES = {
     "scene_panel": ("click", "hold", "release_after_hold"),
-    "knob_switch": ("knob_spin", "multi_spin", "absolut_spin"),
+    "knob_switch": ("knob_spin",),
 }
 
 

@@ -124,8 +124,8 @@ def test_light_sensor_category_keeps_sensor_as_primary_with_motion_property() ->
     )
 
 
-def test_openapi_property_access_projects_select_and_number_candidates() -> None:
-    """OpenAPI access/operators/valueRange/valueList 应生成合理 HA 候选."""
+def test_unknown_openapi_property_metadata_does_not_project_helper_candidates() -> None:
+    """未知 OpenAPI 属性不能只凭 valueList/valueRange 泛化成 HA 控件。"""
     payload = {
         "category": "light",
         "properties": [
@@ -149,7 +149,48 @@ def test_openapi_property_access_projects_select_and_number_candidates() -> None
         ],
     }
 
+    assert platform_candidates_for_payload(payload) == ()
+
+
+def test_registry_backed_openapi_property_metadata_projects_helper_candidates() -> None:
+    """官方物模型属性的枚举/数值范围仍应生成 select/number 辅助候选。"""
+    payload = {
+        "category": "light",
+        "properties": [
+            {
+                "propId": "bp",
+                "format": "uint8",
+                "value": "1",
+                "operators": ["set"],
+            },
+            {
+                "propId": "dd",
+                "format": "uint16",
+                "value": 2000,
+                "access": 7,
+            },
+        ],
+    }
+
     assert platform_candidates_for_payload(payload) == ("select", "number")
+
+
+def test_property_evidence_merges_params_and_openapi_property_metadata() -> None:
+    """同一属性来自 params 与 properties 时必须合并官方写入元数据。"""
+    payload = {
+        "category": "light",
+        "params": {"1-bp": "1"},
+        "properties": [
+            {
+                "propId": "bp",
+                "format": "uint8",
+                "value": "1",
+                "operators": ["set"],
+            },
+        ],
+    }
+
+    assert platform_candidates_for_payload(payload) == ("select",)
 
 
 def test_acrc_config_property_does_not_claim_remote_platform() -> None:

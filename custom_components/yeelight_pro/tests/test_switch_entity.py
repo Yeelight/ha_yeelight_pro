@@ -89,7 +89,7 @@ def test_indexed_switch_entity_uses_friendly_channel_name(mock_coordinator) -> N
         component_id="switch_3",
     )
 
-    assert switch.name == "第 3 键"
+    assert switch.name == "回路 3"
 
 
 def test_generated_numeric_component_name_is_replaced_by_channel_label(
@@ -109,7 +109,7 @@ def test_generated_numeric_component_name_is_replaced_by_channel_label(
         component_id="switch_2",
     )
 
-    assert switch.name == "第 2 键"
+    assert switch.name == "回路 2"
 
 
 def test_numeric_component_id_is_replaced_by_channel_label(mock_coordinator) -> None:
@@ -127,7 +127,7 @@ def test_numeric_component_id_is_replaced_by_channel_label(mock_coordinator) -> 
         component_id="3",
     )
 
-    assert switch.name == "第 3 键"
+    assert switch.name == "回路 3"
 
 
 @pytest.mark.asyncio

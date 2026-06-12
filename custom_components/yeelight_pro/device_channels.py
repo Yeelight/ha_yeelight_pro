@@ -6,21 +6,42 @@ from collections.abc import Iterable, Mapping
 import re
 from typing import Any
 
+from .capabilities.product_catalog import product_catalog
+from .capabilities.registry import product_spec
+from .device_channel_semantics import (
+    component_name_key,
+    component_text,
+    uses_output_channel_label,
+)
 from .utils import to_str
 
 _CHANNEL_LABELS = {
-    1: "第 1 键",
-    2: "第 2 键",
-    3: "第 3 键",
-    4: "第 4 键",
-    5: "第 5 键",
-    6: "第 6 键",
-    7: "第 7 键",
-    8: "第 8 键",
-    9: "第 9 键",
-    10: "第 10 键",
-    11: "第 11 键",
-    12: "第 12 键",
+    1: "按键 1",
+    2: "按键 2",
+    3: "按键 3",
+    4: "按键 4",
+    5: "按键 5",
+    6: "按键 6",
+    7: "按键 7",
+    8: "按键 8",
+    9: "按键 9",
+    10: "按键 10",
+    11: "按键 11",
+    12: "按键 12",
+}
+_OUTPUT_CHANNEL_LABELS = {
+    1: "回路 1",
+    2: "回路 2",
+    3: "回路 3",
+    4: "回路 4",
+    5: "回路 5",
+    6: "回路 6",
+    7: "回路 7",
+    8: "回路 8",
+    9: "回路 9",
+    10: "回路 10",
+    11: "回路 11",
+    12: "回路 12",
 }
 _POSITIONAL_CHANNEL_LABELS = {
     2: {
@@ -53,53 +74,8 @@ _MODEL_NAME_KEYS = (
     "product_name",
     "modelName",
     "model_name",
-    "model",
 )
-_INDEXED_SWITCH_KEY_RE = re.compile(r"^(?P<index>\d+)-(?:p|sp)$")
 _COMPONENT_INDEX_SUFFIX_RE = re.compile(r"_(?P<index>\d+)$")
-_CHANNEL_COUNT_TOKENS = (
-    ("单键", 1),
-    ("一键", 1),
-    ("双键", 2),
-    ("二键", 2),
-    ("三键", 3),
-    ("四键", 4),
-    ("五键", 5),
-    ("六键", 6),
-    ("七键", 7),
-    ("八键", 8),
-    ("九键", 9),
-    ("十键", 10),
-    ("十一键", 11),
-    ("十二键", 12),
-    ("12情景", 12),
-    ("十二情景", 12),
-    ("1键", 1),
-    ("2键", 2),
-    ("3键", 3),
-    ("4键", 4),
-    ("5键", 5),
-    ("6键", 6),
-    ("7键", 7),
-    ("8键", 8),
-    ("9键", 9),
-    ("10键", 10),
-    ("11键", 11),
-    ("12键", 12),
-    ("1-gang", 1),
-    ("2-gang", 2),
-    ("3-gang", 3),
-    ("4-gang", 4),
-    ("5-gang", 5),
-    ("6-gang", 6),
-    ("7-gang", 7),
-    ("8-gang", 8),
-    ("9-gang", 9),
-    ("10-gang", 10),
-    ("11-gang", 11),
-    ("12-gang", 12),
-)
-
 
 def channel_name_label(
     *,
@@ -109,13 +85,15 @@ def channel_name_label(
 ) -> str | None:
     """Return a readable sub-entity label for indexed controls."""
     inferred_index = index if index is not None else _component_index(component)
-    explicit = _component_text(component, _CHANNEL_NAME_KEYS)
+    explicit = component_text(component, _CHANNEL_NAME_KEYS)
     has_positional_context = False
     if device_payload is not None:
         count = switch_channel_count_hint(device_payload)
         has_positional_context = count is not None
     else:
         count = None
+    if inferred_index is None and count == 1 and _is_documented_channel_component(component):
+        inferred_index = 1
     if explicit and not _looks_like_generated_channel_name(
         explicit,
         inferred_index,
@@ -128,100 +106,132 @@ def channel_name_label(
         label = _POSITIONAL_CHANNEL_LABELS.get(count, {}).get(inferred_index)
         if label is not None:
             return label
-    return _CHANNEL_LABELS.get(inferred_index, f"第 {inferred_index} 键")
+    labels = (
+        _OUTPUT_CHANNEL_LABELS
+        if uses_output_channel_label(component, device_payload)
+        else _CHANNEL_LABELS
+    )
+    prefix = "回路" if labels is _OUTPUT_CHANNEL_LABELS else "按键"
+    return labels.get(inferred_index, f"{prefix} {inferred_index}")
 
 
 def switch_channel_count_hint(payload: Mapping[str, Any]) -> int | None:
-    """Return product-name channel count hints such as 双键/三键."""
-    text = " ".join(
-        value
-        for value in (
-            _first_text(payload, ("name", "deviceName", "device_name", "n")),
-            _first_text(payload, _MODEL_NAME_KEYS),
-            _schema_text(payload),
-        )
-        if value
-    ).lower()
-    if not text:
+    """Return switch channel count from official product or runtime capability evidence."""
+    if count := _product_catalog_channel_count(payload):
+        return count
+    if count := _official_product_text_channel_count(payload):
+        return count
+    if count := _runtime_switch_channel_count(payload):
+        return count
+    return None
+
+
+def _product_catalog_channel_count(payload: Mapping[str, Any]) -> int | None:
+    """Return documented component count from Yeelight product composition."""
+    spec = product_spec(payload.get("pid") or payload.get("productId") or payload.get("product_id"))
+    if spec is None:
         return None
-    for token, count in _CHANNEL_COUNT_TOKENS:
-        if token.lower() in text:
-            return count
-    if not (
-        _looks_like_positionable_switch(text)
-        or _runtime_indexes_have_positional_context(payload)
-    ):
+    if count := _product_component_channel_count(spec):
+        return count
+    if len(spec.normal_components) != 1:
         return None
-    return _runtime_switch_channel_count(payload)
+    if not _is_channel_component(spec.normal_components[0]):
+        return None
+    return _safe_channel_count(spec.normal_component_count)
+
+
+def _official_product_text_channel_count(payload: Mapping[str, Any]) -> int | None:
+    """Return channel count only when product text exactly matches the catalog."""
+    names = {
+        value.strip()
+        for value in (_first_text(payload, _MODEL_NAME_KEYS), _schema_text(payload))
+        if value and value.strip()
+    }
+    if not names:
+        return None
+    for spec in product_catalog().values():
+        if spec.name in names:
+            if count := _product_component_channel_count(spec):
+                return count
+            if len(spec.normal_components) == 1 and _is_channel_component(
+                spec.normal_components[0]
+            ):
+                return _safe_channel_count(spec.normal_component_count)
+            return None
+    return None
+
+
+def _product_component_channel_count(spec: Any) -> int | None:
+    """Return documented channel count for known channel components only."""
+    if not spec.normal_component_counts:
+        return None
+    switch_counts = [
+        count
+        for component_name, count in spec.normal_component_counts
+        if _is_switch_channel_component(component_name)
+    ]
+    if len(switch_counts) == 1:
+        return _safe_channel_count(switch_counts[0])
+    counts = [
+        count
+        for component_name, count in spec.normal_component_counts
+        if _is_channel_component(component_name)
+    ]
+    if len(counts) != 1:
+        return None
+    return _safe_channel_count(counts[0])
+
+
+def _is_switch_channel_component(value: Any) -> bool:
+    text = component_name_key(value)
+    return text in {
+        "switch control",
+        "wireless switch channel",
+        "开关",
+        "无线开关通道",
+    }
+
+
+def _is_channel_component(value: Any) -> bool:
+    text = component_name_key(value)
+    return text in {
+        "switch control",
+        "wireless switch channel",
+        "scene control button",
+        "dali scene control button",
+        "开关",
+        "无线开关通道",
+        "情景按键",
+        "dali情景按键",
+    }
+
+
+def _is_documented_channel_component(component: Any | None) -> bool:
+    """Return true for official input/output channel components."""
+    if component is None:
+        return False
+    values = (
+        component_text(component, ("component_id", "componentId", "id")),
+        component_text(component, ("name", "componentName", "component_name", "desc")),
+        component_text(component, ("category",)),
+    )
+    return any(_is_channel_component(value) for value in values if value)
 
 
 def _runtime_switch_channel_count(payload: Mapping[str, Any]) -> int | None:
     """Infer switch channel count from Open API runtime metadata."""
     indexes: set[int] = set()
-    params = payload.get("params")
-    if isinstance(params, Mapping):
-        indexes.update(_indexed_switch_key_indexes(params))
     indexes.update(_subdevice_indexes(payload.get("subDeviceList")))
-    instance = payload.get("ha_device_instance")
-    if isinstance(instance, Mapping):
-        indexes.update(_component_indexes(instance.get("components")))
+    if not _runtime_only_product_model(payload):
+        instance = payload.get("ha_device_instance")
+        if isinstance(instance, Mapping):
+            indexes.update(_component_indexes(instance.get("components")))
     if not indexes:
         return None
     ordered = sorted(indexes)
     if ordered != list(range(1, len(ordered) + 1)):
         return None
     return len(ordered) if len(ordered) <= 12 else None
-
-
-def _looks_like_positionable_switch(text: str) -> bool:
-    """Return true when indexed channels likely map to physical positions."""
-    lowered = text.lower()
-    if not lowered:
-        return False
-    if any(token in lowered for token in ("墙壁", "面板", "智能开关", "wall switch", "gang")):
-        return True
-    return "开关" in lowered and "继电器" not in lowered
-
-
-def _runtime_indexes_have_positional_context(payload: Mapping[str, Any]) -> bool:
-    """Return true when runtime metadata describes a physical key/panel device."""
-    for subdevice in _iter_mappings(payload.get("subDeviceList")):
-        category = " ".join(
-            value
-            for value in (
-                _first_text(subdevice, ("category",)),
-                _first_text(subdevice, _CHANNEL_NAME_KEYS),
-            )
-            if value
-        ).lower()
-        if any(
-            token in category
-            for token in (
-                "button",
-                "key",
-                "panel",
-                "scene_panel",
-                "scene control",
-                "switch",
-                "按键",
-                "按钮",
-                "情景",
-                "面板",
-                "开关",
-            )
-        ):
-            return True
-    return False
-
-
-def _indexed_switch_key_indexes(params: Mapping[Any, Any]) -> set[int]:
-    """Return indexes from raw keys such as 1-p / 2-sp."""
-    indexes: set[int] = set()
-    for key in params:
-        match = _INDEXED_SWITCH_KEY_RE.match(str(key))
-        if match:
-            indexes.add(int(match.group("index")))
-    return indexes
 
 
 def _subdevice_indexes(value: Any) -> set[int]:
@@ -253,33 +263,32 @@ def _component_indexes(value: Any) -> set[int]:
     return indexes
 
 
+def _runtime_only_product_model(payload: Mapping[str, Any]) -> bool:
+    """Return true when canonical components were inferred only from raw runtime params."""
+    product_model = payload.get("ha_product_model")
+    return (
+        isinstance(product_model, Mapping)
+        and to_str(product_model.get("schema_version")) == "runtime-v1"
+        and not isinstance(payload.get("subDeviceList"), list)
+    )
+
+
+def _safe_channel_count(value: Any) -> int | None:
+    """Normalize documented fixed channel counts."""
+    if isinstance(value, int):
+        count = value
+    elif isinstance(value, str) and value.strip().isdecimal():
+        count = int(value.strip())
+    else:
+        return None
+    return count if 0 < count <= 12 else None
+
+
 def _iter_mappings(value: Any) -> Iterable[Mapping[str, Any]]:
     """Yield mapping items from list-like runtime metadata."""
     if not isinstance(value, list):
         return ()
     return tuple(item for item in value if isinstance(item, Mapping))
-
-
-def _component_text(component: Any | None, keys: tuple[str, ...]) -> str | None:
-    if component is None:
-        return None
-    for key in keys:
-        value = (
-            component.get(key)
-            if isinstance(component, Mapping)
-            else getattr(component, key, None)
-        )
-        if text := to_str(value):
-            return text
-    for key in ("component_id", "componentId", "id"):
-        value = (
-            component.get(key)
-            if isinstance(component, Mapping)
-            else getattr(component, key, None)
-        )
-        if text := to_str(value):
-            return text
-    return None
 
 
 def _component_index(component: Any | None) -> int | None:
@@ -365,12 +374,15 @@ def _looks_like_generated_channel_name(
             f"键{index}",
             f"键_{index}",
             f"button_{index}",
+            f"channel_{index}",
             f"curtain_{index}",
             f"fan_{index}",
             f"human_sensor_{index}",
             f"key_{index}",
+            f"knob_{index}",
             f"switch_{index}",
             f"relay_switch_{index}",
+            f"relay_input_{index}",
             f"sensor_{index}",
             f"scene_button_{index}",
             f"scene_control_button_{index}",

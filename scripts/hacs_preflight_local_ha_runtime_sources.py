@@ -11,6 +11,15 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "custom_components/yeelight_pro/core/lan_control.py": (
             "LAN source token coverage"
         ),
+        "custom_components/yeelight_pro/core/lan_topology_payload.py": (
+            "LAN topology payload source token coverage"
+        ),
+        "custom_components/yeelight_pro/core/firmware_metadata.py": (
+            "firmware metadata source token coverage"
+        ),
+        "custom_components/yeelight_pro/projector/event_identity_helpers.py": (
+            "event identity helper source token coverage"
+        ),
         "custom_components/yeelight_pro/projector/event_helpers.py": (
             "event projector source token coverage"
         ),
@@ -48,6 +57,17 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "_lan_uint_id": "LAN numeric id fallback guard",
         "safe_error_summary": "LAN control error redaction helper",
     },
+    "custom_components/yeelight_pro/core/lan_topology_payload.py": {
+        "build_lan_topology_payloads": "LAN topology normalization facade",
+        "_LAN_TYPE_SPECS": "documented LAN type to IoT category registry",
+        "builder.normalize(payload, {})": "DevicePayloadBuilder normalization boundary",
+        "builder.attach_canonical_models_if_available": (
+            "canonical runtime device rebuild boundary"
+        ),
+        "platform_candidates_for_payload": "HA platform candidate metadata boundary",
+        "NODE_TYPE_DEVICE = 2": "documented LAN Mesh sub-device node type",
+        "NODE_TYPE_SCENE = 6": "documented LAN scene node type",
+    },
     "custom_components/yeelight_pro/core/coordinator_controls.py": {
         "CoordinatorControlMixin": "split coordinator control facade",
         "async_try_lan_control_device": "LAN-first device set route",
@@ -68,10 +88,20 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "_room_name": "room and area suggested_area resolver",
         "_area_name_by_room_id": "area roomIds fallback resolver",
     },
+    "custom_components/yeelight_pro/core/firmware_metadata.py": {
+        "firmware_version": "official fv firmware metadata helper",
+        "_FIRMWARE_VERSION_KEYS": "top-level firmware metadata aliases",
+        "parse_component_property_key": "indexed fv property key parsing",
+    },
     "custom_components/yeelight_pro/device_display.py": {
         "device_type_label": "friendly picker device type summary",
         "channel_name_label": "friendly sub-entity channel label",
         "_CATEGORY_LABELS": "category label registry",
+    },
+    "custom_components/yeelight_pro/device_channel_semantics.py": {
+        "uses_output_channel_label": "input/output channel naming semantics",
+        "OUTPUT_CHANNEL_CATEGORIES": "relay output channel category guard",
+        "EVENT_INPUT_CATEGORIES": "event input channel category guard",
     },
     "custom_components/yeelight_pro/device_select.py": {
         "YeelightProDeviceSelect": "device select entity split helper",
@@ -165,15 +195,29 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "matches_rules": "runtime include/exclude matching helper",
         "distinct_value_counts": "diagnostics-safe preview counts",
     },
+    "custom_components/yeelight_pro/projector/event_input.py": {
+        "EVENT_INPUT_CATEGORIES": "documented event-input category registry",
+        "EVENT_STYLE_PRODUCT_TYPES": "documented LAN event-input product type registry",
+        "event_input_category_for_device": "event-input device category resolver",
+        "event_input_component_category": "event-input component category resolver",
+        "is_event_input_device": "shared event-input device guard",
+    },
+    "custom_components/yeelight_pro/projector/event_identity_helpers.py": {
+        "event_input_category": "schema event-input identity helper",
+        "product_model_has_official_component_names": (
+            "runtime user component names excluded from type inference"
+        ),
+        "has_registry_supported_events": "registry component alias matching helper",
+        "registry_component_keys": "registry component key expansion helper",
+        "normalize_component_alias": "registry component alias normalizer",
+    },
     "custom_components/yeelight_pro/projector/event_helpers.py": {
-        "EVENT_COMPONENT_TOKENS": "event input component token registry",
         "SAFETY_EVENT_TYPES": "safety alarm schema event types",
         "is_safety_event_device": "safety event schema-evidence route",
         "event_components": "event component projection helper",
         "event_types": "normalized schema event type helper",
         "event_device_class": "event device class inference helper",
         "event_icon": "event icon inference helper",
-        "_registry_component_keys": "registry component alias matching helper",
     },
     "custom_components/yeelight_pro/event_identity.py": {
         "SAFETY_EVENT_COMPONENT_ID": "shared safety event component id",
@@ -229,6 +273,11 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "openapi_runtime_properties": "top-level OpenAPI property metadata reuse",
         "RUNTIME_PROPERTY_TEMPLATES": "runtime inference template registry use",
     },
+    "custom_components/yeelight_pro/converter/runtime_template_selector.py": {
+        "runtime_template_key": "runtime property-evidence template selector",
+        "runtime_property_ids_from_params": "runtime property id extraction helper",
+        "category_from_property_keys": "registry-backed category evidence reuse",
+    },
     "custom_components/yeelight_pro/converter/runtime_templates.py": {
         "RUNTIME_CONTROL_TEMPLATES": "runtime control template split import",
         "RUNTIME_SENSOR_TEMPLATES": "runtime sensor template split import",
@@ -250,6 +299,19 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
     "custom_components/yeelight_pro/converter/runtime_template_hvac.py": {
         "RUNTIME_HVAC_TEMPLATES": "runtime HVAC template registry",
         "\"temp_control\"": "runtime temp-control template coverage",
+    },
+    "custom_components/yeelight_pro/capabilities/product_catalog.py": {
+        "normalize_product_pid": "product pid normalization helper",
+        "product_model_from_catalog": "product catalog canonical model builder",
+        "product_hydration_properties": "product catalog hydration property list",
+        "registry_property_model": "registry-backed catalog property builder",
+    },
+    "custom_components/yeelight_pro/capabilities/product_catalog_data.py": {
+        "IOT_PRODUCT_SPECS": "embedded Yeelight product composition registry",
+        "Yeelight Pro S21 智能墙壁开关-双键": (
+            "documented S21 switch product row"
+        ),
+        "DALI网关": "documented DALI gateway product row",
     },
     "custom_components/yeelight_pro/converter/runtime_subdevices.py": {
         "infer_subdevice_components": "OpenAPI sub-device component builder",

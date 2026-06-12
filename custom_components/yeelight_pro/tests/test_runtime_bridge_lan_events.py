@@ -134,3 +134,47 @@ async def test_coordinator_infers_lan_event_component_without_node_type(
     assert [event.event_type for event in events] == ["hold"]
     assert fired[0][ATTR_COMPONENT_ID] == "scene_button"
     assert fired[0][ATTR_EVENT_TYPE] == "hold"
+
+
+@pytest.mark.asyncio
+async def test_coordinator_applies_lan_topology_auxiliary_nodes(
+    hass: HomeAssistant,
+) -> None:
+    """LAN 拓扑推送应同步设备、房间、灯组和情景缓存。"""
+    coordinator = YeelightProCoordinator(
+        hass=hass,
+        client=None,
+        house_id=12345,
+    )
+    listener = MagicMock()
+    remove_listener = coordinator.async_add_listener(listener)
+
+    events = await coordinator.async_handle_lan_payload(
+        {
+            "id": 13812,
+            "method": "gateway_post.topology",
+            "nodes": [
+                {"id": 1001, "nt": 2, "type": 3, "n": "客厅灯", "roomid": 2001},
+                {"id": 2001, "nt": 1, "n": "客厅"},
+                {"id": 3001, "nt": 4, "type": 1, "n": "客厅灯组"},
+                {"id": 4001, "nt": 6, "n": "回家"},
+            ],
+        }
+    )
+
+    assert events == []
+    assert coordinator.data == coordinator.devices
+    device = coordinator.devices[1001]
+    assert device["name"] == "客厅灯"
+    assert device["iot_category"] == "light"
+    assert device["ha_platform"] == "light"
+    assert device["device_info"]["model"] == "色温灯"
+    assert device["device_info"]["suggested_area"] == "客厅"
+    assert coordinator.rooms == [{"id": 2001, "name": "客厅"}]
+    assert coordinator.groups == [
+        {"id": 3001, "name": "客厅灯组", "type": 1, "node_type": 4}
+    ]
+    assert coordinator.scenes == [{"id": 4001, "name": "回家"}]
+    listener.assert_called_once()
+    remove_listener()
+    await coordinator.async_shutdown()

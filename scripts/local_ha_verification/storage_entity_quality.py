@@ -11,6 +11,23 @@ from .constants import DOMAIN
 from .report import VerificationReport
 from .storage_helpers import read_json, storage_path
 
+UNFRIENDLY_PROPERTY_NAMES = frozenset({
+    "default duration",
+    "power on boot",
+    "slisaon",
+    "indicator switch",
+    "run speed",
+    "reverse direction",
+    "open type",
+    "ac remote controller",
+    "ac deflector",
+    "sense range",
+    "luminance setting",
+    "delay time",
+    "switch power on boot",
+    "device type after relay switch",
+})
+
 
 def verify_entity_registry_quality(
     config_dir: Path,
@@ -187,7 +204,7 @@ def _verify_entity_friendly_names(
             unfriendly += 1
     if unfriendly:
         report.fail(
-            "entity registry entries still use raw channel/action names: "
+            "entity registry entries still use raw channel/action/property names: "
             f"{unfriendly}/{checked}"
         )
     elif checked:
@@ -282,6 +299,14 @@ def _has_unfriendly_entity_name(entity: Mapping[str, Any]) -> bool:
 def _is_unfriendly_generated_name(text: str, domain: str | None) -> bool:
     """Return true for generated names that should be replaced by device-aware names."""
     normalized = text.replace(" ", "")
+    normalized_words = " ".join(text.lower().replace("_", " ").split())
+    if normalized_words in UNFRIENDLY_PROPERTY_NAMES:
+        return True
+    if any(
+        normalized_words.endswith(f" {name}")
+        for name in UNFRIENDLY_PROPERTY_NAMES
+    ):
+        return True
     if normalized.isdigit() or normalized in {"1", "2", "3", "4", "5", "6"}:
         return True
     if domain == "switch" and normalized in {

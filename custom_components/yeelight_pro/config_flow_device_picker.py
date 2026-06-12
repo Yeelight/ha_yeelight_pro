@@ -12,6 +12,7 @@ from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES
+from .capabilities.registry import product_spec
 from .core.client import YeelightProClient
 from .core.device_classification import is_generic_model_label
 from .device_display import device_name_label, device_type_label
@@ -143,18 +144,18 @@ def _device_id(device: Mapping[str, Any]) -> str | None:
 def _device_label(device: Mapping[str, Any], device_id: str) -> str:
     """Return a readable label without storing raw device payloads."""
     name = device_name_label(device, device_id)
-    device_type = _picker_device_type_label(device, name)
+    device_type = _picker_device_type_label(device)
     room = _room_label(device)
     details = " / ".join(item for item in (device_type, room) if item)
     return f"{name} ({details})" if details else name
 
 
-def _picker_device_type_label(device: Mapping[str, Any], name: str) -> str | None:
+def _picker_device_type_label(device: Mapping[str, Any]) -> str | None:
     """Return picker-only type text; it must not feed platform projection."""
     explicit = _specific_text(device, ("productName", "product_name", "modelName", "model_name"))
     if explicit is not None:
         return explicit
-    return _name_pattern_display_label(device, name) or device_type_label(device) or _exact_name_display_label(name)
+    return _product_catalog_label(device) or device_type_label(device)
 
 
 def _room_label(device: Mapping[str, Any]) -> str | None:
@@ -165,43 +166,6 @@ def _room_label(device: Mapping[str, Any]) -> str | None:
     return None
 
 
-def _name_pattern_display_label(device: Mapping[str, Any], name: str) -> str | None:
-    """Return safe picker-only labels from names when a category already exists."""
-    category = _category_text(device)
-    if category not in {"light", "relay_switch", "switch", "temp_control", "curtain"}:
-        return None
-    lowered = name.lower()
-    patterns: tuple[tuple[tuple[str, ...], str], ...] = (
-        (("三键", "开关"), "三键开关"),
-        (("双键", "开关"), "双键开关"),
-        (("单键", "开关"), "单键开关"),
-        (("四键", "开关"), "四键开关"),
-        (("智能", "开关"), "智能开关"),
-        (("镜前灯",), "镜前灯"),
-        (("操作台灯",), "操作台灯"),
-        (("衣柜灯",), "衣柜灯"),
-        (("感应夜灯",), "感应夜灯"),
-        (("筒灯",), "筒灯"),
-        (("射灯",), "射灯"),
-        (("台灯",), "台灯"),
-        (("吊灯",), "吊灯"),
-        (("暖风机",), "暖风机"),
-        (("窗帘", "电机"), "窗帘电机"),
-    )
-    for tokens, label in patterns:
-        if all(token.lower() in lowered for token in tokens):
-            return label
-    return None
-
-
-def _exact_name_display_label(name: str) -> str | None:
-    """Return picker-only labels for exact generic cloud device names."""
-    return {
-        "curtain": "窗帘",
-        "light": "易来照明设备",
-    }.get(name.strip().lower())
-
-
 def _specific_text(device: Mapping[str, Any], keys: tuple[str, ...]) -> str | None:
     for key in keys:
         if (value := to_str(device.get(key))) and not is_generic_model_label(value):
@@ -209,10 +173,12 @@ def _specific_text(device: Mapping[str, Any], keys: tuple[str, ...]) -> str | No
     return None
 
 
-def _category_text(device: Mapping[str, Any]) -> str | None:
-    for key in ("iot_category", "category", "type"):
-        if value := to_str(device.get(key)):
-            return value.strip().lower().replace("-", "_").replace(" ", "_")
+def _product_catalog_label(device: Mapping[str, Any]) -> str | None:
+    """Return documented product name from Yeelight product composition."""
+    for key in ("pid", "productId", "product_id"):
+        product = product_spec(device.get(key))
+        if product is not None:
+            return product.name
     return None
 
 

@@ -54,11 +54,11 @@ RUNTIME_HVAC_TEMPLATES: Final[dict[str, dict[str, dict[str, Any]]]] = {
             "access": "read_write",
         },
         "aco": {
-            "name": "开关",
-            "kind": "control",
+            "name": "在线",
+            "kind": "state",
             "property_type": "apply",
             "format": "boolean",
-            "access": "read_write",
+            "access": "read_only",
         },
     },
     "temp_control": {
@@ -70,11 +70,11 @@ RUNTIME_HVAC_TEMPLATES: Final[dict[str, dict[str, dict[str, Any]]]] = {
             "access": "read_write",
         },
         "aco": {
-            "name": "开关",
-            "kind": "control",
+            "name": "在线",
+            "kind": "state",
             "property_type": "apply",
             "format": "boolean",
-            "access": "read_write",
+            "access": "read_only",
         },
         "acm": {
             "name": "模式",

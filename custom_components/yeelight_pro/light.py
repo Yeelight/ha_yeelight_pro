@@ -43,6 +43,13 @@ async def async_setup_entry(
 ) -> None:
     """初始化 Yeelight Pro 灯光平台。"""
     coordinator: YeelightProCoordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
+    _LOGGER.debug(
+        "Light platform init: entry=%s coord_id=%s data_keys=%d first_key=%s",
+        config_entry.entry_id[:12],
+        id(coordinator),
+        len(coordinator.data),
+        next(iter(coordinator.data), None),
+    )
 
     async_track_dynamic_entities(
         config_entry,
@@ -59,7 +66,16 @@ def _iter_light_entities(coordinator: YeelightProCoordinator) -> list["YeelightP
     lights: list[YeelightProLight] = []
     for device_key, device_data in coordinator.data.items():
         device_id = source_device_id(device_key, device_data)
-        for projection in project_lights(device_data, domain=DOMAIN):
+        projections = project_lights(device_data, domain=DOMAIN)
+        _LOGGER.debug(
+            "Light candidate: key=%s device_id=%s projections=%d params=%s ha_platform=%s",
+            device_key,
+            device_id,
+            len(projections),
+            device_data.get("params"),
+            device_data.get("ha_platform"),
+        )
+        for projection in projections:
             lights.append(
                 YeelightProLight(
                     coordinator,

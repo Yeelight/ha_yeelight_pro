@@ -34,8 +34,6 @@ async def test_device_trigger_lists_projected_event_types(hass: HomeAssistant) -
         ("scene_panel", "click"),
         ("scene_panel", "hold"),
         ("scene_panel", "knob_spin"),
-        ("scene_panel", "multi_spin"),
-        ("scene_panel", "absolut_spin"),
     ]
     assert all(trigger[CONF_PLATFORM] == "device" for trigger in triggers)
     assert all(trigger[CONF_DOMAIN] == DOMAIN for trigger in triggers)

@@ -39,8 +39,7 @@ def check_automation_contract_tests(component_root: Path) -> list[str]:
         "async_validate_trigger_config": "rejects unsupported device triggers",
         "async_attach_trigger": "attaches Home Assistant event trigger",
         "InvalidDeviceAutomationConfig": "asserts invalid trigger failures",
-        "multi_spin": "keeps scene-panel multi-spin trigger coverage",
-        "absolut_spin": "keeps scene-panel absolut-spin trigger coverage",
+        "knob_spin": "keeps documented knob-spin trigger coverage",
         },
         "test_device_trigger.py",
     ))
@@ -60,8 +59,7 @@ def check_automation_contract_tests(component_root: Path) -> list[str]:
             "event_device_payload": "device trigger event payload fixture",
             "register_event_device": "scene panel registration helper",
             "register_switch_event_device": "switch event registration helper",
-            "multi spin": "scene-panel multi-spin fixture coverage",
-            "absolut spin": "scene-panel absolut-spin fixture coverage",
+            "knob spin": "documented knob-spin fixture coverage",
         },
         "device_trigger_helpers.py",
     ))

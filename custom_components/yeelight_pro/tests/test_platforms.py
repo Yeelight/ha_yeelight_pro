@@ -115,10 +115,10 @@ class TestYeelightProFan:
         fan = YeelightProFan(
             mock_coordinator,
             12345,
-            component_id="fan",
+            component_id="fresh_air",
         )
         assert fan._device_id == 12345
-        assert fan._component_id == "fan"
+        assert fan._component_id == "fresh_air"
 
 
 class TestYeelightProSwitch:
@@ -148,6 +148,7 @@ class TestYeelightProSwitch:
             state={"p": True},
             params={"1-p": True, "2-p": False},
         )
+        payload["pid"] = 854018
         payload["name"] = "厨房智能开关"
         payload["ha_device_instance"]["name"] = "厨房智能开关"
         payload["ha_device_instance"]["device_info"]["name"] = "厨房智能开关"

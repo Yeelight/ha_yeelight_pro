@@ -11,8 +11,9 @@ from dataclasses import dataclass
 import re
 from typing import Any
 
-from ..utils import matches_category, to_category
+from ..utils import matches_category, to_category, to_str
 from .registry import (
+    iot_registry,
     normalize_alias_key,
     parse_component_property_key,
     platform_for_category,
@@ -24,16 +25,7 @@ FALLBACK_SENSOR_REASON = "fallback_sensor"
 UNSUPPORTED_PLATFORM_REASON = "unsupported_platform"
 UNSUPPORTED_VALUE_REASON = "unsupported_value"
 
-_EVENT_INPUT_TOKENS = (
-    "scene_panel",
-    "knob_switch",
-    "button",
-    "remote",
-    "knob",
-    "dial",
-    "情景",
-    "旋钮",
-)
+_EVENT_INPUT_CATEGORIES = frozenset({"scene_panel", "knob_switch"})
 _LOW_CONFIDENCE_COMPONENT_TOKENS = (
     "audio",
     "wifi_screen",
@@ -155,12 +147,13 @@ def is_low_confidence_component_payload(device_payload: Mapping[str, Any]) -> bo
 
 def _supports_unknown_sensor_fallback(device_payload: Mapping[str, Any]) -> bool:
     """仅 sensor 类来源允许未知只读 fallback，事件/控制类不放宽."""
-    category = to_category(device_payload.get("category"))
+    category = to_category(
+        device_payload.get("effective_category")
+        or device_payload.get("iot_category")
+        or device_payload.get("category")
+    )
     source_type = to_category(device_payload.get("type"))
-    if matches_category(category, _EVENT_INPUT_TOKENS) or matches_category(
-        source_type,
-        _EVENT_INPUT_TOKENS,
-    ):
+    if _is_event_input_identity(category) or _is_event_input_identity(source_type):
         return False
     return source_type == "sensor" or platform_for_category(category) == "sensor"
 
@@ -185,6 +178,22 @@ def _payload_has_token(
             values.extend((product.get("category"), product.get("model")))
         values.extend(_component_values(product_model.get("components")))
     return any(matches_category(to_category(value), tokens) for value in values)
+
+
+def _is_event_input_identity(value: Any) -> bool:
+    """Return true for documented event-input categories or components."""
+    category = to_category(value)
+    if category in _EVENT_INPUT_CATEGORIES:
+        return True
+    spec = iot_registry().component_map.get(_component_key(value))
+    return spec is not None and spec.category in _EVENT_INPUT_CATEGORIES
+
+
+def _component_key(value: Any) -> str:
+    text = to_str(value)
+    if not text:
+        return ""
+    return " ".join(text.lower().replace("_", " ").replace("-", " ").split())
 
 
 def _payload_has_bridge_protocol(device_payload: Mapping[str, Any]) -> bool:

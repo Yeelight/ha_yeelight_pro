@@ -6,6 +6,7 @@ from homeassistant.const import EntityCategory
 
 from custom_components.yeelight_pro.binary_sensor import YeelightProBinarySensor
 from custom_components.yeelight_pro.projector.binary_sensor import project_binary_sensors
+from custom_components.yeelight_pro.projector.property_controls import project_switch_controls
 from custom_components.yeelight_pro.projector.sensor import project_sensors
 from custom_components.yeelight_pro.projector.switch import project_switches
 from custom_components.yeelight_pro.sensor import YeelightProSensor
@@ -97,7 +98,7 @@ def test_battery_component_projects_charging_binary_diagnostics() -> None:
 
 
 def test_gateway_properties_project_diagnostic_sensors_only() -> None:
-    """网关只暴露运行诊断，不生成主控制实体."""
+    """网关运行态走诊断 sensor，读写配置走配置 switch."""
     device = projection_payload(
         device_id="gateway-1",
         category="gateway",
@@ -105,30 +106,37 @@ def test_gateway_properties_project_diagnostic_sensors_only() -> None:
         state={"fm": 9584, "lf": 113924, "pl": 1, "cpt": 3, "lc": 1, "li": 0},
         component_category="gateway",
     )
+    device["ha_product_model"]["components"][0]["properties"] = [
+        {"prop_id": "fm", "access": "read"},
+        {"prop_id": "lf", "access": "read"},
+        {"prop_id": "pl", "access": "read"},
+        {"prop_id": "cpt", "access": "read"},
+        {"prop_id": "lc", "access": "read_write", "property_type": "int"},
+        {"prop_id": "li", "access": "read_write", "property_type": "int"},
+    ]
 
     sensors = project_sensors(device, domain=DOMAIN)
     by_component = {item.component_id: item for item in sensors}
+    switches = {item.prop_id: item for item in project_switch_controls(device, domain=DOMAIN)}
 
     assert set(by_component) == {
         "connectivity_protocol",
         "free_memory",
-        "indicator_switch",
-        "lan_control",
         "physical_link",
         "uptime",
     }
+    assert set(switches) == {"lc", "li"}
     assert by_component["free_memory"].native_value == 9584
     assert by_component["free_memory"].entity_category == "diagnostic"
     assert by_component["uptime"].entity_category == "diagnostic"
     assert by_component["physical_link"].entity_category == "diagnostic"
     assert by_component["connectivity_protocol"].entity_category == "diagnostic"
-    assert by_component["lan_control"].entity_category == "config"
-    assert by_component["indicator_switch"].entity_category == "config"
+    assert {item.entity_category for item in switches.values()} == {"config"}
     assert project_switches(device, domain=DOMAIN) == []
 
 
-def test_config_properties_project_as_config_sensors_without_write_controls() -> None:
-    """值域不完整的配置属性先只读展示，不能生成泛化控制实体."""
+def test_config_properties_without_safe_control_metadata_do_not_project_sensors() -> None:
+    """值域不完整的读写配置属性不生成 sensor 或盲控实体."""
     device = projection_payload(
         device_id="dali-config-1",
         category="scene_panel",
@@ -138,11 +146,10 @@ def test_config_properties_project_as_config_sensors_without_write_controls() ->
     )
 
     sensors = project_sensors(device, domain=DOMAIN)
-    by_component = {item.component_id: item for item in sensors}
 
-    assert set(by_component) == {"event_priority", "repeat_timer", "short_timer"}
-    assert {item.entity_category for item in sensors} == {"config"}
+    assert sensors == []
     assert project_switches(device, domain=DOMAIN) == []
+    assert project_switch_controls(device, domain=DOMAIN) == []
 
 
 def test_dali_energy_projects_runtime_diagnostic_sensors() -> None:

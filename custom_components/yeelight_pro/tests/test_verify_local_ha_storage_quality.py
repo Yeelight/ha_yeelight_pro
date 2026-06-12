@@ -257,15 +257,25 @@ def test_verify_storage_rejects_device_backed_entities_without_device_id(
 def test_verify_storage_rejects_raw_numeric_entity_names(
     tmp_path: Path,
 ) -> None:
-    """多键开关等实体不能在 HA 设备页显示裸数字名称."""
+    """多键开关等实体不能在 HA 设备页显示裸数字或英文字段名."""
     entities = _yeelight_entities()
-    entities.append({
-        "platform": "yeelight_pro",
-        "entity_id": "switch.raw_channel",
-        "unique_id": "yeelight_pro_304784336_switch_4",
-        "original_name": "4",
-        "device_id": "device-registry-2",
-    })
+    entities.extend([
+        {
+            "platform": "yeelight_pro",
+            "entity_id": "switch.raw_channel",
+            "unique_id": "yeelight_pro_304784336_switch_4",
+            "original_name": "4",
+            "device_id": "device-registry-2",
+        },
+        {
+            "platform": "yeelight_pro",
+            "entity_id": "number.raw_property",
+            "unique_id": "yeelight_pro_304784333_light_dd_number",
+            "original_name": "default duration",
+            "device_id": "device-registry-1",
+            "entity_category": "config",
+        },
+    ])
     _write_storage(tmp_path, "core.config_entries", {"entries": [_config_entry()]})
     _write_storage(tmp_path, "core.device_registry", {"devices": _yeelight_devices()})
     _write_storage(tmp_path, "core.entity_registry", {"entities": entities})
@@ -281,7 +291,7 @@ def test_verify_storage_rejects_raw_numeric_entity_names(
     )
 
     assert not report.ok
-    assert any("raw channel/action names" in failure for failure in report.failures)
+    assert any("raw channel/action/property names" in failure for failure in report.failures)
 
 
 def test_verify_storage_rejects_generated_switch_and_light_entity_names(
@@ -320,7 +330,7 @@ def test_verify_storage_rejects_generated_switch_and_light_entity_names(
     )
 
     assert not report.ok
-    assert any("raw channel/action names" in failure for failure in report.failures)
+    assert any("raw channel/action/property names" in failure for failure in report.failures)
 
 
 def test_verify_storage_rejects_generated_light_name_without_switch_noise(
@@ -350,7 +360,7 @@ def test_verify_storage_rejects_generated_light_name_without_switch_noise(
     )
 
     assert not report.ok
-    assert any("raw channel/action names" in failure for failure in report.failures)
+    assert any("raw channel/action/property names" in failure for failure in report.failures)
 
 
 def test_verify_storage_rejects_unavailable_yeelight_restore_states(

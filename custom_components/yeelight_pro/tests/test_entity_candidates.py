@@ -164,8 +164,8 @@ def test_device_entity_candidate_tracks_unavailable_projection() -> None:
     assert candidates[0].availability_reason == "unavailable"
 
 
-def test_gateway_and_unknown_indexed_power_do_not_create_candidates() -> None:
-    """网关仅生成诊断候选，未知 indexed p/sp 仍不生成普通实体候选."""
+def test_gateway_and_unknown_indexed_power_do_not_create_ordinary_candidates() -> None:
+    """params-only 网关只生成诊断，未知 indexed p/sp 仍不生成普通实体候选."""
     coordinator = _Coordinator(
         data={
             "gateway": {
@@ -194,7 +194,6 @@ def test_gateway_and_unknown_indexed_power_do_not_create_candidates() -> None:
         for item in candidates
     } == {
         ("sensor", "free_memory", "剩余内存"),
-        ("sensor", "lan_control", "局域网控制配置"),
         ("sensor", "uptime", "运行时间"),
     }
     assert not any(item.platform in {"light", "switch"} for item in candidates)
@@ -367,4 +366,3 @@ def test_schema_writable_auxiliary_properties_create_control_candidates() -> Non
     assert ("switch", "yeelight_pro_aux-device-1_main_light_li_switch") in candidates
     assert ("select", "yeelight_pro_aux-device-1_main_light_rd_select") in candidates
     assert not any(unique_id.endswith("_l_number") for _platform, unique_id in candidates)
-

@@ -28,13 +28,14 @@ def test_device_choices_normalize_open_api_rows() -> None:
 
 
 def test_device_choices_use_friendly_type_labels() -> None:
-    """设备 picker 的括号类型应使用产品/品类友好名，不显示裸 category."""
+    """设备 picker 的括号类型应使用产品/品类事实，不显示裸 category."""
     choices = device_choices([
         {
             "id": "dev-1",
             "name": "三键智能开关",
             "category": "relay_switch",
             "model": "relay_switch",
+            "pid": 854019,
             "roomName": "玄关",
         },
         {
@@ -48,11 +49,11 @@ def test_device_choices_use_friendly_type_labels() -> None:
 
     labels = {item.device_id: item.label for item in choices}
     assert labels == {
-        "dev-1": "三键智能开关 (三键开关 / 玄关)",
+        "dev-1": "三键智能开关 (Yeelight Pro S21 智能墙壁开关-三键 / 玄关)",
         "dev-2": "客厅主灯 (E20 射灯 / 客厅)",
     }
     assert "relay_switch" not in " ".join(labels.values())
-    assert "light" not in " ".join(labels.values())
+    assert "(light" not in " ".join(labels.values()).lower()
 
 
 def test_device_choices_use_openapi_room_aliases() -> None:
@@ -76,8 +77,8 @@ def test_device_choices_use_openapi_room_aliases() -> None:
 
     labels = {item.device_id: item.label for item in choices}
     assert labels == {
-        "dev-1": "厨房双键开关 (双键开关 / 厨房)",
-        "dev-2": "过道筒灯 (筒灯 / 过道)",
+        "dev-1": "厨房双键开关 (易来开关设备 / 厨房)",
+        "dev-2": "过道筒灯 (易来照明设备 / 过道)",
     }
     assert "relay_switch" not in " ".join(labels.values())
     assert "light" not in " ".join(labels.values())
@@ -99,8 +100,25 @@ def test_cloud_devices_schema_uses_multi_select_options() -> None:
     assert device_selector.selector_type == "select"
     assert device_selector.config["multiple"] is True
     assert device_selector.config["options"] == [
-        {"value": "dev-2", "label": "Curtain (窗帘)"},
-        {"value": "dev-1", "label": "Light (易来照明设备)"},
+        {"value": "dev-2", "label": "Curtain"},
+        {"value": "dev-1", "label": "Light"},
+    ]
+
+
+def test_device_choices_do_not_infer_type_from_user_name() -> None:
+    """用户设备名不能作为 picker 类型证据。"""
+    choices = device_choices([
+        {
+            "id": "dev-1",
+            "name": "厨房烟雾传感器",
+            "category": "light",
+            "model": "light",
+            "roomName": "厨房",
+        }
+    ])
+
+    assert [(item.device_id, item.label) for item in choices] == [
+        ("dev-1", "厨房烟雾传感器 (易来照明设备 / 厨房)")
     ]
 
 

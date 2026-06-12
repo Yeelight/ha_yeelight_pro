@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 LIGHT_STATE_PROPS = frozenset(
-    {"p", "l", "ct", "c", "on", "brightness", "color_temp_kelvin", "rgb"}
+    {"p", "l", "ct", "c"}
 )
 FRESH_AIR_PROPS = frozenset({"vmcp", "vmcf"})
 RELAY_SWITCH_PROPS = frozenset({

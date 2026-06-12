@@ -7,6 +7,7 @@ import logging
 from typing import Any, Protocol
 
 from ..utils import to_int, to_str
+from ..capabilities.registry import product_hydration_properties
 from .device_classification import infer_iot_category
 from .device_runtime_capabilities import schema_conflicts_with_runtime_category
 from .exceptions import AuthenticationError, safe_error_summary
@@ -193,16 +194,25 @@ def _device_hydration_properties(
         ):
             schema_props = _schema_property_ids(schema)
             props.update(schema_props)
+    catalog_props = set(product_hydration_properties(device.get("pid")))
+    props.update(catalog_props)
     if category:
         props.update(_CATEGORY_EXTRA_PROPERTIES.get(category, ()))
     if not props or _needs_broad_property_discovery(
         device,
         inferred_category=category,
         existing_props=existing_props,
-        schema_props=schema_props,
+        schema_props=schema_props | catalog_props,
     ):
         props.update(DEFAULT_HYDRATION_PROPERTIES)
-    return [prop for prop in DEFAULT_HYDRATION_PROPERTIES if prop in props]
+    return _ordered_properties(props)
+
+
+def _ordered_properties(props: set[str]) -> list[str]:
+    """Return stable reads without dropping documented product-only props."""
+    ordered = [prop for prop in DEFAULT_HYDRATION_PROPERTIES if prop in props]
+    ordered.extend(sorted(props - set(DEFAULT_HYDRATION_PROPERTIES)))
+    return ordered
 
 
 def _needs_broad_property_discovery(

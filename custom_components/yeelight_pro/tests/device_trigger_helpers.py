@@ -63,8 +63,6 @@ def event_device_payload(*, switch_component: bool = False) -> dict:
                         {"event_id": 1, "name": "click"},
                         {"event_id": 2, "name": "hold"},
                         {"event_id": 10, "name": "knob spin"},
-                        {"name": "multi spin"},
-                        {"name": "absolut spin"},
                     ],
                 }
             ],

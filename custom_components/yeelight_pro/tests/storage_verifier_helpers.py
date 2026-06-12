@@ -51,6 +51,34 @@ def config_entry() -> dict[str, Any]:
     }
 
 
+def lan_config_entry() -> dict[str, Any]:
+    """Return a migrated LAN-only Yeelight Pro config entry shape."""
+    entry = config_entry()
+    entry["unique_id"] = "lan:192.168.0.252:65443"
+    entry["title"] = "Yeelight Pro LAN (192.168.0.252:65443)"
+    entry["data"] = {
+        **entry["data"],
+        "account_user_id": None,
+        "account_username": "",
+        "cloud_domain": "",
+        "cloud_region": "",
+        "connection_mode": "lan",
+        "house_id": 0,
+        "house_name": "",
+        "lan_gateway_ip": "192.168.0.252",
+        "lan_gateway_port": 65443,
+        "local_gateway_host": "192.168.0.252",
+        "local_gateway_port": 65443,
+        "open_api_client_id": "",
+        "private_domain": "",
+        "refresh_token": "",
+        "scan_login_device": "",
+        "token_expires_in": 0,
+        "token_type": "",
+    }
+    return entry
+
+
 def yeelight_devices() -> list[dict[str, Any]]:
     """Return aggregate Yeelight device-registry entries with source metadata."""
     return [

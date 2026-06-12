@@ -20,6 +20,7 @@ from .common import load_instance, load_product_model, payload_available, produc
 from .device import project_payload_device_info
 from .sensor_helpers import (
     is_event_style_device,
+    is_event_style_component,
     is_unsupported_sensor_device,
     projection_available,
     projection_name,
@@ -82,7 +83,7 @@ def project_sensors(
         if not should_project_registry_sensor(key, component):
             continue
         entity_category = sensor_entity_category(key, component)
-        if event_style_device and entity_category is None:
+        if _blocks_event_style_sensor(event_style_device, component, entity_category):
             continue
         schema_component = (
             product_component(product_model, component.component_id)
@@ -111,7 +112,7 @@ def project_sensors(
             )
         )
 
-    projected_keys = set(specs)
+    projected_keys = _projected_sensor_keys(occurrences)
     for key, value in params.items():
         if value is None:
             continue
@@ -141,6 +142,13 @@ def project_sensors(
         )
 
     return projections
+
+
+def _projected_sensor_keys(
+    occurrences: list[tuple[str, ComponentInstanceModel | None, Any]],
+) -> set[str]:
+    """Return all registry-backed sensor keys already handled by schema/runtime."""
+    return {key for key, _component, _value in occurrences}
 
 
 def _sensor_property_occurrences(
@@ -173,6 +181,17 @@ def _sensor_property_occurrences(
         if key not in scoped_keys:
             occurrences.append((key, None, params.get(key)))
     return occurrences
+
+
+def _blocks_event_style_sensor(
+    event_style_device: bool,
+    component: ComponentInstanceModel | None,
+    entity_category: str | None,
+) -> bool:
+    """Return true when an event-input component would leak as a normal sensor."""
+    return entity_category is None and (
+        (event_style_device and component is None) or is_event_style_component(component)
+    )
 
 
 def _property_occurrence_counts(

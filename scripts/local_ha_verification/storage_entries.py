@@ -13,6 +13,7 @@ from .constants import SOURCE_COMPONENT_ROOT
 from .report import VerificationReport
 
 CONNECTION_MODE_CLOUD = "cloud"
+CONNECTION_MODE_LAN = "lan"
 CONNECTION_MODE_PRIVATE = "private"
 REQUIRED_CONFIG_ENTRY_DATA_KEYS = {
     "access_token",
@@ -96,6 +97,7 @@ def verify_config_entry_unique_ids(
     """Verify stored entry unique ids keep region/account/house isolation."""
     invalid_count = 0
     cloud_count = 0
+    lan_count = 0
     private_count = 0
     for entry in entries:
         expected_unique_id = _expected_config_entry_unique_id(entry)
@@ -104,6 +106,8 @@ def verify_config_entry_unique_ids(
             continue
         if expected_unique_id.startswith(f"{CONNECTION_MODE_CLOUD}:"):
             cloud_count += 1
+        if expected_unique_id.startswith(f"{CONNECTION_MODE_LAN}:"):
+            lan_count += 1
         if expected_unique_id.startswith(f"{CONNECTION_MODE_PRIVATE}:"):
             private_count += 1
         if entry.get("unique_id") != expected_unique_id:
@@ -117,13 +121,14 @@ def verify_config_entry_unique_ids(
     else:
         report.fact(
             "config entry unique_id isolation: "
-            f"cloud={cloud_count}, private={private_count}"
+            f"cloud={cloud_count}, private={private_count}, lan={lan_count}"
         )
     report.metric(
         "config_entry_unique_ids",
         {
             "cloud": cloud_count,
             "private": private_count,
+            "lan": lan_count,
             "invalid": invalid_count,
         },
     )
@@ -137,6 +142,7 @@ def verify_config_entry_titles(
     invalid_count = 0
     placeholder_count = 0
     cloud_count = 0
+    lan_count = 0
     private_count = 0
     for entry in entries:
         expected_title = _expected_config_entry_title(entry)
@@ -149,6 +155,8 @@ def verify_config_entry_titles(
             cloud_count += 1
         if expected_title.startswith("Yeelight Pro Private"):
             private_count += 1
+        if expected_title.startswith("Yeelight Pro LAN"):
+            lan_count += 1
         if entry.get("title") != expected_title:
             invalid_count += 1
 
@@ -160,13 +168,14 @@ def verify_config_entry_titles(
     else:
         report.fact(
             "config entry titles: "
-            f"cloud={cloud_count}, private={private_count}"
+            f"cloud={cloud_count}, private={private_count}, lan={lan_count}"
         )
     report.metric(
         "config_entry_titles",
         {
             "cloud": cloud_count,
             "private": private_count,
+            "lan": lan_count,
             "invalid": invalid_count,
         },
     )
@@ -196,6 +205,12 @@ def _expected_config_entry_title(entry: Mapping[str, Any]) -> str | None:
         if not _has_value(private_domain) or not _has_value(house_id):
             return None
         return f"Yeelight Pro Private ({private_domain} · {_house_title_label(data)})"
+    if connection_mode == CONNECTION_MODE_LAN:
+        lan_host = data.get("lan_gateway_ip") or data.get("local_gateway_host")
+        lan_port = data.get("lan_gateway_port") or data.get("local_gateway_port") or 65443
+        if not _has_value(lan_host):
+            return None
+        return f"Yeelight Pro LAN ({str(lan_host).strip()}:{lan_port})"
     return None
 
 
@@ -266,6 +281,12 @@ def _expected_config_entry_unique_id(entry: Mapping[str, Any]) -> str | None:
         if not _has_value(private_domain) or not _has_value(house_id):
             return None
         return f"{CONNECTION_MODE_PRIVATE}:{private_domain}:{house_id}"
+    if connection_mode == CONNECTION_MODE_LAN:
+        lan_host = data.get("lan_gateway_ip") or data.get("local_gateway_host")
+        lan_port = data.get("lan_gateway_port") or data.get("local_gateway_port") or 65443
+        if not _has_value(lan_host):
+            return None
+        return f"{CONNECTION_MODE_LAN}:{str(lan_host).strip()}:{lan_port}"
     return None
 
 

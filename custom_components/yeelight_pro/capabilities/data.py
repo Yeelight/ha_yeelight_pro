@@ -47,7 +47,7 @@ IOT_COMPONENT_SPECS: tuple[IoTComponentSpec, ...] = (
     IoTComponentSpec(12, "curtain", "窗帘", "curtain", "normal", "cover", ("cp", "tp", "rd", "pe", "pi", "dt", "open_type", "rs", "name", "icon", "3rdPartySyncBitmask", "io", "run_speed", "run_speed_rdy", "li")),
     IoTComponentSpec(16, "wireless switch channel", "无线开关通道", "relay_switch", "normal", "switch", ("l", "sbp", "slisaon", "slisaon_rdy", "mock", "name", "icon", "3rdPartySyncBitmask", "io", "run_speed", "run_speed_rdy", "li", "sp", "sdt"), ("click", "hold")),
     IoTComponentSpec(17, "knob switch", "旋钮开关", "knob_switch", "normal", "event", ("name", "icon", "io", "3rdPartySyncBitmask"), ("knob_spin",)),
-    IoTComponentSpec(18, "scene control button", "情景按键", "scene_panel", "normal", "button", ("name", "icon", "io", "3rdPartySyncBitmask", "p", "m", "mock"), ("click", "hold")),
+    IoTComponentSpec(18, "scene control button", "情景按键", "scene_panel", "normal", "event", ("name", "icon", "io", "3rdPartySyncBitmask", "p", "m", "mock"), ("click", "hold")),
     IoTComponentSpec(19, "air conditioner", "空调", "temp_control", "normal", "climate", ("acp", "acm", "actt", "acf", "acct", "acd", "acdfltr", "acrc", "3rdPartySyncBitmask", "name", "icon", "o", "io")),
     IoTComponentSpec(20, "switch control", "开关", "relay_switch", "normal", "switch", ("p", "slisaon", "bp", "slisaon_rdy", "3rdPartySyncBitmask", "name", "icon", "mock", "io", "jen", "jdef", "jtm"), ("click", "hold")),
     IoTComponentSpec(21, "contact sensor", "接触式传感器", "contact_sensor", "normal", "binary_sensor", ("alm", "dc", "3rdPartySyncBitmask", "name", "icon", "io"), ("door_open", "door_close", "door_alarm", "door_normal")),
@@ -62,7 +62,7 @@ IOT_COMPONENT_SPECS: tuple[IoTComponentSpec, ...] = (
     IoTComponentSpec(63, "temp control", "温控器组件", "temp_control", "normal", "climate", ("p", "bhm", "do", "ve", "fa", "he", "t", "tgt", "3rdPartySyncBitmask", "name", "icon", "io", "sa", "ss", "rst", "dntm")),
     IoTComponentSpec(65, "dali light", "dali灯组件", None, "global", None, ("ddt", "dpt", "power_on_level", "system_failure_level", "fade_rate", "dim_curve", "min_level", "max_level")),
     IoTComponentSpec(66, "dali energy", "dali能量组件", None, "global", "sensor", ("ap", "ae", "ot", "sys_s", "esv", "esvf", "temp", "ocp", "lsot", "lsv", "lsc", "pf")),
-    IoTComponentSpec(67, "dali scene control button", "dali情景按键", "scene_panel", "normal", "button", ("name", "icon", "io", "3rdPartySyncBitmask", "ep", "st", "rt"), ("click", "hold")),
+    IoTComponentSpec(67, "dali scene control button", "dali情景按键", "scene_panel", "normal", "event", ("name", "icon", "io", "3rdPartySyncBitmask", "ep", "st", "rt"), ("click", "hold")),
     IoTComponentSpec(68, "dali human detection sensor", "dali人感传感器", "human_sensor", "normal", "binary_sensor", ("mv", "name", "icon", "io", "3rdPartySyncBitmask", "ep", "dead_time", "report_timers", "hold_timers")),
     IoTComponentSpec(69, "dali illuminance sensor", "dali光感传感器", "light_sensor", "normal", "sensor", ("name", "icon", "3rdPartySyncBitmask", "io", "dead_time", "report_timers", "hys", "hys_min", "luminance", "ep")),
     IoTComponentSpec(71, "dali knob switch", "dali旋钮开关组件", "knob_switch", "normal", "event", ("3rdPartySyncBitmask", "name", "icon", "io", "ep", "rt", "dead_time")),
@@ -86,6 +86,7 @@ IOT_PROPERTY_SPECS: tuple[IoTPropertySpec, ...] = (
     IoTPropertySpec("temp", "temperature", "int", "read_write", "application", "gateway", PropertyCapability("temp", device_class="temperature", unit="°C"), components=("dali energy",), unit="°C"),
     IoTPropertySpec("h", "humidity", "int", "read", "application", "device", PropertyCapability("h", device_class="humidity", unit="%"), unit="%"),
     IoTPropertySpec("luminance", "luminance", "int", "read", "application", "device", PropertyCapability("luminance", device_class="illuminance", unit="lx"), ("ambient light sensor", "human illuminance sensor", "human body infrared sensor", "dali illuminance sensor"), unit="lx"),
+    IoTPropertySpec("level", "light level", "int", "read", "application", "device", components=("human illuminance sensor",), value_range=(1, 8, 1)),
     IoTPropertySpec("ebl", "environmental brightness level", "int", "read", "application", "device", components=("ambient light sensor", "human body infrared sensor")),
     IoTPropertySpec("mv", "motion", "bool", "read", "application", "device", PropertyCapability("mv", device_class="motion"), ("human detection sensor", "human occupancy sensor", "human body infrared sensor")),
     IoTPropertySpec("dc", "door closed", "bool", "read", "application", "device", PropertyCapability("dc", device_class="door"), ("contact sensor",)),
@@ -188,8 +189,6 @@ IOT_EVENT_SPECS: tuple[IoTEventSpec, ...] = (
     IoTEventSpec("有人进入", "human_enter", 22, "有人进入", ("humanenter", "human_enter", "human enter", "approach.true"), ("human body infrared sensor",)),
     IoTEventSpec("有人离开", "human_leave", 23, "有人离开", ("humanleave", "human_leave", "human leave", "approach.false"), ("human body infrared sensor",)),
     IoTEventSpec("挥手", "handwave", 24, "TOF传感器挥手", ("handwave", "hand_wave")),
-    IoTEventSpec("多圈旋转", "multi_spin", None, "多圈旋转", ("multispin", "multi_spin")),
-    IoTEventSpec("绝对旋转", "absolut_spin", None, "绝对旋转", ("absolutspin", "absolut_spin", "absolute_spin")),
 )
 
 

@@ -20,8 +20,6 @@ from custom_components.yeelight_pro.capabilities.properties import property_capa
         ("door alarm", "door_alarm"),
         ("door normal", "door_normal"),
         ("knob spin", "knob_spin"),
-        ("multi spin", "multi_spin"),
-        ("absolut spin", "absolut_spin"),
         ("human enter", "human_enter"),
         ("human leave", "human_leave"),
         ("motion detected", "motion_detected"),

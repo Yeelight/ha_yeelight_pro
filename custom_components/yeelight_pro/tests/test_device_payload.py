@@ -35,7 +35,10 @@ def test_normalize_maps_open_api_properties_to_params_and_online() -> None:
     assert normalized["device_id"] == 1
     assert "type" not in normalized
     assert normalized["iot_category"] == "light"
+    assert normalized["effective_category"] == "light"
     assert normalized["category"] == "light"
+    assert normalized["source_category"] == "light"
+    assert normalized["original_category"] == "light"
     assert normalized["ha_platform"] == "light"
     assert normalized["ha_platform_candidates"] == ["light", "sensor"]
     assert normalized["online"] is False
@@ -65,6 +68,33 @@ def test_normalize_accepts_read_property_response_shape() -> None:
     assert normalized["iot_category"] == "light"
     assert normalized["ha_platform"] == "light"
     assert normalized["ha_platform_candidates"] == ["light"]
+
+
+def test_normalize_preserves_openapi_category_when_capabilities_override_it() -> None:
+    """OpenAPI 原始 category 是事实源，能力推断写入独立有效品类字段."""
+    builder = DevicePayloadBuilder()
+
+    normalized = builder.normalize(
+        {
+            "id": 3,
+            "name": "厨房烟雾传感器",
+            "category": "light",
+            "properties": [
+                {"propId": "dc", "value": False},
+                {"propId": "alm", "value": True},
+                {"propId": "bl", "value": 91},
+            ],
+        },
+        {},
+    )
+
+    assert normalized["category"] == "light"
+    assert normalized["source_category"] == "light"
+    assert normalized["original_category"] == "light"
+    assert normalized["iot_category"] == "contact_sensor"
+    assert normalized["effective_category"] == "contact_sensor"
+    assert normalized["ha_platform"] == "binary_sensor"
+    assert normalized["ha_platform_candidates"] == ["binary_sensor", "sensor"]
 
 
 def test_normalize_parses_string_online_property_values() -> None:

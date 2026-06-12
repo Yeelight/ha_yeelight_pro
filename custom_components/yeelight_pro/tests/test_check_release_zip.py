@@ -10,6 +10,8 @@ from scripts import check_release_zip
 def test_release_zip_required_files_include_runtime_contracts() -> None:
     """发布 zip 校验必须覆盖关键运行时和协议边界文件。"""
     assert {
+        "custom_components/yeelight_pro/capabilities/product_catalog.py",
+        "custom_components/yeelight_pro/capabilities/product_catalog_data.py",
         "custom_components/yeelight_pro/capabilities/spec_correction_normalizers.py",
         "custom_components/yeelight_pro/capabilities/documented_catalog.py",
         "custom_components/yeelight_pro/capabilities/ha_core_platforms.py",
@@ -18,6 +20,7 @@ def test_release_zip_required_files_include_runtime_contracts() -> None:
         "custom_components/yeelight_pro/converter/runtime_inference_helpers.py",
         "custom_components/yeelight_pro/converter/runtime_template_controls.py",
         "custom_components/yeelight_pro/converter/runtime_template_hvac.py",
+        "custom_components/yeelight_pro/converter/runtime_template_selector.py",
         "custom_components/yeelight_pro/converter/runtime_template_sensors.py",
         "custom_components/yeelight_pro/converter/runtime_templates.py",
         "custom_components/yeelight_pro/converter/runtime_subdevices.py",
@@ -35,7 +38,9 @@ def test_release_zip_required_files_include_runtime_contracts() -> None:
         "custom_components/yeelight_pro/core/device_registry_classification.py",
         "custom_components/yeelight_pro/core/device_runtime_constants.py",
         "custom_components/yeelight_pro/core/device_metadata.py",
+        "custom_components/yeelight_pro/core/firmware_metadata.py",
         "custom_components/yeelight_pro/core/lan_control.py",
+        "custom_components/yeelight_pro/core/lan_topology_payload.py",
         "custom_components/yeelight_pro/core/scan_login.py",
         "custom_components/yeelight_pro/core/runtime_bridge.py",
         "custom_components/yeelight_pro/debug_service.py",
@@ -48,6 +53,7 @@ def test_release_zip_required_files_include_runtime_contracts() -> None:
         "custom_components/yeelight_pro/lan_runtime.py",
         "custom_components/yeelight_pro/live_runtime.py",
         "custom_components/yeelight_pro/scan_login_contract.py",
+        "custom_components/yeelight_pro/projector/event_identity_helpers.py",
         "custom_components/yeelight_pro/projector/event_helpers.py",
         "custom_components/yeelight_pro/projector/sensor_helpers.py",
         "custom_components/yeelight_pro/projector/sensor_metadata.py",

@@ -258,7 +258,50 @@ def test_binary_sensor_schema_projects_unknown_entity_without_runtime_value() ->
     assert by_component["motion"].device_class == "motion"
     assert by_component["tamper"].available is True
     assert by_component["tamper"].is_on is None
-    assert by_component["tamper"].device_class == "tamper"
+
+
+def test_documented_safe_registry_properties_project_diagnostic_sensors() -> None:
+    """CSV 已知的安全标量属性应进入 HA 设备页，而不是被当作未知属性隐藏。"""
+    device = projection_payload(
+        device_id="gateway-diagnostics-1",
+        category="gateway",
+        component_id="gateway",
+        state={"hb_interval": 30, "ttl": 5, "retrans": 2, "tx_power": 8},
+        component_category="mesh",
+        properties=("hb_interval", "ttl", "retrans", "tx_power"),
+    )
+
+    sensors = project_sensors(device, domain=DOMAIN)
+    by_component = {item.component_id: item for item in sensors}
+
+    assert set(by_component) == {
+        "heart_beat_interval",
+        "retrans_num",
+        "time_to_live",
+        "transmit_power",
+    }
+    assert by_component["heart_beat_interval"].native_value == 30
+    assert {item.entity_category for item in sensors} == {"diagnostic"}
+
+
+def test_sensitive_or_structured_registry_properties_do_not_project_sensors() -> None:
+    """凭证、地址和结构化配置即使在 CSV 中可读，也不能暴露为 HA 实体。"""
+    device = projection_payload(
+        device_id="sensitive-registry-1",
+        category="gateway",
+        component_id="gateway",
+        state={
+            "ip": "192.168.1.2",
+            "mac": "aa:bb:cc:dd:ee:ff",
+            "deviceKey": "secret",
+            "psk": "secret",
+            "nightMode": {"enabled": True},
+        },
+        component_category="wifi",
+        properties=("ip", "mac", "deviceKey", "psk", "nightMode"),
+    )
+
+    assert project_sensors(device, domain=DOMAIN) == []
 
 
 def test_multi_component_binary_sensor_properties_keep_component_scope() -> None:

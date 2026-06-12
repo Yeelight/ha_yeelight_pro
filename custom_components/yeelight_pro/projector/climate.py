@@ -10,7 +10,16 @@ from typing import Any, Mapping
 
 from homeassistant.components.climate import ClimateEntityFeature, HVACMode
 
-from ..canonical.models import ComponentInstanceModel, HADeviceInstanceModel
+from ..canonical.models import (
+    ComponentInstanceModel,
+    ComponentModel,
+    HADeviceInstanceModel,
+    HAProductModel,
+)
+from ..capabilities.platform_contract_data import (
+    CLIMATE_CANDIDATE_PROPS,
+    FAN_CANDIDATE_PROPS,
+)
 from ..utils import to_category
 from .common import (
     load_product_model,
@@ -46,7 +55,8 @@ def project_climate(
 ) -> HAClimateProjection | None:
     """将协调器载荷投影为 Home Assistant climate 视图。"""
     instance = _load_instance(device_payload)
-    component = _select_climate_component(instance)
+    product_model = load_product_model(device_payload)
+    component = _select_climate_component(instance, product_model)
     if component is None and not _payload_is_climate(device_payload):
         return None
 
@@ -70,7 +80,6 @@ def project_climate(
     power = _bool(params.get(power_prop), default=False) if power_prop else False
     available = payload_available(device_payload, instance)
     if instance is not None and component is not None:
-        product_model = load_product_model(device_payload)
         available = schema_backed_component_available(
             payload_available(device_payload, instance),
             component,
@@ -121,6 +130,7 @@ def _params(device_payload: Mapping[str, Any]) -> dict[str, Any]:
 
 def _select_climate_component(
     instance: HADeviceInstanceModel | None,
+    product_model: HAProductModel | None,
 ) -> ComponentInstanceModel | None:
     """选择 climate 相关组件（空调/暖风机等）。"""
     if instance is None:
@@ -128,10 +138,10 @@ def _select_climate_component(
 
     for component in instance.components:
         category = _string(component.category).lower()
+        schema_component = product_component(product_model, component.component_id)
         if (
             category in {
                 "climate",
-                "temp_control",
                 "air_conditioner",
                 "air conditioner",
                 "bath_heater",
@@ -141,24 +151,11 @@ def _select_climate_component(
             or component.component_id.lower()
             in {
                 "climate",
-                "temp_control",
                 "air_conditioner",
                 "bath_heater",
                 "floor_heating",
             }
-            or any(
-                key in component.state
-                for key in (
-                    "acm",
-                    "actt",
-                    "acct",
-                    "acf",
-                    "tgt",
-                    "rfhp",
-                    "rfhtt",
-                    "rfhct",
-                )
-            )
+            or _component_has_climate_props(component, schema_component)
         ):
             return component
     return None
@@ -179,21 +176,25 @@ def _payload_is_climate(device_payload: Mapping[str, Any]) -> bool:
 def _params_are_fresh_air_only(device_payload: Mapping[str, Any]) -> bool:
     prop_ids = {str(key).split("-", 1)[-1] for key in _params(device_payload)}
     return bool(prop_ids & {"vmcp", "vmcf"}) and not bool(
+        prop_ids & CLIMATE_CANDIDATE_PROPS
+    )
+
+
+def _component_has_climate_props(
+    component: ComponentInstanceModel,
+    product_component: ComponentModel | None,
+) -> bool:
+    prop_ids = set(component.state)
+    if product_component is not None:
+        prop_ids.update(prop.prop_id for prop in product_component.properties)
+    return bool(prop_ids & CLIMATE_CANDIDATE_PROPS) and not _prop_ids_are_fan_only(
         prop_ids
-        & {
-            "acp",
-            "aco",
-            "acm",
-            "actt",
-            "acct",
-            "acf",
-            "rfhp",
-            "rfhct",
-            "rfhtt",
-            "p",
-            "t",
-            "tgt",
-        }
+    )
+
+
+def _prop_ids_are_fan_only(prop_ids: set[str]) -> bool:
+    return bool(prop_ids & FAN_CANDIDATE_PROPS) and not bool(
+        prop_ids & CLIMATE_CANDIDATE_PROPS
     )
 
 

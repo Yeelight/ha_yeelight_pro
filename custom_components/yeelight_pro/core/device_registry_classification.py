@@ -5,7 +5,12 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Any, Iterable
 
-from ..capabilities.registry import iot_registry, is_iot_category, parse_component_property_key
+from ..capabilities.registry import (
+    iot_registry,
+    is_iot_category,
+    normalize_property_key,
+    parse_component_property_key,
+)
 from ..utils import to_str
 from .device_classification_categories import CATEGORY_ALIASES
 
@@ -14,6 +19,7 @@ GENERIC_REGISTRY_PROPS = frozenset({
     "3rdPartySyncBitmask",
     "icon",
     "io",
+    "io_type",
     "mock",
     "name",
     "o",
@@ -78,9 +84,9 @@ def normalized_prop_name(value: Any) -> str:
     if not text:
         return ""
     try:
-        return parse_component_property_key(text).prop_name
+        return normalize_property_key(parse_component_property_key(text).prop_name) or ""
     except ValueError:
-        return text
+        return normalize_property_key(text) or ""
 
 
 def normalize_registry_category(value: Any) -> str | None:

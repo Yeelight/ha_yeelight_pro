@@ -19,7 +19,7 @@ def test_automation_contract_requires_split_device_trigger_tests(tmp_path: Path)
     _write_test_file(
         tests_root / "test_device_trigger.py",
         "async_get_triggers async_validate_trigger_config async_attach_trigger "
-        "InvalidDeviceAutomationConfig multi_spin absolut_spin",
+        "InvalidDeviceAutomationConfig knob_spin",
     )
     _write_test_file(tests_root / "test_device_trigger_runtime.py", "")
     _write_test_file(tests_root / "device_trigger_helpers.py", "")
@@ -42,7 +42,7 @@ def test_automation_contract_rejects_cloud_automation_runtime(
     _write_test_file(
         tests_root / "test_device_trigger.py",
         "async_get_triggers async_validate_trigger_config async_attach_trigger "
-        "InvalidDeviceAutomationConfig multi_spin absolut_spin",
+        "InvalidDeviceAutomationConfig knob_spin",
     )
     _write_test_file(
         tests_root / "test_device_trigger_runtime.py",
@@ -52,7 +52,7 @@ def test_automation_contract_rejects_cloud_automation_runtime(
     _write_test_file(
         tests_root / "device_trigger_helpers.py",
         "event_device_payload register_event_device register_switch_event_device "
-        "multi spin absolut spin",
+        "knob spin",
     )
     _write_test_file(
         component_root / "core" / "client_node_lists.py",

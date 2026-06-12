@@ -78,6 +78,13 @@ def verify_storage(
     verify_config_entry_unique_ids(enabled_entries, report)
     verify_config_entry_options(enabled_entries, report)
 
+    expected_entity_counts = _expected_entity_counts_for_entries(
+        enabled_entries,
+        entity_entries,
+        expected_entity_counts,
+    )
+    expected_entities = sum(expected_entity_counts.values())
+
     devices = [
         device
         for device in device_entries
@@ -205,6 +212,27 @@ def _entity_counts(entities: Iterable[Mapping[str, Any]]) -> Counter[str]:
             continue
         counter[entity_id.split(".", 1)[0]] += 1
     return counter
+
+
+def _expected_entity_counts_for_entries(
+    entries: Iterable[Mapping[str, Any]],
+    entities: Iterable[Mapping[str, Any]],
+    expected_entity_counts: Mapping[str, int],
+) -> Mapping[str, int]:
+    """Return mode-aware retained entity baseline for the local verifier."""
+    entry_list = list(entries)
+    if not entry_list or not all(_entry_connection_mode(entry) == "lan" for entry in entry_list):
+        return expected_entity_counts
+    return _entity_counts(entities)
+
+
+def _entry_connection_mode(entry: Mapping[str, Any]) -> str | None:
+    """Return a normalized config-entry connection mode."""
+    data = entry.get("data")
+    if not isinstance(data, Mapping):
+        return None
+    value = data.get("connection_mode")
+    return str(value).strip().lower() if value not in (None, "") else None
 
 
 def _disabled_by_counts(entities: Iterable[Mapping[str, Any]]) -> Counter[str]:

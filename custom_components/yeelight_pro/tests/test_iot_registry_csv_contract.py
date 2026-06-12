@@ -19,6 +19,15 @@ def test_registry_categories_match_iot_category_csv() -> None:
     assert {item.category for item in registry.categories} == expected
 
 
+def test_registry_does_not_add_non_iot_device_categories() -> None:
+    """fan/outlet 不是易来官方品类，不能进入 IoT category registry."""
+    registry = iot_registry()
+    categories = {item.category for item in registry.categories}
+
+    assert "fan" not in categories
+    assert "outlet" not in categories
+
+
 def test_registry_covers_all_documented_categorized_components() -> None:
     """带品类的普通/全局组件必须可被 registry 识别."""
     registry = iot_registry()
@@ -236,9 +245,29 @@ def test_registry_does_not_promote_undocumented_compatibility_props() -> None:
     """非易来 CSV/协议支撑的旧兼容属性不能进入官方 IoT registry."""
     registry = iot_registry()
 
-    for prop in ("c_waf", "c_xy", "lv"):
+    for prop in ("c_waf", "c_xy", "dir", "lv", "on"):
         assert registry.property_spec(prop) is None
         assert registry.property_capability(prop) is None
+
+
+def test_registry_extra_properties_are_only_lan_documented_runtime_props() -> None:
+    """CSV 外属性必须有易来协议资料支撑。"""
+    registry = iot_registry()
+    csv_props = set(_property_access_by_prop())
+    extras = sorted({item.prop for item in registry.properties} - csv_props)
+    lan_doc = (IOT_DOCS / "Yeelight Pro局域网协议.md").read_text(encoding="utf-8")
+
+    assert extras == ["h", "level"]
+    assert "### 2\\.11 温湿度传感器" in lan_doc
+    assert "|h|湿度值" in lan_doc
+    assert "|level|- 光感档位定义" in lan_doc
+    capability = registry.property_capability("h")
+    assert capability is not None
+    assert capability.device_class == "humidity"
+    level = registry.property_spec("level")
+    assert level is not None
+    assert level.readable is True
+    assert level.writable is False
 
 
 def _csv_rows(name: str) -> list[dict[str, str]]:

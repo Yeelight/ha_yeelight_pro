@@ -37,8 +37,10 @@ def infer_subdevice_components(
     events_by_index = _events_by_subdevice_index(payload.get("events"), string_value)
     components: list[ComponentModel] = []
     used_ids: set[str] = set()
-    parent_category = string_value(payload.get("iot_category")) or string_value(
-        payload.get("category")
+    parent_category = (
+        string_value(payload.get("effective_category"))
+        or string_value(payload.get("iot_category"))
+        or string_value(payload.get("category"))
     )
     switch_channel_count = switch_channel_count_hint(payload)
 

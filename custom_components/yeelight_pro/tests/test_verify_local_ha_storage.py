@@ -12,6 +12,7 @@ from scripts.verify_local_ha import (
 )
 from .storage_verifier_helpers import (
     config_entry as _config_entry,
+    lan_config_entry as _lan_config_entry,
     write_storage as _write_storage,
     yeelight_devices as _yeelight_devices,
     yeelight_entities as _yeelight_entities,
@@ -86,6 +87,80 @@ def test_verify_storage_reports_platform_options_alignment(tmp_path: Path) -> No
     platform_options = report.metrics["platform_options"]
     assert isinstance(platform_options, dict)
     assert platform_options["per_entry_expected_counts"] == [(len(PLATFORMS), 1)]
+
+
+def test_verify_storage_accepts_lan_only_entry_with_smaller_retained_baseline(
+    tmp_path: Path,
+) -> None:
+    """LAN-only 验证环境没有云端大拓扑时不应被 cloud baseline 误判失败."""
+    entities = [
+        {
+            "platform": "yeelight_pro",
+            "entity_id": "light.lan_sample",
+            "unique_id": "yeelight_pro_312613269_light",
+            "device_id": "device-registry-1",
+        },
+        {
+            "platform": "yeelight_pro",
+            "entity_id": "sensor.lan_sample_online",
+            "unique_id": "yeelight_pro_312613269_online_status",
+            "device_id": "device-registry-1",
+            "entity_category": "diagnostic",
+            "original_name": "在线状态",
+        },
+        {
+            "platform": "yeelight_pro",
+            "entity_id": "number.lan_sample_dd",
+            "unique_id": "yeelight_pro_312613269_light_dd_number",
+            "device_id": "device-registry-1",
+            "entity_category": "config",
+            "original_name": "默认渐变时长",
+        },
+        {
+            "platform": "yeelight_pro",
+            "entity_id": "select.lan_sample_room",
+            "unique_id": "yeelight_pro_0_select_room",
+            "device_id": "device-registry-1",
+            "translation_key": "active_room",
+        },
+        {
+            "platform": "yeelight_pro",
+            "entity_id": "select.lan_sample_group",
+            "unique_id": "yeelight_pro_0_select_group",
+            "device_id": "device-registry-1",
+            "translation_key": "active_group",
+        },
+        {
+            "platform": "yeelight_pro",
+            "entity_id": "select.lan_sample_scene",
+            "unique_id": "yeelight_pro_0_select_scene",
+            "device_id": "device-registry-1",
+            "translation_key": "active_scene",
+        },
+    ]
+    _write_storage(tmp_path, "core.config_entries", {"entries": [_lan_config_entry()]})
+    _write_storage(tmp_path, "core.device_registry", {"devices": _yeelight_devices()})
+    _write_storage(tmp_path, "core.entity_registry", {"entities": entities})
+    report = VerificationReport()
+
+    verify_storage(
+        tmp_path,
+        report,
+        expected_config_entries=1,
+        expected_devices=2,
+        expected_entities=sum(DEFAULT_ENTITY_COUNTS.values()),
+        expected_entity_counts=DEFAULT_ENTITY_COUNTS,
+    )
+
+    assert report.ok
+    assert any("config entry titles" in fact and "lan=1" in fact for fact in report.facts)
+    assert any("entity registry retained entries: 6" in fact for fact in report.facts)
+    assert report.metrics["retained_entity_domains"] == {
+        "light": 1,
+        "number": 1,
+        "select": 3,
+        "sensor": 1,
+    }
 
 
 def test_verify_storage_allows_cleanup_b_retained_disabled_entities(

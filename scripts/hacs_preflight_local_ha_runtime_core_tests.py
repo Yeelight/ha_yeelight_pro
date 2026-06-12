@@ -103,6 +103,34 @@ LOCAL_HA_RUNTIME_CORE_TEST_TOKENS = {
             "poll schema fetch fallback coverage"
         ),
     },
+    "custom_components/yeelight_pro/tests/test_device_payload_product_catalog.py": {
+        "test_runtime_payloads_use_product_catalog_for_pid_only_device_metadata": (
+            "product catalog pid-only device metadata coverage"
+        ),
+        "test_runtime_payloads_normalize_scientific_product_pid_for_catalog_metadata": (
+            "scientific product pid runtime metadata coverage"
+        ),
+        "Yeelight Pro S21 智能墙壁开关-双键": (
+            "documented product model metadata assertion"
+        ),
+    },
+    "custom_components/yeelight_pro/tests/test_device_payload_firmware_metadata.py": {
+        "test_runtime_metadata_uses_official_fv_property_as_sw_version": (
+            "official fv firmware metadata runtime coverage"
+        ),
+        "test_runtime_metadata_uses_component_state_fv_as_sw_version": (
+            "canonical component fv firmware metadata runtime coverage"
+        ),
+    },
+    "custom_components/yeelight_pro/tests/test_property_hydration_product_catalog.py": {
+        "test_hydration_uses_product_catalog_properties_for_pid_only_switch": (
+            "product catalog switch hydration coverage"
+        ),
+        "test_hydration_uses_product_catalog_properties_for_contact_sensor": (
+            "product catalog contact sensor hydration coverage"
+        ),
+        "slisaon_rdy": "documented switch config hydration assertion",
+    },
     "custom_components/yeelight_pro/tests/refresh_service_helpers.py": {
         "refresh_entry": "refresh service config entry test helper",
         "refresh_coordinator": "refresh service coordinator test helper",
@@ -204,8 +232,17 @@ LOCAL_HA_RUNTIME_CORE_TEST_TOKENS = {
         ),
         "new_entity_id": "registry entity-id rename assertion",
     },
+    "custom_components/yeelight_pro/tests/test_entity_lifecycle_reconcile_property_entity_id.py": {
+        "test_reconcile_renames_legacy_property_control_entity_ids": (
+            "legacy property helper entity-id migration coverage"
+        ),
+        "test_reconcile_preserves_user_named_legacy_property_entity_id": (
+            "user-named property entity-id preservation coverage"
+        ),
+        "默认渐变时长": "official property label metadata assertion",
+    },
     "custom_components/yeelight_pro/tests/test_entity_lifecycle_reconcile_display.py": {
-        "test_reconcile_marks_extra_double_switch_channel_stale_and_updates_names": (
+        "test_reconcile_marks_extra_catalog_double_switch_channel_stale_and_updates_names": (
             "generated switch channel display-name cleanup coverage"
         ),
         "test_reconcile_clears_generated_single_light_original_name": (

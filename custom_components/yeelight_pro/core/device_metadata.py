@@ -12,6 +12,7 @@ from .device_classification import (
     friendly_model_id,
     is_generic_model_label,
 )
+from .firmware_metadata import firmware_version
 from ..device_display import device_model_name
 
 _DEVICE_NAME_KEYS = ("name", "deviceName", "device_name", "n")
@@ -51,10 +52,7 @@ def build_device_info(
         device_info["suggested_area"] = room_name
     if serial_number := _first_text(payload, ("serial_number", "serialNumber", "sn")):
         device_info["serial_number"] = serial_number
-    if sw_version := _first_text(
-        payload,
-        ("sw_version", "swVersion", "firmwareVersion", "firmware_version", "fv"),
-    ):
+    if sw_version := firmware_version(payload):
         device_info["sw_version"] = sw_version
     if hw_version := _first_text(payload, ("hw_version", "hwVersion", "hardwareVersion")):
         device_info["hw_version"] = hw_version

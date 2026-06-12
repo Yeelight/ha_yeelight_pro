@@ -95,6 +95,22 @@ def test_runtime_inferred_product_model_prefers_pid_model_id() -> None:
     assert product.product.model_id == "YL-201"
 
 
+def test_runtime_inferred_product_model_does_not_use_user_device_name_as_model() -> None:
+    """运行时型号名不能由用户自定义设备名推断。"""
+    payload = {
+        "model_id": "runtime-light",
+        "name": "厨房烟雾传感器",
+        "type": "light",
+        "category": "light",
+        "params": {"p": True, "l": 80},
+    }
+
+    product = RuntimeInferredProductModelBuilder().build(payload)
+
+    assert product is not None
+    assert product.product.model == "light"
+
+
 def test_runtime_inferred_product_model_keeps_category_template_without_params() -> None:
     """云端列表未带当前属性值时，明确品类仍应生成可恢复实体的 schema."""
     payload = {
@@ -119,7 +135,7 @@ def test_runtime_inferred_product_model_keeps_category_template_without_params()
 
 
 def test_runtime_inferred_product_model_blocks_empty_light_fallback() -> None:
-    """粗 light 缺少能力证据时不能凭 category 生成假灯 schema。"""
+    """粗 light 缺少能力证据时只保留品类元数据，不生成假灯组件。"""
     payload = {
         "model_id": "runtime-light-empty",
         "type": "light",
@@ -129,6 +145,22 @@ def test_runtime_inferred_product_model_blocks_empty_light_fallback() -> None:
     }
 
     product = RuntimeInferredProductModelBuilder().build(payload)
+
+    assert product is not None
+    assert product.schema_version == "runtime-v1"
+    assert product.product.category == "light"
+    assert product.product.categories == ["light"]
+    assert product.components == []
+
+
+def test_runtime_inferred_product_model_ignores_generic_ha_platform_metadata() -> None:
+    """HA 平台词 sensor/binary_sensor 不能伪装成易来物模型品类。"""
+    product = RuntimeInferredProductModelBuilder().build({
+        "model_id": "runtime-sensor-empty",
+        "type": "sensor",
+        "category": "sensor",
+        "params": {},
+    })
 
     assert product is None
 
@@ -198,6 +230,83 @@ def test_runtime_builder_infers_fresh_air_component_from_documented_props() -> N
     [component] = product.components
     assert component.component_id == "fresh_air"
     assert component.name == "新风"
-    assert component.category == "fresh air"
+    assert component.category == "temp_control"
     assert component.capabilities == ["onoff", "speed"]
     assert {prop.prop_id for prop in component.properties} == {"vmcp", "vmcf"}
+
+
+def test_runtime_builder_uses_product_catalog_when_only_pid_is_available() -> None:
+    """云端只给 pid/category 时，应按易来产品构成生成产品名和组件轮廓."""
+    product = RuntimeInferredProductModelBuilder().build({
+        "device_id": "s21-double-switch",
+        "pid": 854018,
+        "category": "light",
+        "params": {},
+    })
+
+    assert product is not None
+    assert product.schema_version == "catalog-v1"
+    assert product.product.model_id == "YL-854018"
+    assert product.product.model == "Yeelight Pro S21 智能墙壁开关-双键"
+    assert product.product.category == "relay_switch"
+    assert [component.component_id for component in product.components[:2]] == [
+        "basic",
+        "backlight_indicator",
+    ]
+    switch_components = [
+        component
+        for component in product.components
+        if component.category == "relay_switch"
+    ]
+    assert [component.component_id for component in switch_components] == [
+        "switch_1",
+        "switch_2",
+    ]
+    assert [component.index for component in switch_components] == [1, 2]
+    assert all(
+        {"sp", "l", "slisaon"}.issubset({prop.prop_id for prop in component.properties})
+        for component in switch_components
+    )
+
+
+def test_runtime_builder_expands_documented_mixed_product_components() -> None:
+    """多组件产品应按官方每组件数量展开，不把产品总数当作单类数量."""
+    product = RuntimeInferredProductModelBuilder().build({
+        "device_id": "s-series-scene-switch",
+        "pid": 1509378,
+        "category": "light",
+        "params": {},
+    })
+
+    assert product is not None
+    assert product.schema_version == "catalog-v1"
+    assert product.product.category is None
+    assert product.product.categories == ["scene_panel", "relay_switch"]
+    assert sum(component.category == "scene_panel" for component in product.components) == 12
+    assert sum(component.category == "relay_switch" for component in product.components) == 4
+    assert [component.component_id for component in product.components[-4:]] == [
+        "switch_1",
+        "switch_2",
+        "switch_3",
+        "switch_4",
+    ]
+    assert "scene_panel" not in {component.component_id for component in product.components}
+
+
+def test_runtime_builder_catalog_never_overrides_live_property_evidence() -> None:
+    """属性能力与产品目录冲突时，运行时属性能力仍优先."""
+    product = RuntimeInferredProductModelBuilder().build({
+        "device_id": "misleading-catalog-row",
+        "pid": 854018,
+        "category": "light",
+        "params": {"mv": True, "luminance": 188, "sens_range": 3},
+    })
+
+    assert product is not None
+    assert product.product.model == "Yeelight Pro S21 智能墙壁开关-双键"
+    runtime_component = product.components[-1]
+    assert runtime_component.component_id == "light_sensor"
+    assert runtime_component.category == "light_sensor"
+    assert {"mv", "luminance", "sens_range"} & {
+        prop.prop_id for prop in runtime_component.properties
+    }

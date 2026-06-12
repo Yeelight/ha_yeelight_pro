@@ -4,23 +4,19 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from homeassistant.components.fan import DIRECTION_FORWARD, DIRECTION_REVERSE, FanEntityFeature
+from homeassistant.components.fan import FanEntityFeature
 
 from ..canonical.models import ComponentInstanceModel, ComponentModel
 from ..device_display import channel_name_label
 from ..utils import matches_category, to_bool, to_category, to_int, to_str
 from .common import NumericRange, component_index, humanize_component_id
 from .fan_value_helpers import (
-    direction_values_from_constraint as _direction_values_from_constraint,
-    direction_values_from_value_list as _direction_values_from_value_list,
-    enum_codes as _enum_codes,
     fan_speed_count,
     project_fan_percentage as _project_percentage,
     raw_prop as _raw_prop,
-    to_ha_direction as _to_ha_direction,
 )
 
-FAN_CATEGORY_TOKENS = ("fan", "ceiling fan", "fresh air", "风扇", "吊扇", "新风")
+FAN_CATEGORY_TOKENS = ("fresh air", "fresh_air", "新风")
 LIGHT_CATEGORY_TOKENS = ("light", "lamp", "灯", "灯带", "彩光", "色温")
 
 
@@ -34,7 +30,7 @@ def _looks_like_fan_component(
         return True
     if matches_category(category, LIGHT_CATEGORY_TOKENS):
         return False
-    if "fan" in lowered or "风扇" in lowered or "吊扇" in lowered:
+    if "fresh_air" in lowered or "fresh air" in lowered or "新风" in lowered:
         return True
 
     features = {
@@ -46,29 +42,29 @@ def _looks_like_fan_component(
         )
         if str(item).strip()
     }
-    if {"speed", "direction", "mode"} & features:
+    if "fresh_air" in features or "fresh air" in features:
         return True
 
     prop_ids = set(component.state.keys())
     if product_component is not None:
         prop_ids.update(prop.prop_id for prop in product_component.properties)
-    return bool({"vmcp", "vmcf", "lv", "dir"} & {str(item) for item in prop_ids})
+    return bool({"vmcp", "vmcf"} & {str(item) for item in prop_ids})
 
 
 def _power_key(state: Mapping[str, Any], product_component: ComponentModel | None) -> str | None:
-    return _first_control_key(state, product_component, ("vmcp", "p", "on"))
+    return _first_control_key(state, product_component, ("vmcp",))
 
 
 def _speed_key(state: Mapping[str, Any], product_component: ComponentModel | None) -> str | None:
-    return _first_control_key(state, product_component, ("vmcf", "lv", "speed", "percentage"))
+    return _first_control_key(state, product_component, ("vmcf",))
 
 
 def _mode_key(state: Mapping[str, Any], product_component: ComponentModel | None) -> str | None:
-    return _first_control_key(state, product_component, ("m", "mode"))
+    return None
 
 
 def _direction_key(state: Mapping[str, Any], product_component: ComponentModel | None) -> str | None:
-    return _first_control_key(state, product_component, ("dir", "direction"))
+    return None
 
 
 def _first_control_key(
@@ -122,8 +118,6 @@ def _speed_range(
 
     prop = (
         _product_prop(product_component, "vmcf")
-        or _product_prop(product_component, "lv")
-        or _product_prop(product_component, "speed")
     )
     if prop is not None and prop.value_range is not None:
         return NumericRange(
@@ -136,9 +130,7 @@ def _speed_range(
 
 
 def _fallback_speed_range(state: Mapping[str, Any]) -> NumericRange | None:
-    raw_speed = to_int(
-        state.get("vmcf", state.get("lv", state.get("speed", state.get("percentage"))))
-    )
+    raw_speed = to_int(state.get("vmcf"))
     if raw_speed is None:
         return None
     if 0 <= raw_speed <= 100:
@@ -151,28 +143,7 @@ def _preset_modes(
     product_component: ComponentModel | None,
     state: Mapping[str, Any],
 ) -> list[str] | None:
-    raw_modes: list[str] = []
-    if component.instance_capabilities is not None:
-        constraints = component.instance_capabilities.constraints
-        for key in ("mode", "preset_modes", "presetModes"):
-            value = constraints.get(key)
-            raw_modes.extend(_enum_codes(value))
-
-    prop = _product_prop(product_component, "m") or _product_prop(product_component, "mode")
-    if prop is not None:
-        raw_modes.extend(item.code for item in prop.value_list if item.code)
-
-    modes = []
-    for mode in raw_modes:
-        text = to_str(mode)
-        if text and text not in modes:
-            modes.append(text)
-
-    current = to_str(state.get("m", state.get("mode")))
-    if not modes and current:
-        modes.append(current)
-
-    return modes or None
+    return None
 
 
 def _direction_support(
@@ -180,37 +151,7 @@ def _direction_support(
     product_component: ComponentModel | None,
     state: Mapping[str, Any],
 ) -> tuple[str | None, dict[str, Any]]:
-    direction_values: dict[str, Any] = {}
-
-    if component.instance_capabilities is not None:
-        constraints = component.instance_capabilities.constraints
-        for key in ("direction", "dir"):
-            value = constraints.get(key)
-            direction_values.update(_direction_values_from_constraint(value))
-
-    prop = _product_prop(product_component, "dir") or _product_prop(product_component, "direction")
-    if prop is not None:
-        direction_values.update(_direction_values_from_value_list(prop.value_list))
-
-    current_direction = _to_ha_direction(state.get("dir", state.get("direction")), direction_values)
-
-    if not direction_values and current_direction is not None:
-        direction_values = {
-            DIRECTION_FORWARD: DIRECTION_FORWARD,
-            DIRECTION_REVERSE: DIRECTION_REVERSE,
-        }
-
-    return current_direction, direction_values
-
-
-def _fallback_direction_support(state: Mapping[str, Any]) -> tuple[str | None, dict[str, Any]]:
-    current_direction = _to_ha_direction(state.get("dir"), {})
-    if current_direction is None:
-        return None, {}
-    return current_direction, {
-        DIRECTION_FORWARD: DIRECTION_FORWARD,
-        DIRECTION_REVERSE: DIRECTION_REVERSE,
-    }
+    return None, {}
 
 
 def _supported_features(
@@ -289,11 +230,8 @@ def _project_fan_name(component: ComponentInstanceModel) -> str | None:
         return channel_name_label(index=index, component=component)
 
     lowered = component.component_id.lower()
-    if lowered in {"fan", "main_fan", "fan_main"}:
-        return None
+    if lowered == "fresh_air":
+        return "新风"
     if text := to_str(component.name):
         return text
-    if lowered.startswith("fan_"):
-        text = lowered.removeprefix("fan_").replace("_", " ").strip()
-        return text or None
     return humanize_component_id(component.component_id)

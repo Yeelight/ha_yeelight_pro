@@ -97,6 +97,9 @@ async def async_setup_lan_entry(
                     lan_ip,
                     lan_port,
                 )
+                # 网关在拓扑后立即发送属性同步（gateway_post.prop），
+                # 短暂等待让属性更新到达，使平台能创建有状态的实体
+                await asyncio.sleep(1)
             except asyncio.TimeoutError:
                 _LOGGER.warning(
                     "Yeelight Pro LAN topology timeout for gateway %s:%s, "

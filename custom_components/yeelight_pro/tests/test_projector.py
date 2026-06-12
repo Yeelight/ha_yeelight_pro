@@ -1,9 +1,5 @@
 """projector 投影层测试."""
-from homeassistant.components.fan import (
-    DIRECTION_FORWARD,
-    DIRECTION_REVERSE,
-    FanEntityFeature,
-)
+from homeassistant.components.fan import FanEntityFeature
 
 from custom_components.yeelight_pro.projector.light import project_light, HALightProjection
 from custom_components.yeelight_pro.projector.fan import project_fans, HAFanProjection
@@ -72,41 +68,38 @@ class TestProjectFans:
         for projection in result:
             assert isinstance(projection, HAFanProjection)
 
-    def test_project_fans_canonical_indexed_controls(self):
-        """canonical fan 必须保留 indexed 控制键和核心状态投影."""
-        result = project_fans(_canonical_fan_payload(), domain="yeelight_pro")
+    def test_project_fans_canonical_fresh_air_controls(self):
+        """canonical 新风必须保留 indexed vmcp/vmcf 控制键。"""
+        result = project_fans(_fresh_air_payload(), domain="yeelight_pro")
 
         assert len(result) == 1
         projection = result[0]
         assert isinstance(projection, HAFanProjection)
-        assert projection.component_id == "fan_1"
-        assert projection.unique_id == "yeelight_pro_fan-1_fan_1"
-        assert projection.name == "第 1 键"
+        assert projection.component_id == "fresh_air"
+        assert projection.unique_id == "yeelight_pro_fresh-air-1_fresh_air"
+        assert projection.name == "新风"
         assert projection.available is True
         assert projection.is_on is True
-        assert projection.power_key == "1-p"
-        assert projection.speed_key == "1-lv"
-        assert projection.mode_key == "1-m"
-        assert projection.direction_key == "1-dir"
+        assert projection.power_key == "1-vmcp"
+        assert projection.speed_key == "1-vmcf"
+        assert projection.mode_key is None
+        assert projection.direction_key is None
         assert projection.speed_range is not None
         assert projection.speed_range.min == 1
-        assert projection.speed_range.max == 6
+        assert projection.speed_range.max == 100
         assert projection.speed_range.step == 1
-        assert projection.percentage == 50
-        assert projection.speed_count == 6
-        assert projection.preset_mode == "sleep"
-        assert projection.preset_modes == ["sleep", "natural"]
-        assert projection.current_direction == DIRECTION_REVERSE
-        assert projection.direction_values == {
-            DIRECTION_FORWARD: "0",
-            DIRECTION_REVERSE: "1",
-        }
+        assert projection.percentage == 3
+        assert projection.speed_count == 100
+        assert projection.preset_mode is None
+        assert projection.preset_modes is None
+        assert projection.current_direction is None
+        assert projection.direction_values == {}
         assert projection.supported_features & FanEntityFeature.SET_SPEED
-        assert projection.supported_features & FanEntityFeature.PRESET_MODE
-        assert projection.supported_features & FanEntityFeature.DIRECTION
+        assert not projection.supported_features & FanEntityFeature.PRESET_MODE
+        assert not projection.supported_features & FanEntityFeature.DIRECTION
 
     def test_project_fans_legacy_payload(self):
-        """legacy fan payload 仍必须投影基础风扇能力."""
+        """旧 fan/lv/dir payload 没有易来官方支撑，不应投影 fan。"""
         result = project_fans(
             {
                 "device_id": "legacy-fan",
@@ -122,23 +115,11 @@ class TestProjectFans:
             domain="yeelight_pro",
         )
 
-        assert len(result) == 1
-        projection = result[0]
-        assert projection.component_id == "fan"
-        assert projection.unique_id == "yeelight_pro_legacy-fan_fan"
-        assert projection.available is True
-        assert projection.is_on is True
-        assert projection.power_key == "p"
-        assert projection.speed_key == "lv"
-        assert projection.mode_key == "m"
-        assert projection.direction_key == "dir"
-        assert projection.speed_range is not None
-        assert projection.speed_range.min == 1
-        assert projection.speed_range.max == 100
-        assert projection.percentage == 50
-        assert projection.preset_mode == "natural"
-        assert projection.preset_modes == ["natural"]
-        assert projection.current_direction == DIRECTION_FORWARD
+        assert result == []
+
+    def test_project_fans_unsupported_canonical_fan_payload(self):
+        """旧 canonical fan/lv/dir 也不能绕过官方属性边界。"""
+        assert project_fans(_unsupported_canonical_fan_payload(), domain="yeelight_pro") == []
 
     def test_project_fans_uses_documented_fresh_air_properties(self):
         """新风组件应使用易来 vmcp/vmcf 属性，而不是旧 fan lv 规则."""
@@ -199,8 +180,8 @@ class TestProjectSensors:
             assert isinstance(projection, HASensorProjection)
 
 
-def _canonical_fan_payload():
-    """构造带 indexed 控制键的 canonical fan 载荷."""
+def _unsupported_canonical_fan_payload():
+    """构造旧 fan/lv/dir 载荷，仅用于负向守卫。"""
     return {
         "device_id": "fan-1",
         "category": "temp_control",

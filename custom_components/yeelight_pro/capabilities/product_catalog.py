@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 from typing import Any
 
@@ -19,6 +20,15 @@ from ..utils import to_int
 from .models import IoTComponentSpec, IoTProductSpec
 from .product_catalog_data import IOT_PRODUCT_SPECS
 
+PROJECTABLE_GLOBAL_COMPONENTS = frozenset({
+    "basic",
+    "battery",
+    "backlight indicator",
+    "power meter",
+    "dali energy",
+    "hvac gateway",
+})
+
 
 @lru_cache(maxsize=1)
 def product_catalog() -> dict[int, IoTProductSpec]:
@@ -28,10 +38,29 @@ def product_catalog() -> dict[int, IoTProductSpec]:
 
 def product_spec(pid: Any) -> IoTProductSpec | None:
     """按 pid 查询产品构成定义."""
-    normalized = to_int(pid)
+    normalized = normalize_product_pid(pid)
     if normalized is None:
         return None
     return product_catalog().get(normalized)
+
+
+def normalize_product_pid(pid: Any) -> int | None:
+    """归一化易来产品 pid，兼容 CSV/接口中的科学计数法文本."""
+    direct = to_int(pid)
+    if direct is not None:
+        return direct
+    if pid is None:
+        return None
+    text = str(pid).strip()
+    if not text:
+        return None
+    try:
+        decimal = Decimal(text)
+    except (InvalidOperation, ValueError):
+        return None
+    if not decimal.is_finite() or decimal != decimal.to_integral_value():
+        return None
+    return int(decimal)
 
 
 def product_components(
@@ -48,6 +77,34 @@ def product_components(
         if component is not None:
             components.append(component)
     return tuple(components)
+
+
+def product_projectable_global_components(
+    pid: Any,
+    component_map: dict[str, IoTComponentSpec],
+) -> tuple[IoTComponentSpec, ...]:
+    """Return documented global components with safe HA projection semantics."""
+    spec = product_spec(pid)
+    if spec is None:
+        return ()
+    components: list[IoTComponentSpec] = []
+    for name in spec.global_components:
+        component = component_map.get(_component_key(name))
+        if component is not None and _projectable_global_component(component):
+            components.append(component)
+    return tuple(components)
+
+
+def is_projectable_global_component(component: Any) -> bool:
+    """Return true for documented global components safe to expose in HA."""
+    return any(
+        _component_key(value) in PROJECTABLE_GLOBAL_COMPONENTS
+        for value in (
+            getattr(component, "alias", None),
+            getattr(component, "component_id", None),
+            getattr(component, "name", None),
+        )
+    )
 
 
 def product_category_candidates(
@@ -86,10 +143,22 @@ def product_model_from_catalog(
     spec = product_spec(pid)
     if spec is None:
         return None
-    components = [
-        _component_model(component, property_builder)
-        for component in product_components(spec.pid, component_map)
-    ]
+    global_components = product_projectable_global_components(spec.pid, component_map)
+    catalog_components = (*global_components, *product_components(spec.pid, component_map))
+    duplicate_counts: dict[int, int] = {}
+    for component in catalog_components:
+        duplicate_counts[component.component_id] = duplicate_counts.get(component.component_id, 0) + 1
+
+    occurrence_counts: dict[int, int] = {}
+    components: list[ComponentModel] = []
+    for component in catalog_components:
+        occurrence_counts[component.component_id] = occurrence_counts.get(component.component_id, 0) + 1
+        component_index = (
+            occurrence_counts[component.component_id]
+            if duplicate_counts[component.component_id] > 1
+            else None
+        )
+        components.append(_component_model(component, property_builder, index=component_index))
     if not components:
         return None
     categories = _dedupe(component.category for component in components if component.category)
@@ -126,12 +195,20 @@ def product_hydration_properties(
                 continue
             seen.add(prop)
             props.append(prop)
+    for component in product_projectable_global_components(pid, component_map):
+        for prop in component.properties:
+            if prop in seen:
+                continue
+            seen.add(prop)
+            props.append(prop)
     return tuple(props)
 
 
 def _component_model(
     component: IoTComponentSpec,
     property_builder: Any,
+    *,
+    index: int | None = None,
 ) -> ComponentModel:
     properties = [
         prop_model
@@ -139,8 +216,9 @@ def _component_model(
         if (prop_model := property_builder(prop_id, component.category or "")) is not None
     ]
     return ComponentModel(
-        component_id=_catalog_component_id(component),
+        component_id=_catalog_component_id(component, index=index),
         cid=component.component_id,
+        index=index,
         name=component.name,
         desc=component.name,
         component_type=component.component_type,
@@ -156,9 +234,27 @@ def _component_model(
 
 
 def _expanded_component_names(spec: IoTProductSpec) -> tuple[str, ...]:
+    if spec.normal_component_counts:
+        return tuple(
+            name
+            for component_name in spec.normal_components
+            for name in _repeat_component_name(spec, component_name)
+        )
     if len(spec.normal_components) == 1 and (count := _fixed_component_count(spec)):
         return tuple(spec.normal_components[0] for _ in range(count))
     return spec.normal_components
+
+
+def _repeat_component_name(spec: IoTProductSpec, component_name: str) -> tuple[str, ...]:
+    count = _component_count(spec, component_name)
+    return tuple(component_name for _ in range(count or 1))
+
+
+def _component_count(spec: IoTProductSpec, component_name: str) -> int | None:
+    for name, count in spec.normal_component_counts:
+        if name == component_name and 0 < count <= 32:
+            return count
+    return None
 
 
 def _fixed_component_count(spec: IoTProductSpec) -> int | None:
@@ -168,9 +264,32 @@ def _fixed_component_count(spec: IoTProductSpec) -> int | None:
     return count
 
 
-def _catalog_component_id(component: IoTComponentSpec) -> str:
-    base = component.platform_hint or component.category or component.alias
-    return str(base).replace(" ", "_")
+def _catalog_component_id(component: IoTComponentSpec, *, index: int | None) -> str:
+    base = _catalog_component_base(component)
+    component_id = str(base).replace(" ", "_")
+    return f"{component_id}_{index}" if index is not None else component_id
+
+
+def _catalog_component_base(component: IoTComponentSpec) -> str:
+    """Return an IoT-shaped component id instead of a HA helper platform id."""
+    if component.component_type == "global":
+        return component.alias
+    if component.category in {
+        "contact_sensor",
+        "curtain",
+        "gateway",
+        "human_sensor",
+        "knob_switch",
+        "light_sensor",
+        "scene_panel",
+    }:
+        return component.category
+    return component.platform_hint or component.category or component.alias
+
+
+def _projectable_global_component(component: IoTComponentSpec) -> bool:
+    """Return true for documented global components with safe HA projections."""
+    return is_projectable_global_component(component)
 
 
 def _component_capabilities(
@@ -203,7 +322,9 @@ def registry_property_model(prop_id: str, registry: Any) -> PropertyModel | None
         return None
     return PropertyModel(
         prop_id=spec.prop,
-        name=spec.full_name,
+        name=spec.display_name,
+        desc=spec.description,
+        semantic=spec.full_name,
         kind="control" if spec.writable else "state",
         property_type="apply" if spec.category == "application" else "config",
         format=spec.data_type,
@@ -250,12 +371,15 @@ def _dedupe(values: Any) -> list[str]:
 
 __all__ = [
     "IOT_PRODUCT_SPECS",
+    "is_projectable_global_component",
     "product_catalog",
     "product_category_candidates",
     "product_components",
     "product_hydration_properties",
+    "product_projectable_global_components",
     "product_model_from_catalog",
     "product_protocols",
     "product_spec",
+    "normalize_product_pid",
     "registry_property_model",
 ]

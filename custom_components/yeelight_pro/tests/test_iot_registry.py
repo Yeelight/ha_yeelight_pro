@@ -80,8 +80,8 @@ def test_ha_entity_platforms_are_not_iot_categories() -> None:
         ("switch control", "switch"),
         ("switch_control", "switch"),
         ("wireless switch channel", "switch"),
-        ("scene control button", "button"),
-        ("dali scene control button", "button"),
+        ("scene control button", "event"),
+        ("dali scene control button", "event"),
         ("gateway", "sensor"),
         (1, "sensor"),
         ("dali energy", "sensor"),
@@ -94,6 +94,17 @@ def test_ha_entity_platforms_are_not_iot_categories() -> None:
 def test_core_component_platform_hints(component: str, expected: str) -> None:
     """核心组件 hint 应表达现有投影入口需要的平台语义."""
     assert component_platform_hint(component) == expected
+
+
+def test_scene_panel_components_are_event_inputs_not_device_buttons() -> None:
+    """情景按键是易来事件输入组件，不应被平台 hint 标记成 HA button."""
+    registry = iot_registry()
+
+    for component_name in ("scene control button", "dali scene control button"):
+        component = registry.component_map[component_name]
+        assert component.category == "scene_panel"
+        assert component.platform_hint == "event"
+        assert component_platform_hint(component_name) == "event"
 
 
 @pytest.mark.parametrize(
@@ -140,6 +151,41 @@ def test_property_specs_keep_hashable_dataclass_contract() -> None:
 
     assert spec is not None
     assert isinstance(hash(spec), int)
+
+
+def test_official_io_type_property_alias_maps_to_canonical_io() -> None:
+    """官方 io_type 属性名和缩写 io 必须指向同一个内部能力定义."""
+    registry = iot_registry()
+
+    canonical = registry.property_spec("io")
+    official = registry.property_spec("io_type")
+
+    assert official is canonical
+    assert official is not None
+    assert official.readable is True
+    assert official.writable is False
+
+
+@pytest.mark.parametrize(
+    ("official_name", "canonical_prop"),
+    [
+        ("online", "o"),
+        ("Connectivity Protocols type", "cpt"),
+        ("run power", "run_power"),
+        ("relay", "rl"),
+        ("support relay", "support_rl"),
+        ("localToken", "ltk"),
+        ("mp_nightMode", "mp_nightmode"),
+    ],
+)
+def test_official_property_names_map_to_canonical_abbreviations(
+    official_name: str,
+    canonical_prop: str,
+) -> None:
+    """组件 CSV 里的官方属性名必须归一到属性表缩写。"""
+    registry = iot_registry()
+
+    assert registry.property_spec(official_name) is registry.property_spec(canonical_prop)
 
 
 def test_power_meter_specs_match_iot_csv_access_boundary() -> None:

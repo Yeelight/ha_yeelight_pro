@@ -1,12 +1,13 @@
-"""风扇平台，Yeelight Pro 集成。"""
+"""新风平台，Yeelight Pro 集成。
+
+Home Assistant 使用 fan 平台承载新风风量能力。
+"""
 from __future__ import annotations
 
 import logging
 from typing import Any
 
 from homeassistant.components.fan import (
-    DIRECTION_FORWARD,
-    DIRECTION_REVERSE,
     FanEntity,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -26,10 +27,10 @@ from .entity_errors import raise_service_error
 from .projector.fan import HAFanProjection, NumericRange, project_fans
 
 _LOGGER = logging.getLogger(__name__)
-ERROR_FAN_PROJECTION_UNAVAILABLE = "无法解析风扇投影"
-ERROR_FAN_SPEED_PROJECTION_UNAVAILABLE = "无法解析风扇转速投影"
-ERROR_FAN_MODE_PROJECTION_UNAVAILABLE = "无法解析风扇模式投影"
-ERROR_FAN_DIRECTION_PROJECTION_UNAVAILABLE = "无法解析风扇方向投影"
+ERROR_FAN_PROJECTION_UNAVAILABLE = "无法解析新风投影"
+ERROR_FAN_SPEED_PROJECTION_UNAVAILABLE = "无法解析新风风量投影"
+ERROR_FAN_MODE_PROJECTION_UNAVAILABLE = "无法解析新风模式投影"
+ERROR_FAN_DIRECTION_PROJECTION_UNAVAILABLE = "无法解析新风方向投影"
 
 
 async def async_setup_entry(
@@ -37,7 +38,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """初始化 Yeelight Pro 风扇平台。"""
+    """初始化 Yeelight Pro 新风平台。"""
     coordinator: YeelightProCoordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
 
     async_track_dynamic_entities(
@@ -51,7 +52,7 @@ async def async_setup_entry(
 
 
 def _iter_fan_entities(coordinator: YeelightProCoordinator) -> list["YeelightProFan"]:
-    """按当前拓扑生成风扇实体候选。"""
+    """按当前拓扑生成新风实体候选。"""
     fans: list[YeelightProFan] = []
     for device_key, device_data in coordinator.data.items():
         device_id = source_device_id(device_key, device_data)
@@ -68,7 +69,7 @@ def _iter_fan_entities(coordinator: YeelightProCoordinator) -> list["YeelightPro
 
 
 class YeelightProFan(CoordinatorEntity, FanEntity):
-    """Yeelight Pro 风扇实体。"""
+    """Yeelight Pro 新风实体。"""
 
     def __init__(
         self,
@@ -77,7 +78,7 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
         *,
         component_id: str,
     ) -> None:
-        """初始化风扇实体。"""
+        """初始化新风实体。"""
         super().__init__(coordinator)
         self._device_id = device_id
         self._component_id = component_id
@@ -91,7 +92,7 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
 
     @property
     def _projection(self) -> HAFanProjection | None:
-        """返回最新的风扇投影视图。"""
+        """返回最新的新风投影视图。"""
         device = self.coordinator.get_device(self._device_id)
         if not device:
             return None
@@ -103,7 +104,7 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
 
     @property
     def name(self) -> str | None:
-        """返回风扇名称。"""
+        """返回新风名称。"""
         projection = self._projection
         if projection is not None:
             return projection.name
@@ -123,7 +124,7 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
 
     @property
     def available(self) -> bool:
-        """返回风扇是否可用。"""
+        """返回新风是否可用。"""
         projection = self._projection
         if projection is not None:
             return projection.available
@@ -147,7 +148,7 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
 
     @property
     def is_on(self) -> bool | None:
-        """返回风扇是否开启。"""
+        """返回新风是否开启。"""
         projection = self._projection
         if projection is not None:
             return projection.is_on
@@ -187,7 +188,7 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
 
     @property
     def current_direction(self) -> str | None:
-        """返回当前风扇方向。"""
+        """返回当前新风方向。"""
         projection = self._projection
         if projection is not None:
             return projection.current_direction
@@ -195,7 +196,7 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
 
     @property
     def supported_features(self):
-        """返回支持的风扇功能标志。"""
+        """返回支持的新风功能标志。"""
         projection = self._projection
         if projection is not None:
             return projection.supported_features
@@ -207,7 +208,7 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
         preset_mode: str | None = None,
         **kwargs: Any,
     ) -> None:
-        """开启风扇。"""
+        """开启新风。"""
         projection = self._projection
         if projection is None:
             raise HomeAssistantError(ERROR_FAN_PROJECTION_UNAVAILABLE)
@@ -236,7 +237,7 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
             raise_service_error("fan.turn_on", err)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """关闭风扇。"""
+        """关闭新风。"""
         projection = self._projection
         if projection is None:
             raise HomeAssistantError(ERROR_FAN_PROJECTION_UNAVAILABLE)
@@ -256,7 +257,7 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
             raise_service_error("fan.turn_off", err)
 
     async def async_set_percentage(self, percentage: int) -> None:
-        """设置风扇转速百分比。"""
+        """设置新风风量百分比。"""
         projection = self._projection
         if projection is None or projection.speed_key is None:
             raise HomeAssistantError(ERROR_FAN_SPEED_PROJECTION_UNAVAILABLE)
@@ -284,7 +285,7 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
             raise_service_error("fan.set_percentage", err)
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
-        """设置风扇预设模式。"""
+        """设置新风预设模式。"""
         projection = self._projection
         if projection is None or projection.mode_key is None:
             raise HomeAssistantError(ERROR_FAN_MODE_PROJECTION_UNAVAILABLE)
@@ -299,18 +300,14 @@ class YeelightProFan(CoordinatorEntity, FanEntity):
             raise_service_error("fan.set_preset_mode", err)
 
     async def async_set_direction(self, direction: str) -> None:
-        """设置风扇方向。"""
+        """设置新风方向。"""
         projection = self._projection
         if projection is None or projection.direction_key is None:
             raise HomeAssistantError(ERROR_FAN_DIRECTION_PROJECTION_UNAVAILABLE)
 
         raw_direction = projection.direction_values.get(direction)
         if raw_direction is None:
-            raw_direction = (
-                DIRECTION_FORWARD
-                if direction == DIRECTION_FORWARD
-                else DIRECTION_REVERSE
-            )
+            raise HomeAssistantError(ERROR_FAN_DIRECTION_PROJECTION_UNAVAILABLE)
 
         try:
             await self.coordinator.async_control_device(

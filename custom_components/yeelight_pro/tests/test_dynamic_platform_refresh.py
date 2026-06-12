@@ -14,7 +14,7 @@ from custom_components.yeelight_pro.light import (
 
 from .dynamic_entity_helpers import (
     entry_with_unload_hook,
-    legacy_fan,
+    legacy_fresh_air,
     legacy_light,
 )
 
@@ -83,10 +83,10 @@ def test_light_entity_factory_uses_payload_source_device_id() -> None:
 
 @pytest.mark.asyncio
 async def test_fan_platform_adds_new_entities_after_refresh(mock_hass) -> None:
-    """fan 平台应在 coordinator refresh 后补建新风扇实体."""
+    """fan 平台应在 coordinator refresh 后补建新风实体."""
     coordinator = MagicMock()
     coordinator.hass = None
-    coordinator.data = {1: legacy_fan(1, name="客厅风扇")}
+    coordinator.data = {1: legacy_fresh_air(1, name="客厅新风")}
     coordinator.devices = coordinator.data
     coordinator.get_device.side_effect = (
         lambda device_id: coordinator.data.get(device_id)
@@ -108,14 +108,14 @@ async def test_fan_platform_adds_new_entities_after_refresh(mock_hass) -> None:
     assert add_entities.call_count == 1
     first_entities = add_entities.call_args.args[0]
     assert [entity.unique_id for entity in first_entities] == [
-        "yeelight_pro_1_fan"
+        "yeelight_pro_1_fresh_air"
     ]
-    assert [entity._component_id for entity in first_entities] == ["fan"]
+    assert [entity._component_id for entity in first_entities] == ["fresh_air"]
     assert len(listeners) == 1
 
     coordinator.data = {
-        1: legacy_fan(1, name="客厅风扇"),
-        2: legacy_fan(2, name="卧室风扇"),
+        1: legacy_fresh_air(1, name="客厅新风"),
+        2: legacy_fresh_air(2, name="卧室新风"),
     }
     coordinator.devices = coordinator.data
     listeners[0]()
@@ -123,9 +123,9 @@ async def test_fan_platform_adds_new_entities_after_refresh(mock_hass) -> None:
     assert add_entities.call_count == 2
     second_entities = add_entities.call_args.args[0]
     assert [entity.unique_id for entity in second_entities] == [
-        "yeelight_pro_2_fan"
+        "yeelight_pro_2_fresh_air"
     ]
-    assert [entity._component_id for entity in second_entities] == ["fan"]
+    assert [entity._component_id for entity in second_entities] == ["fresh_air"]
 
     listeners[0]()
     assert add_entities.call_count == 2

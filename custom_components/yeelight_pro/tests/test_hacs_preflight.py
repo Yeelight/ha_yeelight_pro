@@ -39,6 +39,7 @@ def test_iot_registry_contract_check_requires_coverage_tokens(
         "connection_protocol",
     )
     _write_test_file(tests_root / "test_iot_registry_keys.py", "")
+    _write_test_file(tests_root / "test_iot_registry_csv_contract.py", "")
     _write_test_file(
         tests_root / "test_iot_registry_integrity.py",
         (
@@ -54,10 +55,12 @@ def test_iot_registry_contract_check_requires_coverage_tokens(
     _write_test_file(tests_root / "test_event_projection.py", "")
     _write_test_file(tests_root / "test_capability_filter.py", "")
     _write_test_file(tests_root / "test_projection_boundaries.py", "")
+    _write_test_file(tests_root / "test_projection_unsupported_platforms.py", "")
     _write_test_file(tests_root / "test_projection_event_topology.py", "")
     _write_test_file(tests_root / "test_projection_matrix.py", "")
     _write_test_file(tests_root / "test_projection_state_sensors.py", "")
     _write_test_file(tests_root / "test_entity_candidates.py", "")
+    _write_test_file(tests_root / "test_entity_candidates_iot_boundaries.py", "")
     _write_test_file(tests_root / "test_group_number_controls.py", "")
     _write_test_file(tests_root / "test_select_dynamic_options.py", "")
 
@@ -108,7 +111,8 @@ def test_iot_registry_contract_check_requires_coverage_tokens(
         "event-input sensor fallback boundary coverage",
         "low-frequency component projection boundary coverage",
         "bridge protocol metadata projection boundary coverage",
-            "unsupported vacuum projection boundary coverage",
+        "unsupported outlet/on switch fallback rejection coverage",
+        "unsupported vacuum projection boundary coverage",
         "core IoT category exclusion coverage",
         "light component-state merge coverage",
         "gateway via_device projection coverage",
@@ -116,6 +120,11 @@ def test_iot_registry_contract_check_requires_coverage_tokens(
         "gateway topology-only projection coverage",
         "raw params and component state merge coverage",
         "unknown action button fallback rejection coverage",
+        "fresh-air temp_control category fan-only projection coverage",
+        "fresh-air fan entity candidate coverage",
+        "fresh-air climate candidate rejection coverage",
+        "non-IoT fan/outlet category rejection coverage",
+        "undocumented compatibility property rejection coverage",
         "group brightness control uses Yeelight l property",
         "group number command path assertion",
         "group brightness command payload",

@@ -104,7 +104,10 @@ LOCAL_HA_RUNTIME_VERIFIER_TEST_TOKENS = {
         "test_verify_storage_rejects_unavailable_yeelight_restore_states": (
             "Yeelight restore-state unavailable rejection coverage"
         ),
-        "raw channel/action names": "raw numeric entity-name failure message",
+        "default duration": "raw English property-name fixture",
+        "raw channel/action/property names": (
+            "raw channel/action/property-name failure message"
+        ),
         "restored states are unavailable": (
             "Yeelight restore-state unavailable failure message"
         ),

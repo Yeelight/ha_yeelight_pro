@@ -23,6 +23,38 @@ def test_known_property_keys_support_component_prefix() -> None:
     assert not is_known_property_key("vendor_private")
 
 
+def test_official_io_type_property_is_known_and_not_unknown_fallback() -> None:
+    """官方 io_type 不能因为使用全名而泄漏成未知 sensor。"""
+    assert is_known_property_key("io_type")
+    assert is_known_property_key("1-io_type")
+
+    decision = should_project_unknown_property(
+        "io_type",
+        "output",
+        {"category": "other", "type": "sensor"},
+        platform="sensor",
+        hide_unknown_entities=False,
+    )
+
+    assert decision.allowed is False
+    assert decision.reason is None
+
+
+def test_official_long_property_names_are_known_and_not_unknown_fallback() -> None:
+    """组件 CSV 长属性名不能作为未知能力泄漏成 fallback 实体。"""
+    for prop in (
+        "online",
+        "Connectivity Protocols type",
+        "run power",
+        "relay",
+        "support relay",
+        "localToken",
+        "mp_nightMode",
+    ):
+        assert is_known_property_key(prop)
+        assert is_known_property_key(f"1-{prop}")
+
+
 def test_unknown_property_hidden_by_default() -> None:
     """默认隐藏未知能力，不生成 fallback 实体。"""
     device = {"category": "other", "type": "sensor"}

@@ -60,14 +60,14 @@ async def test_reconcile_refreshes_active_registry_original_name_and_icon(
         (
             "switch.relay_1",
             {
-                "original_name": "第 1 键",
+                "original_name": "回路 1",
                 "original_icon": "mdi:light-switch",
                 "has_entity_name": True,
                 "disabled_by": None,
             },
         )
     ]
-    assert registry.entries[0].original_name == "第 1 键"
+    assert registry.entries[0].original_name == "回路 1"
     assert registry.entries[0].original_icon == "mdi:light-switch"
     assert registry.entries[0].has_entity_name is True
     assert entity_registry_reconcile_diagnostics(coordinator) == reconcile_diagnostics(
@@ -329,4 +329,3 @@ async def test_reconcile_clears_stale_active_registry_metadata(
         pending_stale=0,
         metadata_updated=1,
     )
-

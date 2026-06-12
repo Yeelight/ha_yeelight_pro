@@ -27,6 +27,9 @@ def test_openapi_broad_light_contact_sensor_does_not_project_light() -> None:
 
     candidates = _candidate_platform_components(device)
 
+    assert device["category"] == "light"
+    assert device["source_category"] == "light"
+    assert device["effective_category"] == "contact_sensor"
     assert device["iot_category"] == "contact_sensor"
     assert device["ha_platform_candidates"] == ["binary_sensor", "sensor"]
     assert ("light", "contact_sensor") not in candidates
@@ -358,8 +361,8 @@ def test_light_component_id_never_generates_generic_light_name() -> None:
     assert light.name is None
 
 
-def test_openapi_double_switch_ignores_extra_third_subdevice() -> None:
-    """双键开关的 subDeviceList 如果带第三路残留，也只生成两路实体."""
+def test_openapi_user_named_double_switch_keeps_structured_third_subdevice() -> None:
+    """用户设备名写双键时，subDeviceList 里的真实第三路仍必须生成实体."""
     device = _build_device(
         {
             "id": 9016,
@@ -387,4 +390,8 @@ def test_openapi_double_switch_ignores_extra_third_subdevice() -> None:
 
     candidates = _candidate_platform_components(device)
 
-    assert candidates == {("switch", "switch_1"), ("switch", "switch_2")}
+    assert candidates == {
+        ("switch", "switch_1"),
+        ("switch", "switch_2"),
+        ("switch", "switch_3"),
+    }

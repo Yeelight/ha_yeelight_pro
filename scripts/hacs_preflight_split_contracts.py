@@ -14,7 +14,7 @@ _SPLIT_CONFIG_FLOW_CONTRACT_TEST_TOKENS = {
         "test_capability_registry_maps_core_categories_and_properties": (
             "core category/property registry coverage"
         ),
-        "multi spin": "scene panel multi-spin alias coverage",
+        "knob spin": "documented knob-spin alias coverage",
         "human enter": "human sensor enter event alias coverage",
         "power.alarm": "power alarm event alias coverage",
         "platform_for_category": "category-to-platform facade coverage",

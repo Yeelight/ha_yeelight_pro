@@ -56,7 +56,10 @@ LOCAL_HA_RUNTIME_VERIFIER_STORAGE_TOKENS = {
         "legacy native scene registry entries": "legacy scene cleanup failure guard",
         "entity registry categories": "device-page category distribution fact",
         "entity_friendly_names": "friendly entity-name stability metric",
-        "raw channel/action names": "raw numeric action-name failure guard",
+        "UNFRIENDLY_PROPERTY_NAMES": "raw English property-name denylist",
+        "raw channel/action/property names": (
+            "raw channel/action/property-name failure guard"
+        ),
         "entity_device_links": "device-backed entity link metric",
         "yeelight_restore_state": "Yeelight restore-state stability metric",
         "restored states are unavailable": "unavailable restore-state failure guard",

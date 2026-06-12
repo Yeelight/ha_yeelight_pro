@@ -38,14 +38,15 @@ def legacy_light(device_id: int, *, name: str) -> dict:
     }
 
 
-def legacy_fan(device_id: int, *, name: str) -> dict:
-    """Build a minimal legacy fan payload accepted by the fan projector."""
+def legacy_fresh_air(device_id: int, *, name: str) -> dict:
+    """Build a minimal fresh-air payload accepted by the fan projector."""
     return {
         "device_id": device_id,
         "name": name,
-        "type": "fan",
+        "type": "temp_control",
+        "category": "temp_control",
         "online": True,
-        "params": {"p": True, "lv": 50, "dir": "forward"},
+        "params": {"vmcp": True, "vmcf": 50},
     }
 
 
@@ -79,6 +80,7 @@ def registry_entry(
     entity_id: str,
     domain: str,
     disabled_by: str | None = None,
+    config_entry_id: str = "entry_1",
 ) -> SimpleNamespace:
     """Build a focused HA registry entry double."""
     return SimpleNamespace(
@@ -87,15 +89,22 @@ def registry_entry(
         entity_id=entity_id,
         domain=domain,
         disabled_by=disabled_by,
+        config_entry_id=config_entry_id,
     )
 
 
 def patch_entity_registry(
     monkeypatch,
     entries: list[SimpleNamespace],
+    *,
+    global_entries: list[SimpleNamespace] | None = None,
 ) -> None:
     """Patch HA entity registry access for dynamic entity helper tests."""
-    monkeypatch.setattr(dynamic_entities.er, "async_get", lambda hass: MagicMock())
+    registry = MagicMock()
+    registry.entities = {
+        entry.entity_id: entry for entry in [*entries, *(global_entries or [])]
+    }
+    monkeypatch.setattr(dynamic_entities.er, "async_get", lambda hass: registry)
     monkeypatch.setattr(
         dynamic_entities.er,
         "async_entries_for_config_entry",

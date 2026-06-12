@@ -29,7 +29,6 @@ from .switch_helpers import _component_state_key_map
 MAIN_ENTITY_PROPS = frozenset({
     "p",
     "sp",
-    "on",
     "l",
     "ct",
     "c",
@@ -46,7 +45,6 @@ MAIN_ENTITY_PROPS = frozenset({
     "vmcp",
     "vmcf",
     "m",
-    "dir",
     "lock",
     "locked",
     "lck",
@@ -56,6 +54,7 @@ AUXILIARY_BOOL_CONFIG_PROPS = frozenset({
     "acrc",
     "blp",
     "keys_visible",
+    "lc",
     "li",
     "ntOn",
     "temp_hidden",
@@ -79,14 +78,14 @@ def is_writable_auxiliary_property(
     component: ComponentInstanceModel | None = None,
 ) -> bool:
     """Return true for writable range/enum properties owned by helper entities."""
+    spec = property_spec(prop.prop_id)
+    if spec is None or not spec.writable:
+        return False
     if _is_main_entity_property(prop.prop_id, component):
         return False
     if looks_bool(prop):
         return False
     if not _access_allows_write(prop.access):
-        return False
-    spec = property_spec(prop.prop_id)
-    if spec is not None and not spec.writable:
         return False
     return True
 
@@ -96,14 +95,14 @@ def is_writable_auxiliary_bool_property(
     component: ComponentInstanceModel | None = None,
 ) -> bool:
     """Return true for documented writable bool helper properties."""
+    spec = property_spec(prop.prop_id)
+    if spec is None or not spec.writable:
+        return False
     if _is_main_entity_property(prop.prop_id, component):
         return False
     if not looks_bool(prop):
         return False
     if not _access_allows_write(prop.access):
-        return False
-    spec = property_spec(prop.prop_id)
-    if spec is not None and not spec.writable:
         return False
     return True
 
@@ -143,12 +142,22 @@ def _is_main_entity_property(
 
     category = (component.category or "").lower()
     if any(token in category for token in ("relay_switch", "switch", "开关")):
-        return prop_id in {"p", "sp", "on"}
+        return prop_id in {"p", "sp"}
     if any(token in category for token in ("light", "灯", "彩光", "色温")):
-        return prop_id in {"p", "on", "l", "ct", "c", "m"}
+        return prop_id in {"p", "l", "ct", "c", "m"}
     if any(token in category for token in ("curtain", "blind", "窗帘")):
         return prop_id in {"cp", "tp", "rs"}
-    if any(token in category for token in ("fresh air", "fan", "新风")):
+    component_identity = " ".join(
+        filter(
+            None,
+            (
+                (component.component_id or "").lower(),
+                (component.name or "").lower(),
+                (component.desc or "").lower(),
+            ),
+        )
+    )
+    if any(token in component_identity for token in ("fresh_air", "fresh air", "fan", "新风")):
         return prop_id in {"vmcp", "vmcf"}
     if any(token in category for token in ("temp_control", "climate", "空调", "地暖")):
         return prop_id in {"acp", "actt", "acct", "rfhp", "rfhct", "rfhtt", "tgt"}
@@ -241,6 +250,8 @@ def control_name(
         device_payload=device_payload,
     )
     component_name = channel_name or humanize_component_id(component.component_id)
+    if _same_label(component_name, device_payload):
+        component_name = None
     if component_name and prop_name:
         return f"{component_name} {prop_name}"
     return prop_name or component_name
@@ -248,13 +259,34 @@ def control_name(
 
 def property_label(prop: PropertyModel) -> str | None:
     """Return a user-facing property label."""
+    spec = property_spec(prop.prop_id)
     for value in (prop.name, prop.desc):
         if text := to_str(value):
+            if spec is not None and text == spec.full_name and spec.description:
+                return spec.display_name
             return text
-    spec = property_spec(prop.prop_id)
     if spec is not None:
-        return spec.full_name
+        return spec.display_name
     return prop.prop_id
+
+
+def _same_label(value: str | None, payload: Mapping[str, Any] | None) -> bool:
+    """Return whether component label duplicates the device label."""
+    if value is None or payload is None:
+        return False
+    names = (
+        payload.get("name"),
+        payload.get("deviceName"),
+        payload.get("device_name"),
+        payload.get("n"),
+    )
+    normalized = _normalize_label(value)
+    return any(normalized == _normalize_label(item) for item in names)
+
+
+def _normalize_label(value: Any) -> str:
+    text = to_str(value)
+    return "".join((text or "").split())
 
 
 def select_options(items: list[ValueItemModel], option_cls: Any) -> list[Any]:

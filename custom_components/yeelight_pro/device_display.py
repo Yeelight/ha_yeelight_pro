@@ -42,7 +42,7 @@ _PLATFORM_LABELS = {
     "climate": "温控",
     "cover": "窗帘",
     "event": "事件",
-    "fan": "风扇",
+    "fan": "新风",
     "light": "灯",
     "sensor": "传感器",
     "switch": "开关",
@@ -150,11 +150,13 @@ def suggested_entity_object_id(
         return device_name
     if suffix in device_name:
         return device_name
+    if device_name in suffix:
+        return suffix
     return f"{device_name} {suffix}"
 
 
 def switch_channel_count_hint(payload: Mapping[str, Any]) -> int | None:
-    """Return product-name channel count hints such as 双键/三键."""
+    """Return channel count from official product/runtime capability evidence."""
     return device_channels.switch_channel_count_hint(payload)
 
 

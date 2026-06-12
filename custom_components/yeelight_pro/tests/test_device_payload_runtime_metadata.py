@@ -395,3 +395,4 @@ def test_runtime_payloads_do_not_infer_capabilities_from_safety_name() -> None:
     assert "ha_platform_candidates" not in device
     assert device["device_info"]["model"] == "易来照明设备"
     assert [(item.platform, item.component_id) for item in iter_device_entity_candidates(device)] == []
+

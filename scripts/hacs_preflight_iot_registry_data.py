@@ -72,6 +72,12 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         "test_registry_categories_match_iot_category_csv": (
             "CSV category parity coverage"
         ),
+        "test_registry_does_not_add_non_iot_device_categories": (
+            "non-IoT fan/outlet category rejection coverage"
+        ),
+        '("c_waf", "c_xy", "dir", "lv", "on")': (
+            "undocumented compatibility property rejection coverage"
+        ),
         "test_registry_covers_iot_event_type_csv": (
             "CSV event type id parity coverage"
         ),
@@ -82,6 +88,29 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         "test_registry_uses_csv_access_for_documented_properties": (
             "CSV property access coverage"
         ),
+    },
+    "test_device_payload_firmware_metadata.py": {
+        "test_runtime_metadata_uses_official_fv_property_as_sw_version": (
+            "official fv property HA firmware metadata coverage"
+        ),
+        "test_runtime_metadata_uses_indexed_fv_param_as_sw_version": (
+            "indexed fv property HA firmware metadata coverage"
+        ),
+        "test_runtime_metadata_uses_component_state_fv_as_sw_version": (
+            "canonical component fv firmware metadata coverage"
+        ),
+    },
+    "test_iot_product_catalog.py": {
+        "test_registry_product_catalog_matches_iot_product_csv": (
+            "CSV product catalog parity coverage"
+        ),
+        "test_registry_product_catalog_components_and_protocols_are_documented": (
+            "product catalog component/protocol coverage"
+        ),
+        "test_registry_product_catalog_expands_fixed_component_counts": (
+            "fixed component-count expansion coverage"
+        ),
+        "1.7000001e+07": "scientific product pid normalization coverage",
     },
     "test_iot_registry_protocols.py": {
         "connection_protocol": "connection protocol metadata coverage",
@@ -95,6 +124,15 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         "parse_component_property_key": "component property key parsing",
         "test_component_property_key_rejects_invalid_values": (
             "component property key validation coverage"
+        ),
+    },
+    "test_iot_registry_property_labels.py": {
+        "IOT_PROPERTY_DESCRIPTIONS": "CSV property description registry",
+        "test_property_descriptions_match_iot_csv": (
+            "CSV property description parity coverage"
+        ),
+        "test_registry_uses_csv_descriptions_for_property_display_names": (
+            "CSV property display-name coverage"
         ),
     },
     "test_iot_registry_integrity.py": {
@@ -184,6 +222,11 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         "test_bridge_protocol_metadata_does_not_enable_unknown_fallback_sensor": (
             "bridge protocol metadata projection boundary coverage"
         ),
+        "test_unsupported_outlet_on_payload_does_not_project_switch": (
+            "unsupported outlet/on switch fallback rejection coverage"
+        ),
+    },
+    "test_projection_unsupported_platforms.py": {
         "test_unsupported_vacuum_payload_does_not_project_entities": (
             "unsupported vacuum projection boundary coverage"
         ),
@@ -242,6 +285,13 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         "test_schema_unknown_actions_do_not_create_device_buttons": (
             "unknown action button fallback rejection coverage"
         ),
+    },
+    "test_entity_candidates_iot_boundaries.py": {
+        "test_fresh_air_temp_control_category_projects_only_fan_candidate": (
+            "fresh-air temp_control category fan-only projection coverage"
+        ),
+        '("fan", "fresh_air")': "fresh-air fan entity candidate coverage",
+        '("climate", "climate")': "fresh-air climate candidate rejection coverage",
     },
     "test_entity_candidate_device_sections.py": {
         "test_schema_rich_device_projects_device_page_sections": (

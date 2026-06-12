@@ -134,7 +134,7 @@ PRIMARY_PLATFORM_CONTRACT_ROWS: tuple[
     ("number", "supported", "group l/ct property controls"),
     ("cover", "supported", "curtain cp/tp properties"),
     ("climate", "supported", "temp_control ac*/rfh*/tgt properties"),
-    ("fan", "supported", "fresh-air and fan-speed properties"),
+    ("fan", "supported", "fresh-air vmcp/vmcf properties"),
     (
         "lock",
         "unsupported",

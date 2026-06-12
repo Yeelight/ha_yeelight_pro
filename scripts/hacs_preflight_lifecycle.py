@@ -161,8 +161,20 @@ LIFECYCLE_CONTRACT_TOKENS = {
             "friendly entity-id channel assertion"
         ),
     },
+    "tests/test_entity_lifecycle_reconcile_property_entity_id.py": {
+        "test_reconcile_renames_legacy_property_control_entity_ids": (
+            "legacy property helper entity-id migration coverage"
+        ),
+        "test_reconcile_preserves_user_named_legacy_property_entity_id": (
+            "user-named property entity-id preservation coverage"
+        ),
+        "默认渐变时长": "official property label metadata assertion",
+        "select.cai_guang_deng_shi_fou_kai_qi_shan_duan": (
+            "friendly property helper entity-id assertion"
+        ),
+    },
     "tests/test_entity_lifecycle_reconcile_display.py": {
-        "test_reconcile_marks_extra_double_switch_channel_stale_and_updates_names": (
+        "test_reconcile_marks_extra_catalog_double_switch_channel_stale_and_updates_names": (
             "generated switch channel display-name cleanup coverage"
         ),
         "test_reconcile_clears_generated_single_light_original_name": (

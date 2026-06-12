@@ -63,13 +63,13 @@ def test_scene_panel_button_property_does_not_project_as_switch() -> None:
     events = project_events(device, domain=DOMAIN)
 
     assert len(events) == 1
-    assert events[0].name == "第 1 键事件"
+    assert events[0].name == "按键 1 事件"
     assert events[0].event_types == ["click", "hold"]
     assert project_switches(device, domain=DOMAIN) == []
 
 
 def test_three_key_scene_panel_event_names_use_positions() -> None:
-    """三键情景面板事件应显示左中右，不应继续暴露第 1/2/3 键。"""
+    """官方三键情景面板事件应显示左中右，不依赖用户设备名称。"""
     device = projection_payload(
         device_id="panel-button-3",
         category="scene_panel",
@@ -79,15 +79,50 @@ def test_three_key_scene_panel_event_names_use_positions() -> None:
         component_category="scene control button",
         product_events=[{"event_id": 1, "name": "click"}],
     )
-    device["name"] = "玄关三键情景面板"
-    device["ha_device_instance"]["name"] = "玄关三键情景面板"
-    device["ha_device_instance"]["device_info"]["name"] = "玄关三键情景面板"
+    device["pid"] = 8390657
+    device["name"] = "玄关自定义名称"
+    device["ha_device_instance"]["name"] = "玄关自定义名称"
+    device["ha_device_instance"]["device_info"]["name"] = "玄关自定义名称"
 
     events = project_events(device, domain=DOMAIN)
 
     assert len(events) == 1
     assert events[0].name == "中键事件"
     assert project_switches(device, domain=DOMAIN) == []
+
+
+def test_user_name_does_not_mark_relay_switch_as_event_input() -> None:
+    """用户名称包含情景面板时，不能覆盖 relay_switch 的物模型能力。"""
+    device = projection_payload(
+        device_id="named-panel-relay",
+        category="relay_switch",
+        component_id="switch_1",
+        state={"p": True},
+        params={"1-p": True},
+        component_category="relay_switch",
+    )
+    device["name"] = "玄关情景面板"
+    device["ha_device_instance"]["name"] = "玄关情景面板"
+
+    switches = project_switches(device, domain=DOMAIN)
+
+    assert [item.component_id for item in switches] == ["switch_1"]
+    assert project_events(device, domain=DOMAIN) == []
+
+
+def test_user_name_does_not_project_sensor_as_event_input() -> None:
+    """用户名称包含旋钮/情景时，不能把普通传感器投影成事件设备。"""
+    device = projection_payload(
+        device_id="named-panel-sensor",
+        category="light_sensor",
+        component_id="light_sensor",
+        state={"luminance": 88},
+        component_category="light_sensor",
+    )
+    device["name"] = "客厅旋钮情景面板"
+    device["ha_device_instance"]["name"] = "客厅旋钮情景面板"
+
+    assert project_events(device, domain=DOMAIN) == []
 
 
 def test_gateway_only_provides_topology_device_info() -> None:
@@ -127,13 +162,33 @@ def test_knob_switch_projects_event_only_and_not_sensors() -> None:
         component_category="knob_switch",
         product_events=[
             {"event_id": 10, "name": "knob spin"},
-            {"name": "multi spin"},
-            {"name": "absolut spin"},
         ],
     )
     events = project_events(device, domain=DOMAIN)
     assert len(events) == 1
-    assert events[0].event_types == ["knob_spin", "multi_spin", "absolut_spin"]
+    assert events[0].event_types == ["knob_spin"]
     assert project_binary_sensors(device, domain=DOMAIN) == []
     assert project_sensors(device, domain=DOMAIN) == []
     assert project_switches(device, domain=DOMAIN) == []
+
+
+def test_registry_knob_component_projects_event_without_user_name_guess() -> None:
+    """官方组件表里的 knob switch 能投影事件，不依赖产品或设备名称 token。"""
+    device = projection_payload(
+        device_id="knob-registry",
+        category="other",
+        component_id="knob_1",
+        state={},
+        component_category="knob switch",
+        product_events=[{"event_id": 10, "name": "knob.spin"}],
+    )
+    device["name"] = "自定义输入设备"
+    device["ha_device_instance"]["name"] = "自定义输入设备"
+    device["ha_product_model"]["product"]["model"] = "自定义输入设备"
+    device["ha_product_model"]["product"]["category"] = "other"
+
+    events = project_events(device, domain=DOMAIN)
+
+    assert len(events) == 1
+    assert events[0].event_types == ["knob_spin"]
+    assert events[0].icon == "mdi:knob"

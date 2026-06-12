@@ -318,6 +318,9 @@ LOCAL_HA_RUNTIME_VERIFIER_SOURCE_TOKENS = {
         "core.coordinator_runtime": "coordinator runtime helper presence check",
         "core.runtime_bridge": "runtime bridge helper presence check",
         "device_trigger": "device automation trigger module presence check",
+        "projector.event_identity_helpers": (
+            "event identity helper runtime module presence check"
+        ),
         "projector.event_helpers": "event projector helper runtime module presence check",
         "projector.sensor_helpers": "sensor projector helper runtime module presence check",
         "ha_device_registry": "HA device registry sync module presence check",

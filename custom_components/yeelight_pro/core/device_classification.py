@@ -6,7 +6,11 @@ from collections.abc import Iterable, Mapping
 from typing import Any
 
 from ..capabilities.platform_contract import primary_platform_for_payload
-from ..capabilities.registry import is_iot_category, parse_component_property_key
+from ..capabilities.registry import (
+    is_iot_category,
+    parse_component_property_key,
+    product_category_candidates,
+)
 from ..utils import to_str
 from .device_classification_categories import BROAD_CATEGORIES, GENERIC_PLATFORM_CATEGORIES
 from .device_runtime_capabilities import (
@@ -107,6 +111,10 @@ def infer_iot_category(payload: Mapping[str, Any]) -> str | None:
     component_category = _category_from_components(payload)
     if component_category is not None:
         return component_category
+
+    product_category = _category_from_product_catalog(payload)
+    if product_category is not None:
+        return product_category
 
     if current and current not in BROAD_CATEGORIES:
         return current
@@ -270,6 +278,17 @@ def _category_from_components(payload: Mapping[str, Any]) -> str | None:
     return None
 
 
+def _category_from_product_catalog(payload: Mapping[str, Any]) -> str | None:
+    """Return a category from documented product composition only as fallback."""
+    categories = product_category_candidates(payload.get("pid"))
+    if len(categories) != 1:
+        return None
+    category = categories[0]
+    if is_iot_category(category) and category != "other":
+        return category
+    return None
+
+
 def _component_categories(payload: Mapping[str, Any]) -> Iterable[str]:
     for subdevice in _property_rows(payload.get("subDeviceList")):
         category = _category_text(subdevice.get("category"))
@@ -312,6 +331,8 @@ def _product_model_property_keys(value: Any) -> set[str]:
         return set()
     keys: set[str] = set()
     for component in _property_rows(value.get("components")):
+        if not _category_text(component.get("category")):
+            continue
         for prop in _property_rows(component.get("properties")):
             keys.add(_prop_name(_property_id(prop)))
     return keys
@@ -322,6 +343,8 @@ def _schema_property_keys(value: Any) -> set[str]:
         return set()
     keys: set[str] = set()
     for component in _schema_components(value):
+        if not _category_text(component.get("category")):
+            continue
         for prop in _property_rows(component.get("properties")):
             keys.add(_prop_name(_property_id(prop)))
     return keys
@@ -365,7 +388,6 @@ def _text(value: Any) -> str | None:
 
 def _category_text(value: Any) -> str | None:
     return normalize_iot_category(value)
-
 
 __all__ = [
     "friendly_model_id",

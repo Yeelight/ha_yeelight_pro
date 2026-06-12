@@ -7,13 +7,14 @@ from typing import Any, Mapping
 from homeassistant.components.light import ColorMode
 
 from ..canonical.models import ComponentInstanceModel, ComponentModel
+from ..device_display import channel_name_label
 from ..utils import matches_category, to_category, to_int, to_str
 from .common import NumericRange, component_index, humanize_component_id
 
 DEFAULT_BRIGHTNESS_RANGE = (1, 100, 1)
 DEFAULT_COLOR_TEMP_RANGE_KELVIN = (2700, 6500, None)
 LIGHT_CATEGORY_TOKENS = ("light", "lamp", "灯", "灯带", "彩光", "色温")
-SWITCH_CATEGORY_TOKENS = ("switch", "relay", "outlet", "开关", "面板")
+SWITCH_CATEGORY_TOKENS = ("switch", "relay", "开关", "面板")
 LIGHT_COLOR_MODE_HINT_KEY = "light_color_mode"
 LIGHT_COLOR_TEMP_MODE_TOKENS = {"color_temp", "colortemp", "ct", "temperature", "temp"}
 LIGHT_RGB_MODE_TOKENS = {"rgb", "color", "colour"}
@@ -46,7 +47,7 @@ def _infer_features_from_payload(
     product_type = device_payload.get("product_type")
     features: set[str] = set()
 
-    if "p" in state or "on" in state:
+    if "p" in state:
         features.add("onoff")
     if "l" in state or product_type in {2, 3, 4, 14, 30}:
         features.add("brightness")
@@ -115,7 +116,7 @@ def _project_brightness(
     is_on: bool,
 ) -> int | None:
     """将原始亮度值归一化为 HA 0-255 范围。"""
-    raw = to_int(state.get("l", state.get("brightness")))
+    raw = to_int(state.get("l"))
     if raw is None:
         return None
 
@@ -133,7 +134,7 @@ def _project_brightness(
 
 def _project_color_temp(state: Mapping[str, Any]) -> int | None:
     """将开尔文色温转换为 HA mired 单位。"""
-    kelvin = to_int(state.get("ct", state.get("color_temp_kelvin")))
+    kelvin = to_int(state.get("ct"))
     if kelvin is None or kelvin <= 0:
         return None
     return int(1000000 / kelvin)
@@ -141,7 +142,7 @@ def _project_color_temp(state: Mapping[str, Any]) -> int | None:
 
 def _project_rgb_color(state: Mapping[str, Any]) -> tuple[int, int, int] | None:
     """将整数 RGB 值解码为 (r, g, b) 元组。"""
-    color = to_int(state.get("c", state.get("rgb")))
+    color = to_int(state.get("c"))
     if color is None:
         return None
     return ((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF)
@@ -212,7 +213,7 @@ def _infer_features_from_product_component(product_component: ComponentModel | N
 
 def _state_has_light_property(state: Mapping[str, Any]) -> bool:
     """Return true when runtime state carries real light properties."""
-    return bool({"p", "l", "ct", "c", "on", "brightness", "color_temp_kelvin", "rgb"} & set(state))
+    return bool({"p", "l", "ct", "c"} & set(state))
 
 
 def _product_constraint(
@@ -297,7 +298,7 @@ def _indexed_channel_name(index: int | None, *, total: int) -> str | None:
     """为多路灯光生成稳定的通道名，单路主实体交给设备名承载。"""
     if index is None or total <= 1:
         return None
-    return f"第 {index} 路"
+    return channel_name_label(index=index, component={"io": "output"})
 
 
 def _friendly_component_name(component: ComponentInstanceModel) -> str | None:
@@ -341,8 +342,8 @@ def _explicit_light_color_mode(state: Mapping[str, Any]) -> ColorMode | None:
 
 def _infer_light_color_mode_from_state(state: Mapping[str, Any]) -> ColorMode | None:
     """根据状态键的存在推断颜色模式。"""
-    has_color_temp = to_int(state.get("ct", state.get("color_temp_kelvin"))) is not None
-    has_rgb = to_int(state.get("c", state.get("rgb"))) is not None
+    has_color_temp = to_int(state.get("ct")) is not None
+    has_rgb = to_int(state.get("c")) is not None
 
     if has_rgb and not has_color_temp:
         return ColorMode.RGB

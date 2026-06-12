@@ -8,17 +8,16 @@ from typing import Any, Mapping
 from ..canonical.models import ComponentInstanceModel, HADeviceInstanceModel, HAProductModel
 from ..device_display import channel_name_label
 from ..entity_category import entity_category_for_property
-from ..utils import to_bool, to_category, to_int, to_str, matches_category
+from ..utils import to_bool, to_str
 from .device import flatten_instance_state, project_payload_device_info
+from .event_input import is_event_input_device
+from .sensor_helpers import is_event_style_component
 from .common import (
     load_product_model,
     payload_available,
     product_component,
     schema_backed_component_available,
 )
-
-# 事件型产品类型集合（仅暴露防拆状态的设备）
-EVENT_STYLE_PRODUCT_TYPES = {128, 132}
 
 # binary sensor 属性规格：key -> {component_id, label, device_class, icon, inverted}
 BINARY_SENSOR_SPECS: dict[str, dict[str, str | None]] = {
@@ -94,18 +93,6 @@ BINARY_SENSOR_SPECS: dict[str, dict[str, str | None]] = {
     },
 }
 
-# 情景/面板类设备类别 token
-_SCENE_CATEGORY_TOKENS = (
-    "情景",
-    "scene",
-    "scene_panel",
-    "panel",
-    "旋钮",
-    "knob",
-    "knob_switch",
-)
-
-
 @dataclass(slots=True)
 class HABinarySensorProjection:
     """投影后的 Home Assistant binary sensor 视图."""
@@ -131,7 +118,7 @@ def project_binary_sensors(
     device_info = project_payload_device_info(device_payload, instance)
     device_id = str(device_payload.get("device_id", "unknown"))
     base_available = payload_available(device_payload, instance)
-    event_style_device = _is_event_style_device(device_payload)
+    event_style_device = is_event_input_device(device_payload)
 
     projections: list[HABinarySensorProjection] = []
     occurrences = _binary_sensor_property_occurrences(instance, product_model, params)
@@ -141,7 +128,11 @@ def project_binary_sensors(
         if spec is None:
             continue
         entity_category = entity_category_for_property(key)
-        if event_style_device and entity_category is None:
+        if _blocks_event_style_binary_sensor(
+            event_style_device,
+            component,
+            entity_category,
+        ):
             continue
 
         is_on = None if raw_value is None else to_bool(raw_value)
@@ -221,6 +212,17 @@ def _property_occurrence_counts(
     return counts
 
 
+def _blocks_event_style_binary_sensor(
+    event_style_device: bool,
+    component: ComponentInstanceModel | None,
+    entity_category: str | None,
+) -> bool:
+    """Return true when an event-input component would leak as a binary sensor."""
+    return entity_category is None and (
+        (event_style_device and component is None) or is_event_style_component(component)
+    )
+
+
 def _scoped_component_id(
     base_component_id: str,
     component: ComponentInstanceModel | None,
@@ -281,24 +283,6 @@ def _load_instance(device_payload: Mapping[str, Any]) -> HADeviceInstanceModel |
 def _projection_name(base_name: str | None, label: str | None) -> str | None:
     """返回投影名称，当前直接使用标签."""
     return label
-
-
-def _is_event_style_device(device_payload: Mapping[str, Any]) -> bool:
-    """判断是否为事件型设备（情景面板/旋钮等）."""
-    product_type = to_int(device_payload.get("product_type"))
-    if product_type in EVENT_STYLE_PRODUCT_TYPES:
-        return True
-
-    product_model = device_payload.get("ha_product_model")
-    if isinstance(product_model, Mapping):
-        product = product_model.get("product")
-        if isinstance(product, Mapping):
-            category = to_category(product.get("category"))
-            if category and matches_category(category, _SCENE_CATEGORY_TOKENS):
-                return True
-
-    category = to_category(device_payload.get("category"))
-    return bool(category) and matches_category(category, _SCENE_CATEGORY_TOKENS)
 
 
 def _params(device_payload: Mapping[str, Any]) -> dict[str, Any]:

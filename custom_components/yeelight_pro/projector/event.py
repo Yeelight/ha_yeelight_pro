@@ -74,7 +74,12 @@ def project_events(device_payload: Mapping[str, Any], *, domain: str) -> list[HA
             HAEventProjection(
                 component_id=component.component_id,
                 unique_id=f"{domain}_{source_device_id}_{component.component_id}_event",
-                name=_event_name(component, total=total, device_payload=device_payload),
+                name=_event_name(
+                    component,
+                    total=total,
+                    product_model=product_model,
+                    device_payload=device_payload,
+                ),
                 available=available and _component_available(
                     component_instance,
                     component,

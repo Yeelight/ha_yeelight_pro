@@ -21,10 +21,10 @@ from .entity_lifecycle_helpers import (
 
 
 @pytest.mark.asyncio
-async def test_reconcile_marks_extra_double_switch_channel_stale_and_updates_names(
+async def test_reconcile_marks_extra_catalog_double_switch_channel_stale_and_updates_names(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """双键开关残留第三路应进入 stale，旧一键二键名称应刷新为左/右键."""
+    """官方双键产品残留第三路应进入 stale，旧一键二键名称应刷新为左/右键."""
     registry = FakeEntityRegistry(
         [
             registry_entry(
@@ -52,7 +52,8 @@ async def test_reconcile_marks_extra_double_switch_channel_stale_and_updates_nam
             311884747: {
                 "device_id": "311884747",
                 "id": 311884747,
-                "name": "厨房双键开关",
+                "name": "厨房开关",
+                "pid": 854018,
                 "category": "relay_switch",
                 "type": "switch",
                 "online": True,

@@ -62,8 +62,11 @@ def openapi_property_model(
         prop_id=prop_id,
         name=desc
         or (template.name if template is not None else None)
-        or (spec.full_name if spec is not None else None),
-        desc=desc,
+        or (spec.display_name if spec is not None else None),
+        desc=desc or (spec.description if spec is not None else None),
+        semantic=template.semantic if template is not None else (
+            spec.full_name if spec is not None else None
+        ),
         kind=_property_kind(access, spec)
         or (template.kind if template is not None else None),
         property_type=(

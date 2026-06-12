@@ -13,6 +13,7 @@ from custom_components.yeelight_pro.projector.climate import project_climate
 from custom_components.yeelight_pro.projector.property_controls import (
     project_number_controls,
     project_select_controls,
+    project_switch_controls,
 )
 from custom_components.yeelight_pro.projector.sensor import project_sensors
 
@@ -175,6 +176,25 @@ def test_read_only_registry_diagnostics_project_sensors_without_unknown_fallback
     assert binaries["route_calibrated"].is_on is True
     assert binaries["tilt_route_calibrated"].is_on is False
     assert {item.entity_category for item in binaries.values()} == {"diagnostic"}
+
+
+def test_registry_config_scalars_without_value_metadata_do_not_project_sensors() -> None:
+    """无安全控件元数据的读写配置属性不能伪装为 sensor。"""
+    payload = _payload_with_props(
+        category="other",
+        state={"fblck": 1, "fbnum": 3, "level_limit_rdy": 1},
+        props=("fblck", "fbnum", "level_limit_rdy"),
+    )
+
+    sensors = {item.component_id: item for item in project_sensors(payload, domain=DOMAIN)}
+    numbers = project_number_controls(payload, domain=DOMAIN)
+    selects = project_select_controls(payload, domain=DOMAIN)
+    switches = project_switch_controls(payload, domain=DOMAIN)
+
+    assert sensors == {}
+    assert numbers == []
+    assert selects == []
+    assert switches == []
 
 
 @pytest.mark.asyncio

@@ -30,9 +30,14 @@ def test_runtime_payloads_keep_empty_control_category_metadata_only() -> None:
     device = data[304784336]
     device_info = device["device_info"]
     candidates = list(iter_device_entity_candidates(device))
+    product_model = device["ha_product_model"]
+    device_instance = device["ha_device_instance"]
 
-    assert "ha_product_model" not in device
-    assert "ha_device_instance" not in device
+    assert product_model["schema_version"] == "runtime-v1"
+    assert product_model["product"]["category"] == "relay_switch"
+    assert product_model["product"]["categories"] == ["relay_switch"]
+    assert product_model["components"] == []
+    assert device_instance["components"] == []
     assert "ha_platform" not in device
     assert "ha_platform_candidates" not in device
     assert device["name"] == "墙壁开关1"

@@ -88,7 +88,7 @@ IOT_PRODUCT_SPECS: tuple[IoTProductSpec, ...] = (
     IoTProductSpec(1312769, "字节跳动升降桌", ("基础组件", "mesh组件"), ("人在传感器", "可升降组件"), None, "mesh协议"),
     IoTProductSpec(1443840, "Yeelight Pro S系列梦幻窗帘电机", ("基础组件", "mesh组件"), ("梦幻帘",), None, "mesh协议"),
     IoTProductSpec(1443841, "E系列卷帘电机-百叶帘；E系列卷帘电机-香格里拉帘；", ("基础组件", "mesh组件"), ("梦幻帘",), None, None),
-    IoTProductSpec(1509378, "S系列情景开关", ("基础组件", "mesh组件", "跑道屏", "背光指示灯组件"), ("情景按键", "无线开关通道"), "6", "mesh协议"),
+    IoTProductSpec(1509378, "S系列情景开关", ("基础组件", "mesh组件", "跑道屏", "背光指示灯组件"), ("情景按键", "无线开关通道"), "6", "mesh协议", normal_component_counts=(("情景按键", 12), ("无线开关通道", 4))),
     IoTProductSpec(1574912, "S系列墙面旋钮屏开关", ("基础组件", "mesh组件", "旋钮屏组件"), ("开关",), "2", "mesh协议"),
     IoTProductSpec(8390656, "Yeelight Pro S20系列8键情景开关(单火版)", ("基础组件", "mesh组件"), ("情景按键",), "8", "mesh协议"),
     IoTProductSpec(8390657, "Yeelight商业Q系列智能情景开关-三键", ("基础组件", "mesh组件"), ("情景按键",), "3", "mesh协议"),
@@ -121,7 +121,7 @@ IOT_PRODUCT_SPECS: tuple[IoTProductSpec, ...] = (
     IoTProductSpec(17000003, "dali亮度灯", ("基础组件", "dali灯组件", "dali能量组件"), ("亮度灯",), None, "dali协议"),
     IoTProductSpec(17000004, "dali色温灯", ("基础组件", "dali灯组件", "dali能量组件"), ("色温灯",), None, "dali协议"),
     IoTProductSpec(17000005, "dali输入设备", ("dali组件", "基础组件"), ("dali情景按键", "dali人感传感器", "dali光感传感器"), "32", "dali协议"),
-    IoTProductSpec(17000007, "6.9寸智慧屏", ("基础组件", "wifi组件", "以太网组件", "米家组件", "全景屏组件"), ("网关", "音乐组件", "开关"), "4", "直连", ("mesh协议", "matter协议")),
+    IoTProductSpec(17000007, "6.9寸智慧屏", ("基础组件", "wifi组件", "以太网组件", "米家组件", "全景屏组件"), ("网关", "音乐组件", "开关"), "4", "直连", ("mesh协议", "matter协议"), normal_component_counts=(("开关", 2),)),
 )
 
 

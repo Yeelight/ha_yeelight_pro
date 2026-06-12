@@ -112,6 +112,14 @@ def test_required_modules_include_runtime_inference_helper() -> None:
     )
 
 
+def test_required_modules_include_product_catalog_helpers() -> None:
+    """本地 HA 安装态必须保留易来产品构成目录."""
+    assert {
+        "custom_components.yeelight_pro.capabilities.product_catalog",
+        "custom_components.yeelight_pro.capabilities.product_catalog_data",
+    } <= set(REQUIRED_RUNTIME_MODULES)
+
+
 def test_required_modules_include_openapi_property_helper() -> None:
     """本地 HA 安装态必须保留 OpenAPI 属性元数据转换 helper."""
     assert (
@@ -142,6 +150,14 @@ def test_required_modules_include_device_runtime_capabilities() -> None:
         "custom_components.yeelight_pro.core.device_runtime_constants"
         in REQUIRED_RUNTIME_MODULES
     )
+    assert (
+        "custom_components.yeelight_pro.core.lan_topology_payload"
+        in REQUIRED_RUNTIME_MODULES
+    )
+    assert (
+        "custom_components.yeelight_pro.core.firmware_metadata"
+        in REQUIRED_RUNTIME_MODULES
+    )
 
 
 def test_required_modules_include_runtime_template_helpers() -> None:
@@ -150,6 +166,7 @@ def test_required_modules_include_runtime_template_helpers() -> None:
         "custom_components.yeelight_pro.converter.runtime_template_constants",
         "custom_components.yeelight_pro.converter.runtime_template_controls",
         "custom_components.yeelight_pro.converter.runtime_template_hvac",
+        "custom_components.yeelight_pro.converter.runtime_template_selector",
         "custom_components.yeelight_pro.converter.runtime_template_sensors",
         "custom_components.yeelight_pro.converter.runtime_templates",
     }
@@ -174,6 +191,14 @@ def test_required_modules_include_config_flow_account_helper() -> None:
 
 def test_required_modules_include_event_projector_helper() -> None:
     """本地 HA 安装态必须保留拆分后的 event projector helper."""
+    assert (
+        "custom_components.yeelight_pro.projector.event_identity_helpers"
+        in REQUIRED_RUNTIME_MODULES
+    )
+    assert (
+        "custom_components.yeelight_pro.projector.event_input"
+        in REQUIRED_RUNTIME_MODULES
+    )
     assert (
         "custom_components.yeelight_pro.projector.event_helpers"
         in REQUIRED_RUNTIME_MODULES

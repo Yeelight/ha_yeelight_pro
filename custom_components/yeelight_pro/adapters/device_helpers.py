@@ -5,10 +5,13 @@ from __future__ import annotations
 import re
 from typing import Any, Mapping
 
-from ..capabilities.registry import property_spec
+from ..capabilities.registry import (
+    is_projectable_global_component,
+    property_capability,
+    property_spec,
+)
 from ..utils import to_str
 
-RUNTIME_EXCLUDED_COMPONENT_TYPES = {"global"}
 RUNTIME_EXCLUDED_KINDS = {"diagnostic", "info"}
 RUNTIME_EXCLUDED_PROPERTY_TYPES = {"config"}
 SENSOR_PROPERTY_KEYS = {
@@ -30,13 +33,13 @@ SENSOR_PROPERTY_KEYS = {
 }
 FALLBACK_RUNTIME_KEYS: dict[str, set[str]] = {
     "light": {"p", "sp", "l", "ct", "c", "m"},
-    "fan": {"p", "lv", "dir", "m"},
-    "switch": {"p", "sp", "on"},
-    "outlet": {"p", "sp", "on"},
+    "switch": {"p", "sp"},
     "binary_sensor": {"mv", "dc", "alm"},
     "sensor": {"t", "h", "luminance", "level"},
     "cover": {"cp", "tp"},
     "climate": {"acm", "actt", "acct", "acf", "aco"},
+    "fresh_air": {"vmcp", "vmcf"},
+    "temp_control": {"acp", "acm", "actt", "acct", "acf", "aco", "vmcp", "vmcf"},
 }
 INDEXED_RUNTIME_KEY_RE = re.compile(r"^\d+-(.+)$")
 STATELESS_ACTUATOR_CATEGORY_TOKENS = (
@@ -48,13 +51,10 @@ STATELESS_ACTUATOR_CATEGORY_TOKENS = (
     "色温",
     "switch",
     "relay",
-    "outlet",
-    "fan",
-    "ceiling fan",
     "开关",
     "面板",
-    "风扇",
-    "吊扇",
+    "fresh air",
+    "新风",
     "cover",
     "curtain",
     "blind",
@@ -113,7 +113,9 @@ def should_include_runtime_component(
 def should_expose_component_state(component: Any) -> bool:
     """判断组件是否应暴露运行时状态。"""
     component_type = to_str(getattr(component, "component_type", None))
-    return component_type not in RUNTIME_EXCLUDED_COMPONENT_TYPES
+    if component_type != "global":
+        return True
+    return is_projectable_global_component(component)
 
 
 def should_expose_runtime_property(component: Any, prop: Any) -> bool:
@@ -125,10 +127,22 @@ def should_expose_runtime_property(component: Any, prop: Any) -> bool:
     if kind in RUNTIME_EXCLUDED_KINDS:
         return False
 
+    component_type = to_str(getattr(component, "component_type", None))
+    if component_type == "global":
+        return is_documented_global_runtime_property(prop)
+
     property_type = to_str(getattr(prop, "property_type", None))
     if kind == "config" or property_type == "config":
         return is_documented_runtime_config_property(prop)
     return property_type not in RUNTIME_EXCLUDED_PROPERTY_TYPES
+
+
+def is_documented_global_runtime_property(prop: Any) -> bool:
+    """全局组件只暴露官方诊断能力，配置/密钥不进入运行时状态。"""
+    spec = property_spec(getattr(prop, "prop_id", None))
+    if spec is None or not spec.readable or spec.category == "config":
+        return False
+    return property_capability(spec.prop) is not None
 
 
 def is_documented_runtime_config_property(prop: Any) -> bool:
@@ -166,14 +180,27 @@ def looks_like_stateless_actuator_component(component: Any) -> bool:
 
 
 def looks_like_sensor_component(component: Any) -> bool:
-    """Return true for known read-only sensor components even before first value."""
+    """根据易来品类或传感属性判断是否为只读传感组件。"""
     category = (to_str(getattr(component, "category", None)) or "").lower()
     component_id = (to_str(getattr(component, "component_id", None)) or "").lower()
     haystacks = (category, component_id)
     if any(
         token in haystack
         for haystack in haystacks
-        for token in ("sensor", "contact", "motion", "presence", "occupancy")
+        for token in (
+            "contact_sensor",
+            "human_sensor",
+            "light_sensor",
+            "contact sensor",
+            "human sensor",
+            "illuminance sensor",
+            "传感器",
+            "门磁",
+            "人感",
+            "人在",
+            "光感",
+            "照度",
+        )
     ):
         return True
     return any(

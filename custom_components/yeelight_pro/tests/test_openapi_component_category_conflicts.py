@@ -64,7 +64,7 @@ def test_wireless_switch_channel_config_props_stay_as_device_controls() -> None:
     assert set(numbers) == {"l", "run_speed"}
     assert set(selects) == {"slisaon"}
     assert set(switches) == {"li"}
-    assert numbers["l"].name == "第 1 键 亮度"
+    assert numbers["l"].name == "回路 1 亮度"
     assert numbers["l"].control_key == "1-l"
     assert numbers["l"].entity_category is None
     assert numbers["run_speed"].entity_category == "config"

@@ -21,6 +21,7 @@ from .runtime_bridge import (
     RuntimePayloadBridge,
     property_updates_from_adapter,
 )
+from .lan_topology_payload import build_lan_topology_payloads
 from .runtime_state import RuntimeStateStore
 
 _LOGGER = logging.getLogger(__name__)
@@ -33,6 +34,10 @@ class _RuntimeCoordinator(Protocol):
     data: Any
     devices: Mapping[int, dict[str, Any]]
     gateways: Mapping[int, dict[str, Any]]
+    groups: list[dict[str, Any]]
+    rooms: list[dict[str, Any]]
+    areas: list[dict[str, Any]]
+    scenes: list[dict[str, Any]]
     _runtime_state: RuntimeStateStore
     _push_event_deduper: RuntimeEventDeduper
     _device_payload_builder: Any
@@ -134,85 +139,31 @@ def _apply_lan_topology_to_coordinator(
 
     LAN-only 模式下 coordinator 没有云端客户端，设备数据完全来自拓扑推送。
     """
-    from ..utils import to_int
-
     nodes = payload.get("nodes")
     if not isinstance(nodes, list):
         return
 
-    new_devices: dict[int, dict[str, Any]] = {}
-    new_scenes: list[dict[str, Any]] = []
-    new_groups: list[dict[str, Any]] = []
-    new_rooms: list[dict[str, Any]] = []
+    topology_payloads = build_lan_topology_payloads(
+        nodes,
+        builder=coordinator._device_payload_builder,
+        apply_runtime_overrides=coordinator._runtime_state.apply_to_device,
+    )
 
-    for node in nodes:
-        if not isinstance(node, Mapping):
-            continue
-        node_id = to_int(node.get("id"))
-        node_type = to_int(node.get("nt"))
-        if node_id is None or node_type is None:
-            continue
-
-        name = str(node.get("n", ""))
-        device_type = to_int(node.get("type"))
-
-        if node_type == 2:
-            # Mesh 子设备 → 设备实体
-            device_payload: dict[str, Any] = {
-                "id": node_id,
-                "name": name,
-                "type": device_type,
-                "node_type": node_type,
-                "online": True,
-                "params": {},
-            }
-            # 保留拓扑扩展字段
-            for field in ("ch_num", "cids", "roomid", "pid"):
-                if field in node:
-                    device_payload[field] = node[field]
-            new_devices[node_id] = device_payload
-
-        elif node_type == 4:
-            # Mesh 灯组
-            new_groups.append({
-                "id": node_id,
-                "name": name,
-                "type": device_type,
-                "node_type": node_type,
-            })
-
-        elif node_type == 6:
-            # 情景
-            new_scenes.append({
-                "id": node_id,
-                "name": name,
-            })
-
-        elif node_type == 1:
-            # 房间
-            new_rooms.append({
-                "id": node_id,
-                "name": name,
-            })
-
-    # 更新 coordinator 状态
-    if new_devices:
-        coordinator.devices = new_devices  # type: ignore[assignment]
-        # 同步 data 属性（DataUpdateCoordinator.data 由 _async_update_data 设置）
-        coordinator.data = new_devices  # type: ignore[assignment]
-    if new_scenes:
-        coordinator.scenes = new_scenes  # type: ignore[assignment]
-    if new_groups:
-        coordinator.groups = new_groups  # type: ignore[assignment]
-    if new_rooms:
-        coordinator.rooms = new_rooms  # type: ignore[assignment]
+    # LAN topology 是网关当前拓扑快照，空集合也要同步以便 registry cleanup 生效。
+    coordinator.devices = topology_payloads.devices  # type: ignore[assignment]
+    coordinator.data = topology_payloads.devices  # type: ignore[assignment]
+    coordinator.scenes = topology_payloads.scenes  # type: ignore[assignment]
+    coordinator.groups = topology_payloads.groups  # type: ignore[assignment]
+    coordinator.rooms = topology_payloads.rooms  # type: ignore[assignment]
+    coordinator.areas = topology_payloads.areas  # type: ignore[assignment]
 
     _LOGGER.info(
-        "LAN topology applied: %d devices, %d groups, %d scenes, %d rooms",
-        len(new_devices),
-        len(new_groups),
-        len(new_scenes),
-        len(new_rooms),
+        "LAN topology applied: %d devices, %d groups, %d scenes, %d rooms, %d areas",
+        len(topology_payloads.devices),
+        len(topology_payloads.groups),
+        len(topology_payloads.scenes),
+        len(topology_payloads.rooms),
+        len(topology_payloads.areas),
     )
 
 

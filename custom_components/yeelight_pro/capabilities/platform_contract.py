@@ -21,7 +21,7 @@ from .platform_contract_data import (
     READ_ONLY_SENSOR_PROPS,
     RELAY_SWITCH_CONTROL_PROPS,
 )
-from .registry import parse_component_property_key, property_spec
+from .registry import normalize_property_key, parse_component_property_key, property_spec
 
 PlatformSupportStatus = Literal["supported", "experimental", "unsupported"]
 PlatformSummaryStatus = Literal["supported", "diagnostic", "unsupported"]
@@ -41,6 +41,7 @@ class PropertyEvidence:
     """Documented property metadata from registry or OpenAPI rows."""
 
     prop: str
+    registry_backed: bool
     readable: bool
     writable: bool
     value_format: str
@@ -93,9 +94,9 @@ def platform_candidates_for_payload(payload: Mapping[str, Any]) -> tuple[str, ..
             _extend(candidates, ("switch",))
         elif prop in LIGHT_CONTROL_PROPS and category == "light":
             _extend(candidates, ("light",))
-        elif evidence.writable and evidence.has_value_list:
+        elif _documented_writable_property(evidence) and evidence.has_value_list:
             _extend(candidates, ("select",))
-        elif evidence.writable and _numeric_property(evidence):
+        elif _documented_writable_property(evidence) and _numeric_property(evidence):
             _extend(candidates, ("number",))
 
     if has_events:
@@ -181,7 +182,8 @@ def _has_fan_without_climate_props(props: Mapping[str, PropertyEvidence]) -> boo
 
 def _payload_category(payload: Mapping[str, Any]) -> str:
     return to_category(
-        payload.get("iot_category")
+        payload.get("effective_category")
+        or payload.get("iot_category")
         or payload.get("category")
         or payload.get("type")
     )
@@ -221,6 +223,7 @@ def _merge_property_evidence(
         return
     props[prop] = PropertyEvidence(
         prop=prop,
+        registry_backed=current.registry_backed or evidence.registry_backed,
         readable=current.readable or evidence.readable,
         writable=current.writable or evidence.writable,
         value_format=current.value_format or evidence.value_format,
@@ -234,6 +237,7 @@ def _property_evidence_for(
     raw: Mapping[str, Any] | None,
 ) -> PropertyEvidence:
     prop_spec = property_spec(prop)
+    registry_backed = prop_spec is not None
     readable = bool(prop_spec is None or prop_spec.readable)
     writable = bool(prop_spec is not None and prop_spec.writable)
     value_format = to_category(getattr(prop_spec, "data_type", None))
@@ -250,6 +254,7 @@ def _property_evidence_for(
 
     return PropertyEvidence(
         prop=prop,
+        registry_backed=registry_backed,
         readable=readable,
         writable=writable,
         value_format=value_format,
@@ -263,9 +268,9 @@ def _prop_name(value: Any) -> str:
     if not text:
         return ""
     try:
-        return parse_component_property_key(text).prop_name
+        return normalize_property_key(parse_component_property_key(text).prop_name) or ""
     except ValueError:
-        return text
+        return normalize_property_key(text) or ""
 
 
 def _property_id(prop: Mapping[str, Any]) -> Any:
@@ -301,6 +306,10 @@ def _raw_access(raw: Mapping[str, Any]) -> tuple[bool, bool]:
 
 def _numeric_property(evidence: PropertyEvidence) -> bool:
     return evidence.has_value_range
+
+
+def _documented_writable_property(evidence: PropertyEvidence) -> bool:
+    return evidence.registry_backed and evidence.writable
 
 
 def _int_value(value: Any) -> int | None:

@@ -22,8 +22,8 @@ from .common import load_instance as _load_instance
 from .common import load_product_model as _load_product_model
 from .device import project_payload_device_info
 from .switch_helpers import (
+    _allows_component_switch_projection,
     _allows_raw_switch_fallback,
-    _allows_switch_projection,
     _build_switch_name,
     _component_id_from_raw_key,
     _component_state_key_map,
@@ -80,7 +80,7 @@ def _project_instance_switches(
     """基于 HADeviceInstanceModel 投影 switch 组件."""
     if instance is None:
         return []
-    if not _allows_switch_projection(device_payload):
+    if not _allows_component_switch_projection(device_payload, instance):
         return []
 
     product_model = _load_product_model(device_payload)
@@ -160,7 +160,7 @@ def _schema_switch_prop(product_model: Any | None, component_id: str) -> str | N
     if component is None:
         return None
     prop_ids = {prop.prop_id for prop in component.properties}
-    for prop in ("p", "sp", "on"):
+    for prop in ("p", "sp"):
         if prop in prop_ids:
             return prop
     return None
@@ -215,7 +215,7 @@ def _project_raw_switches(
         if projections:
             return projections
 
-    if device_payload.get("type") not in {"switch", "outlet"}:
+    if device_payload.get("type") != "switch":
         return []
 
     direct_prop = _direct_switch_prop(params) or "p"
@@ -226,7 +226,7 @@ def _project_raw_switches(
             unique_id=f"{domain}_{device_id}_{component_id}",
             name=base_name,
             available=available,
-            is_on=bool(params.get(direct_prop, params.get("on", False))),
+            is_on=bool(params.get(direct_prop, False)),
             control_key=direct_prop,
             device_info=device_info,
             icon="mdi:light-switch",

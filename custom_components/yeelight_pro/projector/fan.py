@@ -1,6 +1,6 @@
-"""Yeelight Pro 风扇投影模块.
+"""Yeelight Pro 新风投影模块.
 
-将设备运行时数据投影为 Home Assistant 风扇实体视图。
+将易来新风运行时数据投影为 Home Assistant fan 实体视图。
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ from typing import Any, Mapping
 
 from homeassistant.components.fan import FanEntityFeature
 
-from ..utils import to_bool, to_str
+from ..utils import to_bool
 from .common import (
     NumericRange,
     load_instance as _load_instance,
@@ -23,7 +23,6 @@ from .device import project_payload_device_info
 from .fan_helpers import (
     _direction_key,
     _direction_support,
-    _fallback_direction_support,
     _fallback_speed_range,
     _is_on,
     _looks_like_fan_component,
@@ -45,7 +44,7 @@ from .switch_helpers import _component_state_key_map
 
 @dataclass(slots=True)
 class HAFanProjection:
-    """设备运行时数据投影后的 Home Assistant 风扇视图。"""
+    """设备运行时数据投影后的 Home Assistant 新风视图。"""
 
     component_id: str
     unique_id: str
@@ -69,10 +68,10 @@ class HAFanProjection:
 
 
 def project_fans(device_payload: Mapping[str, Any], *, domain: str) -> list[HAFanProjection]:
-    """将协调器设备载荷投影为 Home Assistant 风扇视图。"""
+    """将协调器设备载荷投影为 Home Assistant 新风视图。"""
     instance = _load_instance(device_payload)
     if instance is None:
-        projection = _project_legacy_fan(device_payload, domain=domain)
+        projection = _project_raw_fresh_air(device_payload, domain=domain)
         return [projection] if projection is not None else []
 
     product_model = _load_product_model(device_payload)
@@ -159,49 +158,44 @@ def project_fans(device_payload: Mapping[str, Any], *, domain: str) -> list[HAFa
     return projections
 
 
-def _project_legacy_fan(
+def _project_raw_fresh_air(
     device_payload: Mapping[str, Any], *, domain: str
 ) -> HAFanProjection | None:
-    """兼容旧版扁平载荷格式的风扇投影。"""
-    if to_str(device_payload.get("type")) != "fan":
+    """无 schema 时仅按易来新风 vmcp/vmcf 投影 fan。"""
+    params = _params(device_payload)
+    if not {"vmcp", "vmcf"} & set(params):
         return None
 
-    params = _params(device_payload)
     device_id = str(device_payload.get("device_id", "unknown"))
-    speed_key = "lv" if "lv" in params else None
-    mode_key = "m" if "m" in params else None
-    direction_key = "dir" if "dir" in params else None
+    speed_key = "vmcf" if "vmcf" in params else None
     speed_range = _fallback_speed_range(params)
-    raw_mode = to_str(params.get("m"))
-    preset_modes = [raw_mode] if raw_mode else None
-    current_direction, direction_values = _fallback_direction_support(params)
     supported_features = _supported_features(
-        power_key="p" if "p" in params else None,
+        power_key="vmcp" if "vmcp" in params else None,
         speed_key=speed_key,
-        mode_key=mode_key,
-        preset_modes=preset_modes,
-        direction_key=direction_key,
-        direction_values=direction_values,
+        mode_key=None,
+        preset_modes=None,
+        direction_key=None,
+        direction_values={},
     )
 
     return HAFanProjection(
-        component_id="fan",
-        unique_id=f"{domain}_{device_id}_fan",
-        name="风扇",
+        component_id="fresh_air",
+        unique_id=f"{domain}_{device_id}_fresh_air",
+        name="新风",
         available=to_bool(device_payload.get("online"), default=True),
-        is_on=_is_on(params, "p" if "p" in params else None, speed_key, mode_key),
+        is_on=_is_on(params, "vmcp" if "vmcp" in params else None, speed_key, None),
         percentage=_project_percentage(params, speed_key, speed_range),
         speed_count=_speed_count(speed_range),
-        preset_mode=to_str(params.get("m")),
-        preset_modes=preset_modes,
-        current_direction=current_direction,
+        preset_mode=None,
+        preset_modes=None,
+        current_direction=None,
         supported_features=supported_features,
-        power_key="p" if "p" in params else None,
+        power_key="vmcp" if "vmcp" in params else None,
         speed_key=speed_key,
-        mode_key=mode_key,
-        direction_key=direction_key,
+        mode_key=None,
+        direction_key=None,
         speed_range=speed_range,
-        direction_values=direction_values,
+        direction_values={},
         device_info=project_payload_device_info(device_payload),
         icon="mdi:fan",
     )

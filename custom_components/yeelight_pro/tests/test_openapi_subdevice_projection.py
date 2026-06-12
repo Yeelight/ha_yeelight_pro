@@ -8,11 +8,11 @@ from homeassistant.components.light import ATTR_BRIGHTNESS, ColorMode
 
 from custom_components.yeelight_pro.const import DOMAIN
 from custom_components.yeelight_pro.entity_candidates import iter_device_entity_candidates
+from custom_components.yeelight_pro.light import YeelightProLight
+from custom_components.yeelight_pro.projector.light import project_lights
+
 from .openapi_subdevice_helpers import build_openapi_device as _build_device
 from .openapi_subdevice_helpers import openapi_prop as _prop
-from custom_components.yeelight_pro.light import YeelightProLight
-from custom_components.yeelight_pro.projector.event import project_events
-from custom_components.yeelight_pro.projector.light import project_lights
 
 
 def test_openapi_subdevice_lights_project_multiple_light_entities() -> None:
@@ -81,7 +81,7 @@ def test_openapi_subdevice_lights_project_multiple_light_entities() -> None:
 
 
 def test_openapi_subdevice_lights_use_channel_names_without_component_desc() -> None:
-    """多路 light 没有组件描述时，应显示友好的第 N 路而不是照明/裸数字."""
+    """多路 light 没有组件描述时，应显示友好的回路名而不是照明/裸数字."""
     device = _build_device(
         {
             "id": 9018,
@@ -109,7 +109,7 @@ def test_openapi_subdevice_lights_use_channel_names_without_component_desc() -> 
     lights = project_lights(device, domain=DOMAIN)
 
     assert [light.component_id for light in lights] == ["light_1", "light_2"]
-    assert [light.name for light in lights] == ["第 1 路", "第 2 路"]
+    assert [light.name for light in lights] == ["回路 1", "回路 2"]
 
 
 def test_openapi_subdevice_component_metadata_reaches_runtime_instance() -> None:
@@ -202,22 +202,35 @@ def test_openapi_subdevice_numeric_names_are_humanized() -> None:
     ]
 
 
-def test_openapi_scene_panel_numeric_channels_are_humanized() -> None:
-    """设备名只有“按键”时，scene panel 子设备也应按索引显示友好通道名."""
+def test_openapi_subdevice_count_ignores_user_device_name() -> None:
+    """用户设备名写双键时，OpenAPI 子设备仍按真实组件数投影。"""
     device = _build_device(
         {
-            "id": 9019,
-            "name": "按键",
-            "category": "scene_panel",
+            "id": 9020,
+            "name": "玄关双键开关",
+            "category": "relay_switch",
             "subDeviceList": [
-                {"index": 1, "name": "1", "desc": "1", "category": "scene_panel"},
-                {"index": 2, "name": "2", "desc": "2", "category": "scene_panel"},
-                {"index": 3, "name": "3", "desc": "3", "category": "scene_panel"},
-            ],
-            "events": [
-                {"id": "65793", "name": "key1 click", "desc": "按钮1点击事件"},
-                {"id": "66049", "name": "key2 click", "desc": "按钮2点击事件"},
-                {"id": "66305", "name": "key3 click", "desc": "按钮3点击事件"},
+                {
+                    "index": 1,
+                    "name": "1",
+                    "desc": "1",
+                    "category": "relay_switch",
+                    "properties": [_prop("p", True, "开关", "boolean", operators=["set"])],
+                },
+                {
+                    "index": 2,
+                    "name": "2",
+                    "desc": "2",
+                    "category": "relay_switch",
+                    "properties": [_prop("p", False, "开关", "boolean", operators=["set"])],
+                },
+                {
+                    "index": 3,
+                    "name": "3",
+                    "desc": "3",
+                    "category": "relay_switch",
+                    "properties": [_prop("p", True, "开关", "boolean", operators=["set"])],
+                },
             ],
         }
     )
@@ -228,9 +241,9 @@ def test_openapi_scene_panel_numeric_channels_are_humanized() -> None:
     ]
 
     assert candidates == [
-        ("event", "scene_panel_1", "左键事件"),
-        ("event", "scene_panel_2", "中键事件"),
-        ("event", "scene_panel_3", "右键事件"),
+        ("switch", "switch_1", "左键"),
+        ("switch", "switch_2", "中键"),
+        ("switch", "switch_3", "右键"),
     ]
 
 
@@ -265,114 +278,3 @@ async def test_openapi_subdevice_light_entity_uses_indexed_control_keys(
         9002,
         {"2-p": True, "2-l": 51},
     )
-
-
-def test_openapi_subdevice_scene_panel_events_are_scoped_by_key_index() -> None:
-    """顶层 keyN 事件必须归属到对应 scene_panel 子组件。"""
-    device = _build_device(
-        {
-            "id": 9003,
-            "name": "八键面板",
-            "category": "scene_panel",
-            "subDeviceList": [
-                {"index": 1, "name": "scene control button", "category": "scene_panel"},
-                {"index": 2, "name": "scene control button", "category": "scene_panel"},
-            ],
-            "events": [
-                {"id": "65793", "name": "key1 click", "desc": "按钮1点击事件"},
-                {"id": "258", "name": "key1 hold", "desc": "按钮1长按事件"},
-                {"id": "66049", "name": "key2 click", "desc": "按钮2点击事件"},
-            ],
-        }
-    )
-
-    events = project_events(device, domain=DOMAIN)
-    by_component = {event.component_id: event for event in events}
-
-    assert set(by_component) == {"scene_panel_1", "scene_panel_2"}
-    assert by_component["scene_panel_1"].event_types == ["click", "hold"]
-    assert by_component["scene_panel_2"].event_types == ["click"]
-    assert by_component["scene_panel_1"].name == "第 1 键事件"
-    assert by_component["scene_panel_2"].name == "第 2 键事件"
-
-
-def test_openapi_eight_key_scene_panel_uses_friendly_event_names() -> None:
-    """开放平台八键面板示例应显示第 N 键事件，不暴露裸数字或组件英文名."""
-    device = _build_device(
-        {
-            "id": 9008,
-            "name": "Yeelight Pro S20系列8键情景开关",
-            "category": "scene_panel",
-            "subDeviceList": [
-                {
-                    "index": index,
-                    "name": "scene control button",
-                    "desc": "情景按键",
-                    "category": "scene_panel",
-                }
-                for index in range(1, 9)
-            ],
-            "events": [
-                *(
-                    {
-                        "id": str(65537 + index * 256),
-                        "name": f"key{index} click",
-                        "desc": f"按钮{index}点击事件",
-                    }
-                    for index in range(1, 9)
-                ),
-                *(
-                    {
-                        "id": str(index * 256 + 2),
-                        "name": f"key{index} hold",
-                        "desc": f"按钮{index}长按事件",
-                    }
-                    for index in range(1, 9)
-                ),
-            ],
-        }
-    )
-
-    events = project_events(device, domain=DOMAIN)
-
-    assert [event.component_id for event in events] == [
-        f"scene_panel_{index}" for index in range(1, 9)
-    ]
-    assert [event.name for event in events] == [
-        f"第 {index} 键事件" for index in range(1, 9)
-    ]
-    assert all(event.event_types == ["click", "hold"] for event in events)
-
-
-def test_openapi_subdevice_sensor_properties_create_sensor_entities() -> None:
-    """传感器子设备属性应映射为 HA sensor/binary_sensor 候选。"""
-    device = _build_device(
-        {
-            "id": 9004,
-            "name": "走廊人体传感器",
-            "category": "human_sensor",
-            "subDeviceList": [
-                {
-                    "index": 1,
-                    "name": "human body infrared sensor",
-                    "category": "human_sensor",
-                    "properties": [
-                        _prop("mv", True, "人体移动", "boolean"),
-                        _prop("luminance", 321, "照度", "uint16", unit="lx"),
-                        _prop("bl", 88, "电量", "uint8", unit="%"),
-                    ],
-                }
-            ],
-        }
-    )
-
-    candidates = {
-        (item.platform, item.component_id)
-        for item in iter_device_entity_candidates(device)
-    }
-
-    assert candidates == {
-        ("binary_sensor", "motion"),
-        ("sensor", "illuminance"),
-        ("sensor", "battery"),
-    }
