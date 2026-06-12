@@ -90,6 +90,34 @@ async def test_sync_gateway_devices_does_not_override_user_area(
     assert device.area_id == user_area.id
 
 
+async def test_sync_gateway_devices_preserves_user_device_name(
+    hass: HomeAssistant,
+) -> None:
+    """同步设备详情时不应覆盖用户在 HA 中设置的设备名称。"""
+    entry = _entry()
+    entry.add_to_hass(hass)
+    device_registry = dr.async_get(hass)
+    existing = device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, "387958")},
+        manufacturer="Yeelight",
+        model="旧型号",
+        name="旧名称",
+    )
+    device_registry.async_update_device(existing.id, name_by_user="我的厨房主灯")
+    coordinator = DeviceRegistryCoordinator({
+        "device-1": device_payload(identifier="387958")
+    })
+
+    await async_sync_gateway_devices(hass, entry, coordinator)
+
+    device = device_registry.async_get(existing.id)
+    assert device is not None
+    assert device.name_by_user == "我的厨房主灯"
+    assert device.name == "客厅主灯"
+    assert device.model == "智能筒灯"
+
+
 async def test_sync_gateway_devices_uses_metadata_only_fallback_device_info(
     hass: HomeAssistant,
 ) -> None:

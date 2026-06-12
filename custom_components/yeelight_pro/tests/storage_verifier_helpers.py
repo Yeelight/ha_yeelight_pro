@@ -139,8 +139,10 @@ def _unique_id(domain: str, index: int) -> str:
         component = "light" if domain == "light" else "switch"
         return f"yeelight_pro_{source_id}_{component}_{index}"
     if domain == "select":
-        selector = ("room", "group", "scene")[index]
-        return f"yeelight_pro_1_select_{selector}"
+        selectors = ("room", "group", "scene")
+        if index < len(selectors):
+            return f"yeelight_pro_1_select_{selectors[index]}"
+        return f"yeelight_pro_304784336_switch_{index}_mode_select"
     return f"yeelight_pro_topology_{domain}_{index}"
 
 
@@ -149,6 +151,8 @@ def _device_id(domain: str, index: int) -> str | None:
     if domain == "light":
         return "device-registry-1"
     if domain == "switch":
+        return "device-registry-2"
+    if domain == "select" and index >= 3:
         return "device-registry-2"
     return None
 

@@ -33,6 +33,47 @@ async def test_product_schema_cache_reuses_schema_between_polls(
 
 
 @pytest.mark.asyncio
+async def test_coordinator_records_property_hydration_diagnostics(
+    hass: HomeAssistant,
+) -> None:
+    """coordinator 刷新后应保留脱敏补水聚合，方便本地 HA 实测定位."""
+    client = _client_with_payloads(
+        devices=[
+            [{"id": 311930423, "name": "玄关门磁传感器", "category": "light"}],
+        ],
+    )
+    client.read_nodes_properties.return_value = {
+        "code": "200",
+        "data": {
+            "311930423": {
+                "code": "200",
+                "data": [
+                    {"propId": "dc", "value": True},
+                    {"propId": "alm", "value": False},
+                    {"propId": "bl", "value": 86},
+                ],
+            },
+        },
+    }
+    coordinator = YeelightProCoordinator(hass, client, house_id=12345)
+
+    await coordinator._async_update_data()
+
+    assert coordinator.property_hydration_diagnostics == {
+        "request_groups": 1,
+        "requested_devices": 1,
+        "requested_property_sets": 37,
+        "requested_node_properties": 37,
+        "response_devices": 1,
+        "response_values": 3,
+        "merged_devices": 1,
+        "merged_values": 3,
+        "empty_response_groups": 0,
+        "failed_groups": 0,
+    }
+
+
+@pytest.mark.asyncio
 async def test_product_schema_manual_refresh_refetches_cached_schema(
     hass: HomeAssistant,
 ) -> None:

@@ -25,7 +25,11 @@ from custom_components.yeelight_pro.const import (
     DEFAULT_LOCAL_GATEWAY_PORT,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
+    PLATFORMS,
+    get_enabled_platforms,
 )
+from custom_components.yeelight_pro.core.client import YeelightProClient
+from custom_components.yeelight_pro.core.coordinator import YeelightProCoordinator
 from custom_components.yeelight_pro.runtime_options import async_options_updated
 
 
@@ -61,6 +65,34 @@ def _install_runtime(
             "entry": entry,
         }
     }
+
+
+def test_enabled_platforms_match_supported_platforms() -> None:
+    """平台加载集合只来自当前受支持平台列表."""
+    enabled = get_enabled_platforms({})
+
+    assert enabled == PLATFORMS
+    assert "vacuum" not in enabled
+    assert get_enabled_platforms({"experimental_platforms": True}) == PLATFORMS
+
+
+def test_coordinator_scan_interval_reads_entry_options(hass: HomeAssistant) -> None:
+    """coordinator 必须从 entry.options 读取轮询间隔."""
+    coordinator = YeelightProCoordinator(
+        hass=hass,
+        client=AsyncMock(spec=YeelightProClient),
+        house_id=12345,
+        options={
+            CONF_SCAN_INTERVAL: 45,
+            CONF_DEBUG_MODE: True,
+            CONF_HIDE_UNKNOWN_ENTITIES: False,
+        },
+    )
+
+    assert coordinator.update_interval.total_seconds() == 45
+    assert coordinator.scan_interval == 45
+    assert coordinator.debug_mode is True
+    assert coordinator.hide_unknown_entities is False
 
 
 @pytest.mark.asyncio

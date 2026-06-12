@@ -31,10 +31,11 @@ def device_payload(
     identifier: str,
     name: str = "客厅主灯",
     model: str = "智能筒灯",
+    category: str | None = None,
     suggested_area: str = "客厅",
-) -> dict:
+) -> dict[str, Any]:
     """Build a canonical device payload with registry metadata."""
-    return {
+    payload: dict[str, Any] = {
         "ha_device_instance": {
             "device_info": {
                 "identifiers": [["yeelight_pro", identifier]],
@@ -46,6 +47,9 @@ def device_payload(
             }
         }
     }
+    if category is not None:
+        payload["category"] = category
+    return payload
 
 
 def fallback_device_payload(

@@ -244,11 +244,19 @@ def _iter_scene_candidates(scenes: list[dict[str, Any]]) -> Iterator[EntityCandi
 
 
 def _iter_group_candidates(groups: list[dict[str, Any]]) -> Iterator[EntityCandidate]:
-    """Yield candidates for Yeelight group controls."""
+    """生成 Yeelight 灯组控制候选。"""
     for group in groups:
         group_id = group.get("id") or group.get("groupId")
         if not group_id:
             continue
+        yield EntityCandidate(
+            "light",
+            f"{DOMAIN}_group_{group_id}_light",
+            "group",
+            component_id=str(group_id),
+            name=_group_name(group, group_id),
+            icon="mdi:lightbulb-group",
+        )
         yield EntityCandidate(
             "number",
             f"{DOMAIN}_group_{group_id}_brightness",
@@ -272,8 +280,8 @@ def _iter_group_candidates(groups: list[dict[str, Any]]) -> Iterator[EntityCandi
 def _iter_house_select_candidates(
     house_id: int | None,
 ) -> Iterator[EntityCandidate]:
-    """Yield fixed house-level select candidates."""
-    if not house_id:
+    """生成固定的家庭级 select 候选。"""
+    if house_id is None:
         return
     selector_names = {
         "room": ("当前房间", "mdi:floor-plan"),
@@ -345,8 +353,6 @@ def _suggested_projection_object_id(
 
 def _platform_entity_category(platform: str) -> str | None:
     """Return the category implied by helper platforms."""
-    if platform == "event":
-        return ENTITY_CATEGORY_DIAGNOSTIC
     return None
 
 

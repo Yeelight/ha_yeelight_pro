@@ -11,7 +11,7 @@ from .report import VerificationReport
 ADDED_ENTITIES_RE = re.compile(r"Added\s+(\d+)\s+([a-z_ ]+?)\s+entities\b")
 ZH_ADDED_ENTITIES_RE = re.compile(r"已添加\s+(\d+)\s+个\s+([a-z_]+)\s+实体\b")
 RECONCILED_ACTIVE_RE = re.compile(
-    r"Reconciled Yeelight Pro entity registry\b.*?\bactive=(\d+)\b"
+    r"Reconciled Yeelight Pro entity registry\b.*?\bentry\s+([^:]+):.*?\bactive=(\d+)\b"
 )
 
 
@@ -25,7 +25,7 @@ def verify_runtime_entity_counts(
     line_list = list(lines)
     expected_counts = Counter(expected_entity_counts)
     counts = runtime_entity_counts(line_list)
-    active_total = latest_reconciled_active_count(line_list)
+    active_total = latest_reconciled_active_total(line_list)
     if not counts:
         report.fail("runtime entity add logs not found")
         return
@@ -85,8 +85,22 @@ def latest_reconciled_active_count(lines: Iterable[str]) -> int | None:
     for line in lines:
         match = RECONCILED_ACTIVE_RE.search(line)
         if match is not None:
-            active = int(match.group(1))
+            active = int(match.group(2))
     return active
+
+
+def latest_reconciled_active_total(lines: Iterable[str]) -> int | None:
+    """Return the sum of latest active counts per config entry."""
+    active_by_entry: dict[str, int] = {}
+    for line in lines:
+        match = RECONCILED_ACTIVE_RE.search(line)
+        if match is None:
+            continue
+        entry_id, active = match.groups()
+        active_by_entry[entry_id.strip()] = int(active)
+    if not active_by_entry:
+        return None
+    return sum(active_by_entry.values())
 
 
 def _normalize_domain(value: str) -> str:

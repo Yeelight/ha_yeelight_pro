@@ -15,19 +15,6 @@ from .runtime_template_selector import (
 )
 from .runtime_subdevices import infer_subdevice_components as _infer_subdevice_components
 
-EVENT_ONLY_EMPTY_TEMPLATE_CATEGORIES = {"knob_switch", "scene_panel"}
-STATE_EMPTY_TEMPLATE_CATEGORIES = {
-    "climate",
-    "contact_sensor",
-    "cover",
-    "curtain",
-    "fan",
-    "human_sensor",
-    "light_sensor",
-    "temp_control",
-}
-
-
 def infer_runtime_components(payload: Mapping[str, Any]) -> list[ComponentModel]:
     """从载荷推断组件列表。"""
     subdevice_components = infer_subdevice_components(payload)
@@ -130,8 +117,6 @@ def infer_runtime_properties(
         source_props = runtime_property_ids_from_params(params)
     elif _payload_event_models(payload):
         source_props = set()
-    elif _can_infer_empty_template(template_key, payload=payload):
-        source_props = _empty_template_property_ids(template_key, payload, templates)
     else:
         source_props = set()
 
@@ -234,28 +219,6 @@ def infer_runtime_capabilities(
     if device_type in {"climate", "temp_control"}:
         return sorted(prop_ids)
     return []
-
-
-def _can_infer_empty_template(
-    template_key: str | None,
-    *,
-    payload: Mapping[str, Any] | None = None,
-) -> bool:
-    """Return true only when category identity is a documented non-control schema."""
-    if template_key in {None, "other", "light", "relay_switch", "switch"}:
-        return False
-    return template_key in STATE_EMPTY_TEMPLATE_CATEGORIES | EVENT_ONLY_EMPTY_TEMPLATE_CATEGORIES
-
-
-def _empty_template_property_ids(
-    template_key: str | None,
-    payload: Mapping[str, Any] | None,
-    templates: Mapping[str, Any],
-) -> set[str]:
-    """Return precise empty-template props for broad sensor fallbacks."""
-    if template_key in EVENT_ONLY_EMPTY_TEMPLATE_CATEGORIES:
-        return set()
-    return set(templates) if template_key != "other" else set()
 
 
 def _runtime_event_component_id(

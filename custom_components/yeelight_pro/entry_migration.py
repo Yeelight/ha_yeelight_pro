@@ -55,6 +55,7 @@ from .const import (
 from .device_filter_options import (
     device_filter_form_keys,
     stored_device_import_filter_options,
+    stored_or_legacy_device_import_filter_options,
 )
 from .entry_title import config_entry_title
 from .house_metadata import friendly_house_name
@@ -232,7 +233,10 @@ def normalize_entry_options(value: Any) -> dict[str, Any]:
             maximum=65535,
         ),
     }
-    filter_config = stored_device_import_filter_options(options)
+    filter_config = (
+        stored_device_import_filter_options(options)
+        or stored_or_legacy_device_import_filter_options(options)
+    )
     data.pop("experimental_platforms", None)
     for key in device_filter_form_keys():
         data.pop(key, None)

@@ -42,6 +42,7 @@ LOCAL_HA_RUNTIME_VERIFIER_SOURCE_TOKENS = {
         "verify_product_schema_cache": "product schema privacy scan export",
         "verify_synthetic_log_recovery": "synthetic runtime recovery verifier export",
         "verify_runtime_entity_counts": "active runtime entity verifier export",
+        "latest_reconciled_active_total": "multi-entry active reconcile total export",
     },
     "scripts/verify_local_ha_soak.py": {
         "scripts.local_ha_verification.cli": "dedicated soak uses shared CLI",
@@ -189,6 +190,9 @@ LOCAL_HA_RUNTIME_VERIFIER_SOURCE_TOKENS = {
         "installed_selector_option_translation_paths": (
             "installed selector option translation parser"
         ),
+        "_LEGACY_STORAGE_OPTION_KEYS": (
+            "legacy storage option keys excluded from visible i18n requirements"
+        ),
         "SelectSelectorConfig": "selector translation source parser",
         "installed_repair_placeholder_keys": "Repair issue placeholder parser",
         "_schema_key_value": "vol schema translation key resolver",
@@ -258,6 +262,7 @@ LOCAL_HA_RUNTIME_VERIFIER_SOURCE_TOKENS = {
         "verify_runtime_entity_counts": "active runtime entity distribution verifier",
         "runtime_entity_counts": "active platform count aggregator",
         "latest_reconciled_active_count": "latest active reconcile count helper",
+        "latest_reconciled_active_total": "multi-entry active reconcile total helper",
         "runtime_entity_domains": "active runtime domain stability metric",
         "runtime active entity total mismatch": "active/reconcile mismatch guard",
     },

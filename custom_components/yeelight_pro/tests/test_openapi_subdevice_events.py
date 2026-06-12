@@ -207,6 +207,6 @@ def test_openapi_scene_panel_projects_events_and_battery_without_switch_leak() -
         ("binary_sensor", "battery_charging", "电池充电", "diagnostic"),
     ]
     assert candidates[3:] == [
-        ("event", f"scene_panel_{index}", f"按键 {index} 事件", "diagnostic")
+        ("event", f"scene_panel_{index}", f"按键 {index} 事件", None)
         for index in range(1, 9)
     ]

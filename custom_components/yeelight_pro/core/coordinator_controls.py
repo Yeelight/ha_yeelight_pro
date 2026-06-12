@@ -18,7 +18,7 @@ from .lan_control import (
     async_try_lan_execute_scene,
     async_try_lan_toggle_device,
 )
-from .runtime_state import RuntimeStateStore
+from .runtime_state import RuntimeStateStore, merge_runtime_state_into_group_payloads
 
 
 class _ControlCoordinator(Protocol):
@@ -28,6 +28,7 @@ class _ControlCoordinator(Protocol):
     data: Any
     devices: dict[int, dict[str, Any]]
     gateways: dict[int, dict[str, Any]]
+    groups: list[dict[str, Any]]
     house_id: int
     _device_payload_builder: DevicePayloadBuilder
     _lan_runtime: Any | None
@@ -144,6 +145,14 @@ class CoordinatorControlMixin:
                 params=params,
                 duration=duration,
             )
+
+        normalized_group_id = _normalized_device_id(group_id)
+        if normalized_group_id is not None and merge_runtime_state_into_group_payloads(
+            self.groups,
+            group_id=normalized_group_id,
+            params=params,
+        ):
+            self.async_update_listeners()
 
 
 __all__ = ["CoordinatorControlMixin"]

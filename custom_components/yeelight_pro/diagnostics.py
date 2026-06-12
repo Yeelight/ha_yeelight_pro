@@ -114,6 +114,7 @@ def _build_runtime_diagnostics(
             "product_schema_cache_size",
             None,
         ),
+        "property_hydration": _property_hydration_diagnostics(coordinator),
         "counts": {
             "devices": len(devices),
             "gateways": len(gateways),
@@ -171,6 +172,18 @@ def _entry_option(runtime: Mapping[str, Any], key: str, default: Any) -> Any:
     entry = runtime.get("entry")
     options = getattr(entry, "options", None)
     return options.get(key, default) if isinstance(options, Mapping) else default
+
+
+def _property_hydration_diagnostics(coordinator: Any) -> dict[str, int]:
+    """Return safe aggregate read-side hydration diagnostics."""
+    diagnostics = getattr(coordinator, "property_hydration_diagnostics", None)
+    if not isinstance(diagnostics, Mapping):
+        return {}
+    return {
+        str(key): value
+        for key, value in diagnostics.items()
+        if isinstance(key, str) and isinstance(value, int)
+    }
 
 
 def _iot_registry_diagnostics() -> dict[str, Any]:

@@ -7,14 +7,9 @@ from custom_components.yeelight_pro.config_flow_helpers import (
     visible_option_change_count,
 )
 from custom_components.yeelight_pro.const import (
+    CONF_CONNECTION_MODE,
     CONF_DEBUG_MODE,
     CONF_DEVICE_IMPORT_FILTER,
-    CONF_DEVICE_IMPORT_FILTER_ENABLED,
-    CONF_DEVICE_IMPORT_FILTER_EXCLUDE_CATEGORIES,
-    CONF_DEVICE_IMPORT_FILTER_EXCLUDE_ROOMS,
-    CONF_DEVICE_IMPORT_FILTER_INCLUDE_CATEGORIES,
-    CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES,
-    CONF_DEVICE_IMPORT_FILTER_MODE,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_LIVE_UPDATES,
     CONF_LOCAL_GATEWAY_CONTROL,
@@ -22,6 +17,8 @@ from custom_components.yeelight_pro.const import (
     CONF_LOCAL_GATEWAY_PORT,
     CONF_SCAN_INTERVAL,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
+    CONNECTION_MODE_CLOUD,
+    CONNECTION_MODE_LAN,
     DEFAULT_LIVE_UPDATES,
     DEFAULT_LOCAL_GATEWAY_CONTROL,
     DEFAULT_LOCAL_GATEWAY_HOST,
@@ -45,34 +42,43 @@ def test_options_schema_normalizes_legacy_visible_defaults() -> None:
     assert defaults[CONF_DEBUG_MODE] is False
     assert defaults[CONF_HIDE_UNKNOWN_ENTITIES] is False
     assert defaults[CONF_TOPOLOGY_CHANGE_REPAIRS] is False
+    assert defaults[CONF_LIVE_UPDATES] is False
+    assert CONF_LOCAL_GATEWAY_CONTROL not in defaults
+    assert CONF_LOCAL_GATEWAY_HOST not in defaults
+    assert CONF_LOCAL_GATEWAY_PORT not in defaults
     assert "experimental_platforms" not in defaults
 
 
-def test_options_schema_exposes_device_filter_defaults() -> None:
-    """设备过滤表单应从已存储 filter 读取默认值."""
-    schema = options_schema({
-        CONF_DEVICE_IMPORT_FILTER: {
-            "enabled": True,
-            "mode": "and",
-            "include": {
-                "categories": ["light", "curtain"],
-                "devices": ["device-1"],
-            },
-            "exclude": {"rooms": ["room-1"]},
-        }
-    }).schema
+def test_options_schema_shows_local_gateway_fields_only_for_lan_mode() -> None:
+    """本地网关字段只应出现在局域网连接模式的 options 页."""
+    cloud_entry = type(
+        "Entry",
+        (),
+        {"data": {CONF_CONNECTION_MODE: CONNECTION_MODE_CLOUD}},
+    )()
+    lan_entry = type(
+        "Entry",
+        (),
+        {"data": {CONF_CONNECTION_MODE: CONNECTION_MODE_LAN}},
+    )()
 
-    defaults = {marker.schema: marker.default() for marker in schema}
-    assert defaults[CONF_DEVICE_IMPORT_FILTER_ENABLED] is True
-    assert defaults[CONF_DEVICE_IMPORT_FILTER_MODE] == "and"
-    mode_selector = schema[
-        next(marker for marker in schema if marker.schema == CONF_DEVICE_IMPORT_FILTER_MODE)
-    ]
-    assert mode_selector.config["translation_key"] == "device_import_filter_mode"
-    assert mode_selector.config["options"] == ["or", "and"]
-    assert defaults[CONF_DEVICE_IMPORT_FILTER_INCLUDE_CATEGORIES] == "curtain, light"
-    assert defaults[CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES] == "device-1"
-    assert defaults[CONF_DEVICE_IMPORT_FILTER_EXCLUDE_ROOMS] == "room-1"
+    cloud_defaults = {
+        marker.schema: marker.default()
+        for marker in options_schema({}, cloud_entry).schema
+    }
+    lan_defaults = {
+        marker.schema: marker.default()
+        for marker in options_schema({}, lan_entry).schema
+    }
+
+    assert CONF_LIVE_UPDATES in cloud_defaults
+    assert CONF_LOCAL_GATEWAY_CONTROL not in cloud_defaults
+    assert CONF_LOCAL_GATEWAY_HOST not in cloud_defaults
+    assert CONF_LOCAL_GATEWAY_PORT not in cloud_defaults
+    assert CONF_LIVE_UPDATES not in lan_defaults
+    assert lan_defaults[CONF_LOCAL_GATEWAY_CONTROL] is DEFAULT_LOCAL_GATEWAY_CONTROL
+    assert lan_defaults[CONF_LOCAL_GATEWAY_HOST] == DEFAULT_LOCAL_GATEWAY_HOST
+    assert lan_defaults[CONF_LOCAL_GATEWAY_PORT] == DEFAULT_LOCAL_GATEWAY_PORT
 
 
 def test_merge_options_preserves_hidden_advanced_keys() -> None:
@@ -89,10 +95,7 @@ def test_merge_options_preserves_hidden_advanced_keys() -> None:
             CONF_DEBUG_MODE: True,
             CONF_HIDE_UNKNOWN_ENTITIES: False,
             CONF_TOPOLOGY_CHANGE_REPAIRS: False,
-            CONF_DEVICE_IMPORT_FILTER_ENABLED: False,
-            CONF_DEVICE_IMPORT_FILTER_MODE: "or",
-            CONF_DEVICE_IMPORT_FILTER_INCLUDE_CATEGORIES: "",
-            CONF_DEVICE_IMPORT_FILTER_EXCLUDE_CATEGORIES: "",
+            CONF_LIVE_UPDATES: DEFAULT_LIVE_UPDATES,
         },
     )
 
@@ -103,11 +106,8 @@ def test_merge_options_preserves_hidden_advanced_keys() -> None:
         CONF_HIDE_UNKNOWN_ENTITIES: False,
         CONF_TOPOLOGY_CHANGE_REPAIRS: False,
         CONF_LIVE_UPDATES: DEFAULT_LIVE_UPDATES,
-        CONF_LOCAL_GATEWAY_CONTROL: DEFAULT_LOCAL_GATEWAY_CONTROL,
-        CONF_LOCAL_GATEWAY_HOST: DEFAULT_LOCAL_GATEWAY_HOST,
-        CONF_LOCAL_GATEWAY_PORT: DEFAULT_LOCAL_GATEWAY_PORT,
         CONF_DEVICE_IMPORT_FILTER: {
-            "enabled": False,
+            "enabled": True,
             "mode": "or",
             "include": {},
             "exclude": {"devices": ["secret-device"]},
@@ -115,67 +115,33 @@ def test_merge_options_preserves_hidden_advanced_keys() -> None:
     }
 
 
-def test_merge_options_writes_manual_device_filter_config() -> None:
-    """options flow 手动过滤字段应写入既有 device_import_filter 契约."""
+def test_merge_options_removes_cloud_hidden_local_gateway_defaults() -> None:
+    """云端 options 保存时不应写入本地网关默认字段."""
+    cloud_entry = type(
+        "Entry",
+        (),
+        {"data": {CONF_CONNECTION_MODE: CONNECTION_MODE_CLOUD}},
+    )()
     result = merge_options(
         {
-            CONF_SCAN_INTERVAL: 15,
-            CONF_DEBUG_MODE: False,
-            "experimental_platforms": True,
-            CONF_HIDE_UNKNOWN_ENTITIES: True,
-            CONF_TOPOLOGY_CHANGE_REPAIRS: True,
+            CONF_LOCAL_GATEWAY_CONTROL: True,
+            CONF_LOCAL_GATEWAY_HOST: "192.168.1.10",
+            CONF_LOCAL_GATEWAY_PORT: 65444,
         },
         {
-            CONF_SCAN_INTERVAL: 15,
+            CONF_SCAN_INTERVAL: 45,
             CONF_DEBUG_MODE: False,
-            "experimental_platforms": True,
             CONF_HIDE_UNKNOWN_ENTITIES: True,
             CONF_TOPOLOGY_CHANGE_REPAIRS: True,
-            CONF_DEVICE_IMPORT_FILTER_ENABLED: True,
-            CONF_DEVICE_IMPORT_FILTER_MODE: "and",
-            CONF_DEVICE_IMPORT_FILTER_INCLUDE_CATEGORIES: "light, curtain, light",
-            CONF_DEVICE_IMPORT_FILTER_EXCLUDE_ROOMS: "room-1",
+            CONF_LIVE_UPDATES: True,
         },
+        cloud_entry,
     )
 
-    assert result[CONF_DEVICE_IMPORT_FILTER] == {
-        "enabled": True,
-        "mode": "and",
-        "include": {"categories": ["curtain", "light"]},
-        "exclude": {"rooms": ["room-1"]},
-    }
-    assert CONF_DEVICE_IMPORT_FILTER_ENABLED not in result
-    assert CONF_DEVICE_IMPORT_FILTER_INCLUDE_CATEGORIES not in result
-    assert "experimental_platforms" not in result
-
-
-def test_merge_options_canonicalizes_legacy_device_filter_input() -> None:
-    """设备过滤保存必须输出 canonical shape，并正确处理字符串 false."""
-    result = merge_options(
-        {
-            CONF_SCAN_INTERVAL: 15,
-            CONF_DEBUG_MODE: False,
-            CONF_HIDE_UNKNOWN_ENTITIES: True,
-            CONF_TOPOLOGY_CHANGE_REPAIRS: True,
-        },
-        {
-            CONF_SCAN_INTERVAL: 15,
-            CONF_DEBUG_MODE: False,
-            CONF_HIDE_UNKNOWN_ENTITIES: True,
-            CONF_TOPOLOGY_CHANGE_REPAIRS: True,
-            CONF_DEVICE_IMPORT_FILTER_ENABLED: "false",
-            CONF_DEVICE_IMPORT_FILTER_MODE: " AND ",
-            CONF_DEVICE_IMPORT_FILTER_INCLUDE_CATEGORIES: "light, light",
-            CONF_DEVICE_IMPORT_FILTER_EXCLUDE_ROOMS: "room-1, room-2",
-        },
-    )
-
-    assert result[CONF_DEVICE_IMPORT_FILTER] == {
-        "enabled": False,
-        "mode": "and",
-        "include": {"categories": ["light"]},
-        "exclude": {"rooms": ["room-1", "room-2"]},
-    }
+    assert CONF_LOCAL_GATEWAY_CONTROL not in result
+    assert CONF_LOCAL_GATEWAY_HOST not in result
+    assert CONF_LOCAL_GATEWAY_PORT not in result
+    assert result[CONF_LIVE_UPDATES] is True
 
 
 def test_visible_option_change_count_ignores_hidden_advanced_keys() -> None:

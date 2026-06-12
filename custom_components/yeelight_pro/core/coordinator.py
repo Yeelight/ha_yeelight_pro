@@ -28,6 +28,7 @@ from .exceptions import (
     safe_error_summary,
 )
 from .property_hydration import async_hydrate_device_properties
+from .property_hydration_summary import PropertyHydrationDiagnostics
 from .coordinator_runtime import CoordinatorRuntimeMixin
 from .runtime_bridge import RuntimeEventDeduper
 from .runtime_state import RuntimeStateStore
@@ -69,12 +70,14 @@ class YeelightProCoordinator(
         self.areas: list[dict[str, Any]] = []
         self.rooms: list[dict[str, Any]] = []
         self.groups: list[dict[str, Any]] = []
+        self.houses: list[dict[str, Any]] = []
         self.scenes: list[dict[str, Any]] = []
         self._runtime_state = RuntimeStateStore()
         self._push_event_deduper = RuntimeEventDeduper()
         self._topology_tracker = TopologyTracker()
         self._device_payload_builder = DevicePayloadBuilder()
         self._product_schema_cache = ProductSchemaCache(hass)
+        self.property_hydration_diagnostics: dict[str, int] = {}
         self._force_product_schema_refresh = False
         self._lan_runtime: Any | None = None
 
@@ -123,12 +126,15 @@ class YeelightProCoordinator(
                 client,
                 [*devices, *gateways]
             )
+            hydration_diagnostics = PropertyHydrationDiagnostics()
             devices = await async_hydrate_device_properties(
                 client,
                 house_id=self.house_id,
                 devices=devices,
                 product_schemas=product_schemas,
+                diagnostics=hydration_diagnostics,
             )
+            self.property_hydration_diagnostics = hydration_diagnostics.as_dict()
 
             await self._async_fetch_auxiliary_data()
 
@@ -237,6 +243,7 @@ class YeelightProCoordinator(
             areas=self.areas,
             rooms=self.rooms,
             groups=self.groups,
+            houses=self.houses,
             scenes=self.scenes,
         )
 

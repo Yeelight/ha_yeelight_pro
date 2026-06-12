@@ -42,6 +42,8 @@ GENERIC_MODEL_LABELS = frozenset({
     "sensor",
     "switch",
     "temp_control",
+    "yeelight pro 设备",
+    "yeelight_pro_设备",
     "二元传感器",
     "事件",
     "传感器",
@@ -77,16 +79,6 @@ _CATEGORY_LABELS = {
     "other": "易来设备",
 }
 
-_BROAD_CATEGORY_MODEL_REPLACEMENTS = {
-    "binary_sensor": "易来传感设备",
-    "curtain": "易来窗帘设备",
-    "gateway": "易来网关",
-    "light": "易来照明设备",
-    "relay_switch": "易来开关设备",
-    "sensor": "易来传感设备",
-    "temp_control": "易来温控设备",
-    "other": "易来扩展设备",
-}
 _BROAD_CATEGORY_MODEL_LABELS = frozenset({
     "二元传感器",
     "灯具",
@@ -104,13 +96,13 @@ def infer_iot_category(payload: Mapping[str, Any]) -> str | None:
     if runtime_category is not None:
         return runtime_category
 
-    prop_category = _category_from_props(_property_keys(payload))
-    if prop_category is not None:
-        return prop_category
-
     component_category = _category_from_components(payload)
     if component_category is not None:
         return component_category
+
+    prop_category = _category_from_props(_property_keys(payload))
+    if prop_category is not None:
+        return prop_category
 
     product_category = _category_from_product_catalog(payload)
     if product_category is not None:
@@ -177,9 +169,6 @@ def friendly_specific_model_name(payload: Mapping[str, Any]) -> str:
     model = friendly_model_name(payload)
     if model not in _BROAD_CATEGORY_MODEL_LABELS:
         return model
-    category = infer_iot_category(payload)
-    if category in _BROAD_CATEGORY_MODEL_REPLACEMENTS:
-        return _BROAD_CATEGORY_MODEL_REPLACEMENTS[category]
     return ""
 
 
@@ -213,6 +202,9 @@ def _category_from_props(keys: set[str]) -> str | None:
 
 def _property_model_label(payload: Mapping[str, Any], keys: set[str]) -> str | None:
     """Return a concrete model label only from property evidence."""
+    component_category = _category_from_components(payload)
+    if component_category == "relay_switch" and keys & {"p", "sp"}:
+        return "开关控制器"
     category = _category_from_props(runtime_property_keys(payload)) or _category_from_props(keys)
     category = category or _category_text(payload.get("category")) or _category_text(payload.get("type"))
     if keys & LIGHT_SENSOR_CONFIG_PROPS and keys & {"luminance", "mv"}:
@@ -247,7 +239,7 @@ def _property_model_label(payload: Mapping[str, Any], keys: set[str]) -> str | N
         if keys & {"p"}:
             return "开关灯"
     if category in {"relay_switch", "switch"} and keys & {"p", "sp"}:
-        return "继电器开关"
+        return "开关控制器"
     return None
 
 
@@ -266,12 +258,18 @@ def _property_keys(payload: Mapping[str, Any]) -> set[str]:
 
 
 def _category_from_components(payload: Mapping[str, Any]) -> str | None:
-    for category in _component_categories(payload):
-        if (
-            is_iot_category(category)
-            and category not in {"light", "switch", "relay_switch", "other"}
-        ):
-            return category
+    categories = [
+        category
+        for category in _component_categories(payload)
+        if is_iot_category(category) and category not in {"light", "switch", "other"}
+    ]
+    specific_categories = [
+        category for category in categories if category != "relay_switch"
+    ]
+    for category in specific_categories:
+        return category
+    if categories and set(categories) == {"relay_switch"}:
+        return "relay_switch"
     return None
 
 

@@ -203,7 +203,7 @@ def test_attach_canonical_models_uses_converters() -> None:
         "device_info": payload["device_info"],
     }
     device_info = cast(Mapping[str, Any], payload["device_info"])
-    assert device_info["name"] == "Fake Product 1"
+    assert device_info["name"] == "Fake Product"
     assert device_info["model"] == "Fake Product"
     assert device_info["model_id"] == "model-100"
     assert device_info["identifiers"] == [

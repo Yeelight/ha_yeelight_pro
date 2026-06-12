@@ -70,6 +70,23 @@ def test_other_category_has_no_default_platform_without_property_evidence() -> N
     assert platform_candidates_for_payload({"category": "other"}) == ()
 
 
+def test_category_without_capability_evidence_does_not_project_platform() -> None:
+    """category 只能做设备大类兜底，不能在无能力证据时生成实体平台。"""
+    for category in (
+        "contact_sensor",
+        "curtain",
+        "human_sensor",
+        "knob_switch",
+        "light_sensor",
+        "scene_panel",
+        "temp_control",
+    ):
+        payload: dict[str, object] = {"category": category, "params": {}}
+
+        assert primary_platform_for_payload(payload) is None
+        assert platform_candidates_for_payload(payload) == ()
+
+
 def test_broad_cloud_light_contact_payload_maps_to_binary_and_sensor() -> None:
     """门磁只读布尔和电量应映射 binary_sensor + sensor，不产生 light."""
     payload = {
@@ -84,6 +101,50 @@ def test_broad_cloud_light_contact_payload_maps_to_binary_and_sensor() -> None:
         "binary_sensor",
         "sensor",
     )
+
+
+def test_category_is_only_last_resort_when_properties_exist() -> None:
+    """有属性证据时不能先按 category 添加缺证据的平台。"""
+    payload = {
+        "category": "contact_sensor",
+        "params": {"bl": 75},
+    }
+
+    assert primary_platform_for_payload(payload) == "sensor"
+    assert platform_candidates_for_payload(payload) == ("sensor",)
+
+
+def test_light_category_power_only_does_not_hide_missing_light_capability() -> None:
+    """仅 category=light + p 不能生造灯；缺亮度/色温/颜色能力应暴露出来."""
+    payload = {
+        "category": "light",
+        "params": {"p": True},
+    }
+
+    assert primary_platform_for_payload(payload) is None
+    assert platform_candidates_for_payload(payload) == ()
+
+
+def test_relay_switch_category_power_only_does_not_hide_missing_switch_identity() -> None:
+    """仅 category=relay_switch + p 不能生造开关；需 sp/slisaon 等开关身份能力."""
+    payload = {
+        "category": "relay_switch",
+        "params": {"p": True},
+    }
+
+    assert primary_platform_for_payload(payload) is None
+    assert platform_candidates_for_payload(payload) == ()
+
+
+def test_switch_identity_property_projects_switch_without_category_first() -> None:
+    """开关身份属性是强证据，不需要先依赖 category 兜底."""
+    payload = {
+        "category": "other",
+        "params": {"sp": True},
+    }
+
+    assert primary_platform_for_payload(payload) == "switch"
+    assert platform_candidates_for_payload(payload) == ("switch",)
 
 
 def test_documented_event_payload_adds_event_candidate() -> None:
@@ -116,11 +177,35 @@ def test_event_only_payload_does_not_use_broad_light_fallback() -> None:
     assert platform_candidates_for_payload(payload) == ("event",)
 
 
-def test_light_sensor_category_keeps_sensor_as_primary_with_motion_property() -> None:
-    """光感/雷达光感组件可携带 mv，但主平台仍应按 light_sensor 归为 sensor."""
+def test_light_sensor_category_does_not_override_motion_capability_order() -> None:
+    """mv+luminance 同时生成二元传感和照度传感，不再让 category 抢主平台."""
     payload = {
         "category": "light_sensor",
         "params": {"mv": True, "luminance": 120, "bl": 87},
+    }
+
+    assert primary_platform_for_payload(payload) == "binary_sensor"
+    assert platform_candidates_for_payload(payload) == (
+        "binary_sensor",
+        "sensor",
+    )
+
+
+def test_component_category_can_order_capability_candidates() -> None:
+    """结构化组件 category 是能力证据，可排序但不额外生造平台."""
+    payload = {
+        "category": "light",
+        "subDeviceList": [
+            {
+                "index": 1,
+                "category": "light_sensor",
+                "properties": [
+                    {"propId": "mv", "value": True},
+                    {"propId": "luminance", "value": 120},
+                    {"propId": "bl", "value": 87},
+                ],
+            }
+        ],
     }
 
     assert primary_platform_for_payload(payload) == "sensor"
@@ -200,7 +285,7 @@ def test_property_evidence_merges_params_and_openapi_property_metadata() -> None
 
 
 def test_acrc_config_property_does_not_claim_remote_platform() -> None:
-    """空调遥控器使能是配置开关，不代表已有 HA remote 命令集。"""
+    """空调遥控器使能是配置开关，不代表已有 HA remote/climate 命令集。"""
     payload = {
         "category": "temp_control",
         "properties": [
@@ -214,7 +299,8 @@ def test_acrc_config_property_does_not_claim_remote_platform() -> None:
     }
 
     assert "remote" not in platform_candidates_for_payload(payload)
-    assert platform_candidates_for_payload(payload) == ("climate",)
+    assert "climate" not in platform_candidates_for_payload(payload)
+    assert platform_candidates_for_payload(payload) == ("switch",)
 
 
 def test_temp_control_category_keeps_climate_primary_with_telemetry() -> None:

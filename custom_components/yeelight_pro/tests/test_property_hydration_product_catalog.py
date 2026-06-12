@@ -35,6 +35,13 @@ async def test_hydration_uses_product_catalog_properties_for_pid_only_switch() -
     assert kwargs["resource_ids"] == [85401801]
     assert {
         "l",
+        "mv",
+        "dc",
+        "alm",
+        "luminance",
+        "cp",
+        "t",
+        "h",
         "sp",
         "slisaon",
         "slisaon_rdy",
@@ -43,6 +50,30 @@ async def test_hydration_uses_product_catalog_properties_for_pid_only_switch() -
         "run_speed",
         "run_speed_rdy",
     } <= set(kwargs["properties"])
+
+
+@pytest.mark.asyncio
+async def test_broad_light_with_light_catalog_still_runs_broad_discovery() -> None:
+    """粗 light 即使命中灯具 pid，也要读取跨品类属性以真实能力为准."""
+    client = AsyncMock()
+    client.read_nodes_properties.return_value = {"code": "200", "data": {}}
+
+    await async_hydrate_device_properties(
+        client,
+        house_id=429392,
+        devices=[
+            {
+                "id": 19867001,
+                "name": "用户自定义名称",
+                "category": "light",
+                "pid": 198670,
+            }
+        ],
+        product_schemas={},
+    )
+
+    requested = set(client.read_nodes_properties.await_args.kwargs["properties"])
+    assert {"p", "l", "ct", "mv", "dc", "alm", "luminance", "cp", "t", "h"} <= requested
 
 
 @pytest.mark.asyncio

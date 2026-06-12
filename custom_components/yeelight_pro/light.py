@@ -22,6 +22,7 @@ from .device_display import suggested_entity_object_id
 from .entity_device_id import source_device_id
 from .dynamic_entities import async_track_dynamic_entities
 from .entity_errors import raise_service_error
+from .light_group import YeelightProGroupLight
 from .projector.light import (
     HALightProjection,
     NumericRange,
@@ -61,9 +62,9 @@ async def async_setup_entry(
     )
 
 
-def _iter_light_entities(coordinator: YeelightProCoordinator) -> list["YeelightProLight"]:
+def _iter_light_entities(coordinator: YeelightProCoordinator) -> list[LightEntity]:
     """按当前拓扑生成灯光实体候选。"""
-    lights: list[YeelightProLight] = []
+    lights: list[LightEntity] = []
     for device_key, device_data in coordinator.data.items():
         device_id = source_device_id(device_key, device_data)
         projections = project_lights(device_data, domain=DOMAIN)
@@ -83,6 +84,12 @@ def _iter_light_entities(coordinator: YeelightProCoordinator) -> list["YeelightP
                     component_id=projection.component_id,
                 )
             )
+
+    for group in coordinator.groups:
+        group_id = group.get("id") or group.get("groupId")
+        if group_id in (None, ""):
+            continue
+        lights.append(YeelightProGroupLight(coordinator, str(group_id)))
     return lights
 
 

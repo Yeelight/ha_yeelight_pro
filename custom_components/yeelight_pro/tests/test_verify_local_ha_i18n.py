@@ -38,7 +38,7 @@ def test_verify_i18n_contracts_rejects_leaf_key_drift(tmp_path: Path) -> None:
     """任一翻译文件少一个叶子 key 都应阻断本地 HA 验证."""
     install_root = tmp_path / "custom_components" / "yeelight_pro"
     payload = translation_payload()
-    del payload["options"]["step"]["init"]["data"]["debug_mode"]
+    del payload["options"]["step"]["general"]["data"]["debug_mode"]
     write_installed_i18n(install_root, english=payload)
     report = VerificationReport()
 
@@ -63,7 +63,7 @@ def test_verify_i18n_contracts_rejects_options_under_config_path(
 
     assert not report.ok
     assert any("not config.options" in failure for failure in report.failures)
-    assert any("options.step.init.data" in failure for failure in report.failures)
+    assert any("options.step.general.data" in failure for failure in report.failures)
 
 
 def test_verify_i18n_contracts_rejects_missing_required_service_translation(

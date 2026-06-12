@@ -11,6 +11,7 @@ from scripts.verify_local_ha import (
 )
 from .storage_verifier_helpers import (
     config_entry as _config_entry,
+    lan_config_entry as _lan_config_entry,
     write_storage as _write_storage,
     yeelight_devices as _yeelight_devices,
     yeelight_entities as _yeelight_entities,
@@ -147,8 +148,33 @@ def test_verify_storage_allows_missing_optional_open_api_client_id(
     assert any("optional data keys absent" in fact for fact in report.facts)
 
 
-def test_verify_storage_rejects_missing_required_option_keys(tmp_path: Path) -> None:
-    """安装态 options 缺失必需键时应阻断，且不泄露过滤规则内容."""
+def test_verify_storage_allows_cloud_and_lan_entries(tmp_path: Path) -> None:
+    """本地 HA 验证应允许云端账号与 LAN 网关 entry 并存."""
+    _write_storage(
+        tmp_path,
+        "core.config_entries",
+        {"entries": [_config_entry(), _lan_config_entry()]},
+    )
+    _write_storage(tmp_path, "core.device_registry", {"devices": _yeelight_devices()})
+    _write_storage(tmp_path, "core.entity_registry", {"entities": _yeelight_entities()})
+    report = VerificationReport()
+
+    verify_storage(
+        tmp_path,
+        report,
+        expected_config_entries=1,
+        expected_devices=2,
+        expected_entities=sum(DEFAULT_ENTITY_COUNTS.values()),
+        expected_entity_counts=DEFAULT_ENTITY_COUNTS,
+    )
+
+    assert report.ok
+    assert any("enabled config entries: 2" in fact for fact in report.facts)
+    assert report.metrics["config_entries"] == 2
+
+
+def test_verify_storage_reports_defaulted_option_keys(tmp_path: Path) -> None:
+    """安装态 options 缺省默认键时记录聚合事实，不阻断旧 entry 归一化."""
     entry = _config_entry()
     entry["options"] = {"scan_interval": 30}
     _write_storage(tmp_path, "core.config_entries", {"entries": [entry]})
@@ -165,8 +191,8 @@ def test_verify_storage_rejects_missing_required_option_keys(tmp_path: Path) -> 
         expected_entity_counts=DEFAULT_ENTITY_COUNTS,
     )
 
-    assert not report.ok
-    assert any("options missing required keys" in failure for failure in report.failures)
+    assert report.ok
+    assert any("option keys defaulted by migration" in fact for fact in report.facts)
     assert all("device-1" not in failure for failure in report.failures)
 
 
@@ -194,4 +220,3 @@ def test_verify_storage_rejects_invalid_option_values(tmp_path: Path) -> None:
     assert not report.ok
     assert any("options outside allowed bounds" in failure for failure in report.failures)
     assert all("yes" not in failure for failure in report.failures)
-

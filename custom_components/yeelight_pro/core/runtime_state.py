@@ -6,7 +6,7 @@ from collections.abc import Callable, Mapping
 from types import MappingProxyType
 from typing import Any
 
-from ..utils import to_bool
+from ..utils import to_bool, to_int
 
 CanonicalRebuilder = Callable[[dict[str, Any]], None]
 
@@ -46,8 +46,9 @@ class RuntimeStateStore:
         gateways: Mapping[int, dict[str, Any]],
         data: Mapping[int, Any],
         rebuild_canonical: CanonicalRebuilder,
+        groups: list[dict[str, Any]] | None = None,
     ) -> None:
-        """保存运行时更新，并同步当前已加载的设备/网关载荷."""
+        """保存运行时更新，并同步当前已加载的设备、网关和灯组载荷."""
         if not params:
             return
 
@@ -69,6 +70,7 @@ class RuntimeStateStore:
             devices=devices,
             gateways=gateways,
             data=data,
+            groups=groups,
             rebuild_canonical=rebuild_canonical,
         )
 
@@ -82,8 +84,9 @@ def merge_runtime_state_into_loaded_payloads(
     gateways: Mapping[int, dict[str, Any]],
     data: Mapping[int, Any],
     rebuild_canonical: CanonicalRebuilder,
+    groups: list[dict[str, Any]] | None = None,
 ) -> None:
-    """同步 coordinator 当前持有的设备快照."""
+    """同步 coordinator 当前持有的设备和灯组快照."""
     seen: set[int] = set()
     for device in (
         devices.get(device_id),
@@ -99,6 +102,32 @@ def merge_runtime_state_into_loaded_payloads(
             online=online,
             rebuild_canonical=rebuild_canonical,
         )
+
+    if groups is not None:
+        merge_runtime_state_into_group_payloads(
+            groups,
+            group_id=device_id,
+            params=params,
+            online=online,
+        )
+
+
+def merge_runtime_state_into_group_payloads(
+    groups: list[dict[str, Any]],
+    *,
+    group_id: int,
+    params: Mapping[str, Any],
+    online: bool | None = None,
+) -> bool:
+    """把运行时属性合并进 LAN 灯组缓存。"""
+    changed = False
+    for group in groups:
+        if not isinstance(group, dict) or to_int(group.get("id")) != group_id:
+            continue
+        before = repr((group.get("params"), group.get("online")))
+        merge_runtime_state_into_payload(group, params, online=online)
+        changed = changed or before != repr((group.get("params"), group.get("online")))
+    return changed
 
 
 def merge_runtime_state_into_payload(

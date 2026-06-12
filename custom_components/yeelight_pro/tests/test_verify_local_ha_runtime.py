@@ -109,8 +109,9 @@ def test_verify_runtime_entity_counts_accepts_active_distribution() -> None:
     )
 
     assert report.ok
-    assert any("runtime active entities: 158" in fact for fact in report.facts)
-    assert report.metrics["runtime_entities"] == 158
+    expected_total = sum(DEFAULT_ENTITY_COUNTS.values())
+    assert any(f"runtime active entities: {expected_total}" in fact for fact in report.facts)
+    assert report.metrics["runtime_entities"] == expected_total
     assert report.metrics["runtime_entity_domains"] == dict(
         sorted(DEFAULT_ENTITY_COUNTS.items())
     )
@@ -130,13 +131,49 @@ def test_verify_runtime_entity_counts_normalizes_spaced_platform_logs() -> None:
     assert report.ok
     runtime_domains = report.metrics["runtime_entity_domains"]
     assert isinstance(runtime_domains, dict)
-    assert runtime_domains["binary_sensor"] == 16
+    assert runtime_domains["binary_sensor"] == DEFAULT_ENTITY_COUNTS["binary_sensor"]
+
+
+def test_verify_runtime_entity_counts_sums_latest_reconcile_per_entry() -> None:
+    """cloud+LAN 多 entry 并存时，应按每个 entry 最新 active 求和。"""
+    counts = {
+        "button": 21,
+        "light": 44,
+        "number": 15,
+        "select": 8,
+        "sensor": 44,
+        "switch": 87,
+        "binary_sensor": 1,
+    }
+    report = VerificationReport()
+    lines = _runtime_entity_lines(counts, active=213) + [
+        (
+            "2026-06-10 INFO [custom_components.yeelight_pro.entity_lifecycle] "
+            "Reconciled Yeelight Pro entity registry for entry lan-entry: "
+            "active=7 pending_stale=0 disabled=0 restored=0"
+        ),
+        (
+            "2026-06-10 INFO [custom_components.yeelight_pro.entity_lifecycle] "
+            "Reconciled Yeelight Pro entity registry for entry entry-1: "
+            "active=213 pending_stale=0 disabled=0 restored=0"
+        ),
+    ]
+
+    verify_runtime_entity_counts(
+        lines,
+        report,
+        expected_entity_counts=counts,
+    )
+
+    assert report.ok
+    assert any("runtime active entities: 220" in fact for fact in report.facts)
+    assert report.metrics["runtime_entities"] == 220
 
 
 def test_verify_runtime_entity_counts_rejects_old_switch_leak() -> None:
     """旧的非开关品类泄漏 switch 数量必须在 runtime 侧失败."""
     counts = dict(DEFAULT_ENTITY_COUNTS)
-    counts["switch"] = 87
+    counts["switch"] = DEFAULT_ENTITY_COUNTS["switch"] + 1
     report = VerificationReport()
 
     verify_runtime_entity_counts(

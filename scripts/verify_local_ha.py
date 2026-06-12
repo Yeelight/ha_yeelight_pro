@@ -73,6 +73,7 @@ from scripts.local_ha_verification.runtime import (  # noqa: E402
 )
 from scripts.local_ha_verification.runtime_entities import (  # noqa: E402
     latest_reconciled_active_count,
+    latest_reconciled_active_total,
     runtime_entity_counts,
     verify_runtime_entity_counts,
 )
@@ -141,6 +142,7 @@ __all__ = [
     "verify_runtime_entity_counts",
     "runtime_entity_counts",
     "latest_reconciled_active_count",
+    "latest_reconciled_active_total",
     "verify_platform_options_alignment",
     "verify_product_schema_cache",
     "verify_service_schema_contracts",

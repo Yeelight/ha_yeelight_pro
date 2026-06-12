@@ -73,7 +73,7 @@ def test_openapi_broad_light_human_sensor_does_not_project_light() -> None:
 
 
 def test_documented_light_sensor_component_with_motion_stays_light_sensor() -> None:
-    """CSV 中光照/雷达光感组件可含 mv，但 category 优先决定主类型是 light_sensor."""
+    """CSV 中光照/雷达光感组件可含 mv，组件 category 是结构化能力证据."""
     device = _build_device(
         {
             "id": 9017,
@@ -108,7 +108,7 @@ def test_documented_light_sensor_component_with_motion_stays_light_sensor() -> N
 
 
 def test_documented_light_sensor_property_bundle_overrides_broad_light() -> None:
-    """光照传感器2的配置属性组合应按 light_sensor 处理，不被 mv 抢成 human_sensor."""
+    """光照传感器2的配置属性组合保留 light_sensor 大类和 sensor 主平台."""
     device = _build_device(
         {
             "id": 9018,

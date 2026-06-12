@@ -76,13 +76,13 @@ PRIMARY_CATEGORY_CANDIDATES: dict[str, tuple[str, ...]] = {
 }
 PLATFORM_ORDER = (
     "light",
+    "climate",
+    "fan",
+    "cover",
     "binary_sensor",
     "sensor",
     "event",
-    "cover",
-    "climate",
     "switch",
-    "fan",
     "button",
     "select",
     "number",
@@ -98,6 +98,16 @@ RELAY_SWITCH_CONTROL_PROPS = frozenset({
     "sbp",
     "slisaon",
     "sp",
+})
+SWITCH_IDENTITY_PROPS = frozenset({
+    "sp",
+    "sbp",
+    "slisaon",
+    "slisaon_rdy",
+    "jdef",
+    "jen",
+    "jtm",
+    "sdt",
 })
 COVER_TARGET_PROPS = frozenset({"tp"})
 CLIMATE_CANDIDATE_PROPS = frozenset({
@@ -119,6 +129,17 @@ CLIMATE_CANDIDATE_PROPS = frozenset({
     "ve",
 })
 FAN_CANDIDATE_PROPS = frozenset({"vmcp", "vmcf"})
+AUXILIARY_BOOL_SWITCH_PROPS = frozenset({
+    "acrc",
+    "blp",
+    "keys_visible",
+    "lc",
+    "li",
+    "ntOn",
+    "temp_hidden",
+    "time_hidden",
+    "weather_hidden",
+})
 
 PRIMARY_PLATFORM_CONTRACT_ROWS: tuple[
     tuple[str, PlatformSupportStatusValue, str],
@@ -177,5 +198,7 @@ __all__ = [
     "READ_ONLY_BOOL_BINARY_PROPS",
     "READ_ONLY_SENSOR_PROPS",
     "RELAY_SWITCH_CONTROL_PROPS",
+    "SWITCH_IDENTITY_PROPS",
+    "AUXILIARY_BOOL_SWITCH_PROPS",
     "WRITABLE_NUMERIC_FORMATS",
 ]

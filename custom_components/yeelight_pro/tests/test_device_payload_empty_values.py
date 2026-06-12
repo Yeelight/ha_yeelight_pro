@@ -44,7 +44,7 @@ def test_runtime_payloads_keep_empty_control_category_metadata_only() -> None:
     assert device["model_id"] == "YL-201"
     assert device["room_name"] == "客厅"
     assert device_info["name"] == "墙壁开关1"
-    assert device_info["model"] == "易来开关设备"
+    assert device_info["model"] == "继电器开关"
     assert device_info["suggested_area"] == "客厅"
     assert device_info["identifiers"] == [
         ["yeelight_pro", "304784336"],
@@ -53,8 +53,8 @@ def test_runtime_payloads_keep_empty_control_category_metadata_only() -> None:
     assert candidates == []
 
 
-def test_runtime_payloads_keep_documented_sensor_entities_when_values_are_missing() -> None:
-    """只有明确细分传感器品类可在暂缺值时维持 HA 实体声明。"""
+def test_runtime_payloads_keep_sensor_category_metadata_without_values() -> None:
+    """明确传感器品类暂缺值时只保留元数据，不生成假实体能力。"""
     builder = DevicePayloadBuilder()
 
     data, _gateways = builder.build_runtime_payloads(
@@ -87,12 +87,7 @@ def test_runtime_payloads_keep_documented_sensor_entities_when_values_are_missin
 
     assert data[501]["iot_category"] == "human_sensor"
     assert "iot_category" not in data[502]
-    assert {(item.platform, item.component_id, item.available) for item in human_candidates} == {
-        ("binary_sensor", "motion", True),
-        ("binary_sensor", "tamper", True),
-        ("sensor", "illuminance", True),
-        ("sensor", "battery", True),
-    }
+    assert human_candidates == []
     assert temp_candidates == []
 
 
@@ -156,8 +151,8 @@ def test_runtime_payloads_do_not_use_conflicting_switch_schema_for_curtain() -> 
     assert candidates == {("cover", "cover")}
 
 
-def test_runtime_payloads_keep_empty_cover_and_climate_without_main_switches() -> None:
-    """明确窗帘/温控品类无当前值时，应保留主实体和配置实体而非泛化主开关."""
+def test_runtime_payloads_keep_empty_cover_and_climate_metadata_only() -> None:
+    """明确窗帘/温控品类无当前值时只保留设备元数据，不生成假实体."""
     builder = DevicePayloadBuilder()
 
     data, _gateways = builder.build_runtime_payloads(
@@ -185,15 +180,10 @@ def test_runtime_payloads_keep_empty_cover_and_climate_without_main_switches() -
     cover_candidates = list(iter_device_entity_candidates(data[602]))
     climate_candidates = list(iter_device_entity_candidates(data[603]))
 
-    cover_keys = {(item.platform, item.component_id) for item in cover_candidates}
-    assert ("cover", "cover") in cover_keys
-    assert ("switch", "curtain_li_switch") in cover_keys
-    assert ("select", "curtain_rd_select") in cover_keys
-    assert ("climate", "climate") in {
-        (item.platform, item.component_id) for item in climate_candidates
-    }
-    assert ("switch", "switch") not in cover_keys
-    assert all(item.available is True for item in cover_candidates + climate_candidates)
+    assert data[602]["iot_category"] == "curtain"
+    assert data[603]["iot_category"] == "temp_control"
+    assert cover_candidates == []
+    assert climate_candidates == []
 
 
 def test_runtime_payloads_project_scene_panels_as_events_not_switches() -> None:

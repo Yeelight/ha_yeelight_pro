@@ -6,8 +6,8 @@ from custom_components.yeelight_pro.projector.sensor import project_sensors
 from .projection_helpers import DOMAIN, projection_payload
 
 
-def test_user_name_does_not_block_unknown_sensor_fallback() -> None:
-    """未知 fallback 只看物模型身份，不能被用户名称中的情景/旋钮误伤。"""
+def test_user_name_does_not_enable_unknown_sensor_projection() -> None:
+    """未知能力不能因为用户名称避开过滤或生成泛化 sensor。"""
     device = projection_payload(
         device_id="named-panel-sensor-1",
         category="light_sensor",
@@ -22,4 +22,4 @@ def test_user_name_does_not_block_unknown_sensor_fallback() -> None:
 
     projections = project_sensors(device, domain=DOMAIN)
 
-    assert [item.component_id for item in projections] == ["unknown_vendor_private"]
+    assert projections == []

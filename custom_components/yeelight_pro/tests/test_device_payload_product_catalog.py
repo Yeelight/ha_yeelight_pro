@@ -286,9 +286,9 @@ def test_runtime_capabilities_override_conflicting_product_catalog_components() 
 
     assert device["iot_category"] == "light_sensor"
     assert device["ha_product_model"]["schema_version"] == "runtime-v1"
-    assert device["ha_product_model"]["product"]["model"] == (
-        "Yeelight Pro S21 智能墙壁开关-双键"
-    )
+    assert device["ha_product_model"]["product"]["model_id"] == "YL-854018"
+    assert device["ha_product_model"]["product"]["model"] == "照度传感器"
+    assert device["device_info"]["model"] == "照度传感器"
     assert [
         component["component_id"]
         for component in device["ha_device_instance"]["components"]
@@ -338,6 +338,9 @@ def test_contact_runtime_capabilities_override_conflicting_product_catalog_compo
     }
 
     assert device["iot_category"] == "contact_sensor"
+    assert device["ha_product_model"]["product"]["model_id"] == "YL-854018"
+    assert device["ha_product_model"]["product"]["model"] == "门磁传感器"
+    assert device["device_info"]["model"] == "门磁传感器"
     assert [
         component["component_id"]
         for component in device["ha_device_instance"]["components"]

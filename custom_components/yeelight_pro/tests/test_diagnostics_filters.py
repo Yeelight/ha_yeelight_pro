@@ -42,9 +42,10 @@ async def test_diagnostics_entity_filter_preview_counts_device_candidates(
     data = await async_get_config_entry_diagnostics(hass, diagnostics_entry)
 
     assert data["runtime"]["entity_candidates"] == {
-        "total": 8,
+        "total": 9,
         "platforms": {
             "button": 1,
+            "light": 1,
             "number": 2,
             "select": 3,
             "switch": 2,
@@ -54,18 +55,19 @@ async def test_diagnostics_entity_filter_preview_counts_device_candidates(
         },
         "sources": {
             "device": 2,
-            "group": 2,
+            "group": 3,
             "house": 3,
             "scene": 1,
         },
-        "source_classes": {"device": 2, "topology": 6},
+        "source_classes": {"device": 2, "topology": 7},
         "duplicate_key_count": 0,
-        "availability": {"available": 8, "unavailable": 0},
+        "availability": {"available": 9, "unavailable": 0},
     }
     assert data["runtime"]["entity_import_filter_preview"] == {
-        "total": 8,
+        "total": 9,
         "platforms": {
             "button": 1,
+            "light": 1,
             "number": 2,
             "select": 3,
             "switch": 2,
@@ -75,13 +77,13 @@ async def test_diagnostics_entity_filter_preview_counts_device_candidates(
         },
         "sources": {
             "device": 2,
-            "group": 2,
+            "group": 3,
             "house": 3,
             "scene": 1,
         },
-        "source_classes": {"device": 2, "topology": 6},
+        "source_classes": {"device": 2, "topology": 7},
         "duplicate_key_count": 0,
-        "availability": {"available": 8, "unavailable": 0},
+        "availability": {"available": 9, "unavailable": 0},
     }
     dumped = json.dumps(data, ensure_ascii=False)
     assert "relay-secret" not in dumped

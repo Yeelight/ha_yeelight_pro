@@ -8,22 +8,13 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-import re
 from typing import Any
 
 from ..utils import matches_category, to_category, to_str
-from .registry import (
-    iot_registry,
-    normalize_alias_key,
-    parse_component_property_key,
-    platform_for_category,
-    property_spec,
-)
+from .registry import iot_registry, parse_component_property_key, property_spec
 
 UNKNOWN_CAPABILITY_REASON = "unknown_capability"
-FALLBACK_SENSOR_REASON = "fallback_sensor"
 UNSUPPORTED_PLATFORM_REASON = "unsupported_platform"
-UNSUPPORTED_VALUE_REASON = "unsupported_value"
 
 _EVENT_INPUT_CATEGORIES = frozenset({"scene_panel", "knob_switch"})
 _LOW_CONFIDENCE_COMPONENT_TOKENS = (
@@ -48,7 +39,6 @@ _LOW_CONFIDENCE_COMPONENT_TOKENS = (
     "全景屏",
 )
 _BRIDGE_PROTOCOL_TOKENS = ("matter", "thread", "dali")
-_UNKNOWN_ID_RE = re.compile(r"[^a-z0-9_]+")
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,34 +66,12 @@ def should_project_unknown_property(
     platform: str,
     hide_unknown_entities: bool,
 ) -> CapabilityFilterDecision:
-    """判断未知属性是否可以作为受控 fallback 实体投影."""
+    """判断未知属性是否允许投影；未知能力不生成泛化实体."""
     if is_known_property_key(prop_key):
         return CapabilityFilterDecision(False, None)
     if hide_unknown_entities:
         return CapabilityFilterDecision(False, UNKNOWN_CAPABILITY_REASON)
-    if is_low_confidence_component_payload(device_payload):
-        return CapabilityFilterDecision(False, UNSUPPORTED_PLATFORM_REASON)
-    if platform != "sensor" or not _supports_unknown_sensor_fallback(device_payload):
-        return CapabilityFilterDecision(False, UNSUPPORTED_PLATFORM_REASON)
-    if not _is_fallback_sensor_value(value):
-        return CapabilityFilterDecision(False, UNSUPPORTED_VALUE_REASON)
-    return CapabilityFilterDecision(True, FALLBACK_SENSOR_REASON)
-
-
-def unknown_sensor_component_id(prop_key: Any) -> str:
-    """返回未知 sensor fallback 的稳定 component_id."""
-    normalized = normalize_alias_key(prop_key)
-    normalized = _UNKNOWN_ID_RE.sub("_", normalized).strip("_")
-    return f"unknown_{normalized or 'property'}"
-
-
-def unknown_sensor_name(prop_key: Any) -> str:
-    """返回未知 sensor fallback 的实体名称."""
-    try:
-        prop_name = parse_component_property_key(prop_key).prop_name
-    except ValueError:
-        prop_name = str(prop_key)
-    return f"未知 {prop_name}"
+    return CapabilityFilterDecision(False, UNSUPPORTED_PLATFORM_REASON)
 
 
 def summarize_unknown_capabilities(
@@ -113,7 +81,6 @@ def summarize_unknown_capabilities(
 ) -> dict[str, Any]:
     """返回未知能力过滤的脱敏聚合摘要."""
     hidden = 0
-    fallback = 0
     unsupported = 0
     for device_payload in devices:
         for prop_key, value in _runtime_state(device_payload).items():
@@ -124,15 +91,12 @@ def summarize_unknown_capabilities(
                 platform="sensor",
                 hide_unknown_entities=hide_unknown_entities,
             )
-            if decision.allowed:
-                fallback += 1
-            elif decision.reason == UNKNOWN_CAPABILITY_REASON:
+            if decision.reason == UNKNOWN_CAPABILITY_REASON:
                 hidden += 1
-            elif decision.reason in {UNSUPPORTED_PLATFORM_REASON, UNSUPPORTED_VALUE_REASON}:
+            elif decision.reason == UNSUPPORTED_PLATFORM_REASON:
                 unsupported += 1
     return {
         "hidden_unknown_properties": hidden,
-        "fallback_sensor_properties": fallback,
         "unsupported_unknown_properties": unsupported,
     }
 
@@ -143,19 +107,6 @@ def is_low_confidence_component_payload(device_payload: Mapping[str, Any]) -> bo
         _payload_has_token(device_payload, _LOW_CONFIDENCE_COMPONENT_TOKENS)
         or _payload_has_bridge_protocol(device_payload)
     )
-
-
-def _supports_unknown_sensor_fallback(device_payload: Mapping[str, Any]) -> bool:
-    """仅 sensor 类来源允许未知只读 fallback，事件/控制类不放宽."""
-    category = to_category(
-        device_payload.get("effective_category")
-        or device_payload.get("iot_category")
-        or device_payload.get("category")
-    )
-    source_type = to_category(device_payload.get("type"))
-    if _is_event_input_identity(category) or _is_event_input_identity(source_type):
-        return False
-    return source_type == "sensor" or platform_for_category(category) == "sensor"
 
 
 def _payload_has_token(
@@ -233,14 +184,6 @@ def _component_values(value: Any) -> list[Any]:
             )
         )
     return values
-
-
-def _is_fallback_sensor_value(value: Any) -> bool:
-    """未知 fallback sensor 只接受简单只读标量，避免暴露控制语义."""
-    return value is not None and not isinstance(
-        value,
-        (bool, Mapping, list, tuple, set),
-    )
 
 
 def _runtime_state(device_payload: Mapping[str, Any]) -> dict[str, Any]:

@@ -59,7 +59,7 @@ async def test_room_select_uses_latest_coordinator_rooms(mock_coordinator) -> No
     ]
     assert select.options == ["书房"]
     assert select.current_option is None
-    assert select.device_info["name"] == "绿地中央公园"
+    assert select.device_info["name"] == "绿地中央公园 拓扑"
     assert select.device_info["identifiers"] == {
         ("yeelight_pro", "12345"),
         ("yeelight_pro", "house:12345"),

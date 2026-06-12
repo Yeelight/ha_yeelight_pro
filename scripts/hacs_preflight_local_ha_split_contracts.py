@@ -50,8 +50,8 @@ LOCAL_HA_SPLIT_CONTRACT_TOKENS = {
         "device picker friendly type label coverage": (
             "config-flow picker friendly type label reason"
         ),
-        "options picker friendly type label coverage": (
-            "options picker friendly type label reason"
+        "options picker capability-first type label coverage": (
+            "options picker capability-first type label reason"
         ),
         "Repairs placeholder runtime coverage": "Repair placeholder coverage reason",
     },

@@ -102,44 +102,66 @@
     "step": {
       "init": {
         "title": "Yeelight Pro Options",
-        "description": "Adjust runtime refresh, debug, live updates, and device import filtering.",
+        "description": "Choose what to configure. Cloud mode does not show local gateway settings.",
+        "menu_options": {
+          "general": "General settings",
+          "cloud_devices": "Real device picker",
+          "filter_categories": "Device import filter"
+        }
+      },
+      "general": {
+        "title": "Yeelight Pro General Settings",
+        "description": "Adjust polling, debug, and cloud live update settings. Cloud mode does not include local gateway settings; return to the previous step to configure device import filtering with the dedicated wizard.",
         "data": {
           "scan_interval": "Polling interval (seconds)",
           "debug_mode": "Enable debug services",
           "hide_unknown_entities": "Hide unknown capability entities",
-          "topology_change_repairs": "Create Repairs issue on device topology changes",
-          "device_import_filter_enabled": "Enable device import filter",
-          "device_import_filter_mode": "Filter rule matching mode",
-          "device_import_filter_include_categories": "Include device categories (comma-separated)",
-          "device_import_filter_exclude_categories": "Exclude device categories (comma-separated)",
-          "device_import_filter_include_types": "Include nodeType/type values (comma-separated)",
-          "device_import_filter_exclude_types": "Exclude nodeType/type values (comma-separated)",
-          "device_import_filter_include_rooms": "Include room IDs (comma-separated)",
-          "device_import_filter_exclude_rooms": "Exclude room IDs (comma-separated)",
-          "device_import_filter_include_gateways": "Include gateway IDs (comma-separated)",
-          "device_import_filter_exclude_gateways": "Exclude gateway IDs (comma-separated)",
-          "device_import_filter_include_product_ids": "Include product IDs (comma-separated)",
-          "device_import_filter_exclude_product_ids": "Exclude product IDs (comma-separated)",
-          "device_import_filter_include_devices": "Include device IDs (comma-separated)",
-          "device_import_filter_exclude_devices": "Exclude device IDs (comma-separated)",
-          "device_import_filter_picker": "Open real device picker",
+          "topology_change_repairs": "Create Repairs on topology changes",
           "live_updates": "Enable WebSocket event notifications",
           "local_gateway_control": "Enable local gateway control",
-          "local_gateway_host": "Local gateway host",
+          "local_gateway_host": "Local gateway address",
           "local_gateway_port": "Local gateway port"
         }
       },
+      "filter_categories": {
+        "title": "Select Device Categories",
+        "description": "Choose which device categories to import. Deselected categories will not be imported.",
+        "data": {
+          "filter_categories": "Device Categories"
+        }
+      },
+      "filter_rooms": {
+        "title": "Select Rooms",
+        "description": "Choose which rooms to import devices from. Devices in deselected rooms will not be imported.",
+        "data": {
+          "filter_rooms": "Rooms"
+        }
+      },
+      "filter_gateways": {
+        "title": "Select Gateways",
+        "description": "Choose which gateways to import devices from. Devices under deselected gateways will not be imported.",
+        "data": {
+          "filter_gateways": "Gateways"
+        }
+      },
+      "filter_devices": {
+        "title": "Select Devices",
+        "description": "Choose specific devices to import. Deselected devices will not be imported.",
+        "data": {
+          "filter_devices": "Devices"
+        }
+      },
       "confirm_runtime": {
-        "title": "Confirm Yeelight Pro options",
-        "description": "{changed_count} visible option changes will be saved.\n\nThese changes can be applied to the current runtime without reloading the integration. This confirmation step does not make an extra Yeelight API call."
+        "title": "Confirm Yeelight Pro Options",
+        "description": "Will save {changed_count} option changes without reloading."
       },
       "confirm_reload": {
-        "title": "Confirm and reload Yeelight Pro",
-        "description": "{changed_count} visible option changes will be saved.\n\nAt least one changed option affects loaded platforms or entity candidates. After saving, Home Assistant will reload this integration through the options update listener. This confirmation step does not make an extra Yeelight API call."
+        "title": "Confirm and Reload Yeelight Pro",
+        "description": "Will save {changed_count} option changes and reload the integration."
       },
       "cloud_devices": {
-        "title": "Adjust imported devices",
-        "description": "Reload real devices from the current cloud house and select which devices to import into Home Assistant. Saving stores only device ID filter rules, not device names, room names, or raw device lists.",
+        "title": "Select Cloud Devices",
+        "description": "Select Yeelight devices to import into Home Assistant.",
         "data": {
           "device_import_filter_include_devices": "Devices"
         }
@@ -156,21 +178,15 @@
     },
     "cloud_auth_method": {
       "options": {
-        "scan_login": "Yeelight APP scan login",
-        "access_token": "Manual Access Token"
-      }
-    },
-    "device_import_filter_mode": {
-      "options": {
-        "or": "Any matching dimension",
-        "and": "All matching dimensions"
+        "scan_login": "Scan Login",
+        "access_token": "Access Token"
       }
     },
     "cloud_region": {
       "options": {
-        "cn": "Mainland China",
+        "cn": "China Mainland",
         "sg": "Singapore",
-        "us": "North America",
+        "us": "United States",
         "de": "Europe"
       }
     }

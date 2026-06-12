@@ -13,12 +13,8 @@ from homeassistant.core import HomeAssistant
 
 from custom_components.yeelight_pro.const import (
     CONF_DEBUG_MODE,
-    CONF_DEVICE_IMPORT_FILTER_ENABLED,
-    CONF_DEVICE_IMPORT_FILTER_EXCLUDE_CATEGORIES,
     CONF_DEVICE_IMPORT_FILTER_INCLUDE_CATEGORIES,
     CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES,
-    CONF_DEVICE_IMPORT_FILTER_MODE,
-    CONF_DEVICE_IMPORT_FILTER_PICKER,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_SCAN_INTERVAL,
     CONF_SCAN_LOGIN_QRCODE,
@@ -35,33 +31,17 @@ def test_translations_are_valid_and_key_aligned() -> None:
     """英文、简中翻译和 strings.json 的关键配置路径必须对齐."""
     strings, english, chinese = _translation_payloads()
     required_paths = {
-        ("options", "step", "init", "data", CONF_SCAN_INTERVAL),
-        ("options", "step", "init", "data", CONF_DEBUG_MODE),
-        ("options", "step", "init", "data", CONF_HIDE_UNKNOWN_ENTITIES),
-        ("options", "step", "init", "data", CONF_TOPOLOGY_CHANGE_REPAIRS),
-        ("options", "step", "init", "data", CONF_DEVICE_IMPORT_FILTER_ENABLED),
-        ("options", "step", "init", "data", CONF_DEVICE_IMPORT_FILTER_MODE),
-        (
-            "options",
-            "step",
-            "init",
-            "data",
-            CONF_DEVICE_IMPORT_FILTER_INCLUDE_CATEGORIES,
-        ),
-        (
-            "options",
-            "step",
-            "init",
-            "data",
-            CONF_DEVICE_IMPORT_FILTER_EXCLUDE_CATEGORIES,
-        ),
-        (
-            "options",
-            "step",
-            "init",
-            "data",
-            CONF_DEVICE_IMPORT_FILTER_PICKER,
-        ),
+        ("options", "step", "init", "menu_options", "general"),
+        ("options", "step", "init", "menu_options", "cloud_devices"),
+        ("options", "step", "init", "menu_options", "filter_categories"),
+        ("options", "step", "general", "data", CONF_SCAN_INTERVAL),
+        ("options", "step", "general", "data", CONF_DEBUG_MODE),
+        ("options", "step", "general", "data", CONF_HIDE_UNKNOWN_ENTITIES),
+        ("options", "step", "general", "data", CONF_TOPOLOGY_CHANGE_REPAIRS),
+        ("options", "step", "filter_categories", "data", "filter_categories"),
+        ("options", "step", "filter_rooms", "data", "filter_rooms"),
+        ("options", "step", "filter_gateways", "data", "filter_gateways"),
+        ("options", "step", "filter_devices", "data", "filter_devices"),
         (
             "options",
             "step",
@@ -79,8 +59,6 @@ def test_translations_are_valid_and_key_aligned() -> None:
         ("config", "step", "cloud_scan_login", "data", CONF_SCAN_LOGIN_REFRESH),
         ("config", "error", "scan_login_expired"),
         ("config", "step", "cloud_devices", "data", CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES),
-        ("selector", "device_import_filter_mode", "options", "or"),
-        ("selector", "device_import_filter_mode", "options", "and"),
         ("config", "progress", "cloud_scan_login_wait"),
         ("config", "step", "reauth_confirm", "data", "access_token"),
         ("entity", "select", "active_room", "name"),
@@ -110,6 +88,7 @@ def test_translations_are_valid_and_key_aligned() -> None:
         assert required_paths.issubset(paths)
         assert "options" in payload
         assert "options" not in payload["config"]
+        assert CONF_DEVICE_IMPORT_FILTER_INCLUDE_CATEGORIES
 
     assert leaf_paths(strings) == leaf_paths(chinese)
     assert leaf_paths(strings) == leaf_paths(english)

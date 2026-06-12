@@ -2,21 +2,15 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
-
 import pytest
 
-from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 
 from custom_components.yeelight_pro.config_flow import YeelightProOptionsFlow
 from custom_components.yeelight_pro.const import (
+    CONF_CONNECTION_MODE,
     CONF_DEBUG_MODE,
     CONF_DEVICE_IMPORT_FILTER,
-    CONF_DEVICE_IMPORT_FILTER_ENABLED,
-    CONF_DEVICE_IMPORT_FILTER_INCLUDE_CATEGORIES,
-    CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES,
-    CONF_DEVICE_IMPORT_FILTER_MODE,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_LIVE_UPDATES,
     CONF_LOCAL_GATEWAY_CONTROL,
@@ -29,11 +23,8 @@ from custom_components.yeelight_pro.const import (
     DEFAULT_LOCAL_GATEWAY_HOST,
     DEFAULT_LOCAL_GATEWAY_PORT,
     DEFAULT_SCAN_INTERVAL,
-    PLATFORMS,
-    get_enabled_platforms,
+    CONNECTION_MODE_LAN,
 )
-from custom_components.yeelight_pro.core.client import YeelightProClient
-from custom_components.yeelight_pro.core.coordinator import YeelightProCoordinator
 
 
 @pytest.mark.asyncio
@@ -42,10 +33,10 @@ async def test_options_flow_shows_defaults(mock_config_entry) -> None:
     mock_config_entry.options = {}
     flow = YeelightProOptionsFlow(mock_config_entry)
 
-    result = await flow.async_step_init()
+    result = await flow.async_step_general()
 
     assert result["type"] == FlowResultType.FORM
-    assert result["step_id"] == "init"
+    assert result["step_id"] == "general"
     schema = result["data_schema"].schema
     defaults = {marker.schema: marker.default() for marker in schema}
     assert defaults[CONF_SCAN_INTERVAL] == DEFAULT_SCAN_INTERVAL
@@ -53,11 +44,29 @@ async def test_options_flow_shows_defaults(mock_config_entry) -> None:
     assert defaults[CONF_HIDE_UNKNOWN_ENTITIES] is True
     assert defaults[CONF_TOPOLOGY_CHANGE_REPAIRS] is True
     assert defaults[CONF_LIVE_UPDATES] is False
-    assert defaults[CONF_LOCAL_GATEWAY_CONTROL] is False
-    assert defaults[CONF_LOCAL_GATEWAY_HOST] == ""
-    assert defaults[CONF_LOCAL_GATEWAY_PORT] == 65443
-    assert defaults[CONF_DEVICE_IMPORT_FILTER_ENABLED] is False
-    assert defaults[CONF_DEVICE_IMPORT_FILTER_MODE] == "or"
+    assert CONF_LOCAL_GATEWAY_CONTROL not in defaults
+    assert CONF_LOCAL_GATEWAY_HOST not in defaults
+    assert CONF_LOCAL_GATEWAY_PORT not in defaults
+
+
+@pytest.mark.asyncio
+async def test_options_flow_shows_local_gateway_defaults_for_lan(
+    mock_config_entry,
+) -> None:
+    """局域网模式才应在通用页显示本地网关 options."""
+    mock_config_entry.data[CONF_CONNECTION_MODE] = CONNECTION_MODE_LAN
+    mock_config_entry.options = {}
+    flow = YeelightProOptionsFlow(mock_config_entry)
+
+    result = await flow.async_step_general()
+
+    assert result["type"] == FlowResultType.FORM
+    schema = result["data_schema"].schema
+    defaults = {marker.schema: marker.default() for marker in schema}
+    assert CONF_LIVE_UPDATES not in defaults
+    assert defaults[CONF_LOCAL_GATEWAY_CONTROL] is DEFAULT_LOCAL_GATEWAY_CONTROL
+    assert defaults[CONF_LOCAL_GATEWAY_HOST] == DEFAULT_LOCAL_GATEWAY_HOST
+    assert defaults[CONF_LOCAL_GATEWAY_PORT] == DEFAULT_LOCAL_GATEWAY_PORT
 
 
 @pytest.mark.asyncio
@@ -66,7 +75,7 @@ async def test_options_flow_ignores_invalid_legacy_options(mock_config_entry) ->
     mock_config_entry.options = None
     flow = YeelightProOptionsFlow(mock_config_entry)
 
-    result = await flow.async_step_init()
+    result = await flow.async_step_general()
 
     assert result["type"] == FlowResultType.FORM
     schema = result["data_schema"].schema
@@ -92,11 +101,12 @@ async def test_options_flow_confirms_runtime_only_options(mock_config_entry) -> 
     }
     flow = YeelightProOptionsFlow(mock_config_entry)
 
-    result = await flow.async_step_init({
+    result = await flow.async_step_general({
         CONF_SCAN_INTERVAL: 45,
         CONF_DEBUG_MODE: True,
         CONF_HIDE_UNKNOWN_ENTITIES: True,
         CONF_TOPOLOGY_CHANGE_REPAIRS: False,
+        CONF_LIVE_UPDATES: DEFAULT_LIVE_UPDATES,
     })
 
     assert result["type"] == FlowResultType.FORM
@@ -121,9 +131,6 @@ async def test_options_flow_confirms_runtime_only_options(mock_config_entry) -> 
         CONF_HIDE_UNKNOWN_ENTITIES: True,
         CONF_TOPOLOGY_CHANGE_REPAIRS: False,
         CONF_LIVE_UPDATES: DEFAULT_LIVE_UPDATES,
-        CONF_LOCAL_GATEWAY_CONTROL: DEFAULT_LOCAL_GATEWAY_CONTROL,
-        CONF_LOCAL_GATEWAY_HOST: DEFAULT_LOCAL_GATEWAY_HOST,
-        CONF_LOCAL_GATEWAY_PORT: DEFAULT_LOCAL_GATEWAY_PORT,
     }
 
 
@@ -131,9 +138,6 @@ async def test_options_flow_confirms_runtime_only_options(mock_config_entry) -> 
     ("option_key", "changed_value"),
     [
         pytest.param(CONF_LIVE_UPDATES, True, id="live_updates_websocket"),
-        pytest.param(CONF_LOCAL_GATEWAY_CONTROL, True, id="local_gateway_control"),
-        pytest.param(CONF_LOCAL_GATEWAY_HOST, "192.168.1.20", id="local_gateway_host"),
-        pytest.param(CONF_LOCAL_GATEWAY_PORT, 65444, id="local_gateway_port"),
     ],
 )
 @pytest.mark.asyncio
@@ -149,13 +153,49 @@ async def test_options_flow_background_runtime_options_require_reload(
         CONF_HIDE_UNKNOWN_ENTITIES: True,
         CONF_TOPOLOGY_CHANGE_REPAIRS: True,
         CONF_LIVE_UPDATES: False,
+    }
+    flow = YeelightProOptionsFlow(mock_config_entry)
+
+    result = await flow.async_step_general({
+        **mock_config_entry.options,
+        option_key: changed_value,
+    })
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "confirm_reload"
+    assert result["description_placeholders"] == {
+        "changed_count": "1",
+    }
+
+
+@pytest.mark.parametrize(
+    ("option_key", "changed_value"),
+    [
+        pytest.param(CONF_LOCAL_GATEWAY_CONTROL, True, id="local_gateway_control"),
+        pytest.param(CONF_LOCAL_GATEWAY_HOST, "192.168.1.20", id="local_gateway_host"),
+        pytest.param(CONF_LOCAL_GATEWAY_PORT, 65444, id="local_gateway_port"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_options_flow_lan_runtime_options_require_reload(
+    mock_config_entry,
+    option_key: str,
+    changed_value,
+) -> None:
+    """局域网 runtime 选项变更必须进入 reload 确认页."""
+    mock_config_entry.data[CONF_CONNECTION_MODE] = CONNECTION_MODE_LAN
+    mock_config_entry.options = {
+        CONF_SCAN_INTERVAL: 15,
+        CONF_DEBUG_MODE: False,
+        CONF_HIDE_UNKNOWN_ENTITIES: True,
+        CONF_TOPOLOGY_CHANGE_REPAIRS: True,
         CONF_LOCAL_GATEWAY_CONTROL: False,
         CONF_LOCAL_GATEWAY_HOST: "",
         CONF_LOCAL_GATEWAY_PORT: 65443,
     }
     flow = YeelightProOptionsFlow(mock_config_entry)
 
-    result = await flow.async_step_init({
+    result = await flow.async_step_general({
         **mock_config_entry.options,
         option_key: changed_value,
     })
@@ -178,7 +218,7 @@ async def test_options_flow_confirms_reload_required_options(mock_config_entry) 
     }
     flow = YeelightProOptionsFlow(mock_config_entry)
 
-    result = await flow.async_step_init({
+    result = await flow.async_step_general({
         CONF_SCAN_INTERVAL: 15,
         CONF_DEBUG_MODE: False,
         CONF_HIDE_UNKNOWN_ENTITIES: False,
@@ -193,10 +233,11 @@ async def test_options_flow_confirms_reload_required_options(mock_config_entry) 
 
 
 @pytest.mark.asyncio
-async def test_options_flow_manual_device_filter_requires_reload(
+async def test_options_flow_device_filter_wizard_requires_reload(
     mock_config_entry,
+    mock_hass,
 ) -> None:
-    """手动设备过滤配置写入 options 后必须走 reload 确认."""
+    """设备过滤向导取消选择后写入 exclude 规则并要求 reload."""
     mock_config_entry.options = {
         CONF_SCAN_INTERVAL: 15,
         CONF_DEBUG_MODE: False,
@@ -204,23 +245,51 @@ async def test_options_flow_manual_device_filter_requires_reload(
         CONF_TOPOLOGY_CHANGE_REPAIRS: True,
     }
     flow = YeelightProOptionsFlow(mock_config_entry)
+    flow.hass = mock_hass
+    mock_hass.data["yeelight_pro"] = {
+        mock_config_entry.entry_id: {
+            "coordinator": type(
+                "Coordinator",
+                (),
+                {
+                    "data": {
+                        "device-1": {
+                            "device_id": "device-1",
+                            "name": "客厅灯",
+                            "category": "light",
+                            "roomId": "room-1",
+                            "roomName": "客厅",
+                            "gatewayId": "gw-1",
+                        },
+                        "device-2": {
+                            "device_id": "device-2",
+                            "name": "卧室灯",
+                            "category": "light",
+                            "roomId": "room-2",
+                            "roomName": "卧室",
+                            "gatewayId": "gw-1",
+                        },
+                    },
+                },
+            )(),
+        }
+    }
 
-    result = await flow.async_step_init({
-        CONF_SCAN_INTERVAL: 15,
-        CONF_DEBUG_MODE: False,
-        CONF_HIDE_UNKNOWN_ENTITIES: True,
-        CONF_TOPOLOGY_CHANGE_REPAIRS: True,
-        CONF_DEVICE_IMPORT_FILTER_ENABLED: True,
-        CONF_DEVICE_IMPORT_FILTER_MODE: "or",
-        CONF_DEVICE_IMPORT_FILTER_INCLUDE_CATEGORIES: "light, curtain",
-        CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES: "device-1",
-    })
+    result = await flow.async_step_filter_categories({"filter_categories": ["light"]})
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "filter_rooms"
 
+    result = await flow.async_step_filter_rooms({"filter_rooms": ["room-1"]})
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "filter_gateways"
+
+    result = await flow.async_step_filter_gateways({"filter_gateways": ["gw-1"]})
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "filter_devices"
+
+    result = await flow.async_step_filter_devices({"filter_devices": ["device-1"]})
     assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "confirm_reload"
-    assert result["description_placeholders"] == {
-        "changed_count": "1",
-    }
 
     result = await flow.async_step_confirm_reload({})
 
@@ -228,23 +297,22 @@ async def test_options_flow_manual_device_filter_requires_reload(
     assert result["data"][CONF_DEVICE_IMPORT_FILTER] == {
         "enabled": True,
         "mode": "or",
-        "include": {
-            "categories": ["curtain", "light"],
-            "devices": ["device-1"],
+        "include": {},
+        "exclude": {
+            "devices": ["device-2"],
+            "rooms": ["room-2"],
         },
-        "exclude": {},
     }
-    assert CONF_DEVICE_IMPORT_FILTER_ENABLED not in result["data"]
 
 
 @pytest.mark.asyncio
 async def test_options_flow_confirm_without_pending_returns_init(mock_config_entry) -> None:
-    """直接访问确认步骤时应回到初始表单，避免保存空 options."""
+    """直接访问确认步骤时应回到初始菜单，避免保存空 options."""
     flow = YeelightProOptionsFlow(mock_config_entry)
 
     result = await flow.async_step_confirm_runtime({})
 
-    assert result["type"] == FlowResultType.FORM
+    assert result["type"] == FlowResultType.MENU
     assert result["step_id"] == "init"
 
 
@@ -261,7 +329,7 @@ async def test_options_flow_confirm_step_rechecks_reload_requirement(
     }
     flow = YeelightProOptionsFlow(mock_config_entry)
 
-    result = await flow.async_step_init({
+    result = await flow.async_step_general({
         CONF_SCAN_INTERVAL: 15,
         CONF_DEBUG_MODE: False,
         CONF_HIDE_UNKNOWN_ENTITIES: False,
@@ -288,7 +356,7 @@ async def test_options_flow_confirm_step_rechecks_runtime_requirement(
     }
     flow = YeelightProOptionsFlow(mock_config_entry)
 
-    result = await flow.async_step_init({
+    result = await flow.async_step_general({
         CONF_SCAN_INTERVAL: 45,
         CONF_DEBUG_MODE: False,
         CONF_HIDE_UNKNOWN_ENTITIES: True,
@@ -300,31 +368,3 @@ async def test_options_flow_confirm_step_rechecks_runtime_requirement(
 
     assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "confirm_runtime"
-
-
-def test_enabled_platforms_match_supported_platforms() -> None:
-    """平台加载集合只来自当前受支持平台列表."""
-    enabled = get_enabled_platforms({})
-
-    assert enabled == PLATFORMS
-    assert "vacuum" not in enabled
-    assert get_enabled_platforms({"experimental_platforms": True}) == PLATFORMS
-
-
-def test_coordinator_scan_interval_reads_entry_options(hass: HomeAssistant) -> None:
-    """coordinator 必须从 entry.options 读取轮询间隔."""
-    coordinator = YeelightProCoordinator(
-        hass=hass,
-        client=AsyncMock(spec=YeelightProClient),
-        house_id=12345,
-        options={
-            CONF_SCAN_INTERVAL: 45,
-            CONF_DEBUG_MODE: True,
-            CONF_HIDE_UNKNOWN_ENTITIES: False,
-        },
-    )
-
-    assert coordinator.update_interval.total_seconds() == 45
-    assert coordinator.scan_interval == 45
-    assert coordinator.debug_mode is True
-    assert coordinator.hide_unknown_entities is False

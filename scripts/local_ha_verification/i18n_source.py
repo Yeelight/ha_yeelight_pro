@@ -31,7 +31,7 @@ def installed_option_translation_keys(install_root: Path) -> set[str]:
             for call in ast.walk(tree)
             if isinstance(call, ast.Call)
             for value in [_schema_key_value(call, constants)]
-            if value is not None
+            if value is not None and value not in _LEGACY_STORAGE_OPTION_KEYS
         )
     return keys
 
@@ -226,3 +226,20 @@ def _method_owner(node: ast.expr) -> ast.expr | None:
     if isinstance(node, ast.Attribute):
         return node.value
     return None
+
+
+_LEGACY_STORAGE_OPTION_KEYS = frozenset({
+    "device_import_filter_enabled",
+    "device_import_filter_mode",
+    "device_import_filter_include_categories",
+    "device_import_filter_exclude_categories",
+    "device_import_filter_include_rooms",
+    "device_import_filter_exclude_rooms",
+    "device_import_filter_include_gateways",
+    "device_import_filter_exclude_gateways",
+    "device_import_filter_include_product_ids",
+    "device_import_filter_exclude_product_ids",
+    "device_import_filter_include_devices",
+    "device_import_filter_exclude_devices",
+    "device_import_filter_picker",
+})

@@ -158,11 +158,11 @@ def _device_name(
     if name is not None:
         return name
     if model is not None:
-        return f"{model} {device_id}"
+        return model
     category = _first_text(payload, ("category", "type"))
     if category is not None:
-        return f"Yeelight {category} {device_id}"
-    return f"Yeelight Pro {device_id}"
+        return device_model_name(payload)
+    return "Yeelight Pro 设备"
 
 
 def _manufacturer(

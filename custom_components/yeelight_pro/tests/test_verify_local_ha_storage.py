@@ -21,9 +21,10 @@ from .storage_verifier_helpers import (
 
 def test_verify_storage_checks_counts_without_raw_ids(tmp_path: Path) -> None:
     """Storage verification should pass on aggregate local HA facts."""
+    entities = _yeelight_entities()
     _write_storage(tmp_path, "core.config_entries", {"entries": [_config_entry()]})
     _write_storage(tmp_path, "core.device_registry", {"devices": _yeelight_devices()})
-    _write_storage(tmp_path, "core.entity_registry", {"entities": _yeelight_entities()})
+    _write_storage(tmp_path, "core.entity_registry", {"entities": entities})
     report = VerificationReport()
 
     verify_storage(
@@ -36,7 +37,11 @@ def test_verify_storage_checks_counts_without_raw_ids(tmp_path: Path) -> None:
     )
 
     assert report.ok
-    assert any("entity registry retained entries: 158" in fact for fact in report.facts)
+    expected_total = sum(DEFAULT_ENTITY_COUNTS.values())
+    assert any(
+        f"entity registry retained entries: {expected_total}" in fact
+        for fact in report.facts
+    )
     assert any("config entry versions: 1.8 x 1" in fact for fact in report.facts)
     assert any("config entry titles" in fact for fact in report.facts)
     assert any("config entry unique_id isolation" in fact for fact in report.facts)
@@ -60,10 +65,17 @@ def test_verify_storage_checks_counts_without_raw_ids(tmp_path: Path) -> None:
     assert "vacuum" not in platform_options["expected_union"]
     assert any("house selector entity metadata" in fact for fact in report.facts)
     assert any("entity registry categories" in fact for fact in report.facts)
-    assert report.metrics["entity_registry_categories"] == {
-        "config": 38,
-        "diagnostic": 42,
-    }
+    assert report.metrics["entity_registry_categories"] == _entity_category_counts(entities)
+
+
+def _entity_category_counts(entities: list[dict[str, str | None]]) -> dict[str, int]:
+    """Return expected entity-category counts from the fixture entries."""
+    counts: dict[str, int] = {}
+    for entity in entities:
+        category = entity.get("entity_category")
+        if category:
+            counts[category] = counts.get(category, 0) + 1
+    return counts
 
 
 def test_verify_storage_reports_platform_options_alignment(tmp_path: Path) -> None:
@@ -190,9 +202,13 @@ def test_verify_storage_allows_cleanup_b_retained_disabled_entities(
     )
 
     assert report.ok
-    assert any("entity registry retained entries: 159" in fact for fact in report.facts)
+    expected_retained = sum(DEFAULT_ENTITY_COUNTS.values()) + 1
+    assert any(
+        f"entity registry retained entries: {expected_retained}" in fact
+        for fact in report.facts
+    )
     assert any("entity registry disabled_by" in fact for fact in report.facts)
-    assert report.metrics["retained_entities"] == 159
+    assert report.metrics["retained_entities"] == expected_retained
 
 
 def test_verify_storage_rejects_unsupported_platform_domain(

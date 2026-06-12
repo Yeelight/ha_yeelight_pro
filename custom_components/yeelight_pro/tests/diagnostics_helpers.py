@@ -99,6 +99,7 @@ def build_empty_diagnostics_coordinator(
     coordinator.topology_generation = topology_generation
     coordinator.topology_diff_summary = topology_diff_summary
     coordinator.product_schema_cache_size = product_schema_cache_size
+    coordinator.property_hydration_diagnostics = {}
     coordinator.devices = {}
     coordinator.gateways = {}
     coordinator.areas = []

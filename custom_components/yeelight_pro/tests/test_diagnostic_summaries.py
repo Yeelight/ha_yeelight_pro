@@ -101,9 +101,10 @@ def test_entity_import_filter_preview_counts_visible_device_entities_only() -> N
     )
 
     assert summary == {
-        "total": 7,
+        "total": 8,
         "platforms": {
             "button": 1,
+            "light": 1,
             "number": 2,
             "select": 3,
             "switch": 1,
@@ -113,17 +114,17 @@ def test_entity_import_filter_preview_counts_visible_device_entities_only() -> N
         },
         "sources": {
             "device": 1,
-            "group": 2,
+            "group": 3,
             "house": 3,
             "scene": 1,
         },
         "source_classes": {
             "device": 1,
-            "topology": 6,
+            "topology": 7,
         },
         "duplicate_key_count": 0,
         "availability": {
-            "available": 7,
+            "available": 8,
             "unavailable": 0,
         },
     }

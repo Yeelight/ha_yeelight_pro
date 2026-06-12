@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping
 
 from ..capabilities.platform_contract import platform_candidates_for_payload
-from ..utils import to_int, to_str
+from ..utils import to_bool, to_int, to_str
 from .device_payload import (
     DevicePayloadBuilder,
     RuntimeOverrideApplier,
@@ -73,12 +73,13 @@ _LAN_TYPE_SPECS: dict[int, dict[str, Any]] = {
 
 @dataclass(slots=True)
 class LanTopologyPayloads:
-    """Coordinator-ready payload collections derived from LAN topology."""
+    """从 LAN 拓扑生成的 coordinator 载荷集合。"""
 
     devices: dict[int, dict[str, Any]] = field(default_factory=dict)
     rooms: list[dict[str, Any]] = field(default_factory=list)
     areas: list[dict[str, Any]] = field(default_factory=list)
     groups: list[dict[str, Any]] = field(default_factory=list)
+    houses: list[dict[str, Any]] = field(default_factory=list)
     scenes: list[dict[str, Any]] = field(default_factory=list)
 
 
@@ -88,13 +89,14 @@ def build_lan_topology_payloads(
     builder: DevicePayloadBuilder,
     apply_runtime_overrides: RuntimeOverrideApplier,
 ) -> LanTopologyPayloads:
-    """Build normalized runtime payloads from documented LAN topology nodes."""
+    """从协议定义的 LAN 拓扑节点构建规范运行时载荷。"""
     result = LanTopologyPayloads()
     node_rows = [node for node in nodes if isinstance(node, Mapping)]
     result.rooms = _auxiliary_nodes(node_rows, NODE_TYPE_ROOM)
     result.areas = _auxiliary_nodes(node_rows, NODE_TYPE_AREA)
     result.groups = _typed_auxiliary_nodes(node_rows, NODE_TYPE_GROUP)
-    result.scenes = _auxiliary_nodes(node_rows, NODE_TYPE_SCENE)
+    result.houses = _typed_auxiliary_nodes(node_rows, NODE_TYPE_HOUSE)
+    result.scenes = _scene_nodes(node_rows)
 
     for node in node_rows:
         node_id = to_int(node.get("id"))
@@ -128,7 +130,7 @@ def _refresh_lan_classification_metadata(payload: dict[str, Any]) -> None:
 
 
 def _device_payload_from_node(node: Mapping[str, Any]) -> dict[str, Any]:
-    """Convert one LAN Mesh sub-device node into an OpenAPI-like payload."""
+    """将单个 LAN Mesh 子设备节点转换为接近 OpenAPI 的载荷。"""
     node_id = to_int(node.get("id"))
     lan_type = to_int(node.get("type"))
     spec = _LAN_TYPE_SPECS.get(lan_type or -1, {})
@@ -252,10 +254,41 @@ def _typed_auxiliary_nodes(
         node_id = to_int(node.get("id"))
         if node_id is None:
             continue
-        result.append({
+        item: dict[str, Any] = {
             "id": node_id,
             "name": to_str(node.get("n")) or str(node_id),
             "type": to_int(node.get("type")),
             "node_type": node_type,
-        })
+        }
+        raw_online = node.get("o")
+        if isinstance(raw_online, bool):
+            item["online"] = raw_online
+        elif raw_online is not None:
+            item["online"] = to_bool(raw_online)
+        params = node.get("params")
+        if isinstance(params, Mapping):
+            item["params"] = dict(params)
+        result.append(item)
+    return result
+
+
+def _scene_nodes(nodes: list[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """返回带可选状态元数据的 LAN 情景行。"""
+    result: list[dict[str, Any]] = []
+    for node in nodes:
+        if to_int(node.get("nt")) != NODE_TYPE_SCENE:
+            continue
+        node_id = to_int(node.get("id"))
+        if node_id is None:
+            continue
+        item: dict[str, Any] = {
+            "id": node_id,
+            "name": to_str(node.get("n")) or str(node_id),
+        }
+        params = node.get("params")
+        if isinstance(params, Mapping):
+            item["params"] = dict(params)
+            if state := to_str(params.get("state")):
+                item["state"] = state
+        result.append(item)
     return result

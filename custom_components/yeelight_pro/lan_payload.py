@@ -181,6 +181,7 @@ class LanSceneStateUpdate:
     """场景状态更新。"""
 
     scene_id: int
+    name: str | None
     state: str  # "active", "inactive", "unknown"
 
 
@@ -204,7 +205,14 @@ def lan_scene_updates(
         params = scene.get("params")
         state = params.get("state") if isinstance(params, Mapping) else None
         if scene_id is not None and isinstance(state, str):
-            updates.append(LanSceneStateUpdate(scene_id=scene_id, state=state))
+            name = scene.get("n") or scene.get("name")
+            updates.append(
+                LanSceneStateUpdate(
+                    scene_id=scene_id,
+                    name=str(name).strip() if name not in (None, "") else None,
+                    state=state,
+                )
+            )
     return updates
 
 

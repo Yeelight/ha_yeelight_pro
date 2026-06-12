@@ -198,7 +198,10 @@ def test_runtime_options_contract_requires_options_device_picker_coverage(
 
     assert any("options picker reload confirmation coverage" in error for error in errors)
     assert any("options picker label privacy marker" in error for error in errors)
-    assert any("options picker friendly type label coverage" in error for error in errors)
+    assert any(
+        "options picker capability-first type label coverage" in error
+        for error in errors
+    )
 
 
 def _write_test_file(path: Path, content: str) -> None:
@@ -213,5 +216,5 @@ def _write_complete_options_picker_test(tests_root: Path) -> None:
         "test_options_flow_real_device_picker_loads_current_cloud_devices "
         "test_options_flow_real_device_picker_selection_requires_reload "
         "test_options_flow_real_device_picker_load_error_is_redacted "
-        "CONF_DEVICE_IMPORT_FILTER_PICKER Kitchen Secret 易来开关设备",
+        "CONF_DEVICE_IMPORT_FILTER_PICKER Kitchen Secret 开关控制器",
     )

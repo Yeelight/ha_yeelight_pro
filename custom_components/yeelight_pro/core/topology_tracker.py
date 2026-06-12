@@ -40,15 +40,17 @@ class TopologyTracker:
         areas: list[dict[str, Any]],
         rooms: list[dict[str, Any]],
         groups: list[dict[str, Any]],
+        houses: list[dict[str, Any]],
         scenes: list[dict[str, Any]],
     ) -> None:
-        """Update generation only when topology signature changes."""
+        """仅在拓扑签名变化时更新代数。"""
         snapshot = build_topology_snapshot(
             devices=devices,
             gateways=gateways,
             areas=areas,
             rooms=rooms,
             groups=groups,
+            houses=houses,
             scenes=scenes,
         )
         signature = topology_snapshot_signature(snapshot)

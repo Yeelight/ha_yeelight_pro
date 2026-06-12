@@ -146,7 +146,36 @@ def translation_payload() -> dict[str, Any]:
                 "init": {
                     "title": "Options",
                     "description": "Adjust options.",
+                    "menu_options": {
+                        "general": "General settings",
+                        "cloud_devices": "Real device picker",
+                        "filter_categories": "Device import filter",
+                    },
+                },
+                "general": {
+                    "title": "General settings",
+                    "description": "Adjust runtime options.",
                     "data": option_data,
+                },
+                "filter_categories": {
+                    "title": "Select categories",
+                    "description": "Select device categories.",
+                    "data": {"filter_categories": "Categories"},
+                },
+                "filter_rooms": {
+                    "title": "Select rooms",
+                    "description": "Select rooms.",
+                    "data": {"filter_rooms": "Rooms"},
+                },
+                "filter_gateways": {
+                    "title": "Select gateways",
+                    "description": "Select gateways.",
+                    "data": {"filter_gateways": "Gateways"},
+                },
+                "filter_devices": {
+                    "title": "Select devices",
+                    "description": "Select devices.",
+                    "data": {"filter_devices": "Devices"},
                 },
                 "confirm_runtime": {
                     "title": "Confirm runtime",
@@ -155,6 +184,13 @@ def translation_payload() -> dict[str, Any]:
                 "confirm_reload": {
                     "title": "Confirm reload",
                     "description": "Save reload options.",
+                },
+                "cloud_devices": {
+                    "title": "Select cloud devices",
+                    "description": "Select devices to import.",
+                    "data": {
+                        "device_import_filter_include_devices": "Devices",
+                    },
                 },
             }
         },

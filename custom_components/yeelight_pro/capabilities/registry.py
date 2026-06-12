@@ -25,6 +25,8 @@ from .models import (
     IoTProtocolSpec,
     PropertyCapability,
 )
+from .property_index import enrich_property_component_memberships
+from .property_aliases import PROPERTY_ALIASES
 from .product_catalog import (
     is_projectable_global_component as _is_projectable_global_component,
     normalize_product_pid as _normalize_product_pid,
@@ -42,14 +44,6 @@ from .product_catalog import (
 _KEY_RE = re.compile(r"^(?P<index>\d+)-(?P<prop>.+)$")
 _NON_ALNUM_RE = re.compile(r"[^\w]+")
 _PLATFORM_NON_CATEGORIES = frozenset({"event", "scene", "button", "select", "number", "vacuum", "text"})
-_PROPERTY_ALIASES = {
-    "Connectivity Protocols type": "cpt", "connectivity protocols type": "cpt",
-    "io_type": "io", "localToken": "ltk", "mp_nightMode": "mp_nightmode",
-    "online": "o", "relay": "rl", "run power": "run_power",
-    "support relay": "support_rl",
-}
-
-
 class YeelightIoTRegistry:
     """内置 Yeelight IoT 物模型能力注册表."""
 
@@ -65,7 +59,7 @@ class YeelightIoTRegistry:
         """构建只读索引."""
         self.categories = categories
         self.components = components
-        self.properties = properties
+        self.properties = enrich_property_component_memberships(properties, components)
         self.events = events
         self.protocols = protocols
         self.product_catalog = product_catalog()
@@ -81,9 +75,11 @@ class YeelightIoTRegistry:
                 self.component_map[key] = item
                 if item.platform_hint is not None:
                     self.component_platform_hints[key] = item.platform_hint
-        self.property_map = {item.prop: item for item in properties}
+        self.property_map = {item.prop: item for item in self.properties}
         self.property_capabilities = {
-            item.prop: item.capability for item in properties if item.capability is not None
+            item.prop: item.capability
+            for item in self.properties
+            if item.capability is not None
         }
         self.event_aliases = _build_event_aliases(events)
         self.protocol_key_map = {item.key: item for item in protocols}
@@ -266,7 +262,7 @@ def normalize_property_key(prop: Any) -> str | None:
     key = to_str(prop)
     if key is None:
         return None
-    return _PROPERTY_ALIASES.get(key, key)
+    return PROPERTY_ALIASES.get(key, key)
 
 
 def normalize_event_type(value: Any) -> str | None:

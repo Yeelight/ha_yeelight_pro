@@ -8,7 +8,15 @@ from typing import Any, Literal
 
 from ..utils import to_category, to_str
 from .ha_core_platforms import HA_CORE_PLATFORMS
+from .platform_contract_evidence import (
+    capability_category,
+    components,
+    has_indexed_switch_control,
+    has_light_capability_evidence,
+    has_switch_capability_evidence,
+)
 from .platform_contract_data import (
+    AUXILIARY_BOOL_SWITCH_PROPS,
     CLIMATE_CANDIDATE_PROPS,
     COVER_TARGET_PROPS,
     DEFAULT_UNSUPPORTED_EVIDENCE,
@@ -21,7 +29,11 @@ from .platform_contract_data import (
     READ_ONLY_SENSOR_PROPS,
     RELAY_SWITCH_CONTROL_PROPS,
 )
-from .registry import normalize_property_key, parse_component_property_key, property_spec
+from .registry import (
+    normalize_property_key,
+    parse_component_property_key,
+    property_spec,
+)
 
 PlatformSupportStatus = Literal["supported", "experimental", "unsupported"]
 PlatformSummaryStatus = Literal["supported", "diagnostic", "unsupported"]
@@ -75,9 +87,8 @@ def platform_candidates_for_payload(payload: Mapping[str, Any]) -> tuple[str, ..
     category = _payload_category(payload)
     props = _property_evidence(payload)
     has_events = _has_events(payload)
-
-    if _should_use_category_fallback(category, props, has_events):
-        _extend(candidates, PRIMARY_CATEGORY_CANDIDATES.get(category, ()))
+    prop_names = set(props)
+    has_indexed_switch = has_indexed_switch_control(payload, category)
 
     for prop, evidence in props.items():
         if prop in READ_ONLY_BOOL_BINARY_PROPS and _read_only(evidence):
@@ -90,10 +101,15 @@ def platform_candidates_for_payload(payload: Mapping[str, Any]) -> tuple[str, ..
             _extend(candidates, ("climate",))
         elif prop in FAN_CANDIDATE_PROPS:
             _extend(candidates, ("fan",))
-        elif prop in RELAY_SWITCH_CONTROL_PROPS and category == "relay_switch":
+        elif (
+            prop in RELAY_SWITCH_CONTROL_PROPS
+            and has_switch_capability_evidence(category, prop_names, has_indexed_switch)
+        ):
             _extend(candidates, ("switch",))
-        elif prop in LIGHT_CONTROL_PROPS and category == "light":
+        elif prop in LIGHT_CONTROL_PROPS and has_light_capability_evidence(prop_names):
             _extend(candidates, ("light",))
+        elif _documented_writable_property(evidence) and prop in AUXILIARY_BOOL_SWITCH_PROPS:
+            _extend(candidates, ("switch",))
         elif _documented_writable_property(evidence) and evidence.has_value_list:
             _extend(candidates, ("select",))
         elif _documented_writable_property(evidence) and _numeric_property(evidence):
@@ -102,7 +118,7 @@ def platform_candidates_for_payload(payload: Mapping[str, Any]) -> tuple[str, ..
     if has_events:
         _extend(candidates, ("event",))
 
-    return _ordered_candidates(category, candidates)
+    return _ordered_candidates(capability_category(payload, prop_names), candidates)
 
 
 def primary_platform_for_payload(payload: Mapping[str, Any]) -> str | None:
@@ -131,53 +147,19 @@ def _support_status(status: str) -> PlatformSummaryStatus:
     return "supported"
 
 
-def _should_use_category_fallback(
-    category: str,
-    props: Mapping[str, PropertyEvidence],
-    has_events: bool,
-) -> bool:
-    """Return true when category identity is safe evidence for entity projection."""
-    if props or has_events:
-        if category == "temp_control" and _has_fan_without_climate_props(props):
-            return False
-        return category in {
-            "contact_sensor",
-            "curtain",
-            "human_sensor",
-            "knob_switch",
-            "light_sensor",
-            "scene_panel",
-            "temp_control",
-        }
-    return category in {
-        "contact_sensor",
-        "curtain",
-        "human_sensor",
-        "knob_switch",
-        "light_sensor",
-        "scene_panel",
-        "temp_control",
-    }
-
-
-def _ordered_candidates(category: str, candidates: list[str]) -> tuple[str, ...]:
-    """Return candidates with the documented category platform first."""
+def _ordered_candidates(
+    capability_category: str | None,
+    candidates: list[str],
+) -> tuple[str, ...]:
+    """Return candidates in capability-priority order."""
     ordered: list[str] = []
-    primary = PRIMARY_CATEGORY_CANDIDATES.get(category, ())
-    for platform in primary:
+    for platform in PRIMARY_CATEGORY_CANDIDATES.get(capability_category or "", ()):
         if platform in candidates:
             _extend(ordered, (platform,))
     for platform in PLATFORM_ORDER:
         if platform in candidates:
             _extend(ordered, (platform,))
     return tuple(ordered)
-
-
-def _has_fan_without_climate_props(props: Mapping[str, PropertyEvidence]) -> bool:
-    prop_ids = set(props)
-    return bool(prop_ids & FAN_CANDIDATE_PROPS) and not bool(
-        prop_ids & CLIMATE_CANDIDATE_PROPS
-    )
 
 
 def _payload_category(payload: Mapping[str, Any]) -> str:
@@ -202,7 +184,7 @@ def _property_evidence(payload: Mapping[str, Any]) -> dict[str, PropertyEvidence
             _merge_property_evidence(props, _prop_name(_property_id(prop)), prop)
     product_model = payload.get("ha_product_model")
     if isinstance(product_model, Mapping):
-        for component in _components(product_model):
+        for component in components(product_model):
             for prop in _properties(component.get("properties")):
                 _merge_property_evidence(props, _prop_name(_property_id(prop)), prop)
     props.pop("", None)
@@ -325,11 +307,7 @@ def _has_events(payload: Mapping[str, Any]) -> bool:
     product_model = payload.get("ha_product_model")
     if not isinstance(product_model, Mapping):
         return False
-    return any(_component_has_events(component) for component in _components(product_model))
-
-
-def _components(product_model: Mapping[str, Any]) -> Iterable[Mapping[str, Any]]:
-    return _properties(product_model.get("components"))
+    return any(_component_has_events(component) for component in components(product_model))
 
 
 def _component_has_events(component: Mapping[str, Any]) -> bool:

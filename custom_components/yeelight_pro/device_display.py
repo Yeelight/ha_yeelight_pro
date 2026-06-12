@@ -5,9 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from .capabilities.registry import platform_for_category
 from .core.device_classification import (
-    friendly_model_name,
     friendly_specific_model_name,
     infer_iot_category,
     is_generic_model_label,
@@ -26,27 +24,9 @@ _CATEGORY_LABELS = {
     "scene_panel": "情景面板",
     "knob_switch": "旋钮开关",
     "gateway": "网关",
-    "other": "易来设备",
+    "other": "其他设备",
 }
-_CATEGORY_TYPE_LABELS = {
-    **_CATEGORY_LABELS,
-    "binary_sensor": "易来传感设备",
-    "light": "易来照明设备",
-    "relay_switch": "易来开关设备",
-    "sensor": "易来传感设备",
-    "temp_control": "易来温控设备",
-    "other": "易来扩展设备",
-}
-_PLATFORM_LABELS = {
-    "binary_sensor": "二元传感器",
-    "climate": "温控",
-    "cover": "窗帘",
-    "event": "事件",
-    "fan": "新风",
-    "light": "灯",
-    "sensor": "传感器",
-    "switch": "开关",
-}
+_CATEGORY_MODEL_LABELS = frozenset(_CATEGORY_LABELS.values())
 _MODEL_NAME_KEYS = (
     "productName",
     "product_name",
@@ -70,28 +50,24 @@ def device_type_label(payload: Mapping[str, Any]) -> str | None:
     if explicit is not None:
         return explicit
 
-    category = infer_iot_category(payload)
-    if category in _CATEGORY_TYPE_LABELS:
-        return _CATEGORY_TYPE_LABELS[category]
-
-    platform = platform_for_category(category)
-    if platform in _PLATFORM_LABELS and platform not in {"binary_sensor", "sensor"}:
-        return _PLATFORM_LABELS[platform]
-    model = friendly_model_name(payload)
+    model = friendly_specific_model_name(payload)
     if model and not is_generic_model_label(model):
         return model
-    return None
+
+    category = infer_iot_category(payload)
+    return _CATEGORY_LABELS.get(category) if category is not None else None
 
 
 def device_model_name(payload: Mapping[str, Any]) -> str:
-    """Return model text that avoids broad HA platform/category labels."""
+    """Return concrete model text, with category as the final documented fallback."""
     friendly = friendly_specific_model_name(payload)
     if friendly:
         return friendly
     explicit = _specific_text(payload, _MODEL_NAME_KEYS)
     if explicit is not None:
         return explicit
-    return friendly
+    category = infer_iot_category(payload)
+    return _CATEGORY_LABELS.get(category, "") if category is not None else ""
 
 
 def registry_model_value(
@@ -100,19 +76,21 @@ def registry_model_value(
 ) -> str | None:
     """Return a HA registry-safe model value, replacing broad fallback labels."""
     model = device_info.get("model")
-    if model is not None and not is_generic_model_label(model):
-        return str(model)
+    if model is not None:
+        model_text = str(model)
+        if not is_generic_model_label(model) or model_text in _CATEGORY_MODEL_LABELS:
+            return model_text
 
     inferred = device_model_name(device_info)
     if inferred and not is_generic_model_label(inferred):
         return inferred
 
     if model is None:
-        return str(current_model) if current_model is not None else None
+        if current_model is not None and not is_generic_model_label(current_model):
+            return str(current_model)
+        return None
     if is_generic_model_label(current_model):
-        if category_model := _category_model_value(device_info):
-            return category_model
-        return "Yeelight Pro 设备"
+        return _category_model_value(device_info)
     return None
 
 
@@ -184,13 +162,4 @@ def _text(value: Any) -> str | None:
 
 def _category_model_value(device_info: Mapping[str, Any]) -> str | None:
     category = infer_iot_category(device_info)
-    if category in _CATEGORY_TYPE_LABELS:
-        return _CATEGORY_TYPE_LABELS[category]
-    model = _first_text(device_info, ("model", "modelName", "productName"))
-    if model is None:
-        return None
-    generic_payload = {"category": model}
-    category = infer_iot_category(generic_payload)
-    if category in _CATEGORY_TYPE_LABELS:
-        return _CATEGORY_TYPE_LABELS[category]
-    return None
+    return _CATEGORY_LABELS.get(category) if category is not None else None

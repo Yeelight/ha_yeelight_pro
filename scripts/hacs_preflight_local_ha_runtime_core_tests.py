@@ -131,6 +131,24 @@ LOCAL_HA_RUNTIME_CORE_TEST_TOKENS = {
         ),
         "slisaon_rdy": "documented switch config hydration assertion",
     },
+    "custom_components/yeelight_pro/tests/test_property_hydration_diagnostics.py": {
+        "test_hydration_reports_safe_aggregate_diagnostics": (
+            "hydration aggregate diagnostics coverage"
+        ),
+        "PropertyHydrationDiagnostics": "hydration diagnostics helper coverage",
+        "diagnostics.as_dict()": "hydration diagnostics serialization assertion",
+    },
+    "custom_components/yeelight_pro/tests/test_property_hydration_response_shapes.py": {
+        "test_hydration_accepts_list_shaped_multi_node_response": (
+            "list-shaped multi-node hydration response coverage"
+        ),
+        "test_hydration_accepts_nested_list_row_multi_node_response": (
+            "nested list-row hydration response coverage"
+        ),
+        "project_lights(device, domain=\"yeelight_pro\") == []": (
+            "sensor-like device no-light projection coverage"
+        ),
+    },
     "custom_components/yeelight_pro/tests/refresh_service_helpers.py": {
         "refresh_entry": "refresh service config entry test helper",
         "refresh_coordinator": "refresh service coordinator test helper",

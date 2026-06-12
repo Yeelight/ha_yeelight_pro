@@ -10,11 +10,13 @@ from homeassistant.core import HomeAssistant
 
 from ..event_support import YeelightRuntimeEvent
 from ..lan_payload import (
+    LanSceneStateUpdate,
     lan_event_payloads,
     lan_property_updates,
     lan_scene_updates,
     lan_topology_update,
 )
+from ..utils import to_int
 from ..push import push_event_payloads, push_property_updates
 from .runtime_bridge import (
     RuntimeEventDeduper,
@@ -35,6 +37,7 @@ class _RuntimeCoordinator(Protocol):
     devices: Mapping[int, dict[str, Any]]
     gateways: Mapping[int, dict[str, Any]]
     groups: list[dict[str, Any]]
+    houses: list[dict[str, Any]]
     rooms: list[dict[str, Any]]
     areas: list[dict[str, Any]]
     scenes: list[dict[str, Any]]
@@ -50,6 +53,9 @@ class _RuntimeCoordinator(Protocol):
 
     def async_refresh_from_lan_topology(self) -> Any:
         """Schedule or perform a refresh after LAN topology changes."""
+
+    def _update_topology_generation(self) -> None:
+        """更新 LAN 拓扑快照后的拓扑代数。"""
 
     async def _async_refresh_coordinator_data(self) -> None:
         """Refresh coordinator data from the backing API."""
@@ -108,6 +114,8 @@ class CoordinatorRuntimeMixin:
         # 场景状态同步
         scene_updates = lan_scene_updates(payload)
         if scene_updates:
+            if _apply_lan_scene_updates_to_coordinator(self, scene_updates):
+                self.async_update_listeners()
             for update in scene_updates:
                 _LOGGER.debug(
                     "LAN scene state: id=%d state=%s",
@@ -154,17 +162,60 @@ def _apply_lan_topology_to_coordinator(
     coordinator.data = topology_payloads.devices  # type: ignore[assignment]
     coordinator.scenes = topology_payloads.scenes  # type: ignore[assignment]
     coordinator.groups = topology_payloads.groups  # type: ignore[assignment]
+    coordinator.houses = topology_payloads.houses  # type: ignore[assignment]
     coordinator.rooms = topology_payloads.rooms  # type: ignore[assignment]
     coordinator.areas = topology_payloads.areas  # type: ignore[assignment]
+    coordinator._update_topology_generation()
 
     _LOGGER.info(
-        "LAN topology applied: %d devices, %d groups, %d scenes, %d rooms, %d areas",
+        "LAN topology applied: %d devices, %d groups, %d scenes, %d rooms, %d areas, %d houses",
         len(topology_payloads.devices),
         len(topology_payloads.groups),
         len(topology_payloads.scenes),
         len(topology_payloads.rooms),
         len(topology_payloads.areas),
+        len(topology_payloads.houses),
     )
+
+
+def _apply_lan_scene_updates_to_coordinator(
+    coordinator: _RuntimeCoordinator,
+    updates: list[LanSceneStateUpdate],
+) -> bool:
+    """合并 LAN 场景状态到 coordinator 场景缓存。"""
+    if not updates:
+        return False
+
+    scenes_by_id: dict[int, dict[str, Any]] = {}
+    for scene in coordinator.scenes:
+        if not isinstance(scene, Mapping):
+            continue
+        scene_id = to_int(scene.get("id"))
+        if scene_id is None:
+            continue
+        scenes_by_id[scene_id] = dict(scene)
+
+    changed = False
+    for update in updates:
+        scene = scenes_by_id.get(update.scene_id, {"id": update.scene_id})
+        if update.name and scene.get("name") != update.name:
+            scene["name"] = update.name
+            changed = True
+        params = scene.get("params")
+        params = dict(params) if isinstance(params, Mapping) else {}
+        if scene.get("state") != update.state:
+            scene["state"] = update.state
+            changed = True
+        if params.get("state") != update.state:
+            params["state"] = update.state
+            scene["params"] = params
+            changed = True
+        scenes_by_id[update.scene_id] = scene
+
+    if not changed:
+        return False
+    coordinator.scenes = list(scenes_by_id.values())  # type: ignore[assignment]
+    return True
 
 
 def _runtime_bridge(coordinator: _RuntimeCoordinator) -> RuntimePayloadBridge:
@@ -176,6 +227,7 @@ def _runtime_bridge(coordinator: _RuntimeCoordinator) -> RuntimePayloadBridge:
         devices=coordinator.devices,
         gateways=coordinator.gateways,
         data=runtime_data,
+        groups=coordinator.groups,
         get_device=coordinator.get_device,
         rebuild_canonical=(
             coordinator._device_payload_builder.attach_canonical_models_if_available

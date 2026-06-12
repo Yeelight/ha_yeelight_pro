@@ -87,7 +87,7 @@ async def test_sync_gateway_devices_drops_runtime_model_id_without_replacement()
 
     assert updated.model_id is None
     assert device_registry.updated_devices == [
-        ("device-1", {"model": "易来照明设备", "model_id": None})
+        ("device-1", {"model_id": None})
     ]
 
 
@@ -119,9 +119,38 @@ async def test_sync_gateway_devices_replaces_generic_model_label_without_model_i
     )
 
     assert updated.model_id is None
-    assert device_registry.updated_devices == [
-        ("device-1", {"model": "易来开关设备", "model_id": None})
-    ]
+    assert device_registry.updated_devices == []
+
+
+async def test_sync_gateway_devices_does_not_wrap_unknown_generic_model() -> None:
+    """缺少能力或 category 证据时，不用伪设备型号掩盖问题."""
+    device_registry = _ModelIdDeviceRegistry()
+    existing = SimpleNamespace(
+        id="device-1",
+        identifiers={(DOMAIN, "304784340")},
+        connections=set(),
+        manufacturer="Yeelight",
+        model="灯具",
+        name="未知设备",
+        model_id=None,
+    )
+    device_info = {
+        "identifiers": [[DOMAIN, "304784340"]],
+        "manufacturer": "Yeelight",
+        "model": "light",
+        "name": "未知设备",
+    }
+
+    updated = _sync_existing_device_metadata(
+        cast(Any, device_registry),
+        existing,
+        device_info=device_info,
+        identifiers={(DOMAIN, "304784340")},
+        connections=set(),
+    )
+
+    assert updated.model_id is None
+    assert device_registry.updated_devices == []
 
 
 async def test_sync_gateway_devices_normalizes_canonical_generic_model(
@@ -135,6 +164,7 @@ async def test_sync_gateway_devices_normalizes_canonical_generic_model(
             identifier="304784339",
             name="厨房双键开关",
             model="relay_switch",
+            category="relay_switch",
         )
     })
 
@@ -144,7 +174,7 @@ async def test_sync_gateway_devices_normalizes_canonical_generic_model(
         identifiers={(DOMAIN, "304784339")}
     )
     assert device is not None
-    assert device.model == "易来开关设备"
+    assert device.model == "继电器开关"
 
 
 async def test_sync_gateway_devices_prefers_capability_specific_model(

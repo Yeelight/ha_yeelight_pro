@@ -22,7 +22,7 @@ from ..event_support import (
     normalize_runtime_event_payload,
     runtime_event_to_bus_payload,
 )
-from .runtime_state import RuntimeStateStore
+from .runtime_state import RuntimeStateStore, merge_runtime_state_into_group_payloads
 
 CanonicalRebuilder = Callable[[dict[str, Any]], None]
 DeviceLookup = Callable[[int], Mapping[str, Any] | None]
@@ -35,6 +35,7 @@ class RuntimePropertyUpdate:
     """已接收推送帧中的属性更新。"""
 
     node_id: int
+    node_type: int | None
     params: Mapping[str, Any]
 
 
@@ -49,6 +50,7 @@ class RuntimePayloadBridge:
         devices: Mapping[int, dict[str, Any]],
         gateways: Mapping[int, dict[str, Any]],
         data: Mapping[int, Any],
+        groups: list[dict[str, Any]] | None = None,
         get_device: DeviceLookup,
         rebuild_canonical: CanonicalRebuilder,
     ) -> None:
@@ -57,6 +59,7 @@ class RuntimePayloadBridge:
         self._devices = devices
         self._gateways = gateways
         self._data = data
+        self._groups = groups
         self._get_device = get_device
         self._rebuild_canonical = rebuild_canonical
 
@@ -69,6 +72,16 @@ class RuntimePayloadBridge:
         for update in updates:
             if not update.params:
                 continue
+            if _is_group_update(update):
+                changed = (
+                    self._groups is not None
+                    and merge_runtime_state_into_group_payloads(
+                        self._groups,
+                        group_id=update.node_id,
+                        params=update.params,
+                    )
+                ) or changed
+                continue
             changed = True
             self._runtime_state.store_update(
                 update.node_id,
@@ -77,6 +90,7 @@ class RuntimePayloadBridge:
                 gateways=self._gateways,
                 data=self._data,
                 rebuild_canonical=self._rebuild_canonical,
+                groups=self._groups,
             )
         return changed
 
@@ -170,9 +184,18 @@ def property_updates_from_adapter(
 ) -> list[RuntimePropertyUpdate]:
     """把 push/LAN adapter 的更新对象转换为 bridge 输入。"""
     return [
-        RuntimePropertyUpdate(node_id=update.node_id, params=update.params)
+        RuntimePropertyUpdate(
+            node_id=update.node_id,
+            node_type=getattr(update, "node_type", None),
+            params=update.params,
+        )
         for update in updates
     ]
+
+
+def _is_group_update(update: RuntimePropertyUpdate) -> bool:
+    """判断属性更新是否来自 LAN 灯组节点。"""
+    return update.node_type == 4
 
 
 def coerce_device_id(value: Any) -> int | None:

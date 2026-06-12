@@ -93,6 +93,7 @@ async def test_diagnostics_reports_aggregate_runtime_data(
     assert data["runtime"]["topology_diff_summary"]["added"]["devices"] == 1
     assert data["runtime"]["topology_diff_summary"]["added"]["areas"] == 1
     assert data["runtime"]["product_schema_cache_size"] == 2
+    assert data["runtime"]["property_hydration"] == {}
     assert data["runtime"]["counts"] == {
         "devices": 2,
         "gateways": 1,
@@ -146,24 +147,25 @@ async def test_diagnostics_reports_aggregate_runtime_data(
         "writable_properties": 2,
     }
     assert data["runtime"]["entity_candidates"] == {
-        "total": 6,
+        "total": 7,
         "platforms": {
             "button": 1,
+            "light": 1,
             "number": 2,
             "select": 3,
         },
         "device_platforms": {},
         "sources": {
-            "group": 2,
+            "group": 3,
             "house": 3,
             "scene": 1,
         },
         "source_classes": {
-            "topology": 6,
+            "topology": 7,
         },
         "duplicate_key_count": 0,
         "availability": {
-            "available": 6,
+            "available": 7,
             "unavailable": 0,
         },
     }
@@ -190,7 +192,6 @@ async def test_diagnostics_reports_aggregate_runtime_data(
     }
     assert data["runtime"]["capability_filter"] == {
         "hidden_unknown_properties": 0,
-        "fallback_sensor_properties": 0,
         "unsupported_unknown_properties": 1,
     }
     assert data["runtime"]["device_import_filter_preview"] == {
@@ -213,24 +214,25 @@ async def test_diagnostics_reports_aggregate_runtime_data(
         },
     }
     assert data["runtime"]["entity_import_filter_preview"] == {
-        "total": 6,
+        "total": 7,
         "platforms": {
             "button": 1,
+            "light": 1,
             "number": 2,
             "select": 3,
         },
         "device_platforms": {},
         "sources": {
-            "group": 2,
+            "group": 3,
             "house": 3,
             "scene": 1,
         },
         "source_classes": {
-            "topology": 6,
+            "topology": 7,
         },
         "duplicate_key_count": 0,
         "availability": {
-            "available": 6,
+            "available": 7,
             "unavailable": 0,
         },
     }
@@ -244,6 +246,46 @@ async def test_diagnostics_reports_aggregate_runtime_data(
     dumped = json.dumps(data, ensure_ascii=False)
     for secret in aggregate_runtime_secret_markers():
         assert secret not in dumped
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_reports_safe_property_hydration_aggregates(
+    hass: HomeAssistant,
+    diagnostics_entry: MagicMock,
+) -> None:
+    """补水诊断只暴露聚合计数，不导出设备 id、属性名或属性值."""
+    coordinator = build_empty_diagnostics_coordinator()
+    coordinator.property_hydration_diagnostics = {
+        "request_groups": 1,
+        "requested_devices": 3,
+        "requested_property_sets": 37,
+        "requested_node_properties": 111,
+        "response_devices": 2,
+        "response_values": 5,
+        "merged_devices": 2,
+        "merged_values": 5,
+        "empty_response_groups": 0,
+        "failed_groups": 1,
+        "raw_device_id": "311930423",
+    }
+    install_runtime_entry(hass, diagnostics_entry, coordinator)
+
+    data = await async_get_config_entry_diagnostics(hass, diagnostics_entry)
+
+    assert data["runtime"]["property_hydration"] == {
+        "request_groups": 1,
+        "requested_devices": 3,
+        "requested_property_sets": 37,
+        "requested_node_properties": 111,
+        "response_devices": 2,
+        "response_values": 5,
+        "merged_devices": 2,
+        "merged_values": 5,
+        "empty_response_groups": 0,
+        "failed_groups": 1,
+    }
+    dumped = json.dumps(data, ensure_ascii=False)
+    assert "311930423" not in dumped
 
 @pytest.mark.asyncio
 async def test_diagnostics_reports_safe_runtime_health(

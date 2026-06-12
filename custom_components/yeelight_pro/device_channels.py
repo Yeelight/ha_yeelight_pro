@@ -8,6 +8,10 @@ from typing import Any
 
 from .capabilities.product_catalog import product_catalog
 from .capabilities.registry import product_spec
+from .device_channel_generated_names import (
+    generated_channel_name_index,
+    looks_like_generated_channel_name,
+)
 from .device_channel_semantics import (
     component_name_key,
     component_text,
@@ -54,20 +58,6 @@ _POSITIONAL_CHANNEL_LABELS = {
         3: "右键",
     },
 }
-_CHANNEL_NUMERAL_LABELS = {
-    1: ("一键", "1键"),
-    2: ("二键", "2键"),
-    3: ("三键", "3键"),
-    4: ("四键", "4键"),
-    5: ("五键", "5键"),
-    6: ("六键", "6键"),
-    7: ("七键", "7键"),
-    8: ("八键", "8键"),
-    9: ("九键", "9键"),
-    10: ("十键", "10键"),
-    11: ("十一键", "11键"),
-    12: ("十二键", "12键"),
-}
 _CHANNEL_NAME_KEYS = ("desc", "componentName", "component_name", "name")
 _MODEL_NAME_KEYS = (
     "productName",
@@ -94,7 +84,9 @@ def channel_name_label(
         count = None
     if inferred_index is None and count == 1 and _is_documented_channel_component(component):
         inferred_index = 1
-    if explicit and not _looks_like_generated_channel_name(
+    if inferred_index is None and explicit:
+        inferred_index = generated_channel_name_index(explicit)
+    if explicit and not looks_like_generated_channel_name(
         explicit,
         inferred_index,
         positional_context=has_positional_context,
@@ -335,65 +327,6 @@ def _first_text(payload: Mapping[str, Any], keys: tuple[str, ...]) -> str | None
         if value := to_str(payload.get(key)):
             return value
     return None
-
-
-def _looks_like_generated_channel_name(
-    value: str,
-    index: int | None,
-    *,
-    positional_context: bool = False,
-) -> bool:
-    """Return true for generated names that should be replaced."""
-    text = value.strip().lower().replace("-", "_").replace(" ", "_")
-    generated = {
-        "button",
-        "key",
-        "relay_switch",
-        "scene_button",
-        "scene_control_button",
-        "switch",
-        "switch_control",
-        "wireless_switch_channel",
-        "开关",
-        "按键",
-        "情景按键",
-    }
-    if positional_context:
-        generated.update({
-            "wireless_switch_channel",
-            "无线开关通道",
-        })
-    if index is not None:
-        generated.update({
-            str(index),
-            f"air_conditioner_{index}",
-            f"按键{index}",
-            f"按键_{index}",
-            f"第{index}键",
-            f"第_{index}_键",
-            f"键{index}",
-            f"键_{index}",
-            f"button_{index}",
-            f"channel_{index}",
-            f"curtain_{index}",
-            f"fan_{index}",
-            f"human_sensor_{index}",
-            f"key_{index}",
-            f"knob_{index}",
-            f"switch_{index}",
-            f"relay_switch_{index}",
-            f"relay_input_{index}",
-            f"sensor_{index}",
-            f"scene_button_{index}",
-            f"scene_control_button_{index}",
-            f"switch_control_{index}",
-            f"wireless_switch_channel_{index}",
-        })
-        generated.update(
-            label.strip().lower().replace("-", "_").replace(" ", "_")
-            for label in _CHANNEL_NUMERAL_LABELS.get(index, ())
-        )
-    return text in generated
 
 
 __all__ = ["channel_name_label", "switch_channel_count_hint"]

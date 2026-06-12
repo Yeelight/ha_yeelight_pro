@@ -26,7 +26,7 @@ async def test_group_brightness_number_uses_iot_property_key(mock_coordinator) -
         ("yeelight_pro", "12345"),
         ("yeelight_pro", "house:12345"),
     }
-    assert entity.device_info["name"] == "绿地中央公园"
+    assert entity.device_info["name"] == "绿地中央公园 灯组"
 
 
 @pytest.mark.asyncio

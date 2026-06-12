@@ -11,6 +11,7 @@ from ..canonical.models import (
 )
 from ..capabilities.registry import is_iot_category, product_model_from_catalog
 from .runtime_inference_helpers import infer_runtime_components, string_value
+from .runtime_model_labels import capability_model_name
 
 _BROAD_OR_GENERIC_CATEGORIES = frozenset({"", "light", "other", "relay_switch", "switch"})
 
@@ -37,7 +38,7 @@ class RuntimeInferredProductModelBuilder:
                 return catalog_model
             return _metadata_only_model(payload, model_id)
 
-        iot_category = _effective_category(payload)
+        iot_category = _effective_category(payload, components)
         product_type = iot_category or string_value(payload.get("type")) or "unknown"
 
         runtime_model = HAProductModel(
@@ -308,13 +309,28 @@ def _runtime_model_name(
     return iot_category or model_id
 
 
-def _effective_category(payload: Mapping[str, Any]) -> str | None:
+def _effective_category(
+    payload: Mapping[str, Any],
+    components: list[ComponentModel] | None = None,
+) -> str | None:
     """Return capability-derived category, falling back to raw category."""
-    return (
+    category = (
         string_value(payload.get("effective_category"))
         or string_value(payload.get("iot_category"))
         or string_value(payload.get("category"))
     )
+    if category not in _BROAD_OR_GENERIC_CATEGORIES:
+        return category
+    if components:
+        component_categories = [
+            component.category
+            for component in components
+            if component.category
+            and component.category not in _BROAD_OR_GENERIC_CATEGORIES
+        ]
+        if len(set(component_categories)) == 1:
+            return component_categories[0]
+    return category
 
 
 def _catalog_conflicts_with_runtime_category(
@@ -359,7 +375,7 @@ def _merge_catalog_product_metadata(
         product=ProductModel(
             model_id=catalog_product.model_id or product.model_id,
             manufacturer=product.manufacturer or catalog_product.manufacturer,
-            model=catalog_product.model or product.model,
+            model=capability_model_name(product.category, product.model or ""),
             description=product.description,
             category=product.category,
             categories=product.categories,

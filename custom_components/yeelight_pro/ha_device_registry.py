@@ -97,6 +97,8 @@ async def async_sync_gateway_devices(
             "configuration_url",
         ):
             value = device_info.get(key)
+            if key == "model":
+                value = registry_model_value(device_info, value)
             if value is not None:
                 kwargs[key] = value
         if _method_supports(device_registry.async_get_or_create, "model_id"):
@@ -246,9 +248,23 @@ def _device_info_from_payload(device_payload: Mapping[str, Any]) -> Mapping[str,
     payload = device_payload.get("ha_device_instance")
     device_info = payload.get("device_info") if isinstance(payload, Mapping) else None
     if isinstance(device_info, Mapping):
-        return device_info
+        return _device_info_with_classification_context(device_info, device_payload)
     fallback = device_payload.get("device_info")
-    return fallback if isinstance(fallback, Mapping) else None
+    if isinstance(fallback, Mapping):
+        return _device_info_with_classification_context(fallback, device_payload)
+    return None
+
+
+def _device_info_with_classification_context(
+    device_info: Mapping[str, Any],
+    device_payload: Mapping[str, Any],
+) -> Mapping[str, Any]:
+    """Add parent category evidence for local model normalization only."""
+    context: dict[str, Any] = {}
+    for key in ("iot_category", "category", "type"):
+        if key not in device_info and key in device_payload:
+            context[key] = device_payload[key]
+    return dict(device_info, **context) if context else device_info
 
 
 def _sync_existing_device_metadata(

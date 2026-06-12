@@ -193,7 +193,7 @@ def check_runtime_options_contract_tests(component_root: Path) -> list[str]:
             "test_options_flow_real_device_picker_load_error_is_redacted": (
                 "options picker redaction coverage"
             ),
-            "易来开关设备": "options picker friendly type label coverage",
+            "开关控制器": "options picker capability-first type label coverage",
             "CONF_DEVICE_IMPORT_FILTER_PICKER": "options picker opener coverage",
             "Kitchen Secret": "options picker label privacy marker",
         },

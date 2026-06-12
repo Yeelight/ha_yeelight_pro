@@ -11,6 +11,7 @@ TOPOLOGY_COLLECTIONS = (
     "areas",
     "rooms",
     "groups",
+    "houses",
     "scenes",
 )
 
@@ -129,15 +130,17 @@ def build_topology_snapshot(
     areas: list[dict[str, Any]],
     rooms: list[dict[str, Any]],
     groups: list[dict[str, Any]],
+    houses: list[dict[str, Any]],
     scenes: list[dict[str, Any]],
 ) -> dict[str, dict[str, tuple[Any, ...]]]:
-    """Build a comparable topology snapshot without runtime state values."""
+    """构建不包含运行时状态值的可比较拓扑快照。"""
     return {
         "devices": _device_collection_snapshot(devices),
         "gateways": _device_collection_snapshot(gateways),
         "areas": _named_collection_snapshot(areas),
         "rooms": _named_collection_snapshot(rooms),
         "groups": _named_collection_snapshot(groups),
+        "houses": _named_collection_snapshot(houses),
         "scenes": _named_collection_snapshot(scenes),
     }
 

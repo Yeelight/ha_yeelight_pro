@@ -24,20 +24,33 @@ def house_name_from_data(entry_data: Mapping[str, Any] | None) -> str:
 
 
 def house_device_info(coordinator: Any, *, name_suffix: str | None = None) -> dict[str, Any]:
-    """Return the shared HA device_info for house-level helper entities."""
+    """返回家庭级辅助实体共享的 HA device_info。"""
     house_id = _text(getattr(coordinator, "house_id", None)) or "house"
-    base_name = house_name_from_data(getattr(coordinator, "entry_data", None))
+    base_name = _coordinator_house_name(coordinator) or house_name_from_data(
+        getattr(coordinator, "entry_data", None)
+    )
     return {
         "identifiers": {(DOMAIN, f"house:{house_id}"), (DOMAIN, house_id)},
         "manufacturer": "Yeelight",
         "model": "Yeelight Pro 家庭",
-        "name": base_name,
+        "name": f"{base_name} {name_suffix}" if name_suffix else base_name,
     }
 
 
 def house_name_from_choice(choices: Mapping[Any, str], house_id: Any) -> str:
     """Resolve a selected house id back to the friendly choice label."""
     return friendly_house_name(choices.get(house_id)) or DEFAULT_HOUSE_NAME
+
+
+def _coordinator_house_name(coordinator: Any) -> str | None:
+    """返回 coordinator 缓存中的首个 LAN 房屋/整屋节点名称。"""
+    houses = getattr(coordinator, "houses", None)
+    if not isinstance(houses, list):
+        return None
+    for house in houses:
+        if isinstance(house, Mapping) and (name := friendly_house_name(house.get("name"))):
+            return name
+    return None
 
 
 def friendly_house_name(value: Any) -> str | None:

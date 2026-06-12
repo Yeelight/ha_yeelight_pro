@@ -28,18 +28,11 @@ _SPLIT_CONFIG_FLOW_CONTRACT_TEST_TOKENS = {
         "test_options_flow_confirms_reload_required_options": (
             "reload-required option confirmation coverage"
         ),
-        "test_options_flow_manual_device_filter_requires_reload": (
+        "test_options_flow_device_filter_wizard_requires_reload": (
             "manual device filter reload coverage"
         ),
-        "test_coordinator_scan_interval_reads_entry_options": (
-            "coordinator runtime scan interval coverage"
-        ),
-        "CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES": (
+        "CONF_DEVICE_IMPORT_FILTER": (
             "manual device filter id coverage"
-        ),
-        "get_enabled_platforms": "runtime platform set coverage",
-        "test_enabled_platforms_match_supported_platforms": (
-            "unsupported platform removal coverage"
         ),
     },
     "tests/test_options_flow_device_picker.py": {
@@ -58,7 +51,7 @@ _SPLIT_CONFIG_FLOW_CONTRACT_TEST_TOKENS = {
         "test_options_flow_real_device_picker_load_error_is_redacted": (
             "options real-device picker redaction coverage"
         ),
-        "易来开关设备": "options picker friendly type label coverage",
+        "开关控制器": "options picker capability-first type label coverage",
         "CONF_DEVICE_IMPORT_FILTER_PICKER": "options picker opener field coverage",
         "Kitchen Secret": "options picker label privacy marker",
     },
@@ -81,6 +74,15 @@ _SPLIT_CONFIG_FLOW_CONTRACT_TEST_TOKENS = {
         ),
         "refresh_product_schemas": "refresh service field translation coverage",
         "device_topology_changed": "topology Repair issue translation coverage",
+    },
+    "tests/test_runtime_options.py": {
+        "test_coordinator_scan_interval_reads_entry_options": (
+            "coordinator runtime scan interval coverage"
+        ),
+        "get_enabled_platforms": "runtime platform set coverage",
+        "test_enabled_platforms_match_supported_platforms": (
+            "unsupported platform removal coverage"
+        ),
     },
     "tests/config_flow_helpers.py": {
         "def config_flow": "shared config-flow fixture coverage",

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 import logging
 from typing import Any, Protocol
 
@@ -11,6 +11,7 @@ from ..capabilities.registry import product_hydration_properties
 from .device_classification import infer_iot_category
 from .device_runtime_capabilities import schema_conflicts_with_runtime_category
 from .exceptions import AuthenticationError, safe_error_summary
+from .property_hydration_summary import PropertyHydrationDiagnostics
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -104,6 +105,7 @@ async def async_hydrate_device_properties(
     house_id: int,
     devices: Sequence[Mapping[str, Any]],
     product_schemas: Mapping[int, Mapping[str, Any]] | None = None,
+    diagnostics: PropertyHydrationDiagnostics | None = None,
 ) -> list[dict[str, Any]]:
     """Return device rows with missing property values filled from Open API.
 
@@ -122,6 +124,8 @@ async def async_hydrate_device_properties(
         return normalized_devices
 
     requests = _hydration_requests(normalized_devices, product_schemas or {})
+    if diagnostics is not None:
+        diagnostics.record_requests(requests)
     if not requests:
         return normalized_devices
 
@@ -144,13 +148,20 @@ async def async_hydrate_device_properties(
                 len(properties),
                 safe_error_summary(err),
             )
+            if diagnostics is not None:
+                diagnostics.record_failure()
             continue
-        for device_id, values in _parse_multi_node_property_response(
+        parsed_values = _parse_multi_node_property_response(
             response if isinstance(response, Mapping) else {}
-        ).items():
+        )
+        if diagnostics is not None:
+            diagnostics.record_response(parsed_values)
+        for device_id, values in parsed_values.items():
             merged_values.setdefault(device_id, {}).update(values)
 
     values_by_device = merged_values
+    if diagnostics is not None:
+        diagnostics.record_merge(values_by_device)
     if not values_by_device:
         return normalized_devices
 
@@ -202,7 +213,7 @@ def _device_hydration_properties(
         device,
         inferred_category=category,
         existing_props=existing_props,
-        schema_props=schema_props | catalog_props,
+        schema_props=schema_props,
     ):
         props.update(DEFAULT_HYDRATION_PROPERTIES)
     return _ordered_properties(props)
@@ -258,12 +269,13 @@ def _merge_property_values(
 def _parse_multi_node_property_response(response: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
     """Parse documented 3.2.7 response variants into values by resource id."""
     raw_data = response.get("data")
-    if not isinstance(raw_data, Mapping):
+    if not isinstance(raw_data, (Mapping, list)):
         return {}
 
     parsed: dict[str, dict[str, Any]] = {}
-    for resource_id, result in raw_data.items():
-        if not isinstance(result, Mapping):
+    for resource_id, result in _node_property_results(raw_data):
+        result = _node_read_result(result)
+        if result is None:
             continue
         code = to_str(result.get("code"))
         if code not in {None, "", "200"}:
@@ -272,6 +284,36 @@ def _parse_multi_node_property_response(response: Mapping[str, Any]) -> dict[str
         if values:
             parsed[str(resource_id)] = values
     return parsed
+
+
+def _node_property_results(
+    raw_data: Mapping[str, Any] | list[Any],
+) -> Iterable[tuple[Any, Any]]:
+    """Yield resource ids and read results from map or list response shapes."""
+    if isinstance(raw_data, Mapping):
+        yield from raw_data.items()
+        return
+    for item in raw_data:
+        if not isinstance(item, Mapping):
+            continue
+        resource_id = item.get("resId", item.get("id", item.get("resourceId")))
+        if resource_id is None:
+            continue
+        yield resource_id, item
+
+
+def _node_read_result(value: Any) -> Mapping[str, Any] | None:
+    """Return one node read result, unwrapping list-row response variants."""
+    if not isinstance(value, Mapping):
+        return None
+    data = value.get("data")
+    if (
+        "code" not in value
+        and isinstance(data, Mapping)
+        and ("code" in data or "data" in data)
+    ):
+        return data
+    return value
 
 
 def _property_values(value: Any) -> dict[str, Any]:

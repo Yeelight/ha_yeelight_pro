@@ -9,11 +9,6 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 
 from ..canonical.models import ComponentInstanceModel, HADeviceInstanceModel, HAProductModel
-from ..capabilities.filter import (
-    should_project_unknown_property,
-    unknown_sensor_component_id,
-    unknown_sensor_name,
-)
 from ..const import DEFAULT_HIDE_UNKNOWN_ENTITIES
 from ..device_display import channel_name_label
 from .common import load_instance, load_product_model, payload_available, product_component
@@ -112,43 +107,7 @@ def project_sensors(
             )
         )
 
-    projected_keys = _projected_sensor_keys(occurrences)
-    for key, value in params.items():
-        if value is None:
-            continue
-        decision = should_project_unknown_property(
-            key,
-            value,
-            device_payload,
-            platform="sensor",
-            hide_unknown_entities=hide_unknown_entities,
-        )
-        if not decision.allowed or key in projected_keys:
-            continue
-        component_id = unknown_sensor_component_id(key)
-        projections.append(
-            HASensorProjection(
-                component_id=component_id,
-                unique_id=f"{domain}_{device_id}_{component_id}",
-                name=unknown_sensor_name(key),
-                available=base_available,
-                native_value=value,
-                device_class=None,
-                native_unit_of_measurement=None,
-                state_class=None,
-                device_info=device_info,
-                icon="mdi:help-circle-outline",
-            )
-        )
-
     return projections
-
-
-def _projected_sensor_keys(
-    occurrences: list[tuple[str, ComponentInstanceModel | None, Any]],
-) -> set[str]:
-    """Return all registry-backed sensor keys already handled by schema/runtime."""
-    return {key for key, _component, _value in occurrences}
 
 
 def _sensor_property_occurrences(

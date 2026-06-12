@@ -60,8 +60,8 @@ LOCAL_HA_RUNTIME_VERIFIER_TEST_TOKENS = {
         "test_verify_storage_allows_missing_optional_open_api_client_id": (
             "manual token optional client id coverage"
         ),
-        "test_verify_storage_rejects_missing_required_option_keys": (
-            "config entry option key coverage"
+        "test_verify_storage_reports_defaulted_option_keys": (
+            "config entry option default coverage"
         ),
         "test_verify_storage_rejects_invalid_option_values": (
             "config entry option bounds coverage"
@@ -231,6 +231,9 @@ LOCAL_HA_RUNTIME_VERIFIER_TEST_TOKENS = {
         ),
         "test_verify_runtime_entity_counts_normalizes_spaced_platform_logs": (
             "spaced binary sensor runtime log coverage"
+        ),
+        "test_verify_runtime_entity_counts_sums_latest_reconcile_per_entry": (
+            "multi-entry runtime reconcile total coverage"
         ),
         "test_verify_runtime_entity_counts_rejects_old_switch_leak": (
             "old switch leak runtime failure coverage"

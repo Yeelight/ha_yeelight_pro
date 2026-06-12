@@ -104,6 +104,30 @@ def test_required_modules_include_platform_contract_data() -> None:
     )
 
 
+def test_required_modules_include_platform_contract_evidence() -> None:
+    """本地 HA 安装态必须保留平台候选能力证据 helper."""
+    assert (
+        "custom_components.yeelight_pro.capabilities.platform_contract_evidence"
+        in REQUIRED_RUNTIME_MODULES
+    )
+
+
+def test_required_modules_include_property_index_helper() -> None:
+    """本地 HA 安装态必须保留官方组件属性反向索引 helper."""
+    assert (
+        "custom_components.yeelight_pro.capabilities.property_index"
+        in REQUIRED_RUNTIME_MODULES
+    )
+
+
+def test_required_modules_include_property_hydration_summary() -> None:
+    """本地 HA 安装态必须保留补水聚合诊断 helper."""
+    assert (
+        "custom_components.yeelight_pro.core.property_hydration_summary"
+        in REQUIRED_RUNTIME_MODULES
+    )
+
+
 def test_required_modules_include_runtime_inference_helper() -> None:
     """本地 HA 安装态必须保留运行时推断 helper."""
     assert (

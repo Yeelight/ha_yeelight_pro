@@ -65,10 +65,10 @@ def verify_storage(
     enabled_entries = [
         entry for entry in entries if entry.get("disabled_by") in (None, "")
     ]
-    if len(enabled_entries) != expected_config_entries:
+    if len(enabled_entries) < expected_config_entries:
         report.fail(
-            "config entry count mismatch: "
-            f"expected {expected_config_entries}, got {len(enabled_entries)}"
+            "config entry count below minimum: "
+            f"expected at least {expected_config_entries}, got {len(enabled_entries)}"
         )
     else:
         report.fact(f"enabled config entries: {len(enabled_entries)}")

@@ -93,6 +93,14 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "_FIRMWARE_VERSION_KEYS": "top-level firmware metadata aliases",
         "parse_component_property_key": "indexed fv property key parsing",
     },
+    "custom_components/yeelight_pro/core/property_hydration_summary.py": {
+        "PropertyHydrationDiagnostics": (
+            "property hydration aggregate diagnostics model"
+        ),
+        "record_requests": "hydration request aggregate coverage",
+        "record_response": "hydration response aggregate coverage",
+        "as_dict": "hydration diagnostics JSON-safe serializer",
+    },
     "custom_components/yeelight_pro/device_display.py": {
         "device_type_label": "friendly picker device type summary",
         "channel_name_label": "friendly sub-entity channel label",
@@ -102,6 +110,11 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "uses_output_channel_label": "input/output channel naming semantics",
         "OUTPUT_CHANNEL_CATEGORIES": "relay output channel category guard",
         "EVENT_INPUT_CATEGORIES": "event input channel category guard",
+    },
+    "custom_components/yeelight_pro/device_channel_generated_names.py": {
+        "looks_like_generated_channel_name": "generated channel name replacement guard",
+        "generated_channel_name_index": "generated channel index parser guard",
+        "CHANNEL_NUMERAL_LABELS": "Chinese channel numeral label registry",
     },
     "custom_components/yeelight_pro/device_select.py": {
         "YeelightProDeviceSelect": "device select entity split helper",
@@ -132,8 +145,15 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
     },
     "custom_components/yeelight_pro/capabilities/platform_contract.py": {
         "platform_contract_data": "platform contract data split import",
+        "platform_contract_evidence": "platform contract evidence split import",
         "platform_candidates_for_payload": "payload platform candidate facade",
         "PRIMARY_PLATFORM_CONTRACT_ROWS": "platform evidence row source",
+    },
+    "custom_components/yeelight_pro/capabilities/platform_contract_evidence.py": {
+        "capability_category": "property and component category evidence ordering",
+        "has_light_capability_evidence": "explicit light control evidence helper",
+        "has_switch_capability_evidence": "explicit switch control evidence helper",
+        "has_indexed_switch_control": "indexed switch capability evidence helper",
     },
     "custom_components/yeelight_pro/capabilities/platform_contract_data.py": {
         "PRIMARY_PLATFORM_CONTRACT_ROWS": "platform evidence row registry",
@@ -142,6 +162,16 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "READ_ONLY_SENSOR_PROPS": "sensor property candidate registry",
         "CLIMATE_CANDIDATE_PROPS": "climate property candidate registry",
         "LIGHT_CONTROL_PROPS": "light property candidate registry",
+    },
+    "custom_components/yeelight_pro/capabilities/property_aliases.py": {
+        "PROPERTY_ALIASES": "documented property alias registry",
+        "localToken": "local token property alias coverage",
+    },
+    "custom_components/yeelight_pro/capabilities/property_index.py": {
+        "enrich_property_component_memberships": (
+            "official component-property membership derivation"
+        ),
+        "_property_memberships": "property to component index builder",
     },
     "custom_components/yeelight_pro/ha_house_registry.py": {
         "sync_house_device": "house helper registry sync facade",
@@ -272,6 +302,10 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "infer_runtime_capabilities": "runtime capability inference helper",
         "openapi_runtime_properties": "top-level OpenAPI property metadata reuse",
         "RUNTIME_PROPERTY_TEMPLATES": "runtime inference template registry use",
+    },
+    "custom_components/yeelight_pro/converter/runtime_model_labels.py": {
+        "capability_model_name": "runtime capability model label helper",
+        "开关控制器": "relay-switch capability-first model label",
     },
     "custom_components/yeelight_pro/converter/runtime_template_selector.py": {
         "runtime_template_key": "runtime property-evidence template selector",

@@ -12,19 +12,16 @@ DOMAIN = "yeelight_pro"
 DEFAULT_CONTAINER = "lucore-ha-verify"
 DEFAULT_HA_URL = "http://localhost:18124"
 DEFAULT_ENTITY_COUNTS = {
-    "binary_sensor": 16,
     "button": 21,
-    "climate": 5,
-    "cover": 7,
-    "event": 5,
-    "light": 32,
-    "number": 14,
-    "select": 3,
-    "sensor": 21,
-    "switch": 34,
+    "binary_sensor": 1,
+    "light": 44,
+    "number": 15,
+    "select": 8,
+    "sensor": 44,
+    "switch": 87,
 }
 DEFAULT_EXPECTED_ENTITIES = sum(DEFAULT_ENTITY_COUNTS.values())
-DEFAULT_EXPECTED_DEVICES = 2
+DEFAULT_EXPECTED_DEVICES = 75
 DEFAULT_EXPECTED_CONFIG_ENTRIES = 1
 
 EXCLUDED_COMPARE_PARTS = {
@@ -78,6 +75,8 @@ REQUIRED_RUNTIME_MODULES = (
     "custom_components.yeelight_pro.capabilities.spec_correction_normalizers",
     "custom_components.yeelight_pro.capabilities.platform_contract",
     "custom_components.yeelight_pro.capabilities.platform_contract_data",
+    "custom_components.yeelight_pro.capabilities.platform_contract_evidence",
+    "custom_components.yeelight_pro.capabilities.property_index",
     "custom_components.yeelight_pro.capabilities.product_catalog",
     "custom_components.yeelight_pro.capabilities.product_catalog_data",
     "custom_components.yeelight_pro.capabilities.ha_platforms",
@@ -122,6 +121,7 @@ REQUIRED_RUNTIME_MODULES = (
     "custom_components.yeelight_pro.core.lan_control",
     "custom_components.yeelight_pro.core.lan_topology_payload",
     "custom_components.yeelight_pro.core.property_hydration",
+    "custom_components.yeelight_pro.core.property_hydration_summary",
     "custom_components.yeelight_pro.core.coordinator_runtime",
     "custom_components.yeelight_pro.core.scan_login",
     "custom_components.yeelight_pro.core.runtime_bridge",

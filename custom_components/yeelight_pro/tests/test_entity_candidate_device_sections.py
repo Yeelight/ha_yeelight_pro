@@ -58,5 +58,5 @@ def test_schema_rich_device_projects_device_page_sections() -> None:
     assert candidates[("switch", "main_light_li_switch")].entity_category == "config"
     assert candidates[("select", "main_light_rd_select")].entity_category == "config"
     assert candidates[("number", "main_light_min_level_number")].entity_category == "config"
-    assert candidates[("event", "main_light")].entity_category == "diagnostic"
+    assert candidates[("event", "main_light")].entity_category is None
     assert candidates[("event", "main_light")].name is None

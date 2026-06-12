@@ -67,23 +67,23 @@ REQUIRED_I18N_LEAF_PATHS: set[tuple[str, ...]] = {
     ("config", "step", "private_config", "data", "access_token"),
     ("config", "step", "private_config", "data", "house_id"),
     ("config", "step", "reauth_confirm", "data", "access_token"),
-    ("options", "step", "init", "data", "scan_interval"),
-    ("options", "step", "init", "data", "debug_mode"),
-    ("options", "step", "init", "data", "hide_unknown_entities"),
-    ("options", "step", "init", "data", "topology_change_repairs"),
+    ("options", "step", "init", "menu_options", "general"),
+    ("options", "step", "init", "menu_options", "cloud_devices"),
+    ("options", "step", "init", "menu_options", "filter_categories"),
+    ("options", "step", "general", "data", "scan_interval"),
+    ("options", "step", "general", "data", "debug_mode"),
+    ("options", "step", "general", "data", "hide_unknown_entities"),
+    ("options", "step", "general", "data", "topology_change_repairs"),
+    ("options", "step", "filter_categories", "data", "filter_categories"),
+    ("options", "step", "filter_rooms", "data", "filter_rooms"),
+    ("options", "step", "filter_gateways", "data", "filter_gateways"),
+    ("options", "step", "filter_devices", "data", "filter_devices"),
     (
         "options",
         "step",
-        "init",
+        "cloud_devices",
         "data",
-        "device_import_filter_enabled",
-    ),
-    (
-        "options",
-        "step",
-        "init",
-        "data",
-        "device_import_filter_mode",
+        "device_import_filter_include_devices",
     ),
     ("options", "step", "confirm_runtime", "title"),
     ("options", "step", "confirm_runtime", "description"),
@@ -188,8 +188,11 @@ def _verify_home_assistant_options_paths(
                 "options flow translations must use top-level options path in "
                 f"{name}, not config.options"
             )
-        if not mapping_at(payload, ("options", "step", "init", "data")):
-            report.fail(f"options flow translations missing in {name}: options.step.init.data")
+        if not mapping_at(payload, ("options", "step", "general", "data")):
+            report.fail(
+                f"options flow translations missing in {name}: "
+                "options.step.general.data"
+            )
 
 
 def _verify_required_paths(
@@ -202,7 +205,7 @@ def _verify_required_paths(
     required_paths = set(REQUIRED_I18N_LEAF_PATHS)
     required_paths.update(selector_option_paths)
     for option_key in option_keys:
-        required_paths.add(("options", "step", "init", "data", option_key))
+        required_paths.add(("options", "step", "general", "data", option_key))
     for service in REQUIRED_SERVICES:
         required_paths.add(("services", service, "name"))
         required_paths.add(("services", service, "description"))

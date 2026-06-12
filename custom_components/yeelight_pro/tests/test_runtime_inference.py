@@ -111,8 +111,8 @@ def test_runtime_inferred_product_model_does_not_use_user_device_name_as_model()
     assert product.product.model == "light"
 
 
-def test_runtime_inferred_product_model_keeps_category_template_without_params() -> None:
-    """云端列表未带当前属性值时，明确品类仍应生成可恢复实体的 schema."""
+def test_runtime_inferred_product_model_keeps_metadata_without_empty_template() -> None:
+    """云端列表未带能力值时，只保留品类元数据，不生成假属性组件."""
     payload = {
         "model_id": "runtime-human-empty",
         "type": "light",
@@ -124,14 +124,10 @@ def test_runtime_inferred_product_model_keeps_category_template_without_params()
     product = RuntimeInferredProductModelBuilder().build(payload)
 
     assert product is not None
+    assert product.schema_version == "runtime-v1"
     assert product.product.category == "human_sensor"
-    assert product.components[0].component_id == "human_sensor"
-    assert [prop.prop_id for prop in product.components[0].properties] == [
-        "mv",
-        "alm",
-        "luminance",
-        "bl",
-    ]
+    assert product.product.categories == ["human_sensor"]
+    assert product.components == []
 
 
 def test_runtime_inferred_product_model_blocks_empty_light_fallback() -> None:
@@ -303,10 +299,28 @@ def test_runtime_builder_catalog_never_overrides_live_property_evidence() -> Non
     })
 
     assert product is not None
-    assert product.product.model == "Yeelight Pro S21 智能墙壁开关-双键"
+    assert product.product.model_id == "YL-854018"
+    assert product.product.model == "照度传感器"
     runtime_component = product.components[-1]
     assert runtime_component.component_id == "light_sensor"
     assert runtime_component.category == "light_sensor"
     assert {"mv", "luminance", "sens_range"} & {
         prop.prop_id for prop in runtime_component.properties
     }
+
+
+def test_runtime_builder_contact_capability_name_overrides_conflicting_catalog() -> None:
+    """门磁能力与产品目录冲突时，设备型号显示能力类型而不是错误产品名."""
+    product = RuntimeInferredProductModelBuilder().build({
+        "device_id": "misleading-contact-row",
+        "pid": 854018,
+        "category": "light",
+        "params": {"dc": False, "alm": True},
+    })
+
+    assert product is not None
+    assert product.product.model_id == "YL-854018"
+    assert product.product.model == "门磁传感器"
+    assert [component.component_id for component in product.components] == [
+        "contact_sensor"
+    ]

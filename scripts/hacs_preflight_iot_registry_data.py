@@ -16,6 +16,12 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         "test_broad_cloud_light_sensor_payload_maps_to_sensor_only": (
             "broad cloud light sensor mapping guard"
         ),
+        "test_category_without_capability_evidence_does_not_project_platform": (
+            "category-only platform projection rejection guard"
+        ),
+        "test_acrc_config_property_does_not_claim_remote_platform": (
+            "documented auxiliary bool switch evidence guard"
+        ),
     },
     "test_openapi_broad_category_projection.py": {
         "test_documented_light_sensor_component_with_motion_stays_light_sensor": (
@@ -39,6 +45,17 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
             "device name cannot override documented IoT capabilities"
         ),
         "sens_range": "documented light-sensor configuration property guard",
+    },
+    "test_device_payload_runtime_capabilities.py": {
+        "test_build_runtime_payloads_infers_real_category_from_properties": (
+            "runtime payload capability-first category inference coverage"
+        ),
+        "test_runtime_payloads_project_entities_from_each_supported_property": (
+            "runtime payload property-level entity projection coverage"
+        ),
+        "test_runtime_payloads_do_not_infer_capabilities_from_safety_name": (
+            "runtime payload no device-name type inference coverage"
+        ),
     },
     "test_openapi_broad_schema_conflicts.py": {
         "test_conflicting_light_product_schema_does_not_override_sensor_evidence": (
@@ -88,6 +105,11 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         "test_registry_uses_csv_access_for_documented_properties": (
             "CSV property access coverage"
         ),
+    },
+    "iot_registry_csv_helpers.py": {
+        "component_properties_from_iot_docs": "CSV component-property helper coverage",
+        "property_access_by_prop": "CSV property-access helper coverage",
+        "基础信息_组件列表.csv": "vendor component CSV helper coverage",
     },
     "test_device_payload_firmware_metadata.py": {
         "test_runtime_metadata_uses_official_fv_property_as_sw_version": (
@@ -193,8 +215,8 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         "test_unknown_bool_and_structured_values_do_not_become_controls": (
             "unknown bool/control fallback rejection coverage"
         ),
-        "test_unknown_property_fallback_is_sensor_only": (
-            "unknown writable platform fallback rejection coverage"
+        "test_unknown_property_does_not_project_to_any_platform": (
+            "unknown property platform rejection coverage"
         ),
         "test_event_input_payload_does_not_use_unknown_sensor_fallback": (
             "event-input unknown fallback rejection coverage"
@@ -277,8 +299,11 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         "test_runtime_payloads_keep_empty_control_category_metadata_only": (
             "empty value control category metadata-only coverage"
         ),
-        "test_runtime_payloads_keep_documented_sensor_entities_when_values_are_missing": (
-            "empty value documented sensor entity retention coverage"
+        "test_runtime_payloads_keep_sensor_category_metadata_without_values": (
+            "empty value documented sensor metadata-only coverage"
+        ),
+        "test_runtime_payloads_keep_empty_cover_and_climate_metadata_only": (
+            "empty value control category metadata-only coverage"
         ),
     },
     "test_entity_candidates.py": {

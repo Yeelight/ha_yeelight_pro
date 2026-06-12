@@ -102,7 +102,7 @@ def test_iot_registry_contract_check_requires_coverage_tokens(
     assert any("power alarm schema event projection coverage" in error for error in errors)
     for reason in (
         "unknown bool/control fallback rejection coverage",
-        "unknown writable platform fallback rejection coverage",
+        "unknown property platform rejection coverage",
         "event-input unknown fallback rejection coverage",
         "low-frequency component fallback rejection coverage",
         "low-frequency diagnostics aggregate-only coverage",
@@ -175,6 +175,7 @@ def test_split_contract_check_requires_coverage_tokens(
     _write_test_file(tests_root / "config_entry_lifecycle_helpers.py", "")
     _write_test_file(tests_root / "test_config_entry_unload.py", "")
     _write_test_file(tests_root / "test_options_flow_contract.py", "")
+    _write_test_file(tests_root / "test_runtime_options.py", "")
     _write_test_file(tests_root / "test_translation_runtime_contract.py", "")
     _write_test_file(component_root / "config_flow_device_picker.py", "")
     _write_test_file(component_root / "config_flow_account.py", "")

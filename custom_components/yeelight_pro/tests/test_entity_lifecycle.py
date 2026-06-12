@@ -24,12 +24,13 @@ def test_collect_active_entity_keys_projects_cloud_scenes_as_buttons_only() -> N
     keys = collect_active_entity_keys(coordinator)
 
     assert ("button", "yeelight_pro_scene_scene_1") in keys
+    assert ("light", "yeelight_pro_group_group_1_light") in keys
     assert ("number", "yeelight_pro_group_group_1_brightness") in keys
     assert ("number", "yeelight_pro_group_group_1_color_temp") in keys
     assert ("select", "yeelight_pro_12345_select_room") in keys
     assert ("select", "yeelight_pro_12345_select_group") in keys
     assert ("select", "yeelight_pro_12345_select_scene") in keys
-    assert len(keys) == 6
+    assert len(keys) == 7
 
 
 def test_collect_active_entity_keys_excludes_unsupported_vacuum_payload() -> None:

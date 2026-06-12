@@ -77,11 +77,51 @@ def test_device_choices_use_openapi_room_aliases() -> None:
 
     labels = {item.device_id: item.label for item in choices}
     assert labels == {
-        "dev-1": "厨房双键开关 (易来开关设备 / 厨房)",
-        "dev-2": "过道筒灯 (易来照明设备 / 过道)",
+        "dev-1": "厨房双键开关 (继电器开关 / 厨房)",
+        "dev-2": "过道筒灯 (灯具 / 过道)",
     }
     assert "relay_switch" not in " ".join(labels.values())
     assert "light" not in " ".join(labels.values())
+
+
+def test_device_choices_use_runtime_capability_type_before_broad_category() -> None:
+    """picker 有属性能力证据时，应显示具体设备类型而不是粗 category."""
+    choices = device_choices([
+        {
+            "id": "dev-1",
+            "name": "玄关门磁",
+            "category": "light",
+            "model": "light",
+            "properties": [
+                {"propId": "dc", "value": False, "format": "boolean"},
+                {"propId": "alm", "value": False, "format": "boolean"},
+            ],
+            "roomName": "玄关",
+        },
+        {
+            "id": "dev-2",
+            "name": "墙壁开关",
+            "category": "light",
+            "model": "light",
+            "subDeviceList": [
+                {
+                    "index": 1,
+                    "category": "relay_switch",
+                    "properties": [
+                        {"propId": "p", "value": True, "operators": ["set"]},
+                    ],
+                },
+            ],
+            "roomName": "客厅",
+        },
+    ])
+
+    labels = {item.device_id: item.label for item in choices}
+    assert labels == {
+        "dev-1": "玄关门磁 (门磁传感器 / 玄关)",
+        "dev-2": "墙壁开关 (开关控制器 / 客厅)",
+    }
+    assert "灯具" not in " ".join(labels.values())
 
 
 def test_cloud_devices_schema_uses_multi_select_options() -> None:
@@ -118,7 +158,7 @@ def test_device_choices_do_not_infer_type_from_user_name() -> None:
     ])
 
     assert [(item.device_id, item.label) for item in choices] == [
-        ("dev-1", "厨房烟雾传感器 (易来照明设备 / 厨房)")
+        ("dev-1", "厨房烟雾传感器 (灯具 / 厨房)")
     ]
 
 

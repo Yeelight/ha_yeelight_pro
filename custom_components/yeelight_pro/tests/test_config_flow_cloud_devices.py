@@ -31,6 +31,14 @@ async def test_cloud_devices_loads_real_devices_and_defaults_to_all(
     mock_client.get_devices.return_value = [
         {"id": "dev-1", "name": "Light", "category": "light"},
         {"id": "dev-2", "name": "Curtain", "category": "curtain"},
+        {
+            "id": "dev-3",
+            "name": "Door",
+            "category": "light",
+            "properties": [
+                {"propId": "dc", "value": True, "format": "boolean"},
+            ],
+        },
     ]
     mock_client_class.return_value = mock_client
     mock_get_session.return_value = MagicMock()
@@ -45,12 +53,13 @@ async def test_cloud_devices_loads_real_devices_and_defaults_to_all(
     schema = result["data_schema"].schema
     field = next(iter(schema))
     assert field.schema == CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES
-    assert field.default() == ["dev-2", "dev-1"]
+    assert field.default() == ["dev-2", "dev-3", "dev-1"]
     device_selector = schema[field]
     assert device_selector.config["multiple"] is True
     assert device_selector.config["options"] == [
         {"value": "dev-2", "label": "Curtain (窗帘)"},
-        {"value": "dev-1", "label": "Light (易来照明设备)"},
+        {"value": "dev-3", "label": "Door (门磁传感器)"},
+        {"value": "dev-1", "label": "Light (灯具)"},
     ]
     mock_client.get_devices.assert_awaited_once_with(1)
     mock_client_class.assert_called_once()

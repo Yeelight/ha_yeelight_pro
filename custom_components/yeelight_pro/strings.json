@@ -102,44 +102,66 @@
     "step": {
       "init": {
         "title": "Yeelight Pro 选项",
-        "description": "调整运行时刷新、调试、实时更新和设备导入过滤。",
+        "description": "请选择要配置的选项。云端模式不会显示本地网关配置。",
+        "menu_options": {
+          "general": "通用设置",
+          "cloud_devices": "真实设备选择",
+          "filter_categories": "设备导入过滤"
+        }
+      },
+      "general": {
+        "title": "Yeelight Pro 通用设置",
+        "description": "调整轮询、调试和云端实时更新设置。云端模式不包含本地网关配置；设备导入过滤请返回上一级选择专用向导。",
         "data": {
           "scan_interval": "轮询间隔（秒）",
           "debug_mode": "启用调试服务",
           "hide_unknown_entities": "隐藏未知能力实体",
           "topology_change_repairs": "设备拓扑变化时创建 Repairs 提示",
-          "device_import_filter_enabled": "启用设备导入过滤",
-          "device_import_filter_mode": "过滤规则匹配方式",
-          "device_import_filter_include_categories": "包含设备品类（逗号分隔）",
-          "device_import_filter_exclude_categories": "排除设备品类（逗号分隔）",
-          "device_import_filter_include_types": "包含 nodeType/type（逗号分隔）",
-          "device_import_filter_exclude_types": "排除 nodeType/type（逗号分隔）",
-          "device_import_filter_include_rooms": "包含房间 ID（逗号分隔）",
-          "device_import_filter_exclude_rooms": "排除房间 ID（逗号分隔）",
-          "device_import_filter_include_gateways": "包含网关 ID（逗号分隔）",
-          "device_import_filter_exclude_gateways": "排除网关 ID（逗号分隔）",
-          "device_import_filter_include_product_ids": "包含产品 ID（逗号分隔）",
-          "device_import_filter_exclude_product_ids": "排除产品 ID（逗号分隔）",
-          "device_import_filter_include_devices": "包含设备 ID（逗号分隔）",
-          "device_import_filter_exclude_devices": "排除设备 ID（逗号分隔）",
-          "device_import_filter_picker": "打开真实设备选择器",
           "live_updates": "启用 WebSocket 事件通知",
           "local_gateway_control": "启用本地网关控制",
           "local_gateway_host": "本地网关地址",
           "local_gateway_port": "本地网关端口"
         }
       },
+      "filter_categories": {
+        "title": "选择设备品类",
+        "description": "选择要导入的设备品类。取消选择的品类将不会导入。",
+        "data": {
+          "filter_categories": "设备品类"
+        }
+      },
+      "filter_rooms": {
+        "title": "选择房间",
+        "description": "选择要导入设备的房间。取消选择的房间中的设备将不会导入。",
+        "data": {
+          "filter_rooms": "房间"
+        }
+      },
+      "filter_gateways": {
+        "title": "选择网关",
+        "description": "选择要导入设备的网关。取消选择的网关下的设备将不会导入。",
+        "data": {
+          "filter_gateways": "网关"
+        }
+      },
+      "filter_devices": {
+        "title": "选择设备",
+        "description": "选择要导入的具体设备。取消选择的设备将不会导入。",
+        "data": {
+          "filter_devices": "设备"
+        }
+      },
       "confirm_runtime": {
         "title": "确认 Yeelight Pro 选项",
-        "description": "将保存 {changed_count} 项可见选项变更。\n\n这些变更可在当前运行态直接生效，不需要重新加载集成。确认步骤不会调用额外的 Yeelight API。"
+        "description": "将保存 {changed_count} 项可见选项变更。\n\n这些变更可在当前运行态直接生效，不需要重新加载集成。"
       },
       "confirm_reload": {
         "title": "确认并重新加载 Yeelight Pro",
-        "description": "将保存 {changed_count} 项可见选项变更。\n\n其中包含会影响平台或实体候选的选项。保存后 Home Assistant 将按 options 更新监听重新加载该集成。确认步骤不会调用额外的 Yeelight API。"
+        "description": "将保存 {changed_count} 项可见选项变更。\n\n保存后 Home Assistant 将重新加载该集成。"
       },
       "cloud_devices": {
-        "title": "调整导入设备",
-        "description": "从当前云端家庭重新加载真实设备，并选择要导入 Home Assistant 的设备。保存后只会写入设备 ID 过滤规则，不会保存设备名称、房间名称或原始设备列表。",
+        "title": "选择云端设备",
+        "description": "选择要导入到 Home Assistant 的易来设备。",
         "data": {
           "device_import_filter_include_devices": "设备"
         }
@@ -149,28 +171,22 @@
   "selector": {
     "connection_mode": {
       "options": {
-        "cloud": "Yeelight Pro 云端（推荐）",
-        "private": "私有部署（Lucore）",
-        "lan": "局域网控制（无需登录）"
+        "cloud": "云端控制",
+        "private": "私有部署",
+        "lan": "局域网控制"
       }
     },
     "cloud_auth_method": {
       "options": {
-        "scan_login": "易来 APP 扫码登录",
-        "access_token": "手动 Access Token"
-      }
-    },
-    "device_import_filter_mode": {
-      "options": {
-        "or": "任一维度匹配",
-        "and": "所有维度匹配"
+        "scan_login": "扫码登录",
+        "access_token": "Access Token"
       }
     },
     "cloud_region": {
       "options": {
         "cn": "中国大陆",
         "sg": "新加坡",
-        "us": "北美",
+        "us": "美国",
         "de": "欧洲"
       }
     }
@@ -233,7 +249,7 @@
   "issues": {
     "device_topology_changed": {
       "title": "Yeelight Pro 设备清单已更新",
-      "description": "Yeelight Pro 检测到设备或拓扑信息发生变化，并已自动同步 Home Assistant 设备和实体注册表。\n\n本次变化摘要：新增 {added}，移除 {removed}，元数据变化 {metadata_changed}。\n\n当前聚合数量：设备 {devices}，网关 {gateways}，区域 {areas}，房间 {rooms}，灯组 {groups}，场景 {scenes}。\n\n如果设备或实体显示不符合预期，请进入该集成页面检查实体列表，必要时重新加载集成。"
+      "description": "Yeelight Pro 检测到设备或拓扑信息发生变化，并已自动同步 Home Assistant 设备和实体注册表。\n\n本次变化摘要：新增 {added}，移除 {removed}，元数据变化 {metadata_changed}。\n\n当前聚合数量：设备 {devices}，网关 {gateways}，区域 {areas}，房间 {rooms}，灯组 {groups}，整屋 {houses}，场景 {scenes}。\n\n如果设备或实体显示不符合预期，请进入该集成页面检查实体列表，必要时重新加载集成。"
     }
   }
 }

@@ -261,8 +261,8 @@ def test_three_gang_switch_projects_positional_channel_names() -> None:
     assert [item.name for item in projections] == ["左键", "中键", "右键"]
 
 
-def test_unknown_readable_property_projects_marked_fallback_sensor_when_hiding_disabled() -> None:
-    """隐藏关闭时，未知可读属性应生成明确标记 unknown 的 fallback sensor。"""
+def test_unknown_readable_property_does_not_project_when_hiding_disabled() -> None:
+    """隐藏关闭时，未知可读属性也不能泛化生成 sensor。"""
     device = projection_payload(
         device_id="unknown-visible-1",
         category="light_sensor",
@@ -273,15 +273,10 @@ def test_unknown_readable_property_projects_marked_fallback_sensor_when_hiding_d
     )
     device["hide_unknown_entities"] = False
 
-    projections = project_sensors(device, domain=DOMAIN)
-
-    assert len(projections) == 1
-    assert projections[0].component_id == "unknown_vendor_private"
-    assert projections[0].unique_id == f"{DOMAIN}_unknown-visible-1_unknown_vendor_private"
-    assert projections[0].native_value == 7
-    assert projections[0].device_class is None
-    assert projections[0].native_unit_of_measurement is None
-    assert projections[0].icon == "mdi:help-circle-outline"
+    assert project_sensors(device, domain=DOMAIN) == []
+    assert collect_active_entity_keys(
+        LifecycleCoordinator(data={"unknown": device}, hide_unknown_entities=False)
+    ) == set()
 
 
 def test_unknown_bool_value_does_not_project_generic_writable_or_binary_entity() -> None:

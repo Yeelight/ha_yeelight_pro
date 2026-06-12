@@ -2,19 +2,22 @@
 
 from __future__ import annotations
 
-import csv
-from pathlib import Path
-
 from custom_components.yeelight_pro.capabilities import iot_registry
-
-
-IOT_DOCS = Path(__file__).resolve().parents[3] / "docs" / "iot"
+from .iot_registry_csv_helpers import (
+    IOT_DOCS,
+    component_key,
+    component_properties_from_iot_docs,
+    csv_readable,
+    csv_rows,
+    csv_writable,
+    property_access_by_prop,
+)
 
 
 def test_registry_categories_match_iot_category_csv() -> None:
     """registry 品类必须来自易来基础信息品类表."""
     registry = iot_registry()
-    expected = {row["名称"] for row in _csv_rows("基础信息_品类列表.csv")}
+    expected = {row["名称"] for row in csv_rows("基础信息_品类列表.csv")}
 
     assert {item.category for item in registry.categories} == expected
 
@@ -33,10 +36,10 @@ def test_registry_covers_all_documented_categorized_components() -> None:
     registry = iot_registry()
     missing: list[str] = []
 
-    for row in _csv_rows("基础信息_组件列表.csv"):
+    for row in csv_rows("基础信息_组件列表.csv"):
         if not row["品类"] or not row["变量别名"]:
             continue
-        component = registry.component_map.get(_component_key(row["变量别名"]))
+        component = registry.component_map.get(component_key(row["变量别名"]))
         if component is None:
             missing.append(row["变量别名"])
             continue
@@ -50,7 +53,7 @@ def test_registry_covers_all_documented_component_identities() -> None:
     registry = iot_registry()
     missing: list[tuple[str, str]] = []
 
-    for row in _csv_rows("基础信息_组件列表.csv"):
+    for row in csv_rows("基础信息_组件列表.csv"):
         component_id = row["id"].strip()
         component_name = row["组件名称"].strip()
         if not component_id or not component_name:
@@ -60,7 +63,7 @@ def test_registry_covers_all_documented_component_identities() -> None:
             missing.append((component_id, component_name))
             continue
         assert component.name == component_name
-        assert registry.component_map.get(_component_key(component_name)) == component
+        assert registry.component_map.get(component_key(component_name)) == component
 
     assert missing == []
 
@@ -68,7 +71,7 @@ def test_registry_covers_all_documented_component_identities() -> None:
 def test_registry_component_set_matches_iot_component_csv() -> None:
     """OpenAPI registry 不能混入组件表以外的猜测组件."""
     registry = iot_registry()
-    expected = {int(row["id"]) for row in _csv_rows("基础信息_组件列表.csv") if row["id"]}
+    expected = {int(row["id"]) for row in csv_rows("基础信息_组件列表.csv") if row["id"]}
 
     assert {component.component_id for component in registry.components} == expected
 
@@ -76,7 +79,7 @@ def test_registry_component_set_matches_iot_component_csv() -> None:
 def test_registry_uses_csv_access_for_documented_properties() -> None:
     """registry 属性读写边界必须匹配易来属性表."""
     registry = iot_registry()
-    csv_access = _property_access_by_prop()
+    csv_access = property_access_by_prop()
 
     missing: list[str] = []
     mismatches: list[tuple[str, str, bool, bool]] = []
@@ -85,7 +88,7 @@ def test_registry_uses_csv_access_for_documented_properties() -> None:
         if spec is None:
             missing.append(prop)
             continue
-        expected = (_csv_readable(access), _csv_writable(access))
+        expected = (csv_readable(access), csv_writable(access))
         actual = (spec.readable, spec.writable)
         if actual != expected:
             mismatches.append((prop, access, spec.readable, spec.writable))
@@ -99,7 +102,7 @@ def test_registry_covers_iot_event_type_csv() -> None:
     registry = iot_registry()
     known_events = {event.normalized for event in registry.events}
 
-    for row in _csv_rows("基础信息_事件类型.csv"):
+    for row in csv_rows("基础信息_事件类型.csv"):
         event_id = row["id"].strip()
         event_text = row["文本"].strip()
         if not event_id or not event_text:
@@ -219,10 +222,10 @@ def test_registry_keeps_high_risk_component_property_sets_from_csv() -> None:
 def test_registry_component_properties_match_iot_csv_and_property_memberships() -> None:
     """registry 组件属性集必须匹配组件表和属性表的联合事实."""
     registry = iot_registry()
-    expected = _component_properties_from_iot_docs()
+    expected = component_properties_from_iot_docs()
     mismatches: list[tuple[str, tuple[str, ...], tuple[str, ...]]] = []
 
-    for row in _csv_rows("基础信息_组件列表.csv"):
+    for row in csv_rows("基础信息_组件列表.csv"):
         component_id = row["id"].strip()
         if not component_id:
             continue
@@ -241,6 +244,38 @@ def test_registry_component_properties_match_iot_csv_and_property_memberships() 
     assert mismatches == []
 
 
+def test_registry_property_components_are_derived_from_component_properties() -> None:
+    """属性反向组件归属必须由官方组件属性集派生，避免双向事实漂移."""
+    registry = iot_registry()
+    expected: dict[str, list[str]] = {}
+    for component in registry.components:
+        for prop in component.properties:
+            expected.setdefault(prop, []).append(component.alias)
+
+    mismatches: list[tuple[str, tuple[str, ...], tuple[str, ...]]] = []
+    for prop, component_aliases in expected.items():
+        spec = registry.property_spec(prop)
+        assert spec is not None
+        expected_components = tuple(component_aliases)
+        if spec.components != expected_components:
+            mismatches.append((prop, expected_components, spec.components))
+
+    assert mismatches == []
+    cpt_spec = registry.property_spec("cpt")
+    mv_spec = registry.property_spec("mv")
+    assert cpt_spec is not None
+    assert mv_spec is not None
+    assert cpt_spec.components == ("basic",)
+    assert mv_spec.components == (
+        "human detection sensor",
+        "human occupancy sensor",
+        "human illuminance sensor",
+        "human body infrared sensor",
+        "dali human detection sensor",
+        "zonalShieldIlluminanceRadarSensor",
+    )
+
+
 def test_registry_does_not_promote_undocumented_compatibility_props() -> None:
     """非易来 CSV/协议支撑的旧兼容属性不能进入官方 IoT registry."""
     registry = iot_registry()
@@ -253,7 +288,7 @@ def test_registry_does_not_promote_undocumented_compatibility_props() -> None:
 def test_registry_extra_properties_are_only_lan_documented_runtime_props() -> None:
     """CSV 外属性必须有易来协议资料支撑。"""
     registry = iot_registry()
-    csv_props = set(_property_access_by_prop())
+    csv_props = set(property_access_by_prop())
     extras = sorted({item.prop for item in registry.properties} - csv_props)
     lan_doc = (IOT_DOCS / "Yeelight Pro局域网协议.md").read_text(encoding="utf-8")
 
@@ -269,126 +304,3 @@ def test_registry_extra_properties_are_only_lan_documented_runtime_props() -> No
     assert level.readable is True
     assert level.writable is False
 
-
-def _csv_rows(name: str) -> list[dict[str, str]]:
-    with (IOT_DOCS / name).open(newline="", encoding="utf-8-sig") as csv_file:
-        return list(csv.DictReader(csv_file))
-
-
-def _component_key(value: str) -> str:
-    return value.lower().replace("_", " ").replace("-", " ").strip()
-
-
-def _property_access_by_prop() -> dict[str, str]:
-    access: dict[str, str] = {}
-    for name in ("基础组件_属性.csv", "基础信息_属性.csv"):
-        for row in _csv_rows(name):
-            prop = (row.get("缩写") or row.get("属性名称") or "").strip()
-            if prop:
-                access[prop] = row.get("权限", "")
-    return access
-
-
-def _component_properties_from_iot_docs() -> dict[str, tuple[str, ...]]:
-    """Return component properties normalized from Yeelight CSV sources."""
-    rows = _csv_rows("基础信息_组件列表.csv")
-    component_names = _component_names_by_id(rows)
-    property_names = _property_name_aliases()
-    properties: dict[str, list[str]] = {
-        row["id"].strip(): [
-            _property_alias(item, property_names)
-            for item in _split_csv_list(row.get("属性", ""))
-        ]
-        for row in rows
-        if row["id"].strip()
-    }
-    component_ids_by_name = {
-        name: component_id
-        for component_id, names in component_names.items()
-        for name in names
-    }
-
-    for name in ("基础信息_属性.csv", "基础组件_属性.csv"):
-        for row in _csv_rows(name):
-            prop = _property_alias(row.get("缩写") or row.get("属性名称"), property_names)
-            for component_name in _split_csv_list(
-                row.get("组件", "") or row.get("父记录", "")
-            ):
-                component_id = component_ids_by_name.get(
-                    _normalized_component_name(component_name)
-                )
-                if component_id is None:
-                    continue
-                _append_unique(properties.setdefault(component_id, []), prop)
-
-    return {
-        component_id: tuple(prop for prop in props if prop)
-        for component_id, props in properties.items()
-    }
-
-
-def _component_names_by_id(rows: list[dict[str, str]]) -> dict[str, set[str]]:
-    """Return normalized component lookup names by id."""
-    names: dict[str, set[str]] = {}
-    for row in rows:
-        component_id = row["id"].strip()
-        if not component_id:
-            continue
-        values = {row.get("组件名称", ""), row.get("变量别名", "")}
-        names[component_id] = {
-            normalized
-            for value in values
-            if (normalized := _normalized_component_name(value))
-        }
-    return names
-
-
-def _property_name_aliases() -> dict[str, str]:
-    """Return CSV property display names mapped to canonical abbreviations."""
-    aliases = {
-        "connectivity protocols type": "cpt",
-        "localtoken": "ltk",
-        "run power": "run_power",
-        "support relay": "support_rl",
-    }
-    for name in ("基础信息_属性.csv", "基础组件_属性.csv"):
-        for row in _csv_rows(name):
-            prop_name = row.get("属性名称", "").strip()
-            prop_alias = (row.get("缩写") or prop_name).strip()
-            if not prop_name or not prop_alias:
-                continue
-            aliases[_normalized_component_name(prop_name)] = prop_alias
-            aliases[_normalized_component_name(prop_alias)] = prop_alias
-    return aliases
-
-
-def _property_alias(value: str | None, aliases: dict[str, str]) -> str:
-    if not value:
-        return ""
-    text = value.strip()
-    return aliases.get(_normalized_component_name(text), text)
-
-
-def _split_csv_list(value: str) -> list[str]:
-    return [item.strip() for item in value.split(",") if item.strip()]
-
-
-def _append_unique(values: list[str], value: str) -> None:
-    if value and value not in values:
-        values.append(value)
-
-
-def _normalized_component_name(value: str | None) -> str:
-    if value is None:
-        return ""
-    return " ".join(value.strip().lower().replace("_", " ").replace("-", " ").split())
-
-
-def _csv_readable(value: str) -> bool:
-    lowered = value.lower()
-    return "read" in lowered or "读" in value
-
-
-def _csv_writable(value: str) -> bool:
-    lowered = value.lower()
-    return "write" in lowered or "写" in value

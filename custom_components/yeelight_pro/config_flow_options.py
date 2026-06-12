@@ -8,18 +8,17 @@ import voluptuous as vol
 from .const import (
     CONF_CONNECTION_MODE,
     CONF_DEBUG_MODE,
+    CONF_DEVICE_IMPORT_FILTER,
     CONF_HIDE_UNKNOWN_ENTITIES,
-    CONF_HOUSE_ID,
     CONF_LIVE_UPDATES,
     CONF_LOCAL_GATEWAY_CONTROL,
     CONF_LOCAL_GATEWAY_HOST,
     CONF_LOCAL_GATEWAY_PORT,
-    CONF_OPEN_API_CLIENT_ID,
     CONF_SCAN_INTERVAL,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
-    CONF_CLOUD_DOMAIN,
     CONNECTION_MODE_CLOUD,
     CONNECTION_MODE_LAN,
+    CONNECTION_MODE_PRIVATE,
     DEFAULT_DEBUG_MODE,
     DEFAULT_HIDE_UNKNOWN_ENTITIES,
     DEFAULT_LIVE_UPDATES,
@@ -31,17 +30,28 @@ from .const import (
     MAX_SCAN_INTERVAL,
     MIN_SCAN_INTERVAL,
 )
+from .device_filter_options import (
+    build_filter_config,
+    filter_dimension_schema,
+)
 from .entry_migration import normalize_entry_options
 
-_OPTION_FORM_KEYS = (
+_BASE_OPTION_FORM_KEYS = (
     CONF_SCAN_INTERVAL,
     CONF_DEBUG_MODE,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
-    CONF_LIVE_UPDATES,
+)
+_CLOUD_OPTION_FORM_KEYS = (CONF_LIVE_UPDATES,)
+_LAN_OPTION_FORM_KEYS = (
     CONF_LOCAL_GATEWAY_CONTROL,
     CONF_LOCAL_GATEWAY_HOST,
     CONF_LOCAL_GATEWAY_PORT,
+)
+_OPTION_FORM_KEYS = (
+    *_BASE_OPTION_FORM_KEYS,
+    *_CLOUD_OPTION_FORM_KEYS,
+    *_LAN_OPTION_FORM_KEYS,
 )
 
 
@@ -55,12 +65,7 @@ def options_schema(options: Mapping[str, Any], entry: object | None = None) -> v
     """使用归一化默认值返回运行时 options 表单 schema."""
     normalized = normalize_entry_options(options)
 
-    # 判断连接模式
-    is_lan_mode = False
-    if entry is not None:
-        data = getattr(entry, "data", None)
-        if isinstance(data, Mapping):
-            is_lan_mode = data.get(CONF_CONNECTION_MODE) == CONNECTION_MODE_LAN
+    connection_mode = _entry_connection_mode(entry)
 
     fields = {
         vol.Required(
@@ -90,12 +95,14 @@ def options_schema(options: Mapping[str, Any], entry: object | None = None) -> v
         ): bool,
     }
 
-    if not is_lan_mode:
-        # 云端/私有部署模式：显示 WebSocket 选项
+    if connection_mode in {CONNECTION_MODE_CLOUD, CONNECTION_MODE_PRIVATE}:
         fields[vol.Required(
             CONF_LIVE_UPDATES,
             default=normalized.get(CONF_LIVE_UPDATES, DEFAULT_LIVE_UPDATES),
         )] = bool
+
+    if connection_mode == CONNECTION_MODE_LAN:
+        # 局域网模式才暴露本地网关运行时参数，避免云端 entry 出现无关配置。
         fields[vol.Required(
             CONF_LOCAL_GATEWAY_CONTROL,
             default=normalized.get(
@@ -118,7 +125,6 @@ def options_schema(options: Mapping[str, Any], entry: object | None = None) -> v
             ),
         )] = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
 
-    # 设备导入过滤由 options_flow 的多步向导处理，不在主表单中显示
     return vol.Schema(fields)
 
 
@@ -127,29 +133,92 @@ def options_confirm_schema() -> vol.Schema:
     return vol.Schema({})
 
 
+def menu_options(entry: object) -> list[str]:
+    """返回主菜单步骤 ID，由前端按当前用户语言翻译标签."""
+    if options_support_device_filter(entry):
+        if _entry_connection_mode(entry) == CONNECTION_MODE_CLOUD:
+            return ["general", "cloud_devices", "filter_categories"]
+        return ["general", "filter_categories"]
+    return ["general"]
+
+
 def visible_option_change_count(
     current_options: Mapping[str, Any],
     pending_options: Mapping[str, Any],
+    entry: object | None = None,
 ) -> int:
     """返回用户可见 options 字段的变更数量."""
     current = normalize_entry_options(current_options)
     pending = normalize_entry_options(pending_options)
-    return sum(current.get(key) != pending.get(key) for key in _OPTION_FORM_KEYS)
+    count = sum(
+        current.get(key) != pending.get(key)
+        for key in _option_form_keys_for_entry(entry)
+    )
+    if current.get(CONF_DEVICE_IMPORT_FILTER) != pending.get(CONF_DEVICE_IMPORT_FILTER):
+        count += 1
+    return count
 
 
 def merge_options(
     current_options: Mapping[str, Any],
     user_input: Mapping[str, Any],
+    entry: object | None = None,
 ) -> dict[str, Any]:
-    """将可见表单字段合入既有 options，避免丢弃隐藏高级字段."""
+    """将当前连接模式可见字段合入 options，避免写入无关默认项."""
     data = dict(current_options)
     data.pop("experimental_platforms", None)
     normalized = normalize_entry_options(data)
-    data.update({
-        key: user_input[key] if key in user_input else normalized[key]
-        for key in _OPTION_FORM_KEYS
-    })
+    visible_keys = _option_form_keys_for_entry(entry)
+    for key in _OPTION_FORM_KEYS:
+        if key in visible_keys:
+            data[key] = user_input[key] if key in user_input else normalized[key]
+        else:
+            data.pop(key, None)
+    if CONF_DEVICE_IMPORT_FILTER in normalized:
+        data[CONF_DEVICE_IMPORT_FILTER] = normalized[CONF_DEVICE_IMPORT_FILTER]
     return data
+
+
+def device_filter_schema_fields(
+    choices: list[tuple[str, str]],
+    selected: list[str] | None = None,
+    *,
+    dimension: str = "",
+) -> vol.Schema:
+    """Return the manual device-filter form schema for one dimension."""
+    return filter_dimension_schema(choices, selected, dimension=dimension)
+
+
+def merge_device_import_filter(
+    current_options: Mapping[str, Any],
+    selections: dict[str, list[str]],
+    all_choices: dict[str, list[str]],
+) -> dict[str, Any]:
+    """Merge manual device-filter wizard selections into canonical options."""
+    return {
+        **dict(current_options),
+        CONF_DEVICE_IMPORT_FILTER: build_filter_config(selections, all_choices),
+    }
+
+
+def _entry_connection_mode(entry: object | None) -> str:
+    """返回 entry 连接模式；测试替身缺省按云端处理."""
+    data = getattr(entry, "data", None) if entry is not None else None
+    if isinstance(data, Mapping):
+        mode = data.get(CONF_CONNECTION_MODE)
+        if mode in {CONNECTION_MODE_CLOUD, CONNECTION_MODE_PRIVATE, CONNECTION_MODE_LAN}:
+            return str(mode)
+    return CONNECTION_MODE_CLOUD
+
+
+def _option_form_keys_for_entry(entry: object | None) -> tuple[str, ...]:
+    """Return option keys that are visible for the entry connection mode."""
+    connection_mode = _entry_connection_mode(entry)
+    if connection_mode == CONNECTION_MODE_LAN:
+        return (*_BASE_OPTION_FORM_KEYS, *_LAN_OPTION_FORM_KEYS)
+    if connection_mode == CONNECTION_MODE_PRIVATE:
+        return (*_BASE_OPTION_FORM_KEYS, *_CLOUD_OPTION_FORM_KEYS)
+    return (*_BASE_OPTION_FORM_KEYS, *_CLOUD_OPTION_FORM_KEYS)
 
 
 def options_support_device_filter(entry: object) -> bool:
@@ -157,6 +226,7 @@ def options_support_device_filter(entry: object) -> bool:
     data = getattr(entry, "data", None)
     if not isinstance(data, Mapping):
         return False
-    mode = data.get(CONF_CONNECTION_MODE)
-    # 云端和私有部署支持过滤；LAN 模式不需要（设备自动发现）
-    return mode in (CONNECTION_MODE_CLOUD, "private")
+    return data.get(CONF_CONNECTION_MODE) in (
+        CONNECTION_MODE_CLOUD,
+        CONNECTION_MODE_PRIVATE,
+    )

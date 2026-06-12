@@ -11,8 +11,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES
 from .capabilities.registry import product_spec
+from .const import (
+    CONF_DEVICE_IMPORT_FILTER,
+    CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES,
+)
 from .core.client import YeelightProClient
 from .core.device_classification import is_generic_model_label
 from .device_display import device_name_label, device_type_label
@@ -89,6 +92,35 @@ def device_import_filter_for_selected_devices(
         "include": {"devices": sorted(selected)},
         "exclude": {},
     })
+
+
+def selected_device_ids_from_options(options: Mapping[str, Any]) -> list[str]:
+    """Return stored include.devices values for picker defaults."""
+    filter_config = options.get(CONF_DEVICE_IMPORT_FILTER)
+    if not isinstance(filter_config, Mapping):
+        return []
+    include = filter_config.get("include")
+    if not isinstance(include, Mapping):
+        return []
+    devices = include.get("devices")
+    if not isinstance(devices, list):
+        return []
+    return [str(device) for device in devices]
+
+
+def merge_options_device_picker(
+    current_options: Mapping[str, Any],
+    selected_device_ids: Sequence[Any],
+    choices: Sequence[DevicePickerChoice],
+) -> dict[str, Any]:
+    """Merge a real-device picker selection into canonical entry options."""
+    return {
+        **dict(current_options),
+        CONF_DEVICE_IMPORT_FILTER: device_import_filter_for_selected_devices(
+            selected_device_ids,
+            choices,
+        ),
+    }
 
 
 async def async_load_device_choices(
@@ -188,5 +220,7 @@ __all__ = [
     "cloud_devices_schema",
     "device_choices",
     "device_import_filter_for_selected_devices",
+    "merge_options_device_picker",
     "selected_device_ids_from_input",
+    "selected_device_ids_from_options",
 ]

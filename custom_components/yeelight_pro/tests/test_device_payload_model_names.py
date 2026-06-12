@@ -60,8 +60,8 @@ def test_runtime_metadata_refines_models_from_capabilities_not_names() -> None:
     assert data[501]["device_info"]["model"] == "开关灯"
     assert data[502]["device_info"]["model"] == "开关灯"
     assert data[503]["device_info"]["model"] == "开关灯"
-    assert data[504]["device_info"]["model"] == "易来开关设备"
-    assert data[505]["device_info"]["model"] == "易来温控设备"
+    assert data[504]["device_info"]["model"] == "开关控制器"
+    assert data[505]["device_info"]["model"] == "温控设备"
 
 
 def test_runtime_metadata_replaces_chinese_generic_model_labels_from_capabilities() -> None:
@@ -111,4 +111,31 @@ def test_runtime_metadata_replaces_chinese_generic_model_labels_from_capabilitie
     assert data[601]["device_info"]["model"] == "开关灯"
     assert data[602]["device_info"]["model"] == "开关灯"
     assert data[603]["device_info"]["model"] == "开关灯"
-    assert data[604]["device_info"]["model"] == "易来开关设备"
+    assert data[604]["device_info"]["model"] == "开关控制器"
+
+
+def test_runtime_metadata_uses_property_capability_over_conflicting_category() -> None:
+    """属性能力与 category 冲突时，设备详情型号以能力为准。"""
+    builder = DevicePayloadBuilder()
+
+    data, _gateways = builder.build_runtime_payloads(
+        devices=[
+            {
+                "id": 701,
+                "name": "玄关自定义设备",
+                "category": "light",
+                "model": "light",
+                "pid": 7010,
+                "properties": [
+                    {"propId": "dc", "value": False, "format": "boolean"},
+                    {"propId": "alm", "value": False, "format": "boolean"},
+                ],
+            }
+        ],
+        gateways=[],
+        product_schemas={},
+        apply_runtime_overrides=lambda payload: payload,
+    )
+
+    assert data[701]["iot_category"] == "contact_sensor"
+    assert data[701]["device_info"]["model"] == "门磁传感器"

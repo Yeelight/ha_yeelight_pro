@@ -28,18 +28,18 @@ def test_device_type_label_prefers_specific_product_model() -> None:
 
 
 def test_device_type_label_replaces_broad_categories() -> None:
-    """粗 category 不应直接出现在 picker 括号类型中."""
-    assert device_type_label({"category": "relay_switch"}) == "易来开关设备"
-    assert device_type_label({"category": "light"}) == "易来照明设备"
+    """粗 category 只能作为最终大类兜底，不包装成伪具体型号."""
+    assert device_type_label({"category": "relay_switch"}) == "继电器开关"
+    assert device_type_label({"category": "light"}) == "灯具"
 
 
 def test_device_type_label_normalizes_cloud_category_aliases() -> None:
     """云端大小写/空格 category 不能直接污染设备类型展示."""
-    assert device_type_label({"category": "Light"}) == "易来照明设备"
-    assert device_type_label({"category": "Relay Switch"}) == "易来开关设备"
-    assert device_type_label({"category": "relay-switch"}) == "易来开关设备"
-    assert device_type_label({"category": "灯具"}) == "易来照明设备"
-    assert device_type_label({"category": "继电器开关"}) == "易来开关设备"
+    assert device_type_label({"category": "Light"}) == "灯具"
+    assert device_type_label({"category": "Relay Switch"}) == "继电器开关"
+    assert device_type_label({"category": "relay-switch"}) == "继电器开关"
+    assert device_type_label({"category": "灯具"}) == "灯具"
+    assert device_type_label({"category": "继电器开关"}) == "继电器开关"
 
 
 def test_device_type_label_uses_iot_category_not_ha_sensor_platform() -> None:
@@ -52,27 +52,27 @@ def test_device_type_label_uses_iot_category_not_ha_sensor_platform() -> None:
 def test_sensor_registry_models_require_category_or_property_evidence() -> None:
     """Registry model 不能只凭用户设备名推断传感器类型。"""
     assert not is_generic_model_label("人体传感器")
-    assert registry_model_value({"name": "客厅人体传感器"}, "Yeelight Pro 设备") == "Yeelight Pro 设备"
+    assert registry_model_value({"name": "客厅人体传感器"}, "Yeelight Pro 设备") is None
     assert registry_model_value({"category": "human_sensor"}, "Yeelight Pro 设备") == "人体传感器"
     assert registry_model_value({"params": {"dc": True}}, "Yeelight Pro 设备") == "门磁传感器"
 
 
-def test_friendly_specific_model_name_never_returns_broad_registry_model() -> None:
-    """HA device registry 的 model 不能继续显示灯具/继电器开关等泛化词."""
+def test_friendly_specific_model_name_exposes_only_specific_evidence() -> None:
+    """specific helper 不负责把大类包装成伪具体型号."""
     for payload in (
         {"category": "light", "name": "未识别灯具", "model": "灯具"},
         {"category": "relay_switch", "name": "未知开关", "model": "继电器开关"},
         {"category": "temp_control", "name": "温控器", "model": "温控设备"},
         {"category": "other", "name": "未知设备", "model": "易来设备"},
     ):
-        assert not is_generic_model_label(friendly_specific_model_name(payload))
+        assert friendly_specific_model_name(payload) == ""
 
 
 def test_device_type_label_uses_category_not_user_name() -> None:
     """设备类型展示不能被用户自定义名称改写。"""
-    assert device_type_label({"category": "light", "name": "书房台灯"}) == "易来照明设备"
-    assert device_type_label({"category": "relay_switch", "name": "厨房智能开关"}) == "易来开关设备"
-    assert device_type_label({"category": "temp_control", "name": "卫生间暖风机"}) == "易来温控设备"
+    assert device_type_label({"category": "light", "name": "书房台灯"}) == "灯具"
+    assert device_type_label({"category": "relay_switch", "name": "厨房智能开关"}) == "继电器开关"
+    assert device_type_label({"category": "temp_control", "name": "卫生间暖风机"}) == "温控设备"
 
 
 def test_device_type_label_omits_unknown_generic_device() -> None:
@@ -82,8 +82,8 @@ def test_device_type_label_omits_unknown_generic_device() -> None:
 
 def test_chinese_generic_model_labels_fall_back_to_category() -> None:
     """中文泛化型号不能触发设备名推断。"""
-    assert device_type_label({"category": "light", "model": "灯具", "name": "卫生间镜前灯"}) == "易来照明设备"
-    assert device_type_label({"category": "relay_switch", "model": "继电器开关", "name": "厨房智能开关"}) == "易来开关设备"
+    assert device_type_label({"category": "light", "model": "灯具", "name": "卫生间镜前灯"}) == "灯具"
+    assert device_type_label({"category": "relay_switch", "model": "继电器开关", "name": "厨房智能开关"}) == "继电器开关"
 
 
 def test_generic_ha_platform_category_does_not_become_iot_category() -> None:
@@ -103,7 +103,7 @@ def test_safety_sensor_name_does_not_affect_display_type() -> None:
     payload = {"category": "light", "name": "厨房烟雾传感器"}
 
     assert infer_iot_category(payload) == "light"
-    assert device_type_label(payload) == "易来照明设备"
+    assert device_type_label(payload) == "灯具"
 
 
 def test_friendly_model_id_replaces_runtime_category_when_pid_exists() -> None:
@@ -149,6 +149,23 @@ def test_channel_name_label_preserves_real_component_name() -> None:
     assert channel_name_label(index=4, component={"name": "按键4"}) == "按键 4"
     assert channel_name_label(index=1, component={"name": "一键"}) == "按键 1"
     assert channel_name_label(index=2, component={"name": "二键"}) == "按键 2"
+
+
+def test_channel_name_label_humanizes_generated_names_without_component_index() -> None:
+    """上游只给 name/desc=1/2/3 时，也不能直接在 HA 显示裸数字."""
+    assert channel_name_label(
+        index=None,
+        component={"component_id": "switch_control", "name": "1"},
+    ) == "按键 1"
+    assert channel_name_label(
+        index=None,
+        component={"component_id": "switch_control", "desc": "二键"},
+    ) == "按键 2"
+    assert channel_name_label(
+        index=None,
+        component={"component_id": "switch_control", "name": "三键"},
+        device_payload={"pid": 854019, "name": "玄关开关"},
+    ) == "右键"
 
 
 def test_channel_name_label_humanizes_generated_component_ids() -> None:

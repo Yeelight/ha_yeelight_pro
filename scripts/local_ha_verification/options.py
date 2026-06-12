@@ -34,12 +34,15 @@ def verify_config_entry_options(
         report.fail("entry option constants are not literal")
         return
 
-    missing_by_key = _missing_option_keys(
+    defaultable_missing_by_key = _missing_option_keys(
         entry_list,
         required_keys=REQUIRED_CONFIG_ENTRY_OPTION_KEYS,
     )
-    if missing_by_key:
-        report.fail(f"config entry options missing required keys: {missing_by_key}")
+    if defaultable_missing_by_key:
+        report.fact(
+            "config entry option keys defaulted by migration: "
+            f"{defaultable_missing_by_key}"
+        )
     else:
         report.fact(
             "config entry required option keys present: "
@@ -109,7 +112,7 @@ def _invalid_option_values(
     entries: Iterable[Mapping[str, Any]],
     option_defaults: Mapping[str, int | bool],
 ) -> dict[str, int]:
-    """Return option value validation failures without exposing raw values."""
+    """Return explicit option value failures without exposing raw values."""
     invalid_counter: Counter[str] = Counter()
     min_scan_interval = option_defaults["min_scan_interval"]
     max_scan_interval = option_defaults["max_scan_interval"]
@@ -117,20 +120,21 @@ def _invalid_option_values(
         options = entry.get("options")
         if not isinstance(options, Mapping):
             continue
-        scan_interval = options.get("scan_interval")
-        if (
-            isinstance(scan_interval, bool)
-            or not isinstance(scan_interval, int)
-            or scan_interval < min_scan_interval
-            or scan_interval > max_scan_interval
-        ):
-            invalid_counter["scan_interval"] += 1
+        if "scan_interval" in options:
+            scan_interval = options.get("scan_interval")
+            if (
+                isinstance(scan_interval, bool)
+                or not isinstance(scan_interval, int)
+                or scan_interval < min_scan_interval
+                or scan_interval > max_scan_interval
+            ):
+                invalid_counter["scan_interval"] += 1
         for key in {
             "debug_mode",
             "hide_unknown_entities",
             "topology_change_repairs",
         }:
-            if not isinstance(options.get(key), bool):
+            if key in options and not isinstance(options.get(key), bool):
                 invalid_counter[key] += 1
     return dict(sorted(invalid_counter.items()))
 
@@ -140,7 +144,7 @@ def _true_option_count(entries: Iterable[Mapping[str, Any]], key: str) -> int:
     count = 0
     for entry in entries:
         options = entry.get("options")
-        if isinstance(options, Mapping) and options.get(key) is True:
+        if isinstance(options, Mapping) and _effective_bool_option(options, key) is True:
             count += 1
     return count
 
@@ -156,6 +160,17 @@ def _enabled_device_filter_count(entries: Iterable[Mapping[str, Any]]) -> int:
         if isinstance(filter_config, Mapping) and filter_config.get("enabled") is True:
             count += 1
     return count
+
+
+def _effective_bool_option(options: Mapping[str, Any], key: str) -> bool:
+    """Return effective bool option using current literal defaults."""
+    value = options.get(key)
+    if isinstance(value, bool):
+        return value
+    defaults = _expected_option_defaults() or {}
+    default_key = f"default_{key}"
+    default = defaults.get(default_key)
+    return bool(default) if isinstance(default, bool) else False
 
 
 def _expected_option_defaults() -> dict[str, int | bool] | None:

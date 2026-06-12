@@ -9,24 +9,41 @@ import voluptuous as vol
 
 from homeassistant.helpers import selector
 
-from .const import (
-    CONF_DEVICE_IMPORT_FILTER,
-)
+from .const import CONF_DEVICE_IMPORT_FILTER
 from .device_filter import (
     canonical_device_import_filter,
     normalize_device_import_filter,
 )
+from .device_filter_rules import normalize_bool
 
 # 过滤维度定义：(维度名称, 翻译键, 从设备载荷中提取值的字段名)
 FILTER_DIMENSIONS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
-    ("categories", "categories", ("iot_category", "category", "ha_platform")),
-    ("rooms", "rooms", ("roomId", "room_id")),
-    ("gateways", "gateways", ("gatewayId", "gateway_id")),
+    ("categories", "categories", ("category", "iot_category", "ha_platform")),
+    ("rooms", "rooms", ("roomId", "room_id", "roomIdList", "roomIds")),
+    ("gateways", "gateways", ("gatewayId", "gateway_id", "gatewayDeviceId")),
     ("devices", "devices", ("device_id", "id", "deviceId")),
 )
 
-# 所有维度名称
+# 所有向导维度名称，按页面顺序排列。
 DIMENSION_NAMES = tuple(dim for dim, _, _ in FILTER_DIMENSIONS)
+_LEGACY_DEVICE_FILTER_FORM_MAP: tuple[tuple[str, str, str], ...] = (
+    ("device_import_filter_include_categories", "include", "categories"),
+    ("device_import_filter_exclude_categories", "exclude", "categories"),
+    ("device_import_filter_include_rooms", "include", "rooms"),
+    ("device_import_filter_exclude_rooms", "exclude", "rooms"),
+    ("device_import_filter_include_gateways", "include", "gateways"),
+    ("device_import_filter_exclude_gateways", "exclude", "gateways"),
+    ("device_import_filter_include_product_ids", "include", "product_ids"),
+    ("device_import_filter_exclude_product_ids", "exclude", "product_ids"),
+    ("device_import_filter_include_devices", "include", "devices"),
+    ("device_import_filter_exclude_devices", "exclude", "devices"),
+)
+_LEGACY_DEVICE_FILTER_FORM_KEYS = (
+    "device_import_filter_enabled",
+    "device_import_filter_mode",
+    "device_import_filter_picker",
+    *(form_key for form_key, _, _ in _LEGACY_DEVICE_FILTER_FORM_MAP),
+)
 
 
 def filter_dimension_choices(
@@ -45,18 +62,12 @@ def filter_dimension_choices(
         return []
 
     seen: dict[str, str] = {}
-    iterable = (
-        devices.values() if isinstance(devices, Mapping) else devices
-    )
+    iterable = devices.values() if isinstance(devices, Mapping) else devices
     for device in iterable:
         if not isinstance(device, Mapping):
             continue
-        for field in fields:
-            raw = device.get(field)
-            if raw is None:
-                continue
-            value = str(raw).strip()
-            if value and value not in seen:
+        for value in _device_field_values(device, fields):
+            if value not in seen:
                 seen[value] = _dimension_label(dimension, value, device)
                 break
 
@@ -91,7 +102,6 @@ def filter_dimension_schema(
                 options=options,
                 multiple=True,
                 mode=selector.SelectSelectorMode.LIST,
-                translation_key=f"device_filter_{dimension}",
             )
         ),
     })
@@ -103,44 +113,31 @@ def build_filter_config(
 ) -> dict[str, Any]:
     """将用户选择组装为规范 filter 配置。
 
-    语义：全选 = 不过滤该维度；部分选择 = 仅导入选中的。
-    全部维度都全选时返回 {"enabled": False}。
+    语义：全选 = 不过滤该维度；取消选择 = 写入 exclude 规则。
+    全部维度都全选时返回规范的 disabled filter。
     """
-    include: dict[str, list[str]] = {}
+    exclude: dict[str, list[str]] = {}
 
     for dimension in DIMENSION_NAMES:
-        selected = selections.get(dimension, [])
+        selected = set(selections.get(dimension, []))
         all_values = all_choices.get(dimension, [])
-
-        if not all_values:
-            continue
-
-        if set(selected) >= set(all_values):
-            # 全选 → 不限制该维度
-            continue
-
-        if selected:
-            include[dimension] = sorted(selected)
-
-    if not include:
-        return {"enabled": False}
+        unselected = [value for value in all_values if value not in selected]
+        if unselected:
+            exclude[dimension] = sorted(unselected)
 
     return canonical_device_import_filter({
-        "enabled": True,
+        "enabled": bool(exclude),
         "mode": "or",
-        "include": include,
-        "exclude": {},
+        "include": {},
+        "exclude": exclude,
     })
 
 
 def current_filter_selections(
     options: Mapping[str, Any],
+    all_choices: Mapping[str, list[str]] | None = None,
 ) -> dict[str, list[str]]:
-    """从存储的 options 中读取当前过滤选择。
-
-    返回 {dimension: [selected_values]} 映射。
-    空列表表示该维度无过滤（全选）。
-    """
+    """从存储的 options 中读取当前过滤选择。"""
     filter_config = options.get(CONF_DEVICE_IMPORT_FILTER)
     if not isinstance(filter_config, Mapping):
         return {}
@@ -150,11 +147,18 @@ def current_filter_selections(
         return {}
 
     result: dict[str, list[str]] = {}
-    include = normalized.include
+    choices = all_choices or {}
     for dimension in DIMENSION_NAMES:
-        values = include.get(dimension, set())
-        if values:
-            result[dimension] = sorted(values)
+        included = normalized.include.get(dimension, set())
+        if included:
+            result[dimension] = sorted(included)
+            continue
+        excluded = normalized.exclude.get(dimension, set())
+        all_values = choices.get(dimension, [])
+        if excluded and all_values:
+            result[dimension] = [
+                value for value in all_values if value not in excluded
+            ]
     return result
 
 
@@ -166,6 +170,18 @@ def stored_device_import_filter_options(
     if not isinstance(value, Mapping):
         return None
     return canonical_device_import_filter(value)
+
+
+def stored_or_legacy_device_import_filter_options(
+    options: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Return canonical import filter from stored config or legacy form keys."""
+    stored = stored_device_import_filter_options(options)
+    if stored is not None:
+        return stored
+    if any(key in options for key in _LEGACY_DEVICE_FILTER_FORM_KEYS):
+        return canonical_device_import_filter(_legacy_device_import_filter_from_form(options))
+    return None
 
 
 def device_import_filter_changed(
@@ -183,18 +199,60 @@ def device_import_filter_changed(
 
 
 def device_filter_form_keys() -> tuple[str, ...]:
-    """Return form-only keys used by the device filter UI.
-
-    这些键在 options 合并后需要从存储中清除。
-    """
-    return tuple(
-        f"filter_{dim}" for dim in DIMENSION_NAMES
+    """Return form-only keys used by legacy and wizard device filter UI."""
+    return (
+        *_LEGACY_DEVICE_FILTER_FORM_KEYS,
+        *(f"filter_{dim}" for dim in DIMENSION_NAMES),
     )
 
 
 def _filter_config(options: Mapping[str, Any]) -> Mapping[str, Any]:
     value = options.get(CONF_DEVICE_IMPORT_FILTER)
     return value if isinstance(value, Mapping) else {}
+
+
+def _legacy_device_import_filter_from_form(options: Mapping[str, Any]) -> dict[str, Any]:
+    """从旧版文本字段恢复规范 filter，供迁移阶段清理旧 options."""
+    include: dict[str, list[str]] = {}
+    exclude: dict[str, list[str]] = {}
+
+    for form_key, bucket, value_key in _LEGACY_DEVICE_FILTER_FORM_MAP:
+        values = _split_csv(options.get(form_key))
+        if not values:
+            continue
+        if bucket == "include":
+            include[value_key] = values
+        else:
+            exclude[value_key] = values
+
+    mode = str(options.get("device_import_filter_mode", "or")).strip().lower()
+    return {
+        "enabled": normalize_bool(options.get("device_import_filter_enabled", False)),
+        "mode": "and" if mode == "and" else "or",
+        "include": include,
+        "exclude": exclude,
+    }
+
+
+def _split_csv(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple, set)):
+        items = value
+    else:
+        items = str(value).split(",")
+    return sorted({str(item).strip() for item in items if str(item).strip()})
+
+
+def _device_field_values(device: Mapping[str, Any], fields: tuple[str, ...]) -> list[str]:
+    values: list[str] = []
+    for field in fields:
+        raw = device.get(field)
+        if isinstance(raw, (list, tuple, set)):
+            values.extend(str(item).strip() for item in raw if str(item).strip())
+        elif raw is not None and (value := str(raw).strip()):
+            values.append(value)
+    return values
 
 
 def _dimension_label(dimension: str, value: str, device: Mapping[str, Any]) -> str:
