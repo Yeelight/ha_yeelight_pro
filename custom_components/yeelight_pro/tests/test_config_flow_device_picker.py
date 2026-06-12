@@ -23,7 +23,7 @@ def test_device_choices_normalize_open_api_rows() -> None:
 
     assert [(item.device_id, item.label) for item in choices] == [
         ("1", "Ceiling (Living)"),
-        ("dev-2", "Wall Switch (易来开关设备)"),
+        ("dev-2", "Wall Switch"),
     ]
 
 

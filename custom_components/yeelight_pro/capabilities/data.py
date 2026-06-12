@@ -1,7 +1,8 @@
 """Yeelight IoT 首版静态能力数据.
 
 数据整理自 docs/iot 下的品类、组件、属性、事件和连接协议资料。
-当前只内置 HA 投影需要的高频能力，低频组件保留在文档资料中。
+registry 需要识别官方 CSV 覆盖的物模型事实；实体投影只暴露有明确 HA
+语义的能力，低频/桥接元数据保持可识别但不泛化成控制实体。
 """
 
 from __future__ import annotations
@@ -29,7 +30,7 @@ IOT_CATEGORY_SPECS: tuple[IoTCategorySpec, ...] = (
     IoTCategorySpec("temp_control", 6, "温控类", "climate", "空调、地暖、新风和温控器"),
     IoTCategorySpec("relay_switch", 7, "继电器开关类", "switch", "继电器、墙壁开关和插卡取电"),
     IoTCategorySpec("scene_panel", 8, "情景面板类", "event", "情景按键和面板事件"),
-    IoTCategorySpec("other", 9, "其他类", "sensor", "仅明确属性降级为诊断或传感器"),
+    IoTCategorySpec("other", 9, "其他类", None, "仅明确属性降级为诊断或传感器"),
     IoTCategorySpec("gateway", 10, "网关类", None, "拓扑父设备和连接诊断"),
     IoTCategorySpec("knob_switch", 11, "旋钮开关类", "event", "旋钮事件输入"),
 )
@@ -63,8 +64,8 @@ IOT_COMPONENT_SPECS: tuple[IoTComponentSpec, ...] = (
     IoTComponentSpec(65, "dali light", "dali灯组件", None, "global", None, ("ddt", "dpt", "power_on_level", "system_failure_level", "fade_rate", "dim_curve", "min_level", "max_level")),
     IoTComponentSpec(66, "dali energy", "dali能量组件", None, "global", "sensor", ("ap", "ae", "ot", "sys_s", "esv", "esvf", "temp", "ocp", "lsot", "lsv", "lsc", "pf")),
     IoTComponentSpec(67, "dali scene control button", "dali情景按键", "scene_panel", "normal", "event", ("name", "icon", "io", "3rdPartySyncBitmask", "ep", "st", "rt"), ("click", "hold")),
-    IoTComponentSpec(68, "dali human detection sensor", "dali人感传感器", "human_sensor", "normal", "binary_sensor", ("mv", "name", "icon", "io", "3rdPartySyncBitmask", "ep", "dead_time", "report_timers", "hold_timers")),
-    IoTComponentSpec(69, "dali illuminance sensor", "dali光感传感器", "light_sensor", "normal", "sensor", ("name", "icon", "3rdPartySyncBitmask", "io", "dead_time", "report_timers", "hys", "hys_min", "luminance", "ep")),
+    IoTComponentSpec(68, "dali human detection sensor", "dali人感传感器", "human_sensor", "normal", "binary_sensor", ("mv", "name", "icon", "io", "3rdPartySyncBitmask", "ep", "dead_time", "report_timers", "hold_timers"), ("motion_detected", "motion_undetected")),
+    IoTComponentSpec(69, "dali illuminance sensor", "dali光感传感器", "light_sensor", "normal", "sensor", ("name", "icon", "3rdPartySyncBitmask", "io", "dead_time", "report_timers", "hys", "hys_min", "luminance", "ep"), ("motion_detected", "motion_undetected")),
     IoTComponentSpec(71, "dali knob switch", "dali旋钮开关组件", "knob_switch", "normal", "event", ("3rdPartySyncBitmask", "name", "icon", "io", "ep", "rt", "dead_time")),
     IoTComponentSpec(72, "color light without temperature", "无色温彩光灯组件", "light", "normal", "light", ("p", "l", "c", "bp", "dd", "slisaon", "slisaon_rdy", "name", "icon", "3rdPartySyncBitmask", "io")),
     IoTComponentSpec(76, "power meter", "电量组件", None, "global", "sensor", ("curp", "iec")),
@@ -178,8 +179,8 @@ IOT_EVENT_SPECS: tuple[IoTEventSpec, ...] = (
     IoTEventSpec("接触", "door_close", 5, "接触传感器闭合", ("doorclose", "door_close", "contact.close"), ("contact sensor",)),
     IoTEventSpec("告警", "door_alarm", 6, "接触传感器告警", ("dooralarm", "door_alarm", "contact.alarm"), ("contact sensor",)),
     IoTEventSpec("告警恢复正常", "door_normal", 7, "接触传感器恢复正常", ("doornormal", "door_normal", "contact.normal"), ("contact sensor",)),
-    IoTEventSpec("有人移动", "motion_detected", 8, "人体移动", ("motiontrue", "motion_true", "motiondetected", "motion_detected", "motion.true"), ("human detection sensor", "human occupancy sensor")),
-    IoTEventSpec("无人移动", "motion_undetected", 9, "无人移动", ("motionfalse", "motion_false", "motionundetected", "motion_undetected", "motion.false"), ("human detection sensor", "human occupancy sensor")),
+    IoTEventSpec("有人移动", "motion_detected", 8, "人体移动", ("motiontrue", "motion_true", "motiondetected", "motion_detected", "motion.true"), ("human detection sensor", "human occupancy sensor", "human body infrared sensor", "dali human detection sensor", "dali illuminance sensor")),
+    IoTEventSpec("无人移动", "motion_undetected", 9, "无人移动", ("motionfalse", "motion_false", "motionundetected", "motion_undetected", "motion.false"), ("human detection sensor", "human occupancy sensor", "human body infrared sensor", "dali human detection sensor", "dali illuminance sensor")),
     IoTEventSpec("旋转", "knob_spin", 10, "旋钮旋转", ("knobspin", "knob_spin", "knob.spin", "spin", "rotate"), ("knob switch",)),
     IoTEventSpec("传感器已接触", "sensor_contacted", 12, "传感器已接触", ("sensor_contacted", "sensor contacted")),
     IoTEventSpec("传感器未接触", "sensor_not_contacted", 13, "传感器未接触", ("sensor_not_contacted", "sensor not contacted")),

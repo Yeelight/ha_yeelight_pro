@@ -6,10 +6,13 @@ import re
 from typing import Any, Mapping
 
 from ..capabilities.registry import (
+    component_platform_hint,
     is_projectable_global_component,
+    platform_for_category,
     property_capability,
     property_spec,
 )
+from ..core.device_runtime_capabilities import normalize_iot_category
 from ..utils import to_str
 
 RUNTIME_EXCLUDED_KINDS = {"diagnostic", "info"}
@@ -42,30 +45,9 @@ FALLBACK_RUNTIME_KEYS: dict[str, set[str]] = {
     "temp_control": {"acp", "acm", "actt", "acct", "acf", "aco", "vmcp", "vmcf"},
 }
 INDEXED_RUNTIME_KEY_RE = re.compile(r"^\d+-(.+)$")
-STATELESS_ACTUATOR_CATEGORY_TOKENS = (
-    "light",
-    "lamp",
-    "灯",
-    "灯带",
-    "彩光",
-    "色温",
-    "switch",
-    "relay",
-    "开关",
-    "面板",
-    "fresh air",
-    "新风",
-    "cover",
-    "curtain",
-    "blind",
-    "窗帘",
-    "climate",
-    "air",
-    "heater",
-    "bath",
-    "空调",
-    "浴霸",
-)
+STATELESS_ACTUATOR_PLATFORMS = frozenset({"climate", "cover", "fan", "light", "switch"})
+SENSOR_PLATFORMS = frozenset({"binary_sensor", "sensor"})
+METADATA_GLOBAL_COMPONENTS = frozenset({"basic"})
 
 
 def fallback_runtime_state(
@@ -101,10 +83,16 @@ def should_include_runtime_component(
     component_state: Mapping[str, Any],
 ) -> bool:
     """判断是否应暴露该运行时组件。"""
-    if component_state:
-        return True
     if bool(getattr(component, "events", None)):
         return True
+    if to_str(getattr(component, "component_type", None)) == "global":
+        if _component_identity(component) in METADATA_GLOBAL_COMPONENTS:
+            return False
+        return is_projectable_global_component(component)
+    if component_state:
+        return True
+    if _component_category(component) == "other":
+        return False
     if looks_like_sensor_component(component):
         return True
     return looks_like_stateless_actuator_component(component)
@@ -115,6 +103,8 @@ def should_expose_component_state(component: Any) -> bool:
     component_type = to_str(getattr(component, "component_type", None))
     if component_type != "global":
         return True
+    if _component_identity(component) in METADATA_GLOBAL_COMPONENTS:
+        return False
     return is_projectable_global_component(component)
 
 
@@ -168,45 +158,74 @@ def prefer_plain_match(
 
 
 def looks_like_stateless_actuator_component(component: Any) -> bool:
-    """根据类别或组件 ID 判断是否为无状态执行器。"""
-    category = (to_str(getattr(component, "category", None)) or "").lower()
-    component_id = (to_str(getattr(component, "component_id", None)) or "").lower()
-    haystacks = (category, component_id)
-    return any(
-        token in haystack
-        for haystack in haystacks
-        for token in STATELESS_ACTUATOR_CATEGORY_TOKENS
-    )
+    """根据 registry/category 判断是否为无状态执行器。"""
+    return _component_platform(component) in STATELESS_ACTUATOR_PLATFORMS
 
 
 def looks_like_sensor_component(component: Any) -> bool:
     """根据易来品类或传感属性判断是否为只读传感组件。"""
-    category = (to_str(getattr(component, "category", None)) or "").lower()
-    component_id = (to_str(getattr(component, "component_id", None)) or "").lower()
-    haystacks = (category, component_id)
-    if any(
-        token in haystack
-        for haystack in haystacks
-        for token in (
-            "contact_sensor",
-            "human_sensor",
-            "light_sensor",
-            "contact sensor",
-            "human sensor",
-            "illuminance sensor",
-            "传感器",
-            "门磁",
-            "人感",
-            "人在",
-            "光感",
-            "照度",
-        )
-    ):
+    if _component_platform(component) in SENSOR_PLATFORMS:
         return True
     return any(
         to_str(getattr(prop, "prop_id", None)) in SENSOR_PROPERTY_KEYS
         for prop in getattr(component, "properties", []) or []
     )
+
+
+def _component_platform(component: Any) -> str | None:
+    """返回 registry 支撑的 HA 平台，不读取用户可见名称。"""
+    for value in (
+        getattr(component, "component_id", None),
+        getattr(component, "category", None),
+        getattr(component, "cid", None),
+    ):
+        platform = component_platform_hint(value)
+        if platform:
+            return platform
+        category = normalize_iot_category(value)
+        if category == "other":
+            continue
+        if category:
+            platform = platform_for_category(category)
+            if platform:
+                return platform
+    return None
+
+
+def _component_category(component: Any) -> str | None:
+    for value in (
+        getattr(component, "component_id", None),
+        getattr(component, "category", None),
+        getattr(component, "cid", None),
+    ):
+        category = normalize_iot_category(value)
+        if category:
+            return category
+    return None
+
+
+def _has_safe_global_props(component: Any) -> bool:
+    """Only keep documented global components that can project HA entities."""
+    return any(
+        to_str(getattr(prop, "prop_id", None)) in SENSOR_PROPERTY_KEYS
+        or property_capability(getattr(prop, "prop_id", None)) is not None
+        for prop in getattr(component, "properties", []) or []
+    )
+
+
+def _component_identity(component: Any) -> str:
+    """Return the registry identity for global component boundary checks."""
+    for value in (
+        getattr(component, "component_id", None),
+        getattr(component, "alias", None),
+        getattr(component, "name", None),
+    ):
+        text = to_str(value)
+        if text:
+            return " ".join(
+                text.strip().lower().replace("_", " ").replace("-", " ").split()
+            )
+    return ""
 
 
 def normalize_pair_list(value: Any) -> list[list[str]]:

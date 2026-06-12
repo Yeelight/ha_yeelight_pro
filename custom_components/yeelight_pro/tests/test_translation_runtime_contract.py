@@ -79,6 +79,8 @@ def test_translations_are_valid_and_key_aligned() -> None:
         ("config", "step", "cloud_scan_login", "data", CONF_SCAN_LOGIN_REFRESH),
         ("config", "error", "scan_login_expired"),
         ("config", "step", "cloud_devices", "data", CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES),
+        ("selector", "device_import_filter_mode", "options", "or"),
+        ("selector", "device_import_filter_mode", "options", "and"),
         ("config", "progress", "cloud_scan_login_wait"),
         ("config", "step", "reauth_confirm", "data", "access_token"),
         ("entity", "select", "active_room", "name"),

@@ -12,15 +12,9 @@ from homeassistant.components.climate import ClimateEntityFeature, HVACMode
 
 from ..canonical.models import (
     ComponentInstanceModel,
-    ComponentModel,
     HADeviceInstanceModel,
     HAProductModel,
 )
-from ..capabilities.platform_contract_data import (
-    CLIMATE_CANDIDATE_PROPS,
-    FAN_CANDIDATE_PROPS,
-)
-from ..utils import to_category
 from .common import (
     load_product_model,
     payload_available,
@@ -28,6 +22,10 @@ from .common import (
     schema_backed_component_available,
 )
 from .device import flatten_instance_state, project_payload_device_info
+from .platform_evidence import (
+    component_has_climate_evidence,
+    payload_has_climate_evidence,
+)
 from .property_control_common import control_key
 
 
@@ -57,11 +55,11 @@ def project_climate(
     instance = _load_instance(device_payload)
     product_model = load_product_model(device_payload)
     component = _select_climate_component(instance, product_model)
-    if component is None and not _payload_is_climate(device_payload):
+    params = _runtime_state(device_payload, instance, component)
+    if component is None and not _payload_is_climate(device_payload, params):
         return None
 
     device_id = str(device_payload.get("device_id", "unknown"))
-    params = _runtime_state(device_payload, instance, component)
     power_prop = _first_available_property(
         params,
         component,
@@ -137,65 +135,18 @@ def _select_climate_component(
         return None
 
     for component in instance.components:
-        category = _string(component.category).lower()
         schema_component = product_component(product_model, component.component_id)
-        if (
-            category in {
-                "climate",
-                "air_conditioner",
-                "air conditioner",
-                "bath_heater",
-                "floor_heating",
-                "floor heating",
-            }
-            or component.component_id.lower()
-            in {
-                "climate",
-                "air_conditioner",
-                "bath_heater",
-                "floor_heating",
-            }
-            or _component_has_climate_props(component, schema_component)
-        ):
+        if component_has_climate_evidence(component, schema_component):
             return component
     return None
 
 
-def _payload_is_climate(device_payload: Mapping[str, Any]) -> bool:
-    """Return true only for documented climate/temp-control runtime categories."""
-    category = to_category(
-        device_payload.get("iot_category")
-        or device_payload.get("category")
-        or device_payload.get("type")
-    )
-    if category == "temp_control" and _params_are_fresh_air_only(device_payload):
-        return False
-    return category in {"climate", "temp_control", "air_conditioner", "bath_heater"}
-
-
-def _params_are_fresh_air_only(device_payload: Mapping[str, Any]) -> bool:
-    prop_ids = {str(key).split("-", 1)[-1] for key in _params(device_payload)}
-    return bool(prop_ids & {"vmcp", "vmcf"}) and not bool(
-        prop_ids & CLIMATE_CANDIDATE_PROPS
-    )
-
-
-def _component_has_climate_props(
-    component: ComponentInstanceModel,
-    product_component: ComponentModel | None,
+def _payload_is_climate(
+    device_payload: Mapping[str, Any],
+    state: Mapping[str, Any],
 ) -> bool:
-    prop_ids = set(component.state)
-    if product_component is not None:
-        prop_ids.update(prop.prop_id for prop in product_component.properties)
-    return bool(prop_ids & CLIMATE_CANDIDATE_PROPS) and not _prop_ids_are_fan_only(
-        prop_ids
-    )
-
-
-def _prop_ids_are_fan_only(prop_ids: set[str]) -> bool:
-    return bool(prop_ids & FAN_CANDIDATE_PROPS) and not bool(
-        prop_ids & CLIMATE_CANDIDATE_PROPS
-    )
+    """Return true only for documented climate/temp-control runtime categories."""
+    return payload_has_climate_evidence(device_payload, state)
 
 
 def _runtime_state(
@@ -243,10 +194,3 @@ def _float(value: Any) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
-
-
-def _string(value: Any) -> str:
-    """安全字符串转换。"""
-    if value is None:
-        return ""
-    return str(value).strip()

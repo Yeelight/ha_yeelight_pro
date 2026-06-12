@@ -3,7 +3,10 @@ from __future__ import annotations
 
 from custom_components.yeelight_pro.entity_lifecycle import collect_active_entity_keys
 from custom_components.yeelight_pro.projector.binary_sensor import project_binary_sensors
+from custom_components.yeelight_pro.projector.climate import project_climate
+from custom_components.yeelight_pro.projector.cover import project_cover
 from custom_components.yeelight_pro.projector.event import project_events
+from custom_components.yeelight_pro.projector.fan import project_fans
 from custom_components.yeelight_pro.projector.light import project_light
 from custom_components.yeelight_pro.projector.sensor import project_sensors
 from custom_components.yeelight_pro.projector.switch import project_switches
@@ -42,6 +45,50 @@ def test_unknown_power_like_component_hidden_from_switch_when_hiding_enabled() -
 
     assert project_switches(device, domain=DOMAIN) == []
     assert collect_active_entity_keys(LifecycleCoordinator(data={"unknown": device})) == set()
+
+
+def test_component_labels_do_not_create_main_platform_entities() -> None:
+    """组件名称/描述不能越过易来 category 和属性证据生成主平台实体。"""
+    device = projection_payload(
+        device_id="misleading-labels-1",
+        category="other",
+        component_id="vendor_private_component",
+        state={"vendor_private": 7},
+        params={"vendor_private": 7},
+        component_category="other",
+    )
+    component = device["ha_device_instance"]["components"][0]
+    component["name"] = "空调窗帘新风开关彩光灯"
+    component["desc"] = "空调窗帘新风开关彩光灯"
+    schema_component = device["ha_product_model"]["components"][0]
+    schema_component["name"] = "空调窗帘新风开关彩光灯"
+    schema_component["desc"] = "空调窗帘新风开关彩光灯"
+
+    assert project_light(device, domain=DOMAIN) is None
+    assert project_switches(device, domain=DOMAIN) == []
+    assert project_cover(device, domain=DOMAIN) is None
+    assert project_climate(device, domain=DOMAIN) is None
+    assert project_fans(device, domain=DOMAIN) == []
+
+
+def test_official_properties_override_misleading_component_labels() -> None:
+    """属性能力优先于名称；用户把灯命名成烟雾/空调也仍按 light 投影。"""
+    device = projection_payload(
+        device_id="light-misnamed-1",
+        category="light",
+        component_id="color_light",
+        state={"p": True, "l": 60, "ct": 4000},
+        params={"p": True, "l": 60, "ct": 4000},
+        component_category="light",
+    )
+    device["name"] = "厨房烟雾传感器空调"
+    device["ha_device_instance"]["name"] = "厨房烟雾传感器空调"
+    device["ha_device_instance"]["components"][0]["name"] = "空调"
+    device["ha_product_model"]["components"][0]["name"] = "空调"
+
+    assert project_light(device, domain=DOMAIN) is not None
+    assert project_climate(device, domain=DOMAIN) is None
+    assert project_switches(device, domain=DOMAIN) == []
 
 
 def test_non_light_sensor_payload_does_not_fallback_to_light() -> None:
@@ -218,7 +265,7 @@ def test_unknown_readable_property_projects_marked_fallback_sensor_when_hiding_d
     """隐藏关闭时，未知可读属性应生成明确标记 unknown 的 fallback sensor。"""
     device = projection_payload(
         device_id="unknown-visible-1",
-        category="other",
+        category="light_sensor",
         component_id="vendor_private_meter",
         state={"vendor_private": 7},
         params={"vendor_private": 7},
@@ -294,25 +341,6 @@ def test_event_input_unknown_scalar_does_not_project_fallback_sensor() -> None:
     ) == {
         ("event", "yeelight_pro_scene-panel-unknown-scalar-1_scene_panel_event")
     }
-
-
-def test_user_name_does_not_block_unknown_sensor_fallback() -> None:
-    """未知 fallback 只看物模型身份，不能被用户名称中的情景/旋钮误伤。"""
-    device = projection_payload(
-        device_id="named-panel-sensor-1",
-        category="other",
-        component_id="vendor_meter",
-        state={"vendor_private": 7},
-        params={"vendor_private": 7},
-        component_category="vendor meter",
-    )
-    device["name"] = "玄关情景面板"
-    device["ha_device_instance"]["name"] = "玄关情景面板"
-    device["hide_unknown_entities"] = False
-
-    projections = project_sensors(device, domain=DOMAIN)
-
-    assert [item.component_id for item in projections] == ["unknown_vendor_private"]
 
 
 def test_low_frequency_component_unknown_scalar_does_not_project_fallback_sensor() -> None:

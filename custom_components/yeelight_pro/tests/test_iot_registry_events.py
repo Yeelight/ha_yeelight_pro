@@ -55,6 +55,26 @@ def test_panel_click_and_hold_event_component_matrix_matches_iot_docs() -> None:
         assert {"click", "hold"}.issubset(component.events)
 
 
+def test_motion_event_component_matrix_matches_event_summary_csv() -> None:
+    """motion.true/false 应覆盖事件梳理 CSV 中明确列出的传感组件."""
+    registry = iot_registry()
+    expected_components = {
+        "human detection sensor",
+        "human occupancy sensor",
+        "human body infrared sensor",
+        "dali human detection sensor",
+        "dali illuminance sensor",
+    }
+    events = {event.normalized: event for event in registry.events}
+
+    assert set(events["motion_detected"].components) == expected_components
+    assert set(events["motion_undetected"].components) == expected_components
+
+    for component_alias in expected_components:
+        component = registry.component_map[component_alias]
+        assert {"motion_detected", "motion_undetected"}.issubset(component.events)
+
+
 def test_release_after_hold_remains_unassigned_until_docs_confirm_components() -> None:
     """按住后松开目前缺少明确组件归属，不能提前扩大事件投影面。"""
     registry = iot_registry()

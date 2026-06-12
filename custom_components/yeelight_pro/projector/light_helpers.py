@@ -8,13 +8,12 @@ from homeassistant.components.light import ColorMode
 
 from ..canonical.models import ComponentInstanceModel, ComponentModel
 from ..device_display import channel_name_label
-from ..utils import matches_category, to_category, to_int, to_str
+from ..utils import to_category, to_int, to_str
 from .common import NumericRange, component_index, humanize_component_id
+from .platform_evidence import payload_category
 
 DEFAULT_BRIGHTNESS_RANGE = (1, 100, 1)
 DEFAULT_COLOR_TEMP_RANGE_KELVIN = (2700, 6500, None)
-LIGHT_CATEGORY_TOKENS = ("light", "lamp", "灯", "灯带", "彩光", "色温")
-SWITCH_CATEGORY_TOKENS = ("switch", "relay", "开关", "面板")
 LIGHT_COLOR_MODE_HINT_KEY = "light_color_mode"
 LIGHT_COLOR_TEMP_MODE_TOKENS = {"color_temp", "colortemp", "ct", "temperature", "temp"}
 LIGHT_RGB_MODE_TOKENS = {"rgb", "color", "colour"}
@@ -63,11 +62,7 @@ def _payload_is_light(device_payload: Mapping[str, Any]) -> bool:
     """Return true when payload identity is explicitly light-like."""
     if to_category(device_payload.get("ha_platform")) == "light":
         return True
-    category = to_category(device_payload.get("iot_category") or device_payload.get("category"))
-    return category == "light" or matches_category(
-        category,
-        LIGHT_CATEGORY_TOKENS,
-    )
+    return payload_category(device_payload) == "light"
 
 
 def _resolve_supported_color_modes(features: set[str]) -> set[ColorMode]:

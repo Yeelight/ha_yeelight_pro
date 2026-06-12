@@ -12,7 +12,13 @@ from ..canonical.models import (
     ValueItemModel,
     ValueRangeModel,
 )
-from ..capabilities.registry import format_component_property_key, property_spec
+from ..capabilities.registry import (
+    component_platform_hint,
+    format_component_property_key,
+    platform_for_category,
+    property_spec,
+)
+from ..core.device_runtime_capabilities import normalize_iot_category
 from ..device_display import channel_name_label
 from ..entity_category import entity_category_for_property
 from ..utils import to_str
@@ -49,6 +55,22 @@ MAIN_ENTITY_PROPS = frozenset({
     "locked",
     "lck",
 })
+MAIN_ENTITY_PROPS_BY_PLATFORM = {
+    "climate": frozenset({
+        "acp",
+        "actt",
+        "acct",
+        "p",
+        "rfhp",
+        "rfhct",
+        "rfhtt",
+        "tgt",
+    }),
+    "cover": frozenset({"cp", "rs", "tp"}),
+    "fan": frozenset({"vmcp", "vmcf"}),
+    "light": frozenset({"c", "ct", "l", "m", "p"}),
+    "switch": frozenset({"p", "sp"}),
+}
 BOOL_FORMATS = frozenset({"bool", "boolean"})
 AUXILIARY_BOOL_CONFIG_PROPS = frozenset({
     "acrc",
@@ -140,28 +162,25 @@ def _is_main_entity_property(
     if component is None:
         return prop_id in MAIN_ENTITY_PROPS
 
-    category = (component.category or "").lower()
-    if any(token in category for token in ("relay_switch", "switch", "开关")):
-        return prop_id in {"p", "sp"}
-    if any(token in category for token in ("light", "灯", "彩光", "色温")):
-        return prop_id in {"p", "l", "ct", "c", "m"}
-    if any(token in category for token in ("curtain", "blind", "窗帘")):
-        return prop_id in {"cp", "tp", "rs"}
-    component_identity = " ".join(
-        filter(
-            None,
-            (
-                (component.component_id or "").lower(),
-                (component.name or "").lower(),
-                (component.desc or "").lower(),
-            ),
-        )
-    )
-    if any(token in component_identity for token in ("fresh_air", "fresh air", "fan", "新风")):
-        return prop_id in {"vmcp", "vmcf"}
-    if any(token in category for token in ("temp_control", "climate", "空调", "地暖")):
-        return prop_id in {"acp", "actt", "acct", "rfhp", "rfhct", "rfhtt", "tgt"}
+    platform = _component_platform(component)
+    if platform in MAIN_ENTITY_PROPS_BY_PLATFORM:
+        return prop_id in MAIN_ENTITY_PROPS_BY_PLATFORM[platform]
     return prop_id in MAIN_ENTITY_PROPS
+
+
+def _component_platform(component: ComponentInstanceModel) -> str | None:
+    """Return documented HA platform for a component without using labels."""
+    for value in (component.component_id, component.category):
+        direct = component_platform_hint(value)
+        if direct:
+            return direct
+        category = normalize_iot_category(value)
+        if not category:
+            continue
+        platform = platform_for_category(category)
+        if platform:
+            return platform
+    return None
 
 
 def control_value_range(prop: PropertyModel) -> ValueRangeModel | None:

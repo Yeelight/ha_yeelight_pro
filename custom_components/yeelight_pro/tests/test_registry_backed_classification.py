@@ -79,3 +79,13 @@ def test_user_name_alone_does_not_create_documented_capability() -> None:
     payload = {"category": "light", "name": "厨房烟雾传感器", "params": {}}
 
     assert infer_iot_category(payload) == "light"
+
+
+def test_switch_platform_word_without_property_evidence_is_not_iot_category() -> None:
+    """switch 是 HA 平台词；没有官方属性或组件证据时不能升格为 relay_switch."""
+    assert infer_iot_category({"category": "switch", "params": {}}) is None
+    assert infer_iot_category({"type": "switch", "params": {}}) is None
+    assert (
+        infer_iot_category({"category": "switch", "params": {"sp": True}})
+        == "relay_switch"
+    )

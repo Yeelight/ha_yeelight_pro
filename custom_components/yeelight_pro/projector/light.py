@@ -12,7 +12,7 @@ from homeassistant.components.light import ColorMode
 
 from ..canonical.models import ComponentInstanceModel, HADeviceInstanceModel
 from ..core.device_runtime_capabilities import state_blocks_light_projection
-from ..utils import matches_category, to_bool, to_category
+from ..utils import to_bool, to_category
 from .common import (
     NumericRange,
     component_index,
@@ -26,9 +26,7 @@ from .device import project_payload_device_info
 from .light_helpers import (
     DEFAULT_BRIGHTNESS_RANGE,
     DEFAULT_COLOR_TEMP_RANGE_KELVIN,
-    LIGHT_CATEGORY_TOKENS,
     LIGHT_COLOR_MODE_HINT_KEY as _LIGHT_COLOR_MODE_HINT_KEY,
-    SWITCH_CATEGORY_TOKENS,
     _constraint,
     _has_brightness_capability,
     _has_color_temp_capability,
@@ -46,9 +44,13 @@ from .light_helpers import (
     _resolve_supported_color_modes,
     _state_has_light_property,
 )
+from .platform_evidence import (
+    component_category,
+    component_has_light_evidence,
+    payload_has_light_evidence,
+)
 
 LIGHT_COLOR_MODE_HINT_KEY = _LIGHT_COLOR_MODE_HINT_KEY
-NON_LIGHT_COMPONENT_TOKENS = ("sensor", "motion", "presence", "occupancy", "contact", "battery")
 
 
 @dataclass(slots=True)
@@ -269,7 +271,7 @@ def _light_component_score(
     device_payload: Mapping[str, Any],
     product_model: Any | None,
 ) -> int:
-    """根据类别、component_id 和能力判断组件是否属于 light。"""
+    """根据易来官方 category、组件和属性能力判断组件是否属于 light。"""
     state = component.state
     product = product_component(product_model, component.component_id)
     features = _resolve_light_features(
@@ -277,30 +279,19 @@ def _light_component_score(
         device_payload,
         product,
     )
-    category = to_category(component.category)
-    if not matches_category(category, LIGHT_CATEGORY_TOKENS):
-        if matches_category(category, SWITCH_CATEGORY_TOKENS):
-            return 0
-        if not _payload_can_project_light(device_payload, state):
-            return 0
+    has_component_evidence = component_has_light_evidence(component, product)
+    if not has_component_evidence and not _payload_can_project_light(device_payload, state):
+        return 0
     if not features and state_blocks_light_projection(device_payload, state):
         return 0
     if not features and not _state_has_light_property(state):
         return 0
+
     score = 0
-    component_id = component.component_id.lower()
 
-    if matches_category(category, LIGHT_CATEGORY_TOKENS):
+    if has_component_evidence:
         score += 200
-    elif matches_category(category, SWITCH_CATEGORY_TOKENS):
-        return 0
-
-    if any(token in category for token in NON_LIGHT_COMPONENT_TOKENS):
-        return 0
-    if any(token in component_id for token in NON_LIGHT_COMPONENT_TOKENS):
-        return 0
-
-    if "light" in component_id:
+    if component_category(component, product) == "light":
         score += 100
     if any(key in state for key in ("l", "ct", "c")):
         score += 60
@@ -331,8 +322,7 @@ def _payload_can_project_light(
     if not {"p", "l", "ct", "c"} & set(state):
         return False
 
-    category = to_category(device_payload.get("iot_category") or device_payload.get("category"))
-    if category == "light" or matches_category(category, LIGHT_CATEGORY_TOKENS):
+    if payload_has_light_evidence(device_payload, state):
         return True
 
     return _legacy_type_light_has_controls(device_payload, state)

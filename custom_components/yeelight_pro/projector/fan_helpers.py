@@ -8,47 +8,21 @@ from homeassistant.components.fan import FanEntityFeature
 
 from ..canonical.models import ComponentInstanceModel, ComponentModel
 from ..device_display import channel_name_label
-from ..utils import matches_category, to_bool, to_category, to_int, to_str
+from ..utils import to_bool, to_int, to_str
 from .common import NumericRange, component_index, humanize_component_id
 from .fan_value_helpers import (
     fan_speed_count,
     project_fan_percentage as _project_percentage,
     raw_prop as _raw_prop,
 )
-
-FAN_CATEGORY_TOKENS = ("fresh air", "fresh_air", "新风")
-LIGHT_CATEGORY_TOKENS = ("light", "lamp", "灯", "灯带", "彩光", "色温")
+from .platform_evidence import component_has_fan_evidence
 
 
 def _looks_like_fan_component(
     component: ComponentInstanceModel,
     product_component: ComponentModel | None,
 ) -> bool:
-    category = to_category(component.category or getattr(product_component, "category", None))
-    lowered = component.component_id.lower()
-    if matches_category(category, FAN_CATEGORY_TOKENS):
-        return True
-    if matches_category(category, LIGHT_CATEGORY_TOKENS):
-        return False
-    if "fresh_air" in lowered or "fresh air" in lowered or "新风" in lowered:
-        return True
-
-    features = {
-        str(item).strip().lower()
-        for item in (
-            component.instance_capabilities.features
-            if component.instance_capabilities is not None
-            else []
-        )
-        if str(item).strip()
-    }
-    if "fresh_air" in features or "fresh air" in features:
-        return True
-
-    prop_ids = set(component.state.keys())
-    if product_component is not None:
-        prop_ids.update(prop.prop_id for prop in product_component.properties)
-    return bool({"vmcp", "vmcf"} & {str(item) for item in prop_ids})
+    return component_has_fan_evidence(component, product_component)
 
 
 def _power_key(state: Mapping[str, Any], product_component: ComponentModel | None) -> str | None:

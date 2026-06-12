@@ -9,7 +9,6 @@ from ..canonical.models import ComponentInstanceModel
 from homeassistant.components.cover import CoverDeviceClass
 
 from ..canonical.models import HADeviceInstanceModel
-from ..utils import to_category
 from .common import (
     load_product_model,
     payload_available,
@@ -17,6 +16,10 @@ from .common import (
     schema_backed_component_available,
 )
 from .device import flatten_instance_state, project_payload_device_info
+from .platform_evidence import (
+    component_has_cover_evidence,
+    payload_has_cover_evidence,
+)
 
 
 @dataclass(slots=True)
@@ -40,17 +43,17 @@ class HACoverProjection:
 def project_cover(device_payload: Mapping[str, Any], *, domain: str) -> HACoverProjection | None:
     """将协调器载荷投影为 Home Assistant cover 实体."""
     instance = _load_instance(device_payload)
-    component = _select_cover_component(instance)
-    if component is None and not _payload_is_cover(device_payload):
+    product_model = load_product_model(device_payload)
+    component = _select_cover_component(instance, product_model)
+    params = _runtime_state(device_payload, instance, component)
+    if component is None and not _payload_is_cover(device_payload, params):
         return None
 
     device_id = str(device_payload.get("device_id", "unknown"))
-    params = _runtime_state(device_payload, instance, component)
     current_position = _clamp_position(_int(params.get("cp")))
     target_position = _clamp_position(_int(params.get("tp")))
     available = payload_available(device_payload, instance)
     if instance is not None and component is not None:
-        product_model = load_product_model(device_payload)
         available = schema_backed_component_available(
             payload_available(device_payload, instance),
             component,
@@ -110,30 +113,25 @@ def _params(device_payload: Mapping[str, Any]) -> dict[str, Any]:
 
 def _select_cover_component(
     instance: HADeviceInstanceModel | None,
+    product_model: Any | None,
 ) -> ComponentInstanceModel | None:
     """从设备实例中选择 cover 组件."""
     if instance is None:
         return None
 
     for component in instance.components:
-        category = _string(component.category).lower()
-        if (
-            category in {"cover", "curtain", "blind"}
-            or component.component_id.lower() in {"cover", "curtain", "blind"}
-            or any(key in component.state for key in ("cp", "tp"))
-        ):
+        schema_component = product_component(product_model, component.component_id)
+        if component_has_cover_evidence(component, schema_component):
             return component
     return None
 
 
-def _payload_is_cover(device_payload: Mapping[str, Any]) -> bool:
+def _payload_is_cover(
+    device_payload: Mapping[str, Any],
+    state: Mapping[str, Any],
+) -> bool:
     """Return true only for documented cover/curtain runtime categories."""
-    category = to_category(
-        device_payload.get("iot_category")
-        or device_payload.get("category")
-        or device_payload.get("type")
-    )
-    return category in {"cover", "curtain", "blind"}
+    return payload_has_cover_evidence(device_payload, state)
 
 
 def _runtime_state(
@@ -174,10 +172,3 @@ def _int(value: Any) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return None
-
-
-def _string(value: Any) -> str:
-    """安全字符串转换."""
-    if value is None:
-        return ""
-    return str(value).strip()

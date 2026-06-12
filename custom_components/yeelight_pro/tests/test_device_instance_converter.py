@@ -88,6 +88,40 @@ def test_device_converter_uses_product_schema_runtime_mapping() -> None:
     assert device.components[0].state == {"p": True, "l": 55}
 
 
+def test_device_converter_component_labels_do_not_create_runtime_components() -> None:
+    """schema 组件名称像设备类型时，不能靠文案生成运行时组件。"""
+    product = YeelightProductSchemaConverter().convert(
+        {
+            "pid": 1099,
+            "name": "Misleading labels",
+            "category": "other",
+            "components": [
+                {
+                    "cid": 9999,
+                    "name": "空调窗帘新风开关彩光灯",
+                    "desc": "空调窗帘新风开关彩光灯",
+                    "type": 0,
+                    "category": "other",
+                    "properties": [],
+                },
+            ],
+        }
+    )
+
+    device = YeelightLanDeviceInstanceConverter().convert(
+        {
+            "id": "misleading-labels",
+            "name": "Misleading labels",
+            "pid": 1099,
+            "online": True,
+            "params": {},
+        },
+        product_model=product,
+    )
+
+    assert device.components == []
+
+
 def test_device_converter_applies_schema_zoom_scale_to_runtime_state() -> None:
     """Schema-aware runtime state 应按物模型 zoom/scale 转成实际值."""
     product = YeelightProductSchemaConverter().convert(

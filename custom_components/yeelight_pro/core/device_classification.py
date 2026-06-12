@@ -122,7 +122,7 @@ def infer_iot_category(payload: Mapping[str, Any]) -> str | None:
     if current in GENERIC_PLATFORM_CATEGORIES:
         return None
     if current == "switch":
-        return "relay_switch"
+        return None
     if current in BROAD_CATEGORIES:
         return None if current == "" else current
     return current or None
@@ -213,11 +213,8 @@ def _category_from_props(keys: set[str]) -> str | None:
 
 def _property_model_label(payload: Mapping[str, Any], keys: set[str]) -> str | None:
     """Return a concrete model label only from property evidence."""
-    category = (
-        _category_from_props(runtime_property_keys(payload)) or _category_from_props(keys)
-        or _category_text(payload.get("category"))
-        or _category_text(payload.get("type"))
-    )
+    category = _category_from_props(runtime_property_keys(payload)) or _category_from_props(keys)
+    category = category or _category_text(payload.get("category")) or _category_text(payload.get("type"))
     if keys & LIGHT_SENSOR_CONFIG_PROPS and keys & {"luminance", "mv"}:
         return "照度传感器"
     if keys & {"dc"}:

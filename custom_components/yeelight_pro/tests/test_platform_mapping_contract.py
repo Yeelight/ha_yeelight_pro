@@ -64,6 +64,12 @@ def test_broad_cloud_light_sensor_payload_maps_to_sensor_only() -> None:
     assert platform_candidates_for_payload(payload) == ("sensor",)
 
 
+def test_other_category_has_no_default_platform_without_property_evidence() -> None:
+    """other 是易来兜底大类，不应默认等同 HA sensor 平台。"""
+    assert primary_platform_for_payload({"category": "other"}) is None
+    assert platform_candidates_for_payload({"category": "other"}) == ()
+
+
 def test_broad_cloud_light_contact_payload_maps_to_binary_and_sensor() -> None:
     """门磁只读布尔和电量应映射 binary_sensor + sensor，不产生 light."""
     payload = {

@@ -26,7 +26,7 @@ CORE_IOT_CATEGORIES = {
     "scene_panel": "event",
     "gateway": None,
     "knob_switch": "event",
-    "other": "sensor",
+    "other": None,
 }
 
 HA_ENTITY_PLATFORMS_NOT_IOT_CATEGORIES = {

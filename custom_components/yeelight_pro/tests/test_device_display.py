@@ -91,6 +91,7 @@ def test_generic_ha_platform_category_does_not_become_iot_category() -> None:
     for payload in (
         {"category": "sensor", "name": "主卧温湿度传感器"},
         {"category": "binary_sensor", "name": "主卧人体传感器"},
+        {"category": "switch", "name": "厨房智能开关"},
         {"category": "传感器", "name": "主卧人体传感器"},
     ):
         assert infer_iot_category(payload) is None

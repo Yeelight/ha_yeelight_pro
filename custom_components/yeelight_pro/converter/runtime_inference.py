@@ -12,6 +12,8 @@ from ..canonical.models import (
 from ..capabilities.registry import is_iot_category, product_model_from_catalog
 from .runtime_inference_helpers import infer_runtime_components, string_value
 
+_BROAD_OR_GENERIC_CATEGORIES = frozenset({"", "light", "other", "relay_switch", "switch"})
+
 
 class RuntimeInferredProductModelBuilder:
     """从运行时载荷构建临时规范产品模型。
@@ -56,6 +58,8 @@ class RuntimeInferredProductModelBuilder:
                 "Replace it with the official product schema source when available.",
             ],
         )
+        if _catalog_conflicts_with_runtime_category(catalog_model, iot_category):
+            return _merge_catalog_product_metadata(runtime_model, catalog_model)
         return self._merge_catalog(runtime_model, catalog_model)
 
     def merge(
@@ -310,4 +314,58 @@ def _effective_category(payload: Mapping[str, Any]) -> str | None:
         string_value(payload.get("effective_category"))
         or string_value(payload.get("iot_category"))
         or string_value(payload.get("category"))
+    )
+
+
+def _catalog_conflicts_with_runtime_category(
+    catalog_model: HAProductModel | None,
+    runtime_category: str | None,
+) -> bool:
+    """Return true when live capability evidence must override product catalog components."""
+    if catalog_model is None or runtime_category in _BROAD_OR_GENERIC_CATEGORIES:
+        return False
+    catalog_categories = {
+        category
+        for category in (
+            catalog_model.product.category,
+            *catalog_model.product.categories,
+        )
+        if category
+    }
+    if not catalog_categories:
+        return False
+    return runtime_category not in catalog_categories
+
+
+def _merge_catalog_product_metadata(
+    runtime_model: HAProductModel,
+    catalog_model: HAProductModel | None,
+) -> HAProductModel:
+    """Copy safe catalog identity metadata without importing conflicting components."""
+    if catalog_model is None:
+        return runtime_model
+    product = runtime_model.product
+    catalog_product = catalog_model.product
+    notes = list(runtime_model.notes)
+    for note in catalog_model.notes:
+        if note not in notes:
+            notes.append(note)
+    notes.append(
+        "Catalog components were not projected because live capabilities indicate "
+        "a different Yeelight category."
+    )
+    return HAProductModel(
+        schema_version=runtime_model.schema_version,
+        product=ProductModel(
+            model_id=catalog_product.model_id or product.model_id,
+            manufacturer=product.manufacturer or catalog_product.manufacturer,
+            model=catalog_product.model or product.model,
+            description=product.description,
+            category=product.category,
+            categories=product.categories,
+            bridge=catalog_product.bridge or product.bridge,
+        ),
+        components=runtime_model.components,
+        device_actions=runtime_model.device_actions,
+        notes=notes,
     )

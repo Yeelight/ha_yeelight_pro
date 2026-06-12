@@ -12,14 +12,13 @@ from ..capabilities.registry import (
     platform_for_category,
 )
 from ..device_display import channel_name_label, switch_channel_count_hint
-from ..utils import matches_category, to_category, to_int
+from ..utils import to_category, to_int
 from .common import component_index
 from .event_input import is_event_input_category, is_event_input_component
+from .platform_evidence import component_has_switch_evidence
 
 RAW_SWITCH_KEY_RE = re.compile(r"^(?P<index>\d+)-(?P<prop>p|sp)$")
 DIRECT_SWITCH_PROPS = ("p", "sp")
-SWITCH_TOKENS = ("switch", "relay")
-LIGHT_TOKENS = ("light", "lamp")
 SWITCH_PARENT_CATEGORIES = {"relay_switch", "switch"}
 NON_SWITCH_PARENT_CATEGORIES = {
     "binary_sensor",
@@ -37,19 +36,6 @@ NON_SWITCH_PARENT_CATEGORIES = {
     "sensor",
     "temp_control",
 }
-NON_SWITCH_TOKENS = (
-    "cover",
-    "curtain",
-    "blind",
-    "climate",
-    "heater",
-    "风扇",
-    "吊扇",
-    "窗帘",
-    "空调",
-    "浴霸",
-)
-
 
 def _allows_switch_projection(device_payload: Mapping[str, Any]) -> bool:
     """Return false when the parent device category owns another HA platform."""
@@ -88,7 +74,6 @@ def _allows_raw_switch_fallback(device_payload: Mapping[str, Any]) -> bool:
     component_hint_values = (
         device_payload.get("component_id"),
         device_payload.get("component"),
-        device_payload.get("component_name"),
     )
     if any(component_platform_hint(value) == "switch" for value in component_hint_values):
         return True
@@ -119,31 +104,12 @@ def _component_state_key_map(
 
 
 def _looks_like_switch_component(component: ComponentInstanceModel) -> bool:
-    """判断组件是否表现为 switch 类型."""
-    lowered = component.component_id.lower()
+    """判断组件是否具备官方 relay switch 证据."""
     category = to_category(component.category)
 
-    if component_platform_hint(component) == "event":
-        return False
     if is_event_input_category(category):
         return False
     if is_event_input_component(component.component_id):
-        return False
-    if matches_category(category, LIGHT_TOKENS + ("灯", "灯带", "彩光", "色温")):
-        return False
-    if matches_category(category, NON_SWITCH_TOKENS):
-        return False
-    if matches_category(category, SWITCH_TOKENS + ("开关", "面板")):
-        return True
-
-    if component_platform_hint(category) == "switch":
-        return True
-    if component_platform_hint(component.component_id) == "switch":
-        return True
-
-    if any(token in lowered for token in LIGHT_TOKENS):
-        return False
-    if any(token in lowered for token in NON_SWITCH_TOKENS):
         return False
 
     features = {
@@ -167,7 +133,13 @@ def _looks_like_switch_component(component: ComponentInstanceModel) -> bool:
     if non_switch_features & features:
         return False
 
-    return any(token in lowered for token in SWITCH_TOKENS)
+    if component_has_switch_evidence(component):
+        return True
+    return bool(
+        category.replace("_", " ") == "switch control"
+        and _direct_switch_prop(component.state)
+        and component_index(component.component_id) is not None
+    )
 
 
 def _direct_switch_prop(state: Mapping[str, Any]) -> str | None:

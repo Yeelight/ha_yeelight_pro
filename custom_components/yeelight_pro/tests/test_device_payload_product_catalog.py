@@ -238,6 +238,116 @@ def test_pid_only_mixed_input_device_projects_component_capabilities() -> None:
     assert not any(platform == "light" for platform, _component in candidates)
 
 
+def test_runtime_capabilities_override_conflicting_product_catalog_components() -> None:
+    """实时属性证明设备类别时，冲突 pid 目录不能继续生成错误开关实体."""
+    builder = DevicePayloadBuilder()
+
+    data, _gateways = builder.build_runtime_payloads(
+        devices=[
+            {
+                "id": 85401802,
+                "name": "自定义传感器",
+                "category": "light",
+                "pid": 854018,
+                "properties": [
+                    {
+                        "propId": "mv",
+                        "value": True,
+                        "desc": "人体移动",
+                        "format": "boolean",
+                    },
+                    {
+                        "propId": "luminance",
+                        "value": 188,
+                        "desc": "照度",
+                        "format": "uint16",
+                        "unit": "lx",
+                    },
+                    {
+                        "propId": "sens_range",
+                        "value": 3,
+                        "desc": "感应范围",
+                        "format": "uint8",
+                        "operators": ["set"],
+                    },
+                ],
+            }
+        ],
+        gateways=[],
+        product_schemas={},
+        apply_runtime_overrides=lambda payload: payload,
+    )
+
+    device = data[85401802]
+    candidates = {
+        (item.platform, item.component_id)
+        for item in iter_device_entity_candidates(device)
+    }
+
+    assert device["iot_category"] == "light_sensor"
+    assert device["ha_product_model"]["schema_version"] == "runtime-v1"
+    assert device["ha_product_model"]["product"]["model"] == (
+        "Yeelight Pro S21 智能墙壁开关-双键"
+    )
+    assert [
+        component["component_id"]
+        for component in device["ha_device_instance"]["components"]
+    ] == ["light_sensor"]
+    assert candidates == {
+        ("binary_sensor", "motion"),
+        ("sensor", "illuminance"),
+    }
+
+
+def test_contact_runtime_capabilities_override_conflicting_product_catalog_components() -> None:
+    """门磁属性与产品目录冲突时，以 dc/alm 能力为准，不残留开关候选."""
+    builder = DevicePayloadBuilder()
+
+    data, _gateways = builder.build_runtime_payloads(
+        devices=[
+            {
+                "id": 85401803,
+                "name": "自定义门磁",
+                "category": "light",
+                "pid": 854018,
+                "properties": [
+                    {
+                        "propId": "dc",
+                        "value": False,
+                        "desc": "是否接触",
+                        "format": "boolean",
+                    },
+                    {
+                        "propId": "alm",
+                        "value": True,
+                        "desc": "告警",
+                        "format": "boolean",
+                    },
+                ],
+            }
+        ],
+        gateways=[],
+        product_schemas={},
+        apply_runtime_overrides=lambda payload: payload,
+    )
+
+    device = data[85401803]
+    candidates = {
+        (item.platform, item.component_id)
+        for item in iter_device_entity_candidates(device)
+    }
+
+    assert device["iot_category"] == "contact_sensor"
+    assert [
+        component["component_id"]
+        for component in device["ha_device_instance"]["components"]
+    ] == ["contact_sensor"]
+    assert candidates == {
+        ("binary_sensor", "door"),
+        ("binary_sensor", "tamper"),
+    }
+
+
 def test_pid_only_metadata_product_does_not_become_gateway_from_global_component() -> None:
     """只有基础全局组件时不能用 cpt/o 等诊断属性猜成网关品类."""
     builder = DevicePayloadBuilder()
