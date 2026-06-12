@@ -2,26 +2,16 @@
 
 from __future__ import annotations
 
+from scripts.hacs_preflight_platform_mapping_data import (
+    PLATFORM_MAPPING_CONTRACT_TEST_TOKENS,
+)
+from scripts.hacs_preflight_projector_data import PROJECTOR_CONTRACT_TEST_TOKENS
+
 IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
     "test_iot_registry.py": {
         "platform_for_category": "category-to-platform mapping facade",
         "component_platform_hint": "component platform hints",
         "property_capability": "core property capability lookup",
-    },
-    "test_platform_mapping_contract.py": {
-        "platform_candidates_for_payload": "payload-derived HA platform candidates",
-        "test_broad_cloud_light_contact_payload_maps_to_binary_and_sensor": (
-            "broad cloud light contact payload mapping guard"
-        ),
-        "test_broad_cloud_light_sensor_payload_maps_to_sensor_only": (
-            "broad cloud light sensor mapping guard"
-        ),
-        "test_category_without_capability_evidence_does_not_project_platform": (
-            "category-only platform projection rejection guard"
-        ),
-        "test_acrc_config_property_does_not_claim_remote_platform": (
-            "documented auxiliary bool switch evidence guard"
-        ),
     },
     "test_openapi_broad_category_projection.py": {
         "test_documented_light_sensor_component_with_motion_stays_light_sensor": (
@@ -83,6 +73,14 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         ),
         "test_csv_unscoped_events_remain_unassigned_until_docs_confirm_components": (
             "unscoped CSV event component boundary"
+        ),
+    },
+    "test_runtime_inference.py": {
+        "test_runtime_inferred_contact_sensor_uses_registry_events_without_payload_events": (
+            "runtime registry event inference coverage"
+        ),
+        "test_runtime_inferred_human_sensor_without_component_identity_does_not_guess_events": (
+            "runtime broad-category event inference rejection coverage"
         ),
     },
     "test_iot_registry_csv_contract.py": {
@@ -204,13 +202,6 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
             "HA projection uses scaled runtime state coverage"
         ),
     },
-    "test_event_projection.py": {
-        "test_schema_declared_sensor_events_project_event_and_trigger": (
-            "schema-declared sensor event projection coverage"
-        ),
-        "human_enter": "human approach event projection coverage",
-        "power_alarm": "power alarm schema event projection coverage",
-    },
     "test_capability_filter.py": {
         "test_unknown_bool_and_structured_values_do_not_become_controls": (
             "unknown bool/control fallback rejection coverage"
@@ -326,8 +317,12 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         "test_fresh_air_temp_control_category_projects_only_fan_candidate": (
             "fresh-air temp_control category fan-only projection coverage"
         ),
+        "test_light_sensor_auxiliary_switch_candidates_match_projected_entities": (
+            "runtime sensor auxiliary switch candidate/entity parity coverage"
+        ),
         '("fan", "fresh_air")': "fresh-air fan entity candidate coverage",
         '("climate", "climate")': "fresh-air climate candidate rejection coverage",
+        '("switch", "light_sensor_blp_switch", "config")': "light-sensor switch entity candidate coverage",
     },
     "test_entity_candidate_device_sections.py": {
         "test_schema_rich_device_projects_device_page_sections": (
@@ -338,6 +333,19 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         '("event", "main_light")': "event section candidate coverage",
         '"config"': "config entity-category section coverage",
         '"diagnostic"': "diagnostic entity-category section coverage",
+    },
+    "test_entity_candidate_logging.py": {
+        "test_entity_candidate_logging_reports_projected_domain_summary": (
+            "entity candidate projection debug summary coverage"
+        ),
+        "test_entity_candidate_logging_reports_device_page_sections": (
+            "entity candidate device-page section debug coverage"
+        ),
+        "test_entity_candidate_logging_reports_filter_skip": (
+            "entity candidate filter skip debug coverage"
+        ),
+        "sections={'config'": "device-page section aggregate logging coverage",
+        "device_import_filter_excluded": "stable filter skip reason coverage",
     },
     "test_entity_candidate_scenes.py": {
         "test_entity_candidates_project_cloud_scenes_as_buttons_only": (
@@ -384,3 +392,9 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         "assert_not_awaited": "unknown scene select does not execute",
     },
 }
+for contract_tokens in (
+    PLATFORM_MAPPING_CONTRACT_TEST_TOKENS,
+    PROJECTOR_CONTRACT_TEST_TOKENS,
+):
+    for file_name, tokens in contract_tokens.items():
+        IOT_REGISTRY_CONTRACT_TEST_TOKENS.setdefault(file_name, {}).update(tokens)

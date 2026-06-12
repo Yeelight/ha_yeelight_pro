@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 import logging
 from typing import Any
@@ -174,13 +175,21 @@ async def async_reconcile_entity_registry(
     )
     _LOGGER.info(
         "Reconciled Yeelight Pro entity registry for entry %s: active=%s "
-        "pending_stale=%s disabled=%s restored=%s metadata_updated=%s",
+        "pending_stale=%s disabled=%s restored=%s metadata_updated=%s "
+        "registry_entries=%s stale=%s active_domains=%s stale_domains=%s "
+        "pending_stale_domains=%s registry_domains=%s",
         entry.entry_id,
         len(active_entity_keys),
         len(pending_stale_keys),
         0,
         restored,
         metadata_updated,
+        len(registry_entries),
+        len(stale_keys),
+        _entity_key_domain_counts(active_entity_keys),
+        _entity_key_domain_counts(stale_keys),
+        _entity_key_domain_counts(pending_stale_keys),
+        _registry_entry_domain_counts(registry_entries),
     )
     return {unique_id for _, unique_id in active_entity_keys}
 
@@ -221,6 +230,23 @@ def _pending_stale_entity_keys(coordinator: Any) -> set[EntityKey]:
     pending: set[EntityKey] = set()
     setattr(coordinator, _PENDING_STALE_ENTITY_KEYS, pending)
     return pending
+
+
+def _entity_key_domain_counts(keys: set[EntityKey]) -> dict[str, int]:
+    """Return deterministic HA domain counts without entity identifiers."""
+    return dict(sorted(Counter(domain for domain, _unique_id in keys).items()))
+
+
+def _registry_entry_domain_counts(
+    registry_entries: list[er.RegistryEntry],
+) -> dict[str, int]:
+    """Return deterministic registry domain counts without entity identifiers."""
+    counts = Counter(
+        domain
+        for registry_entry in registry_entries
+        if (domain := _registry_entry_domain(registry_entry)) is not None
+    )
+    return dict(sorted(counts.items()))
 
 
 def _disable_stale_entries(
@@ -323,8 +349,20 @@ def _update_active_registry_entry(
         metadata_kwargs = dict(kwargs)
         metadata_kwargs.pop("new_entity_id", None)
         if not metadata_kwargs:
+            _LOGGER.debug(
+                "Skipped Yeelight Pro entity_id migration for active registry "
+                "entry: domain=%s reason=entity_id_conflict",
+                _registry_entry_domain(registry_entry),
+            )
             return {}
         entity_registry.async_update_entity(registry_entry.entity_id, **metadata_kwargs)
+        _LOGGER.debug(
+            "Applied partial Yeelight Pro registry metadata update after "
+            "entity_id migration failed: domain=%s fields=%s "
+            "skipped_field=new_entity_id reason=entity_id_conflict",
+            _registry_entry_domain(registry_entry),
+            sorted(metadata_kwargs),
+        )
         return metadata_kwargs
 
 

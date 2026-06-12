@@ -7,7 +7,11 @@ from typing import Any
 
 from ..core.device_registry_classification import registry_category_from_property_keys
 from ..utils import to_category
-from .platform_contract_data import RELAY_SWITCH_CONTROL_PROPS, SWITCH_IDENTITY_PROPS
+from .platform_contract_data import (
+    LIGHT_CONTROL_PROPS,
+    RELAY_SWITCH_CONTROL_PROPS,
+    SWITCH_IDENTITY_PROPS,
+)
 from .registry import is_iot_category, parse_component_property_key
 
 
@@ -78,6 +82,34 @@ def has_indexed_switch_control(payload: Mapping[str, Any], category: str) -> boo
     return False
 
 
+def ignored_property_reason(
+    prop: str,
+    *,
+    registry_backed: bool,
+    readable: bool,
+    writable: bool,
+    category: str,
+    prop_names: set[str],
+    has_indexed_switch: bool,
+) -> str:
+    """Return why a property did not contribute to HA platform candidates."""
+    if not registry_backed:
+        return "unknown_property"
+    if prop in LIGHT_CONTROL_PROPS and not has_light_capability_evidence(prop_names):
+        return "missing_light_capability_evidence"
+    if prop in RELAY_SWITCH_CONTROL_PROPS and not has_switch_capability_evidence(
+        category,
+        prop_names,
+        has_indexed_switch,
+    ):
+        return "missing_switch_capability_evidence"
+    if writable and not readable:
+        return "write_only_property"
+    if not writable:
+        return "schema_read_only"
+    return "unsupported_property_shape"
+
+
 def components(product_model: Mapping[str, Any]) -> Iterable[Mapping[str, Any]]:
     """Return product-model component rows."""
     return _rows(product_model.get("components"))
@@ -105,4 +137,5 @@ __all__ = [
     "has_indexed_switch_control",
     "has_light_capability_evidence",
     "has_switch_capability_evidence",
+    "ignored_property_reason",
 ]

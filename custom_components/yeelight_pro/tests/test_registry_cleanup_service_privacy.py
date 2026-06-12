@@ -17,6 +17,9 @@ from custom_components.yeelight_pro.registry_cleanup_service import (
     ERROR_AUDIT_MISMATCH,
     async_register_registry_cleanup_service,
 )
+from custom_components.yeelight_pro.entity_lifecycle_cleanup import (
+    async_preview_stale_registry_cleanup,
+)
 
 from .entity_lifecycle_helpers import (
     FakeEntityRegistry,
@@ -92,6 +95,48 @@ async def test_cleanup_registry_service_response_and_logs_are_identifier_safe(
         (secret_entity_id, {"disabled_by": er.RegistryEntryDisabler.INTEGRATION})
     ]
     assert registry.removed_entity_ids == []
+
+
+@pytest.mark.asyncio
+async def test_cleanup_preview_log_is_identifier_safe(
+    hass: HomeAssistant,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """cleanup dry-run helper 只输出聚合 domain，不输出 registry 标识."""
+    secret_unique_id = "yeelight_pro_scene_secret_unique"
+    secret_entity_id = "scene.secret_stale"
+    registry = FakeEntityRegistry([
+        registry_entry(
+            unique_id=secret_unique_id,
+            entity_id=secret_entity_id,
+            domain="scene",
+        )
+    ])
+    coordinator = install_cleanup_runtime(hass)
+    entry = hass.data["yeelight_pro"]["entry-1"]["entry"]
+    patch_entity_registry(monkeypatch, registry)
+    patch_device_registry(monkeypatch, stale_device_count=0)
+
+    with caplog.at_level(
+        logging.INFO,
+        logger="custom_components.yeelight_pro.entity_lifecycle_cleanup",
+    ):
+        preview = await async_preview_stale_registry_cleanup(
+            hass,
+            entry,
+            coordinator,
+        )
+
+    cleanup_logs = "\n".join(
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "custom_components.yeelight_pro.entity_lifecycle_cleanup"
+    )
+    assert preview.entity_domains == {"scene": 1}
+    assert "entity_domains={'scene': 1}" in cleanup_logs
+    assert secret_unique_id not in cleanup_logs
+    assert secret_entity_id not in cleanup_logs
 
 
 @pytest.mark.asyncio

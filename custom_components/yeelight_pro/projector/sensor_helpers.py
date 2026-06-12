@@ -63,6 +63,64 @@ def sensor_spec_keys_for_instance(
     )
 
 
+def device_payload_id(device_payload: Mapping[str, Any]) -> str | None:
+    """Return a stable non-secret device id for projection diagnostics."""
+    value = device_payload.get("device_id")
+    return str(value) if value is not None else None
+
+
+def device_payload_category(device_payload: Mapping[str, Any]) -> Any:
+    """Return category metadata without inspecting user-provided names."""
+    return device_payload.get("iot_category") or device_payload.get("category")
+
+
+def projection_property_keys(
+    instance: HADeviceInstanceModel | None,
+    product_model: HAProductModel | None,
+    params: Mapping[str, Any],
+) -> list[str]:
+    """Return property keys only; values may contain user data and stay out of logs."""
+    keys = {str(key) for key in params}
+    if instance is not None:
+        keys.update(
+            str(key)
+            for component in instance.components
+            for key in component.state
+        )
+    if product_model is not None:
+        keys.update(
+            str(prop.prop_id)
+            for component in product_model.components
+            for prop in component.properties
+        )
+    return sorted(keys)
+
+
+def projection_identity_has_token(
+    device_payload: Mapping[str, Any],
+    instance: HADeviceInstanceModel | None,
+    product_model: HAProductModel | None,
+    tokens: tuple[str, ...],
+) -> bool:
+    """Return whether device/component identity contains a documented token."""
+    values: list[Any] = [
+        device_payload.get("iot_category"),
+        device_payload.get("category"),
+        device_payload.get("type"),
+        device_payload.get("component_id"),
+    ]
+    if instance is not None:
+        values.extend(component.category for component in instance.components)
+    if product_model is not None:
+        values.append(product_model.product.category)
+        values.extend(component.category for component in product_model.components)
+    return any(
+        any(token in str(value).lower() for token in tokens)
+        for value in values
+        if value is not None
+    )
+
+
 def device_name(
     device_payload: Mapping[str, Any], instance: HADeviceInstanceModel | None
 ) -> str | None:
@@ -217,13 +275,17 @@ __all__ = [
     "SensorSpec",
     "bool_value",
     "component_for_prop",
+    "device_payload_category",
+    "device_payload_id",
     "device_name",
     "is_event_style_device",
     "is_event_style_component",
     "is_unsupported_sensor_device",
     "icon_for_property",
     "projection_available",
+    "projection_identity_has_token",
     "projection_name",
+    "projection_property_keys",
     "sensor_spec_keys_for_instance",
     "registry_sensor_spec",
     "runtime_state",

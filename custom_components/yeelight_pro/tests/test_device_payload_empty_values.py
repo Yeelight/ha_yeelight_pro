@@ -148,7 +148,7 @@ def test_runtime_payloads_do_not_use_conflicting_switch_schema_for_curtain() -> 
 
     assert device["iot_category"] == "curtain"
     assert device["ha_product_model"]["schema_version"] == "runtime-v1"
-    assert candidates == {("cover", "cover")}
+    assert candidates == {("cover", "curtain")}
 
 
 def test_runtime_payloads_keep_empty_cover_and_climate_metadata_only() -> None:
@@ -262,8 +262,8 @@ def test_runtime_payloads_do_not_project_indexed_power_for_non_switch_categories
     assert data[605]["iot_category"] == "curtain"
     assert data[606]["iot_category"] == "temp_control"
     assert data[607]["iot_category"] == "relay_switch"
-    assert by_device[605] == {("cover", "cover")}
-    assert ("climate", "climate") in by_device[606]
+    assert by_device[605] == {("cover", "curtain")}
+    assert ("climate", "temp_control") in by_device[606]
     assert by_device[607] == {
         ("switch", "switch_1"),
         ("switch", "switch_2"),

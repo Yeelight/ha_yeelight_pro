@@ -6,19 +6,30 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 from typing import Any, Mapping
 
 from ..canonical.models import ComponentInstanceModel, HADeviceInstanceModel, HAProductModel
 from ..const import DEFAULT_HIDE_UNKNOWN_ENTITIES
 from ..device_display import channel_name_label
-from .common import load_instance, load_product_model, payload_available, product_component
+from .common import (
+    component_property_value,
+    load_instance,
+    load_product_model,
+    payload_available,
+    product_component,
+)
 from .device import project_payload_device_info
 from .sensor_helpers import (
+    device_payload_category,
+    device_payload_id,
     is_event_style_device,
     is_event_style_component,
     is_unsupported_sensor_device,
     projection_available,
+    projection_identity_has_token,
     projection_name,
+    projection_property_keys,
     registry_sensor_spec,
     runtime_state,
     sensor_entity_category,
@@ -26,6 +37,8 @@ from .sensor_helpers import (
     sensor_specs,
     should_project_registry_sensor,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -57,6 +70,12 @@ def project_sensors(
             device_payload.get("hide_unknown_entities", DEFAULT_HIDE_UNKNOWN_ENTITIES)
         )
     if is_unsupported_sensor_device(device_payload):
+        _log_sensor_skip(
+            device_payload,
+            prop_id=None,
+            component=None,
+            reason="unsupported_sensor_device",
+        )
         return []
 
     instance = load_instance(device_payload)
@@ -70,15 +89,35 @@ def project_sensors(
     projections: list[HASensorProjection] = []
     specs = sensor_specs(params)
     occurrences = _sensor_property_occurrences(instance, product_model, params)
+    if not occurrences:
+        _log_sensor_missing_evidence(device_payload, instance, product_model, params)
     occurrence_counts = _property_occurrence_counts(occurrences)
     for key, component, value in occurrences:
         spec = specs.get(key) or registry_sensor_spec(key)
         if spec is None:
+            _log_sensor_skip(
+                device_payload,
+                prop_id=key,
+                component=component,
+                reason="missing_sensor_spec",
+            )
             continue
         if not should_project_registry_sensor(key, component):
+            _log_sensor_skip(
+                device_payload,
+                prop_id=key,
+                component=component,
+                reason="registry_sensor_not_projectable",
+            )
             continue
         entity_category = sensor_entity_category(key, component)
         if _blocks_event_style_sensor(event_style_device, component, entity_category):
+            _log_sensor_skip(
+                device_payload,
+                prop_id=key,
+                component=component,
+                reason="event_style_component_owns_property",
+            )
             continue
         schema_component = (
             product_component(product_model, component.component_id)
@@ -133,7 +172,9 @@ def _sensor_property_occurrences(
             )
         for key in sensor_spec_keys_for_instance(None, None, component_keys):
             seen.add((component.component_id, key))
-            occurrences.append((key, component, component.state.get(key)))
+            occurrences.append(
+                (key, component, component_property_value(params, instance, component, key))
+            )
 
     scoped_keys = {key for _component_id, key in seen}
     for key in sensor_spec_keys_for_instance(None, None, params):
@@ -188,3 +229,62 @@ def _scoped_projection_name(
     if channel and label:
         return f"{channel} {label}"
     return label or channel
+
+
+def _log_sensor_missing_evidence(
+    device_payload: Mapping[str, Any],
+    instance: HADeviceInstanceModel | None,
+    product_model: HAProductModel | None,
+    params: Mapping[str, Any],
+) -> None:
+    """Log sensor-like payloads that lack documented sensor properties."""
+    if not _LOGGER.isEnabledFor(logging.DEBUG) or not _looks_sensor_related(
+        device_payload,
+        instance,
+        product_model,
+    ):
+        return
+    _LOGGER.debug(
+        "Skipping sensor projection: device_id=%s category=%s type=%s props=%s "
+        "reason=missing_sensor_property_evidence",
+        device_payload_id(device_payload),
+        device_payload_category(device_payload),
+        device_payload.get("type"),
+        projection_property_keys(instance, product_model, params),
+    )
+
+
+def _log_sensor_skip(
+    device_payload: Mapping[str, Any],
+    *,
+    prop_id: str | None,
+    component: ComponentInstanceModel | None,
+    reason: str,
+) -> None:
+    """Log why a known sensor property did not become a HA sensor entity."""
+    if not _LOGGER.isEnabledFor(logging.DEBUG):
+        return
+    _LOGGER.debug(
+        "Skipping sensor projection: device_id=%s component_id=%s category=%s "
+        "component_category=%s prop_id=%s reason=%s",
+        device_payload_id(device_payload),
+        None if component is None else component.component_id,
+        device_payload_category(device_payload),
+        None if component is None else component.category,
+        prop_id,
+        reason,
+    )
+
+
+def _looks_sensor_related(
+    device_payload: Mapping[str, Any],
+    instance: HADeviceInstanceModel | None,
+    product_model: HAProductModel | None,
+) -> bool:
+    """Return whether missing sensor evidence is worth a DEBUG breadcrumb."""
+    return projection_identity_has_token(
+        device_payload,
+        instance,
+        product_model,
+        ("sensor",),
+    )

@@ -13,7 +13,7 @@ from ..canonical.models import (
 )
 from ..utils import to_float
 from ..utils import to_bool
-from .common import NumericRange, load_instance
+from .common import NumericRange, component_property_value, load_instance
 from .device import project_payload_device_info
 from .property_control_common import (
     auxiliary_bool_property_skip_reason,
@@ -194,7 +194,14 @@ def _project_number(
         unique_id=f"{domain}_{instance.device_id}_{component.component_id}_{prop.prop_id}_number",
         name=control_name(component, prop, device_payload=device_payload),
         available=control_available(device_payload, instance, component),
-        value=to_float(component.state.get(prop.prop_id)),
+        value=to_float(
+            component_property_value(
+                _params(device_payload),
+                instance,
+                component,
+                prop.prop_id,
+            )
+        ),
         native_range=numeric_range,
         unit=control_unit(prop),
         control_key=control_key(instance, component.component_id, prop.prop_id),
@@ -248,7 +255,12 @@ def _project_select(
         unique_id=f"{domain}_{instance.device_id}_{component.component_id}_{prop.prop_id}_select",
         name=control_name(component, prop, device_payload=device_payload),
         available=control_available(device_payload, instance, component),
-        value=component.state.get(prop.prop_id),
+        value=component_property_value(
+            _params(device_payload),
+            instance,
+            component,
+            prop.prop_id,
+        ),
         options=options,
         control_key=control_key(instance, component.component_id, prop.prop_id),
         device_info=project_payload_device_info(device_payload, instance),
@@ -282,7 +294,15 @@ def _project_switch(
         unique_id=f"{domain}_{instance.device_id}_{component.component_id}_{prop.prop_id}_switch",
         name=control_name(component, prop, device_payload=device_payload),
         available=control_available(device_payload, instance, component),
-        is_on=to_bool(component.state.get(prop.prop_id, prop.default), default=False),
+        is_on=to_bool(
+            component_property_value(
+                _params(device_payload),
+                instance,
+                component,
+                prop.prop_id,
+            ),
+            default=to_bool(prop.default, default=False),
+        ),
         on_value=on_value,
         off_value=off_value,
         control_key=control_key(instance, component.component_id, prop.prop_id),
@@ -312,6 +332,12 @@ def _log_property_control_skip(
         prop.property_type or prop.kind or prop.format,
         reason or "unknown",
     )
+
+
+def _params(device_payload: Mapping[str, Any]) -> dict[str, Any]:
+    """提取 raw params，供组件 scoped key 读取当前值."""
+    params = device_payload.get("params")
+    return dict(params) if isinstance(params, Mapping) else {}
 
 
 __all__ = [

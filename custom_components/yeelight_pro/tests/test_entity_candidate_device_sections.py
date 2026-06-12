@@ -7,8 +7,8 @@ from custom_components.yeelight_pro.entity_candidates import iter_device_entity_
 from .test_entity_candidates import _light_payload
 
 
-def test_schema_rich_device_projects_device_page_sections() -> None:
-    """schema 丰富设备必须同时提供控制、传感器、事件、配置和诊断候选."""
+def _schema_rich_light_payload() -> dict:
+    """Return a device payload spanning control/sensor/event/config/diagnostic."""
     payload = _light_payload()
     payload["device_id"] = "rich-light-1"
     payload["ha_device_instance"]["device_id"] = "rich-light-1"
@@ -46,6 +46,12 @@ def test_schema_rich_device_projects_device_page_sections() -> None:
             {"event_id": "hold", "name": "长按"},
         ],
     }
+    return payload
+
+
+def test_schema_rich_device_projects_device_page_sections() -> None:
+    """schema 丰富设备必须同时提供控制、传感器、事件、配置和诊断候选."""
+    payload = _schema_rich_light_payload()
 
     candidates = {
         (item.platform, item.component_id): item

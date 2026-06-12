@@ -8,12 +8,11 @@ from typing import Any, Mapping
 from ..canonical.models import ComponentInstanceModel, ComponentModel, HADeviceInstanceModel
 from ..capabilities.registry import (
     component_platform_hint,
-    format_component_property_key,
     platform_for_category,
 )
 from ..device_display import channel_name_label, switch_channel_count_hint
 from ..utils import to_category, to_int
-from .common import component_index
+from .common import component_index, component_state_key_map
 from .common import load_product_model, product_component
 from .event_input import is_event_input_category, is_event_input_component
 from .platform_evidence import component_has_switch_evidence
@@ -95,20 +94,7 @@ def _component_state_key_map(
     instance: HADeviceInstanceModel,
 ) -> dict[str, dict[str, str]]:
     """构建 component_id -> {prop_id: raw_key} 的映射表."""
-    raw = instance.extensions.get("component_state_keys")
-    if not isinstance(raw, Mapping):
-        return {}
-
-    mapping: dict[str, dict[str, str]] = {}
-    for component_id, value in raw.items():
-        if not isinstance(value, Mapping):
-            continue
-        mapping[str(component_id)] = {
-            str(prop_id): str(raw_key)
-            for prop_id, raw_key in value.items()
-            if raw_key is not None
-        }
-    return mapping
+    return component_state_key_map(instance)
 
 
 def _looks_like_switch_component(
@@ -209,7 +195,7 @@ def _resolve_component_control_key(
 
     index = component_index(component_id)
     if index is not None:
-        candidate = format_component_property_key(index, prop)
+        candidate = f"{index}-{prop}"
         if candidate in params or not params:
             return candidate
     return prop

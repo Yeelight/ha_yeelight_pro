@@ -31,11 +31,12 @@ def test_openapi_broad_light_contact_sensor_does_not_project_light() -> None:
     assert device["source_category"] == "light"
     assert device["effective_category"] == "contact_sensor"
     assert device["iot_category"] == "contact_sensor"
-    assert device["ha_platform_candidates"] == ["binary_sensor", "sensor"]
+    assert device["ha_platform_candidates"] == ["binary_sensor", "sensor", "event"]
     assert ("light", "contact_sensor") not in candidates
     assert candidates == {
         ("binary_sensor", "door"),
         ("binary_sensor", "tamper"),
+        ("event", "contact_sensor"),
         ("sensor", "battery"),
     }
 

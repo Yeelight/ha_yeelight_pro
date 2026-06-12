@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 from typing import Any, Mapping
 
 from homeassistant.components.event import EventDeviceClass
@@ -15,10 +16,18 @@ from .device import project_payload_device_info
 from .event_helpers import component_available as _component_available
 from .event_helpers import event_components as _event_components
 from .event_helpers import event_device_class as _event_device_class
+from .event_helpers import event_fallback_skip_reason as _event_fallback_skip_reason
 from .event_helpers import event_fallback_projection as _event_fallback_projection
 from .event_helpers import event_icon as _event_icon
 from .event_helpers import event_name as _event_name
 from .event_helpers import event_types as _event_types
+from .sensor_helpers import (
+    device_payload_category as _device_payload_category,
+    device_payload_id as _device_payload_id,
+    projection_identity_has_token as _projection_identity_has_token,
+)
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -49,6 +58,7 @@ def project_events(device_payload: Mapping[str, Any], *, domain: str) -> list[HA
     instance = _load_instance(device_payload)
     product_model = _load_product_model(device_payload)
     if product_model is None:
+        _log_event_payload_skip(device_payload, reason="missing_product_model")
         return []
 
     source_device_id = (
@@ -99,6 +109,12 @@ def project_events(device_payload: Mapping[str, Any], *, domain: str) -> list[HA
         )
         if fallback is not None:
             projections.append(fallback)
+        else:
+            _log_event_payload_skip(
+                device_payload,
+                reason=_event_fallback_skip_reason(device_payload, product_model)
+                or "missing_event_fallback",
+            )
     return projections
 
 
@@ -137,3 +153,31 @@ def project_device_triggers(device_payload: Mapping[str, Any]) -> list[HADeviceT
                 )
             )
     return triggers
+
+
+def _log_event_payload_skip(
+    device_payload: Mapping[str, Any],
+    *,
+    reason: str,
+) -> None:
+    """Log event-related payloads that produce no HA event entity."""
+    if not _LOGGER.isEnabledFor(logging.DEBUG) or not _looks_event_related(device_payload):
+        return
+    _LOGGER.debug(
+        "Skipping event projection: device_id=%s category=%s type=%s reason=%s",
+        _device_payload_id(device_payload),
+        _device_payload_category(device_payload),
+        device_payload.get("type"),
+        reason,
+    )
+
+
+def _looks_event_related(device_payload: Mapping[str, Any]) -> bool:
+    """Return whether a no-event output is worth a DEBUG breadcrumb."""
+    product_model = _load_product_model(device_payload)
+    return _projection_identity_has_token(
+        device_payload,
+        _load_instance(device_payload),
+        product_model,
+        ("scene", "knob", "switch", "button", "sensor", "event", "alarm"),
+    )

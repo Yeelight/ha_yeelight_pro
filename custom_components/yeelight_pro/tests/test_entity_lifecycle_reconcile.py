@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from types import SimpleNamespace
 
 import pytest
@@ -96,12 +97,15 @@ async def test_reconcile_keeps_same_stale_registry_entry_on_second_pass(
 @pytest.mark.asyncio
 async def test_reconcile_treats_filtered_device_entities_as_stale_without_removal(
     monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """设备导入过滤可进入 stale 判断，但自动 reconcile 不禁用实体."""
+    secret_unique_id = "yeelight_pro_blocked-light_light"
+    secret_entity_id = "light.blocked"
     registry = FakeEntityRegistry([
         registry_entry(
-            unique_id="yeelight_pro_blocked-light_light",
-            entity_id="light.blocked",
+            unique_id=secret_unique_id,
+            entity_id=secret_entity_id,
             domain="light",
         )
     ])
@@ -124,11 +128,15 @@ async def test_reconcile_treats_filtered_device_entities_as_stale_without_remova
     )
     patch_entity_registry(monkeypatch, registry)
 
-    active_unique_ids = await async_reconcile_entity_registry(
-        SimpleNamespace(),
-        SimpleNamespace(entry_id="entry_1"),
-        coordinator,
-    )
+    with caplog.at_level(
+        logging.INFO,
+        logger="custom_components.yeelight_pro.entity_lifecycle",
+    ):
+        active_unique_ids = await async_reconcile_entity_registry(
+            SimpleNamespace(),
+            SimpleNamespace(entry_id="entry_1"),
+            coordinator,
+        )
 
     assert active_unique_ids == set()
     assert registry.removed_entity_ids == []
@@ -139,6 +147,15 @@ async def test_reconcile_treats_filtered_device_entities_as_stale_without_remova
     assert entity_registry_reconcile_diagnostics(coordinator) == reconcile_diagnostics(
         active=0, registry_entries=1, stale=1, pending_stale=1
     )
+    lifecycle_logs = "\n".join(
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "custom_components.yeelight_pro.entity_lifecycle"
+    )
+    assert "stale_domains={'light': 1}" in lifecycle_logs
+    assert "pending_stale_domains={'light': 1}" in lifecycle_logs
+    assert secret_unique_id not in lifecycle_logs
+    assert secret_entity_id not in lifecycle_logs
 
 
 @pytest.mark.asyncio

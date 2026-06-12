@@ -104,6 +104,32 @@ def test_schema_declared_sensor_events_project_event_and_trigger() -> None:
     assert [trigger.subtype for trigger in triggers] == events[0].event_types
 
 
+def test_occupancy_sensor_motion_events_project_event_and_trigger() -> None:
+    """人在传感器 schema 明确声明 motion 事件时应暴露自动化入口。"""
+    device = projection_payload(
+        device_id="occupancy-event-1",
+        category="human_sensor",
+        component_id="human_occupancy_sensor",
+        state={"mv": True},
+        component_category="human occupancy sensor",
+        product_events=[
+            {"event_id": 8, "name": "motion.true"},
+            {"event_id": 9, "name": "motion.false"},
+        ],
+    )
+
+    events = project_events(device, domain=DOMAIN)
+
+    assert len(events) == 1
+    assert events[0].component_id == "human_occupancy_sensor"
+    assert events[0].event_types == ["motion_detected", "motion_undetected"]
+    assert events[0].device_class == EventDeviceClass.MOTION
+    assert [trigger.subtype for trigger in project_device_triggers(device)] == [
+        "motion_detected",
+        "motion_undetected",
+    ]
+
+
 def test_contact_sensor_declared_events_project_event_and_trigger() -> None:
     """门磁 schema 声明的 open/close/alarm/normal 应暴露自动化入口。"""
     device = projection_payload(

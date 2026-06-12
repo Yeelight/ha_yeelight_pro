@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+import logging
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -64,6 +65,34 @@ def test_dynamic_entities_adds_only_new_unique_ids() -> None:
     assert [entity.unique_id for entity in add_entities.call_args.args[0]] == [
         "yeelight_pro_two"
     ]
+
+
+def test_dynamic_entity_scan_logs_aggregate_counts(caplog) -> None:
+    """动态实体扫描日志应只输出聚合计数，不泄露 unique_id."""
+    coordinator = MagicMock()
+    coordinator.hass = None
+    coordinator.items = ["one", "one", "two"]
+    coordinator.async_add_listener = MagicMock(return_value=lambda: None)
+    entry = entry_with_unload_hook()
+    add_entities = MagicMock()
+    logger = logging.getLogger("custom_components.yeelight_pro.tests.dynamic_scan")
+
+    with caplog.at_level(logging.DEBUG, logger=logger.name):
+        async_track_dynamic_entities(
+            entry,
+            coordinator,
+            add_entities,
+            lambda current: [DummyEntity(f"{DOMAIN}_{item}") for item in current.items],
+            logger=logger,
+            platform_name="dummy",
+        )
+
+    assert "Dynamic Yeelight Pro entity scan: platform=dummy" in caplog.text
+    assert "candidates=3" in caplog.text
+    assert "added=2" in caplog.text
+    assert "duplicate_batch_unique_id" in caplog.text
+    assert "yeelight_pro_one" not in caplog.text
+    assert "yeelight_pro_two" not in caplog.text
 
 
 def test_dynamic_entities_readds_when_registry_entry_was_removed(monkeypatch) -> None:

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from collections import Counter
 from collections.abc import Callable, Iterable, Mapping
 from typing import Any
 
@@ -51,12 +52,17 @@ def async_track_dynamic_entities(
         )
         batch_unique_ids: set[str] = set()
         new_entities: list[Entity] = []
+        skip_counts: Counter[str] = Counter()
+        candidate_count = 0
         for entity in entity_factory(coordinator):
+            candidate_count += 1
             unique_id = _entity_unique_id(entity)
             if unique_id is None:
                 logger.debug("Skipping %s entity without unique_id", platform_name)
+                skip_counts["missing_unique_id"] += 1
                 continue
             if unique_id in batch_unique_ids:
+                skip_counts["duplicate_batch_unique_id"] += 1
                 continue
             batch_unique_ids.add(unique_id)
             registry_entry = (
@@ -64,6 +70,7 @@ def async_track_dynamic_entities(
             )
             if registry_entries is None:
                 if unique_id in fallback_submitted_unique_ids:
+                    skip_counts["already_submitted_without_registry"] += 1
                     continue
                 fallback_submitted_unique_ids.add(unique_id)
             elif _registry_entry_owned_by_other_entry(registry_entry, config_entry):
@@ -71,11 +78,13 @@ def async_track_dynamic_entities(
                     "Skipping %s entity already owned by another config entry",
                     platform_name,
                 )
+                skip_counts["owned_by_other_config_entry"] += 1
                 continue
             elif _should_skip_registered_entity(
                 getattr(coordinator, "hass", None),
                 registry_entry,
             ):
+                skip_counts["registered_entity_active_or_disabled"] += 1
                 continue
             elif registry_entry is None and not _matches_runtime_device_import_filter(
                 coordinator,
@@ -86,9 +95,19 @@ def async_track_dynamic_entities(
                     "Skipping %s entity blocked by device import filter",
                     platform_name,
                 )
+                skip_counts["device_import_filter_blocked"] += 1
                 continue
             new_entities.append(entity)
 
+        _log_dynamic_entity_scan(
+            logger,
+            platform_name,
+            candidate_count=candidate_count,
+            added_count=len(new_entities),
+            skip_counts=skip_counts,
+            registry_available=registry_entries is not None,
+            topology_generation=current_topology_generation,
+        )
         if not new_entities:
             return
 
@@ -98,6 +117,31 @@ def async_track_dynamic_entities(
     last_topology_generation = None
     _add_missing_entities()
     config_entry.async_on_unload(coordinator.async_add_listener(_add_missing_entities))
+
+
+def _log_dynamic_entity_scan(
+    logger: logging.Logger,
+    platform_name: str,
+    *,
+    candidate_count: int,
+    added_count: int,
+    skip_counts: Counter[str],
+    registry_available: bool,
+    topology_generation: int | None,
+) -> None:
+    """Log aggregate dynamic entity scan results without entity identifiers."""
+    if not logger.isEnabledFor(logging.DEBUG):
+        return
+    logger.debug(
+        "Dynamic Yeelight Pro entity scan: platform=%s candidates=%s added=%s "
+        "skipped=%s registry_available=%s topology_generation=%s",
+        platform_name,
+        candidate_count,
+        added_count,
+        dict(sorted(skip_counts.items())),
+        registry_available,
+        topology_generation,
+    )
 
 
 def _entity_unique_id(entity: Entity) -> str | None:

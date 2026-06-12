@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 from typing import Any, Mapping
 
 from ..canonical.models import ComponentInstanceModel, HADeviceInstanceModel, HAProductModel
@@ -11,15 +12,23 @@ from ..entity_category import entity_category_for_property
 from ..utils import to_bool, to_str
 from .device import flatten_instance_state, project_payload_device_info
 from .event_input import is_event_input_device
-from .sensor_helpers import is_event_style_component
+from .sensor_helpers import (
+    device_payload_category,
+    device_payload_id,
+    is_event_style_component,
+    projection_identity_has_token,
+    projection_property_keys,
+)
 from .common import (
+    component_property_value,
     load_product_model,
     payload_available,
     product_component,
     schema_backed_component_available,
 )
 
-# binary sensor 属性规格：key -> {component_id, label, device_class, icon, inverted}
+_LOGGER = logging.getLogger(__name__)
+
 BINARY_SENSOR_SPECS: dict[str, dict[str, str | None]] = {
     "mv": {
         "component_id": "motion",
@@ -92,7 +101,6 @@ BINARY_SENSOR_SPECS: dict[str, dict[str, str | None]] = {
         "inverted": None,
     },
 }
-
 @dataclass(slots=True)
 class HABinarySensorProjection:
     """投影后的 Home Assistant binary sensor 视图."""
@@ -122,10 +130,23 @@ def project_binary_sensors(
 
     projections: list[HABinarySensorProjection] = []
     occurrences = _binary_sensor_property_occurrences(instance, product_model, params)
+    if not occurrences:
+        _log_binary_sensor_missing_evidence(
+            device_payload,
+            instance,
+            product_model,
+            params,
+        )
     occurrence_counts = _property_occurrence_counts(occurrences)
     for key, component, raw_value in occurrences:
         spec = BINARY_SENSOR_SPECS.get(key)
         if spec is None:
+            _log_binary_sensor_skip(
+                device_payload,
+                prop_id=key,
+                component=component,
+                reason="missing_binary_sensor_spec",
+            )
             continue
         entity_category = entity_category_for_property(key)
         if _blocks_event_style_binary_sensor(
@@ -133,6 +154,12 @@ def project_binary_sensors(
             component,
             entity_category,
         ):
+            _log_binary_sensor_skip(
+                device_payload,
+                prop_id=key,
+                component=component,
+                reason="event_style_component_owns_property",
+            )
             continue
 
         is_on = None if raw_value is None else to_bool(raw_value)
@@ -155,7 +182,7 @@ def project_binary_sensors(
                 component_id=component_id,
                 unique_id=f"{domain}_{device_id}_{component_id}",
                 name=_scoped_projection_name(component, spec["label"], scoped=scoped),
-                available=_projection_available(
+                available=schema_backed_component_available(
                     base_available,
                     component,
                     schema_component=schema_component,
@@ -194,7 +221,9 @@ def _binary_sensor_property_occurrences(
             )
         for key in _binary_sensor_keys(None, None, component_keys):
             scoped_keys.add(key)
-            occurrences.append((key, component, component.state.get(key)))
+            occurrences.append(
+                (key, component, component_property_value(params, instance, component, key))
+            )
 
     for key in _binary_sensor_keys(None, None, params):
         if key not in scoped_keys:
@@ -301,15 +330,60 @@ def _runtime_state(
     return merged
 
 
-def _projection_available(
-    base_available: bool,
-    component: ComponentInstanceModel | None,
+def _log_binary_sensor_missing_evidence(
+    device_payload: Mapping[str, Any],
+    instance: HADeviceInstanceModel | None,
+    product_model: HAProductModel | None,
+    params: Mapping[str, Any],
+) -> None:
+    """Log sensor-like payloads with no documented binary sensor properties."""
+    if not _LOGGER.isEnabledFor(logging.DEBUG) or not _looks_binary_sensor_related(
+        device_payload,
+        instance,
+        product_model,
+    ):
+        return
+    _LOGGER.debug(
+        "Skipping binary_sensor projection: device_id=%s category=%s type=%s props=%s "
+        "reason=missing_binary_sensor_property_evidence",
+        device_payload_id(device_payload),
+        device_payload_category(device_payload),
+        device_payload.get("type"),
+        projection_property_keys(instance, product_model, params),
+    )
+
+
+def _log_binary_sensor_skip(
+    device_payload: Mapping[str, Any],
     *,
-    schema_component: Any | None = None,
+    prop_id: str | None,
+    component: ComponentInstanceModel | None,
+    reason: str,
+) -> None:
+    """Log why a binary sensor property did not become a HA entity."""
+    if not _LOGGER.isEnabledFor(logging.DEBUG):
+        return
+    _LOGGER.debug(
+        "Skipping binary_sensor projection: device_id=%s component_id=%s "
+        "category=%s component_category=%s prop_id=%s reason=%s",
+        device_payload_id(device_payload),
+        None if component is None else component.component_id,
+        device_payload_category(device_payload),
+        None if component is None else component.category,
+        prop_id,
+        reason,
+    )
+
+
+def _looks_binary_sensor_related(
+    device_payload: Mapping[str, Any],
+    instance: HADeviceInstanceModel | None,
+    product_model: HAProductModel | None,
 ) -> bool:
-    """计算投影可用性：基础可用性与组件可用性的交集."""
-    return schema_backed_component_available(
-        base_available,
-        component,
-        schema_component=schema_component,
+    """Return whether missing binary evidence deserves a DEBUG breadcrumb."""
+    return projection_identity_has_token(
+        device_payload,
+        instance,
+        product_model,
+        ("sensor", "contact", "human", "motion", "alarm"),
     )

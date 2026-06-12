@@ -43,6 +43,7 @@ async def test_hydration_accepts_list_shaped_multi_node_response() -> None:
     assert _candidate_keys(device) == {
         ("binary_sensor", "door"),
         ("binary_sensor", "tamper"),
+        ("event", "contact_sensor"),
         ("sensor", "battery"),
     }
     assert project_lights(device, domain="yeelight_pro") == []

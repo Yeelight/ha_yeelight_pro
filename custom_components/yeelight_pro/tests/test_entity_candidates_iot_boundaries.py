@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from custom_components.yeelight_pro.capabilities.platform_contract import (
+    platform_candidates_for_payload,
+)
+from custom_components.yeelight_pro.core.device_payload import DevicePayloadBuilder
 from custom_components.yeelight_pro.entity_candidates import (
     iter_device_entity_candidates,
 )
@@ -60,6 +64,29 @@ def test_name_only_smoke_light_does_not_project_entities() -> None:
     )
 
     assert candidates == []
+
+
+def test_light_sensor_auxiliary_switch_candidates_match_projected_entities() -> None:
+    """官方传感器辅助属性进入候选平台后，最终也必须投影为配置开关。"""
+    payload: dict[str, Any] = {
+        "device_id": "light-sensor-aux-1",
+        "name": "走廊照度",
+        "category": "light_sensor",
+        "type": "light_sensor",
+        "params": {"luminance": 321, "blp": True, "li": 1},
+        "online": True,
+    }
+    DevicePayloadBuilder().attach_canonical_models_if_available(payload)
+
+    candidates = {
+        (item.platform, item.component_id, item.entity_category)
+        for item in iter_device_entity_candidates(payload)
+    }
+
+    assert platform_candidates_for_payload(payload) == ("sensor", "switch")
+    assert ("sensor", "illuminance", None) in candidates
+    assert ("switch", "light_sensor_blp_switch", "config") in candidates
+    assert ("switch", "light_sensor_li_switch", "config") in candidates
 
 
 def _fresh_air_payload() -> dict[str, Any]:

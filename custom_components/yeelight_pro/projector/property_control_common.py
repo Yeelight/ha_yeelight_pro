@@ -12,14 +12,12 @@ from ..canonical.models import (
     ValueItemModel,
     ValueRangeModel,
 )
-from ..capabilities.registry import (
-    format_component_property_key,
-    property_spec,
-)
+from ..capabilities.registry import property_spec
 from ..device_display import channel_name_label
 from ..entity_category import entity_category_for_property
 from ..utils import to_str
 from .common import (
+    component_state_key,
     component_index,
     humanize_component_id,
     load_product_model,
@@ -27,7 +25,6 @@ from .common import (
     product_component,
     schema_backed_component_available,
 )
-from .switch_helpers import _component_state_key_map
 from .platform_evidence import component_platform
 
 MAIN_ENTITY_PROPS = frozenset({
@@ -55,6 +52,8 @@ MAIN_ENTITY_PROPS = frozenset({
 })
 MAIN_ENTITY_PROPS_BY_PLATFORM = {
     "climate": frozenset({
+        "acf",
+        "acm",
         "acp",
         "actt",
         "acct",
@@ -261,10 +260,7 @@ def control_key(
     prop_id: str,
 ) -> str:
     """Return the runtime control key for a component property."""
-    mapped = _component_state_key_map(instance).get(component_id, {}).get(prop_id)
-    if mapped:
-        return mapped
-    return format_component_property_key(component_index(component_id), prop_id)
+    return component_state_key(instance, component_id, prop_id)
 
 
 def control_name(

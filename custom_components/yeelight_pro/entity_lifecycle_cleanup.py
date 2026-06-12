@@ -6,6 +6,7 @@ from collections import Counter
 from dataclasses import dataclass
 from hashlib import sha256
 from collections.abc import Mapping
+import logging
 from typing import Any, Protocol
 
 from homeassistant.config_entries import ConfigEntry
@@ -15,6 +16,8 @@ from homeassistant.helpers import device_registry as dr, entity_registry as er
 from .const import DOMAIN
 from .entity_candidates import EntityCandidateCoordinator, EntityKey
 from .ha_device_registry import active_device_identifiers
+
+_LOGGER = logging.getLogger(__name__)
 
 _LAST_CLEANUP_AUDIT = "_yeelight_pro_last_entity_registry_cleanup_audit"
 
@@ -108,6 +111,13 @@ async def async_preview_stale_registry_cleanup(
         skipped_entities=0,
         entity_domains=preview.entity_domains,
     )
+    _LOGGER.info(
+        "Prepared Yeelight Pro stale registry cleanup dry-run: "
+        "stale_entities=%s stale_devices=%s entity_domains=%s",
+        preview.stale_entity_count,
+        preview.stale_device_count,
+        preview.entity_domains,
+    )
     return preview
 
 
@@ -131,6 +141,14 @@ async def async_disable_stale_registry_entities(
             disabled_entities=0,
             skipped_entities=preview.stale_entity_count,
             entity_domains=preview.entity_domains,
+        )
+        _LOGGER.warning(
+            "Rejected Yeelight Pro stale registry cleanup confirmation: "
+            "stale_entities=%s stale_devices=%s entity_domains=%s "
+            "reason=audit_id_mismatch",
+            preview.stale_entity_count,
+            preview.stale_device_count,
+            preview.entity_domains,
         )
         raise ValueError("cleanup audit id does not match the current dry-run result")
 
@@ -160,6 +178,16 @@ async def async_disable_stale_registry_entities(
     from .entity_lifecycle import _pending_stale_entity_keys
 
     _pending_stale_entity_keys(coordinator).difference_update(_entry_keys(preview.entries))
+    _LOGGER.info(
+        "Confirmed Yeelight Pro stale registry cleanup: stale_entities=%s "
+        "stale_devices=%s disabled_entities=%s skipped_entities=%s "
+        "entity_domains=%s",
+        audit.stale_entities,
+        audit.stale_devices,
+        audit.disabled_entities,
+        audit.skipped_entities,
+        audit.entity_domains,
+    )
     return audit
 
 

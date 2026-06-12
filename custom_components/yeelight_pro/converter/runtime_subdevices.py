@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any, Callable, Mapping
 
@@ -10,7 +11,13 @@ from ..capabilities.registry import normalize_event_type, platform_for_category
 from ..device_display import switch_channel_count_hint
 from ..utils import to_int
 from .openapi_properties import openapi_property_model
+from .runtime_registry_events import (
+    log_registry_event_inference,
+    registry_component_event_models,
+    registry_component_for_identity,
+)
 
+_LOGGER = logging.getLogger(__name__)
 _EVENT_KEY_RE = re.compile(r"^key(?P<index>\d+)\s+(?P<event>.+)$", re.IGNORECASE)
 
 PropertyBuilder = Callable[[str, str], PropertyModel | None]
@@ -73,6 +80,24 @@ def infer_subdevice_components(
             used_ids,
             default_component_id=default_component_id,
         )
+        registry_component = _registry_component_for_subdevice(
+            subdevice,
+            category,
+            component_id=component_id,
+            property_ids=tuple(prop.prop_id for prop in properties),
+            string_value=string_value,
+        )
+        if not events:
+            events = registry_component_event_models(registry_component)
+            log_registry_event_inference(
+                _LOGGER,
+                scope="subdevice",
+                payload=payload,
+                component_id=component_id,
+                category=category,
+                registry_component=registry_component,
+                events=events,
+            )
         components.append(
             ComponentModel(
                 component_id=component_id,
@@ -231,6 +256,27 @@ def _runtime_events(
             )
         )
     return projected
+
+
+def _registry_component_for_subdevice(
+    subdevice: Mapping[str, Any],
+    category: str | None,
+    *,
+    component_id: str,
+    property_ids: tuple[str, ...],
+    string_value: StringNormalizer,
+) -> Any:
+    """Return an official registry component using non-user identity fields only."""
+    return registry_component_for_identity(
+        (
+            subdevice.get("cid", subdevice.get("id")),
+            string_value(subdevice.get("component_id")),
+            string_value(subdevice.get("componentId")),
+            component_id,
+        ),
+        category=category,
+        property_ids=property_ids,
+    )
 
 
 def _event_name_without_key_prefix(name: str | None) -> str | None:

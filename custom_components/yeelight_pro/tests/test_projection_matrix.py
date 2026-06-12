@@ -6,7 +6,7 @@ from homeassistant.components.cover import CoverDeviceClass
 from homeassistant.components.light import ColorMode
 
 from custom_components.yeelight_pro.projector.climate import project_climate
-from custom_components.yeelight_pro.projector.cover import project_cover
+from custom_components.yeelight_pro.projector.cover import project_cover, project_covers
 from custom_components.yeelight_pro.projector.light import project_light
 from custom_components.yeelight_pro.projector.switch import project_switches
 
@@ -141,6 +141,82 @@ def test_curtain_projects_cover() -> None:
     assert projection.is_opening is True
     assert projection.is_closing is False
     assert projection.device_class == CoverDeviceClass.CURTAIN
+
+
+def test_multi_curtain_components_project_multiple_covers() -> None:
+    """多窗帘组件应按能力拆成多个 cover，而不是只保留第一个."""
+    device = projection_payload(
+        device_id="curtain-dual-1",
+        category="curtain",
+        component_id="curtain_1",
+        state={"cp": 10, "tp": 30},
+        component_category="curtain",
+    )
+    device["params"] = {
+        "1-cp": 10,
+        "1-tp": 30,
+        "2-cp": 90,
+        "2-tp": 40,
+    }
+    device["ha_device_instance"]["extensions"] = {
+        "component_state_keys": {
+            "curtain_1": {"cp": "1-cp", "tp": "1-tp"},
+            "curtain_2": {"cp": "2-cp", "tp": "2-tp"},
+        }
+    }
+    device["ha_device_instance"]["components"] = [
+        {
+            "component_id": "curtain_1",
+            "category": "curtain",
+            "available": True,
+            "state": {"cp": 10, "tp": 30},
+        },
+        {
+            "component_id": "curtain_2",
+            "category": "curtain",
+            "available": True,
+            "state": {"cp": 90, "tp": 40},
+        },
+    ]
+    device["ha_product_model"]["components"] = [
+        {
+            "component_id": "curtain_1",
+            "category": "curtain",
+            "name": "curtain",
+            "component_type": "curtain",
+            "properties": [
+                {"prop_id": "cp", "access": "read"},
+                {"prop_id": "tp", "access": "read_write"},
+            ],
+            "events": [],
+        },
+        {
+            "component_id": "curtain_2",
+            "category": "curtain",
+            "name": "curtain",
+            "component_type": "curtain",
+            "properties": [
+                {"prop_id": "cp", "access": "read"},
+                {"prop_id": "tp", "access": "read_write"},
+            ],
+            "events": [],
+        },
+    ]
+
+    projections = project_covers(device, domain=DOMAIN)
+
+    assert [(item.component_id, item.current_cover_position) for item in projections] == [
+        ("curtain_1", 10),
+        ("curtain_2", 90),
+    ]
+    assert [item.unique_id for item in projections] == [
+        "yeelight_pro_curtain-dual-1_curtain_1",
+        "yeelight_pro_curtain-dual-1_curtain_2",
+    ]
+    assert [item.target_position_key for item in projections] == ["1-tp", "2-tp"]
+    first_cover = project_cover(device, domain=DOMAIN)
+    assert first_cover is not None
+    assert first_cover.component_id == "curtain_1"
 
 
 def test_temp_control_projects_climate() -> None:

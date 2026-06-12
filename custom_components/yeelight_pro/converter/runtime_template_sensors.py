@@ -85,6 +85,20 @@ RUNTIME_SENSOR_TEMPLATES: Final[dict[str, dict[str, dict[str, Any]]]] = {
             "access": "read_only",
             "value_range": (0, 100, 1),
         },
+        "blp": {
+            "name": "背光",
+            "kind": "config",
+            "property_type": "config",
+            "format": "boolean",
+            "access": "read_write",
+        },
+        "li": {
+            "name": "指示灯",
+            "kind": "config",
+            "property_type": "config",
+            "format": "uint8",
+            "access": "read_write",
+        },
     },
     "light_sensor": {
         "luminance": {
@@ -110,6 +124,20 @@ RUNTIME_SENSOR_TEMPLATES: Final[dict[str, dict[str, dict[str, Any]]]] = {
             "unit": "%",
             "access": "read_only",
             "value_range": (0, 100, 1),
+        },
+        "blp": {
+            "name": "背光",
+            "kind": "config",
+            "property_type": "config",
+            "format": "boolean",
+            "access": "read_write",
+        },
+        "li": {
+            "name": "指示灯",
+            "kind": "config",
+            "property_type": "config",
+            "format": "uint8",
+            "access": "read_write",
         },
     },
     "sensor": {
@@ -205,4 +233,3 @@ RUNTIME_SENSOR_TEMPLATES: Final[dict[str, dict[str, dict[str, Any]]]] = {
         },
     },
 }
-

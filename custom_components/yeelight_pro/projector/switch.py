@@ -15,6 +15,7 @@ from ..entity_category import entity_category_for_property
 from ..utils import to_bool, to_str
 from .common import (
     component_index,
+    component_property_value,
     payload_available,
     product_component,
     schema_backed_component_available,
@@ -146,7 +147,6 @@ def _project_instance_switches(
             )
             continue
 
-        value = component.state.get(prop)
         control_key = _resolve_component_control_key(
             component.component_id,
             prop,
@@ -169,7 +169,7 @@ def _project_instance_switches(
                     component,
                     schema_component=schema_component,
                 ),
-                is_on=bool(value),
+                is_on=bool(component_property_value(params, instance, component, prop)),
                 control_key=control_key,
                 device_info=device_info,
                 icon="mdi:light-switch",

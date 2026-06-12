@@ -17,6 +17,7 @@ from ..utils import to_bool, to_category
 from .common import (
     NumericRange,
     component_index,
+    component_state_view,
     load_instance,
     load_product_model,
     payload_available,
@@ -181,7 +182,12 @@ def _project_instance_light(
 ) -> HALightProjection:
     """投影单个 canonical light component。"""
     product_model = load_product_model(device_payload)
-    state = dict(component.state)
+    state = component_state_view(
+        dict(device_payload.get("params") or {}),
+        instance,
+        component,
+        ("p", "l", "ct", "c"),
+    )
     product = product_component(product_model, component.component_id)
     features = _resolve_light_features(component, device_payload, product)
     supported_color_modes = _resolve_supported_color_modes(features)

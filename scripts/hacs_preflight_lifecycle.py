@@ -46,6 +46,14 @@ LIFECYCLE_CONTRACT_TOKENS = {
     "entity_candidates.py": {
         "CONF_DEVICE_IMPORT_FILTER": "candidate-level device import filter lookup",
         "matches_device_import_filter": "candidate-level device import filter match",
+        "log_device_candidate_summary": "candidate projection debug summary",
+    },
+    "entity_candidate_logging.py": {
+        "log_device_candidate_filter_skip": "device filter debug skip log",
+        "log_device_candidate_summary": "device candidate domain debug summary",
+        "_candidate_section": "device page section aggregate logging",
+        "sections": "device page section debug summary",
+        "unavailable_domains": "candidate availability aggregate logging",
     },
     "entity_lifecycle_cleanup.py": {
         "async_preview_stale_registry_cleanup": "cleanup dry-run helper",

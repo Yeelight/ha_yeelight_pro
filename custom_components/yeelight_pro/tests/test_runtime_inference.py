@@ -186,6 +186,43 @@ def test_runtime_inferred_product_model_uses_safety_event_component_id() -> None
     ]
 
 
+def test_runtime_inferred_contact_sensor_uses_registry_events_without_payload_events() -> None:
+    """顶层 runtime 缺少 events 行时，门磁唯一官方组件应补齐事件入口。"""
+    payload = {
+        "model_id": "runtime-contact-events",
+        "type": "binary_sensor",
+        "category": "contact_sensor",
+        "params": {"dc": True, "alm": False},
+    }
+
+    product = RuntimeInferredProductModelBuilder().build(payload)
+
+    assert product is not None
+    assert product.components[0].component_id == "contact_sensor"
+    assert [event.semantic for event in product.components[0].events] == [
+        "door_open",
+        "door_close",
+        "door_alarm",
+        "door_normal",
+    ]
+
+
+def test_runtime_inferred_human_sensor_without_component_identity_does_not_guess_events() -> None:
+    """人体大类缺少官方组件身份时，不用 category 猜测 motion 事件。"""
+    payload = {
+        "model_id": "runtime-human-events",
+        "type": "binary_sensor",
+        "category": "human_sensor",
+        "params": {"mv": True},
+    }
+
+    product = RuntimeInferredProductModelBuilder().build(payload)
+
+    assert product is not None
+    assert product.components[0].component_id == "human_sensor"
+    assert product.components[0].events == []
+
+
 def test_runtime_inferred_light_template_ranges_are_stable() -> None:
     """Runtime light fallback must keep Yeelight brightness and CT ranges stable."""
     payload = {

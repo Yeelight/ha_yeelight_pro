@@ -62,7 +62,7 @@ def test_build_runtime_payloads_infers_real_category_from_properties() -> None:
     assert contact["iot_category"] == "contact_sensor"
     assert "type" not in contact
     assert contact["ha_platform"] == "binary_sensor"
-    assert contact["ha_platform_candidates"] == ["binary_sensor", "sensor"]
+    assert contact["ha_platform_candidates"] == ["binary_sensor", "sensor", "event"]
     assert contact["device_info"]["model"] == "门磁传感器"
     assert contact["ha_device_instance"]["components"][0]["state"] == {
         "dc": True,

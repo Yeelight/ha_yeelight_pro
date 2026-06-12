@@ -280,11 +280,15 @@ LOCAL_HA_RUNTIME_VERIFIER_SOURCE_TOKENS = {
         "entity_lifecycle_cleanup": "registry cleanup helper module presence check",
         "entity_lifecycle_entity_id": "entity id migration helper module presence check",
         "registry_cleanup_service": "cleanup registry service module presence check",
+        "entity_candidate_logging": "entity candidate logging module presence check",
         "capabilities.spec_correction_normalizers": (
             "spec correction normalizer runtime module presence check"
         ),
         "converter.runtime_inference_helpers": (
             "runtime inference helper module presence check"
+        ),
+        "converter.runtime_registry_events": (
+            "runtime registry event helper module presence check"
         ),
         "converter.openapi_properties": (
             "OpenAPI property helper module presence check"

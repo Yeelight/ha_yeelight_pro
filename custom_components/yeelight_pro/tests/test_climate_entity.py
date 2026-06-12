@@ -25,8 +25,8 @@ def _climate_payload() -> dict:
         category="temp_control",
         component_id="air_conditioner",
         component_category="air_conditioner",
-        state={"acp": True, "aco": True, "acct": 24, "actt": 26},
-        params={"acp": True, "aco": True, "acct": 24, "actt": 26},
+        state={"acp": True, "aco": True, "acm": 1, "acf": 4, "acct": 24, "actt": 26},
+        params={"acp": True, "aco": True, "acm": 1, "acf": 4, "acct": 24, "actt": 26},
     )
 
 
@@ -62,6 +62,24 @@ def test_climate_handles_missing_device_payload(mock_coordinator) -> None:
     assert climate.hvac_modes == [HVACMode.OFF]
 
 
+def test_climate_exposes_documented_mode_and_fan_properties(mock_coordinator) -> None:
+    """acm/acf 应投影为 HA climate 模式和风速能力。"""
+    mock_coordinator.get_device.return_value = _climate_payload()
+
+    climate = YeelightProClimate(mock_coordinator, "12345")
+
+    assert climate.hvac_mode == HVACMode.COOL
+    assert climate.hvac_modes == [
+        HVACMode.OFF,
+        HVACMode.AUTO,
+        HVACMode.COOL,
+        HVACMode.FAN_ONLY,
+        HVACMode.HEAT,
+    ]
+    assert climate.fan_mode == "低"
+    assert climate.fan_modes == ["高", "中", "低"]
+
+
 @pytest.mark.asyncio
 async def test_set_temperature_none_does_not_send_control(mock_coordinator) -> None:
     """温度为空时不下发控制，避免写入无效目标温度。"""
@@ -88,19 +106,34 @@ async def test_set_temperature_sends_target_temperature(mock_coordinator) -> Non
 
 
 @pytest.mark.asyncio
+async def test_set_hvac_mode_off_sends_power_state(mock_coordinator) -> None:
+    """关闭 HVAC 只应写 acp=false，aco 仅表示在线状态。"""
+    mock_coordinator.get_device.return_value = _climate_payload()
+    climate = YeelightProClimate(mock_coordinator, "12345")
+
+    await climate.async_set_hvac_mode(HVACMode.OFF)
+
+    mock_coordinator.async_control_device.assert_awaited_once_with(
+        "12345",
+        {"acp": False},
+    )
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("hvac_mode", "expected_power"),
+    ("hvac_mode", "raw_mode"),
     [
-        (HVACMode.OFF, False),
-        (HVACMode.AUTO, True),
+        (HVACMode.COOL, 1),
+        (HVACMode.FAN_ONLY, 4),
+        (HVACMode.HEAT, 8),
     ],
 )
-async def test_set_hvac_mode_sends_power_state(
+async def test_set_hvac_mode_sends_documented_ac_mode(
     mock_coordinator,
     hvac_mode: HVACMode,
-    expected_power: bool,
+    raw_mode: int,
 ) -> None:
-    """HVAC 模式应映射为 acp 开关状态，aco 仅表示在线状态。"""
+    """制冷/送风/制热应按易来文档写 acm 原始值。"""
     mock_coordinator.get_device.return_value = _climate_payload()
     climate = YeelightProClimate(mock_coordinator, "12345")
 
@@ -108,7 +141,35 @@ async def test_set_hvac_mode_sends_power_state(
 
     mock_coordinator.async_control_device.assert_awaited_once_with(
         "12345",
-        {"acp": expected_power},
+        {"acp": True, "acm": raw_mode},
+    )
+
+
+@pytest.mark.asyncio
+async def test_set_hvac_mode_auto_keeps_power_only(mock_coordinator) -> None:
+    """AUTO 没有易来 acm 文档值时只打开电源，不伪造模式。"""
+    mock_coordinator.get_device.return_value = _climate_payload()
+    climate = YeelightProClimate(mock_coordinator, "12345")
+
+    await climate.async_set_hvac_mode(HVACMode.AUTO)
+
+    mock_coordinator.async_control_device.assert_awaited_once_with(
+        "12345",
+        {"acp": True},
+    )
+
+
+@pytest.mark.asyncio
+async def test_set_fan_mode_sends_documented_fan_speed(mock_coordinator) -> None:
+    """空调风速应按易来文档写 acf 原始值。"""
+    mock_coordinator.get_device.return_value = _climate_payload()
+    climate = YeelightProClimate(mock_coordinator, "12345")
+
+    await climate.async_set_fan_mode("低")
+
+    mock_coordinator.async_control_device.assert_awaited_once_with(
+        "12345",
+        {"acf": 4},
     )
 
 

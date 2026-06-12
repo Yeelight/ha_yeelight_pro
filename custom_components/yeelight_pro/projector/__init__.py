@@ -4,7 +4,7 @@
 """
 
 from .binary_sensor import HABinarySensorProjection, project_binary_sensors
-from .climate import HAClimateProjection, project_climate
+from .climate import HAClimateProjection, project_climate, project_climates
 from .cover import HACoverProjection, project_cover
 from .device import (
     flatten_instance_state,
@@ -32,6 +32,7 @@ __all__ = [
     "LIGHT_COLOR_MODE_HINT_KEY",
     "project_binary_sensors",
     "project_climate",
+    "project_climates",
     "project_cover",
     "project_device_info",
     "project_device_info_model",

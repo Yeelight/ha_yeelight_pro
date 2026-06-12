@@ -8,15 +8,20 @@ from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
+import logging
 from typing import Any, Protocol
 
 from .const import CONF_DEVICE_IMPORT_FILTER, DEFAULT_HIDE_UNKNOWN_ENTITIES, DOMAIN
 from .device_filter import matches_device_import_filter
 from .device_display import suggested_entity_object_id
+from .entity_candidate_logging import (
+    log_device_candidate_filter_skip,
+    log_device_candidate_summary,
+)
 from .entity_category import ENTITY_CATEGORY_CONFIG, ENTITY_CATEGORY_DIAGNOSTIC
 from .projector.binary_sensor import project_binary_sensors
-from .projector.climate import project_climate
-from .projector.cover import project_cover
+from .projector.climate import project_climates
+from .projector.cover import project_covers
 from .projector.event import project_events
 from .projector.fan import project_fans
 from .projector.light import project_lights
@@ -29,6 +34,7 @@ from .projector.sensor import project_sensors
 from .projector.switch import project_switches
 from .scene_helpers import scene_row_id
 
+_LOGGER = logging.getLogger(__name__)
 
 EntityKey = tuple[str, str]
 
@@ -75,11 +81,14 @@ def iter_entity_candidates(
     device_import_filter = _device_import_filter(coordinator)
     for device_payload in coordinator.data.values():
         if not matches_device_import_filter(device_payload, device_import_filter):
+            log_device_candidate_filter_skip(_LOGGER, device_payload)
             continue
-        yield from iter_device_entity_candidates(
+        device_candidates = list(iter_device_entity_candidates(
             device_payload,
             hide_unknown_entities=hide_unknown_entities,
-        )
+        ))
+        log_device_candidate_summary(_LOGGER, device_payload, device_candidates)
+        yield from device_candidates
     yield from _iter_scene_candidates(coordinator.scenes)
     yield from _iter_group_candidates(coordinator.groups)
     yield from _iter_house_select_candidates(coordinator.house_id)
@@ -97,21 +106,19 @@ def iter_device_entity_candidates(
         yield _candidate("light", light.unique_id, "device", device_id, light)
 
     for fan_projection in project_fans(device_payload, domain=DOMAIN):
+        yield _candidate("fan", fan_projection.unique_id, "device", device_id, fan_projection)
+
+    for cover_projection in project_covers(device_payload, domain=DOMAIN):
+        yield _candidate("cover", cover_projection.unique_id, "device", device_id, cover_projection)
+
+    for climate_projection in project_climates(device_payload, domain=DOMAIN):
         yield _candidate(
-            "fan",
-            fan_projection.unique_id,
+            "climate",
+            climate_projection.unique_id,
             "device",
             device_id,
-            fan_projection,
+            climate_projection,
         )
-
-    cover = project_cover(device_payload, domain=DOMAIN)
-    if cover is not None:
-        yield _candidate("cover", cover.unique_id, "device", device_id, cover)
-
-    climate = project_climate(device_payload, domain=DOMAIN)
-    if climate is not None:
-        yield _candidate("climate", climate.unique_id, "device", device_id, climate)
 
     for switch_projection in project_switches(device_payload, domain=DOMAIN):
         yield _candidate(
@@ -212,10 +219,7 @@ def _candidate(
         component_id=_projection_component_id(projection),
         name=_projection_name(projection),
         icon=_projection_icon(projection),
-        entity_category=(
-            _projection_entity_category(projection)
-            or _platform_entity_category(platform)
-        ),
+        entity_category=_projection_entity_category(projection),
         suggested_object_id=_suggested_projection_object_id(
             projection,
             fallback_id=device_id,
@@ -348,11 +352,6 @@ def _suggested_projection_object_id(
             entity_name=_projection_name(projection),
             fallback_id=fallback_id,
         )
-    return None
-
-
-def _platform_entity_category(platform: str) -> str | None:
-    """Return the category implied by helper platforms."""
     return None
 
 

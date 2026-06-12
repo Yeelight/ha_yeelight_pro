@@ -11,6 +11,7 @@ from homeassistant.exceptions import HomeAssistantError
 from custom_components.yeelight_pro.core.exceptions import YeelightProError
 from custom_components.yeelight_pro.cover import YeelightProCover
 
+from .test_cover_multi_component_projection import multi_curtain_payload
 from .projection_helpers import DOMAIN, projection_payload
 
 SENSITIVE_VALUES = ("secret-token", "api.yeelight.com", "12345", "67890")
@@ -126,6 +127,24 @@ async def test_set_cover_position_clamps_target_position(
     mock_coordinator.async_control_device.assert_awaited_once_with(
         12345,
         {"tp": expected},
+    )
+
+
+@pytest.mark.asyncio
+async def test_multi_component_cover_sends_component_target_key(mock_coordinator) -> None:
+    """多组件窗帘控制应写入对应组件的 tp key。"""
+    mock_coordinator.get_device.return_value = multi_curtain_payload()
+    cover = YeelightProCover(
+        mock_coordinator,
+        "curtain-dual-1",
+        component_id="curtain_2",
+    )
+
+    await cover.async_set_cover_position(position=55)
+
+    mock_coordinator.async_control_device.assert_awaited_once_with(
+        "curtain-dual-1",
+        {"2-tp": 55},
     )
 
 

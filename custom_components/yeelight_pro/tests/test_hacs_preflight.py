@@ -58,6 +58,11 @@ def test_iot_registry_contract_check_requires_coverage_tokens(
     _write_test_file(tests_root / "test_projection_unsupported_platforms.py", "")
     _write_test_file(tests_root / "test_projection_event_topology.py", "")
     _write_test_file(tests_root / "test_projection_matrix.py", "")
+    _write_test_file(tests_root / "test_climate_multi_component_projection.py", "")
+    _write_test_file(tests_root / "test_cover_multi_component_projection.py", "")
+    _write_test_file(tests_root / "test_cover_entity.py", "")
+    _write_test_file(tests_root / "test_projector_skip_logging.py", "")
+    _write_test_file(tests_root / "test_projection_component_state_keys.py", "")
     _write_test_file(tests_root / "test_projection_state_sensors.py", "")
     _write_test_file(tests_root / "test_entity_candidates.py", "")
     _write_test_file(tests_root / "test_entity_candidates_iot_boundaries.py", "")
@@ -116,10 +121,25 @@ def test_iot_registry_contract_check_requires_coverage_tokens(
         "core IoT category exclusion coverage",
         "light component-state merge coverage",
         "gateway via_device projection coverage",
+        "multi-curtain component cover candidate coverage",
+        "multi-curtain component control-key coverage",
+        "component-scoped cover target key coverage",
+        "cover projector missing-position debug log coverage",
+        "stable cover missing-position skip reason coverage",
         "scene panel event-only projection coverage",
-        "gateway topology-only projection coverage",
-        "raw params and component state merge coverage",
-        "unknown action button fallback rejection coverage",
+            "gateway topology-only projection coverage",
+            "raw params and component state merge coverage",
+            "multi-component sensor scoped state-key coverage",
+            "multi-component binary sensor scoped state-key coverage",
+            "component-scoped state read debug log coverage",
+            "component-scoped light state-key coverage",
+            "component-scoped switch state-key coverage",
+            "component-scoped fan state-key coverage",
+            "component-scoped property controls state-key coverage",
+            "stable component-scoped state read log action coverage",
+            "component-scoped illuminance state key coverage",
+            "component-scoped motion state key coverage",
+            "unknown action button fallback rejection coverage",
         "fresh-air temp_control category fan-only projection coverage",
         "fresh-air fan entity candidate coverage",
         "fresh-air climate candidate rejection coverage",

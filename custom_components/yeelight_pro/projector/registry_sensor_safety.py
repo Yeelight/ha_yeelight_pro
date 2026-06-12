@@ -1,80 +1,10 @@
-"""Safety rules for registry-backed sensor projections."""
+"""Compatibility facade for registry-backed sensor projection safety."""
 
 from __future__ import annotations
 
-from typing import Any
-
-from ..capabilities.platform_contract_data import READ_ONLY_BOOL_BINARY_PROPS
 from ..capabilities.models import IoTPropertySpec
 from ..capabilities.registry import normalize_alias_key
-
-_SAFE_SCALAR_TYPES = frozenset({
-    "bool",
-    "boolean",
-    "double",
-    "enum",
-    "float",
-    "int",
-    "int64",
-    "integer",
-    "string",
-    "uint8",
-    "uint16",
-    "uint32",
-})
-_SENSITIVE_TOKENS = frozenset({
-    "bind_key",
-    "device_key",
-    "did",
-    "domain",
-    "external_ip",
-    "info",
-    "ip",
-    "key",
-    "login",
-    "mac",
-    "password",
-    "psk",
-    "remote_management",
-    "ssid",
-    "token",
-})
-_APP_INTERNAL_PROPS = frozenset({"3rdPartySyncBitmask", "icon", "io", "io_type", "name"})
-_MAIN_ENTITY_SENSOR_EXCLUDED_PROPS = frozenset({
-    "acp",
-    "actt",
-    "acct",
-    "c",
-    "cp",
-    "ct",
-    "l",
-    "m",
-    "p",
-    "rfhct",
-    "rfhp",
-    "rfhtt",
-    "sp",
-    "tgt",
-    "tp",
-    "vmcf",
-    "vmcp",
-})
-
-
-def safe_registry_sensor_property(prop: str, spec: IoTPropertySpec | None) -> bool:
-    """Return true when a documented property is safe as a HA sensor."""
-    if spec is None or not spec.readable:
-        return False
-    if spec.category == "config" and spec.writable:
-        return False
-    if prop in _APP_INTERNAL_PROPS:
-        return False
-    if prop in _MAIN_ENTITY_SENSOR_EXCLUDED_PROPS or prop in READ_ONLY_BOOL_BINARY_PROPS:
-        return False
-    if not _safe_scalar_type(spec.data_type):
-        return False
-    normalized = normalize_alias_key(f"{prop} {spec.full_name} {spec.description or ''}")
-    return not any(token in normalized for token in _SENSITIVE_TOKENS)
+from ..capabilities.sensor_safety import safe_registry_sensor_property
 
 
 def registry_sensor_component_id(prop: str, spec: IoTPropertySpec) -> str:
@@ -97,11 +27,6 @@ def registry_sensor_icon(prop: str, spec: IoTPropertySpec) -> str | None:
     if data_type in {"enum", "string"}:
         return "mdi:information-outline"
     return "mdi:gauge"
-
-
-def _safe_scalar_type(value: Any) -> bool:
-    """Return true for scalar IoT data types that HA can display safely."""
-    return str(value or "").strip().lower() in _SAFE_SCALAR_TYPES
 
 
 __all__ = [

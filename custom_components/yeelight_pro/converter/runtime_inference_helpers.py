@@ -2,18 +2,27 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Mapping
 
 from ..canonical.models import ComponentModel, EventModel, PropertyModel, ValueRangeModel
 from ..capabilities.events import normalize_event_type
 from ..event_identity import SAFETY_EVENT_COMPONENT_ID, SAFETY_EVENT_TYPES
 from .openapi_properties import openapi_runtime_properties
+from .runtime_registry_events import (
+    log_registry_event_inference,
+    registry_component_event_models,
+    registry_component_for_identity,
+)
 from .runtime_templates import INDEXED_SWITCH_KEY_RE, RUNTIME_PROPERTY_TEMPLATES
 from .runtime_template_selector import (
     runtime_property_ids_from_params,
     runtime_template_key,
 )
 from .runtime_subdevices import infer_subdevice_components as _infer_subdevice_components
+
+_LOGGER = logging.getLogger(__name__)
+
 
 def infer_runtime_components(payload: Mapping[str, Any]) -> list[ComponentModel]:
     """从载荷推断组件列表。"""
@@ -48,6 +57,23 @@ def infer_runtime_components(payload: Mapping[str, Any]) -> list[ComponentModel]
     component_category = (
         "temp_control" if component_id == "fresh_air" else template_key
     )
+    registry_component = _registry_component_for_runtime(
+        template_key,
+        payload,
+        component_id=component_id,
+        property_ids=tuple(prop.prop_id for prop in properties),
+    )
+    if not events:
+        events = registry_component_event_models(registry_component)
+        log_registry_event_inference(
+            _LOGGER,
+            scope="runtime",
+            payload=payload,
+            component_id=component_id,
+            category=component_category or category or device_type,
+            registry_component=registry_component,
+            events=events,
+        )
     return [
         ComponentModel(
             component_id=component_id,
@@ -296,6 +322,33 @@ def _payload_event_models(payload: Mapping[str, Any] | None) -> list[EventModel]
             )
         )
     return projected
+
+
+def _registry_component_for_runtime(
+    template_key: str | None,
+    payload: Mapping[str, Any],
+    *,
+    component_id: str,
+    property_ids: tuple[str, ...],
+) -> Any:
+    """Return an official registry component using structured runtime identity."""
+    category = (
+        payload.get("effective_category")
+        or payload.get("iot_category")
+        or payload.get("category")
+        or template_key
+    )
+    return registry_component_for_identity(
+        (
+            payload.get("cid"),
+            payload.get("component_id"),
+            payload.get("componentId"),
+            component_id,
+            template_key,
+        ),
+        category=category,
+        property_ids=property_ids,
+    )
 
 
 def _runtime_event_types(

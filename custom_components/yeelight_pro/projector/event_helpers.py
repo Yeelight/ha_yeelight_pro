@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Mapping
 
 from homeassistant.components.event import EventDeviceClass
@@ -25,7 +26,9 @@ from .event_identity_helpers import (
     has_known_registry_events as _has_known_registry_events,
     has_registry_supported_events as _has_registry_supported_events,
 )
+from .sensor_helpers import device_payload_category, device_payload_id
 
+_LOGGER = logging.getLogger(__name__)
 MOTION_COMPONENT_TOKENS = ("motion", "presence", "occupancy")
 DOORBELL_COMPONENT_TOKENS = ("doorbell",)
 SCENE_PANEL_FALLBACK_EVENTS = ("click", "hold", "release_after_hold")
@@ -37,11 +40,14 @@ def event_components(
     device_payload: Mapping[str, Any],
 ) -> list[ComponentModel]:
     """筛选产品模型中应投影为 event 的组件列表。"""
-    return [
-        component
-        for component in product_model.components
-        if _should_project_event_component(component, product_model, device_payload)
-    ]
+    components: list[ComponentModel] = []
+    for component in product_model.components:
+        reason = _event_component_skip_reason(component, product_model, device_payload)
+        if reason is None:
+            components.append(component)
+            continue
+        _log_event_component_skip(device_payload, component, reason)
+    return components
 
 
 def event_types(component: ComponentModel) -> list[str]:
@@ -83,6 +89,9 @@ def event_device_class(
     product_model: HAProductModel,
 ) -> EventDeviceClass | None:
     """根据组件/产品类别推断 event device class。"""
+    projected_event_types = set(event_types(component))
+    if projected_event_types & {"motion_detected", "motion_undetected"}:
+        return EventDeviceClass.MOTION
     tokens = _event_identity_tokens(component, product_model)
     if matches_category(tokens, DOORBELL_COMPONENT_TOKENS):
         return EventDeviceClass.DOORBELL
@@ -100,6 +109,12 @@ def event_icon(component: ComponentModel, product_model: HAProductModel) -> str 
     """根据组件/产品类别推断 event 图标。"""
     if component.component_id == SAFETY_EVENT_COMPONENT_ID:
         return "mdi:smoke-detector"
+
+    projected_event_types = set(event_types(component))
+    if projected_event_types & {"motion_detected", "motion_undetected"}:
+        return "mdi:motion-sensor"
+    if projected_event_types & {"door_open", "door_close", "door_alarm", "door_normal"}:
+        return "mdi:door"
 
     category = _event_input_category(component, product_model)
     if category == "knob_switch":
@@ -169,29 +184,44 @@ def _should_project_event_component(
     device_payload: Mapping[str, Any],
 ) -> bool:
     """判断组件是否应投影为 event 实体。"""
+    return _event_component_skip_reason(component, product_model, device_payload) is None
+
+
+def _event_component_skip_reason(
+    component: ComponentModel,
+    product_model: HAProductModel,
+    device_payload: Mapping[str, Any],
+) -> str | None:
+    """Return why a schema component should not become a HA event entity."""
     if not component.events:
-        return False
+        return "missing_schema_events"
 
     category = _category_key(component.category)
     source_type = to_category(device_payload.get("type"))
 
-    # 运动类组件由 binary_sensor 处理；schema 事件仍可经 registry 明确覆盖。
-    if matches_category(category, MOTION_COMPONENT_TOKENS):
-        return False
-
     has_registry_supported_events = _has_registry_supported_events(component, product_model)
     has_known_registry_events = _has_known_registry_events(component)
+
+    # 运动状态由 binary_sensor 表示；schema 明确声明的事件仍应进入自动化入口。
+    if (
+        matches_category(category, MOTION_COMPONENT_TOKENS)
+        and not has_registry_supported_events
+        and not has_known_registry_events
+    ):
+        return "motion_component_owned_by_binary_sensor"
 
     if source_type in {"sensor", "binary_sensor"} and not (
         _event_input_category(component, product_model)
         or has_known_registry_events
     ):
-        return False
+        return "sensor_source_event_not_registry_known"
 
     if _event_input_category(component, product_model):
-        return True
+        return None
 
-    return has_registry_supported_events or has_known_registry_events
+    if has_registry_supported_events or has_known_registry_events:
+        return None
+    return "missing_supported_event_evidence"
 
 
 def _fallback_event_types(
@@ -208,6 +238,18 @@ def _fallback_event_types(
     if category == "scene_panel":
         return SCENE_PANEL_FALLBACK_EVENTS
     return ()
+
+
+def event_fallback_skip_reason(
+    device_payload: Mapping[str, Any],
+    product_model: HAProductModel,
+) -> str | None:
+    """Return why conservative event fallback did not create an entity."""
+    if _fallback_event_types(device_payload, product_model):
+        return None
+    if _fallback_event_input_category(device_payload, product_model):
+        return "missing_fallback_event_types"
+    return "missing_event_input_identity"
 
 
 def _fallback_component_id(
@@ -254,3 +296,23 @@ def _channel_event_name(channel: str, *, suffix: str = "事件") -> str:
     """Return readable event names without gluing numeric labels to suffixes."""
     separator = " " if any(char.isdecimal() for char in channel) else ""
     return f"{channel}{separator}{suffix}"
+
+
+def _log_event_component_skip(
+    device_payload: Mapping[str, Any],
+    component: ComponentModel,
+    reason: str,
+) -> None:
+    """Log why a schema event component did not become a HA event entity."""
+    if not _LOGGER.isEnabledFor(logging.DEBUG):
+        return
+    _LOGGER.debug(
+        "Skipping event projection: device_id=%s component_id=%s category=%s "
+        "component_category=%s event_types=%s reason=%s",
+        device_payload_id(device_payload),
+        component.component_id,
+        device_payload_category(device_payload),
+        component.category,
+        event_types(component),
+        reason,
+    )

@@ -4,8 +4,12 @@ from __future__ import annotations
 
 from custom_components.yeelight_pro.const import DOMAIN
 from custom_components.yeelight_pro.entity_candidates import iter_device_entity_candidates
-from custom_components.yeelight_pro.projector.event import project_events
+from custom_components.yeelight_pro.projector.event import (
+    project_device_triggers,
+    project_events,
+)
 from custom_components.yeelight_pro.projector.switch import project_switches
+from homeassistant.components.event import EventDeviceClass
 
 from .openapi_subdevice_helpers import build_openapi_device as _build_device
 from .openapi_subdevice_helpers import openapi_prop as _prop
@@ -210,3 +214,89 @@ def test_openapi_scene_panel_projects_events_and_battery_without_switch_leak() -
         ("event", f"scene_panel_{index}", f"按键 {index} 事件", None)
         for index in range(1, 9)
     ]
+
+
+def test_openapi_occupancy_subdevice_uses_registry_events_without_payload_events() -> None:
+    """OpenAPI 缺少 events 行时，cid=9 的人在传感器仍应暴露官方 motion 事件。"""
+    device = _build_device(
+        {
+            "id": 9031,
+            "name": "用户自定义烟雾传感器",
+            "category": "human_sensor",
+            "subDeviceList": [
+                {
+                    "index": 1,
+                    "cid": 9,
+                    "name": "用户自定义组件名",
+                    "category": "human_sensor",
+                    "properties": [_prop("mv", True, "有人经过", "boolean")],
+                },
+            ],
+        }
+    )
+
+    events = project_events(device, domain=DOMAIN)
+
+    assert len(events) == 1
+    assert events[0].component_id == "binary_sensor_1"
+    assert events[0].event_types == ["motion_detected", "motion_undetected"]
+    assert events[0].device_class == EventDeviceClass.MOTION
+    assert events[0].icon == "mdi:motion-sensor"
+    assert [trigger.subtype for trigger in project_device_triggers(device)] == [
+        "motion_detected",
+        "motion_undetected",
+    ]
+
+
+def test_openapi_contact_subdevice_uses_unique_registry_category_events() -> None:
+    """门磁 category+属性唯一命中官方组件时，应补齐接触/告警事件。"""
+    device = _build_device(
+        {
+            "id": 9032,
+            "name": "门磁",
+            "category": "contact_sensor",
+            "subDeviceList": [
+                {
+                    "index": 1,
+                    "name": "用户自定义组件名",
+                    "category": "contact_sensor",
+                    "properties": [
+                        _prop("dc", False, "是否接触", "boolean"),
+                        _prop("alm", False, "告警", "boolean"),
+                    ],
+                },
+            ],
+        }
+    )
+
+    events = project_events(device, domain=DOMAIN)
+
+    assert len(events) == 1
+    assert events[0].event_types == [
+        "door_open",
+        "door_close",
+        "door_alarm",
+        "door_normal",
+    ]
+    assert events[0].icon == "mdi:door"
+
+
+def test_openapi_human_category_without_component_identity_does_not_guess_events() -> None:
+    """human_sensor 大类存在多个官方事件组件，缺少 cid 时不能靠大类猜事件。"""
+    device = _build_device(
+        {
+            "id": 9033,
+            "name": "人体传感器",
+            "category": "human_sensor",
+            "subDeviceList": [
+                {
+                    "index": 1,
+                    "name": "用户写的人在传感器",
+                    "category": "human_sensor",
+                    "properties": [_prop("mv", True, "有人经过", "boolean")],
+                },
+            ],
+        }
+    )
+
+    assert project_events(device, domain=DOMAIN) == []

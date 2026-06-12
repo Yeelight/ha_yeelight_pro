@@ -87,6 +87,7 @@ async def test_hydration_reads_missing_sensor_properties_before_projection() -> 
     assert contact_candidates == {
         ("binary_sensor", "door"),
         ("binary_sensor", "tamper"),
+        ("event", "contact_sensor"),
         ("sensor", "battery"),
     }
     assert data[311930425]["iot_category"] == "other"
@@ -381,6 +382,7 @@ async def test_hydration_keeps_successful_property_groups_when_one_group_fails()
     } == {
         ("binary_sensor", "door"),
         ("binary_sensor", "tamper"),
+        ("event", "contact_sensor"),
         ("sensor", "battery"),
     }
     assert [

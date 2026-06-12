@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 import re
 from typing import Any, Mapping
 
@@ -12,9 +13,11 @@ from ..canonical.models import (
     HADeviceInstanceModel,
     HAProductModel,
 )
+from ..capabilities.registry import format_component_property_key
 from ..utils import to_bool, to_int
 
 COMPONENT_INDEX_RE = re.compile(r"_(?P<index>\d+)$")
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -63,6 +66,88 @@ def component_index(component_id: str) -> int | None:
     if not match:
         return None
     return to_int(match.group("index"))
+
+
+def component_state_key_map(
+    instance: HADeviceInstanceModel,
+) -> dict[str, dict[str, str]]:
+    """构建 component_id -> {prop_id: raw_key} 的运行时状态键映射."""
+    raw = instance.extensions.get("component_state_keys")
+    if not isinstance(raw, Mapping):
+        return {}
+
+    mapping: dict[str, dict[str, str]] = {}
+    for component_id, value in raw.items():
+        if not isinstance(value, Mapping):
+            continue
+        mapping[str(component_id)] = {
+            str(prop_id): str(raw_key)
+            for prop_id, raw_key in value.items()
+            if raw_key is not None
+        }
+    return mapping
+
+
+def component_state_key(
+    instance: HADeviceInstanceModel,
+    component_id: str,
+    prop_id: str,
+) -> str:
+    """返回组件属性在 params/state 中对应的真实 key."""
+    mapped = component_state_key_map(instance).get(component_id, {}).get(prop_id)
+    if mapped:
+        return mapped
+    return format_component_property_key(component_index(component_id), prop_id)
+
+
+def state_value(state: Mapping[str, Any], control_or_state_key: str | None) -> Any:
+    """按组件 scoped key 或普通属性 key 读取状态值."""
+    if control_or_state_key is None:
+        return None
+    if control_or_state_key in state:
+        return state.get(control_or_state_key)
+    if "-" in control_or_state_key:
+        return state.get(control_or_state_key.split("-", 1)[1])
+    return state.get(control_or_state_key)
+
+
+def component_property_value(
+    state: Mapping[str, Any],
+    instance: HADeviceInstanceModel,
+    component: ComponentInstanceModel,
+    prop_id: str,
+) -> Any:
+    """读取组件属性值，优先使用 canonical component.state."""
+    if prop_id in component.state:
+        return component.state.get(prop_id)
+    control_key = component_state_key(instance, component.component_id, prop_id)
+    if control_key in state and control_key != prop_id:
+        _LOGGER.debug(
+            "Projecting component-scoped state value: device_id=%s component_id=%s "
+            "category=%s prop_id=%s control_key=%s action=component_scoped_state_read",
+            instance.device_id,
+            component.component_id,
+            component.category,
+            prop_id,
+            control_key,
+        )
+    return state_value(state, control_key)
+
+
+def component_state_view(
+    state: Mapping[str, Any],
+    instance: HADeviceInstanceModel,
+    component: ComponentInstanceModel,
+    prop_ids: tuple[str, ...],
+) -> dict[str, Any]:
+    """返回带短属性别名的组件状态视图，保留原始 scoped key."""
+    merged = dict(state)
+    merged.update(component.state)
+    for prop_id in prop_ids:
+        control_key = component_state_key(instance, component.component_id, prop_id)
+        if prop_id in component.state or prop_id in state or control_key in state:
+            merged[prop_id] = component_property_value(state, instance, component, prop_id)
+    return merged
 
 
 def humanize_component_id(component_id: str) -> str | None:

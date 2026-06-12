@@ -64,6 +64,17 @@ def test_broad_cloud_light_sensor_payload_maps_to_sensor_only() -> None:
     assert platform_candidates_for_payload(payload) == ("sensor",)
 
 
+def test_registry_safe_read_only_properties_project_sensor_candidates() -> None:
+    """平台候选应覆盖 projector 已支持的官方安全只读 sensor 属性."""
+    payload = {
+        "category": "other",
+        "params": {"fv": "1.2.80", "ch_num": 4},
+    }
+
+    assert primary_platform_for_payload(payload) == "sensor"
+    assert platform_candidates_for_payload(payload) == ("sensor",)
+
+
 def test_other_category_has_no_default_platform_without_property_evidence() -> None:
     """other 是易来兜底大类，不应默认等同 HA sensor 平台。"""
     assert primary_platform_for_payload({"category": "other"}) is None

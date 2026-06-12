@@ -5,12 +5,8 @@ from __future__ import annotations
 LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
     "scripts/hacs_preflight_local_ha_runtime_sources.py": {
         "LOCAL_HA_RUNTIME_SOURCE_TOKENS": "runtime component source token registry",
-        "custom_components/yeelight_pro/core/schema_cache.py": (
-            "schema cache source token coverage"
-        ),
-        "custom_components/yeelight_pro/core/lan_control.py": (
-            "LAN source token coverage"
-        ),
+        "custom_components/yeelight_pro/core/schema_cache.py": "schema cache source token coverage",
+        "custom_components/yeelight_pro/core/lan_control.py": "LAN source token coverage",
         "custom_components/yeelight_pro/core/lan_topology_payload.py": (
             "LAN topology payload source token coverage"
         ),
@@ -20,12 +16,16 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "custom_components/yeelight_pro/projector/event_identity_helpers.py": (
             "event identity helper source token coverage"
         ),
+        "custom_components/yeelight_pro/projector/climate_helpers.py": (
+            "climate projector value helper coverage"
+        ),
         "custom_components/yeelight_pro/projector/event_helpers.py": (
             "event projector source token coverage"
         ),
         "custom_components/yeelight_pro/projector/property_controls.py": (
             "writable property control projector source token coverage"
         ),
+        "custom_components/yeelight_pro/projector/common.py": "projector shared state-key helper coverage",
         "custom_components/yeelight_pro/projector/property_control_common.py": (
             "writable property control shared helper coverage"
         ),
@@ -132,6 +132,13 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "_CHANNEL_LABELS": "indexed switch channel label registry",
         "_POSITIONAL_CHANNEL_LABELS": "physical switch position label registry",
     },
+    "custom_components/yeelight_pro/projector/climate_helpers.py": {
+        "AC_MODE_TO_HVAC": "documented Yeelight acm to HA HVAC mapping",
+        "HVAC_TO_AC_MODE": "HA HVAC to documented Yeelight acm mapping",
+        "AC_FAN_LABELS": "documented Yeelight acf label mapping",
+        "climate_raw_mode_for_hvac": "climate mode write helper",
+        "climate_raw_fan_for_mode": "climate fan speed write helper",
+    },
     "custom_components/yeelight_pro/entity_category.py": {
         "entity_category_for_property": "projection entity category resolver",
         "ha_entity_category": "HA EntityCategory conversion helper",
@@ -142,36 +149,6 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "safe_entity_id_migration": "safe legacy entity-id migration helper",
         "registry_entity_ids": "entity-id conflict set helper",
         "_legacy_unique_id_tail": "legacy channel suffix detector",
-    },
-    "custom_components/yeelight_pro/capabilities/platform_contract.py": {
-        "platform_contract_data": "platform contract data split import",
-        "platform_contract_evidence": "platform contract evidence split import",
-        "platform_candidates_for_payload": "payload platform candidate facade",
-        "PRIMARY_PLATFORM_CONTRACT_ROWS": "platform evidence row source",
-    },
-    "custom_components/yeelight_pro/capabilities/platform_contract_evidence.py": {
-        "capability_category": "property and component category evidence ordering",
-        "has_light_capability_evidence": "explicit light control evidence helper",
-        "has_switch_capability_evidence": "explicit switch control evidence helper",
-        "has_indexed_switch_control": "indexed switch capability evidence helper",
-    },
-    "custom_components/yeelight_pro/capabilities/platform_contract_data.py": {
-        "PRIMARY_PLATFORM_CONTRACT_ROWS": "platform evidence row registry",
-        "PRIMARY_CATEGORY_CANDIDATES": "IoT category candidate registry",
-        "READ_ONLY_BOOL_BINARY_PROPS": "binary sensor property candidate registry",
-        "READ_ONLY_SENSOR_PROPS": "sensor property candidate registry",
-        "CLIMATE_CANDIDATE_PROPS": "climate property candidate registry",
-        "LIGHT_CONTROL_PROPS": "light property candidate registry",
-    },
-    "custom_components/yeelight_pro/capabilities/property_aliases.py": {
-        "PROPERTY_ALIASES": "documented property alias registry",
-        "localToken": "local token property alias coverage",
-    },
-    "custom_components/yeelight_pro/capabilities/property_index.py": {
-        "enrich_property_component_memberships": (
-            "official component-property membership derivation"
-        ),
-        "_property_memberships": "property to component index builder",
     },
     "custom_components/yeelight_pro/ha_house_registry.py": {
         "sync_house_device": "house helper registry sync facade",
@@ -281,9 +258,15 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
     "custom_components/yeelight_pro/projector/property_control_common.py": {
         "is_writable_auxiliary_property": "main-entity duplicate property guard",
         "is_writable_auxiliary_bool_property": "writable bool config property guard",
-        "format_component_property_key": "indexed Yeelight control key formatter",
+        "component_state_key": "indexed Yeelight control key helper",
         "MAIN_ENTITY_PROPS": "main entity property exclusion registry",
         "AUXILIARY_BOOL_CONFIG_PROPS": "documented bool config property registry",
+    },
+    "custom_components/yeelight_pro/projector/common.py": {
+        "component_state_key": "component-scoped state key resolver",
+        "component_state_key_map": "component-state extension map parser",
+        "format_component_property_key": "indexed Yeelight control key formatter",
+        "state_value": "component-scoped state value reader",
     },
     "custom_components/yeelight_pro/converter/openapi_properties.py": {
         "openapi_property_model": "OpenAPI property metadata conversion helper",
@@ -306,6 +289,12 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
     "custom_components/yeelight_pro/converter/runtime_model_labels.py": {
         "capability_model_name": "runtime capability model label helper",
         "开关控制器": "relay-switch capability-first model label",
+    },
+    "custom_components/yeelight_pro/converter/runtime_registry_events.py": {
+        "registry_component_for_identity": "runtime registry event identity matcher",
+        "registry_component_event_models": "runtime registry event model builder",
+        "log_registry_event_inference": "runtime registry event inference debug log",
+        "missing_registry_component_identity": "runtime registry event skip reason",
     },
     "custom_components/yeelight_pro/converter/runtime_template_selector.py": {
         "runtime_template_key": "runtime property-evidence template selector",

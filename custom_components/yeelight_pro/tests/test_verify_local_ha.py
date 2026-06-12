@@ -109,6 +109,18 @@ def test_required_modules_include_platform_contract_data() -> None:
     )
 
 
+def test_required_modules_include_platform_candidate_projection() -> None:
+    """本地 HA 安装态必须保留平台候选计算与日志 helper."""
+    assert (
+        "custom_components.yeelight_pro.capabilities.platform_candidate_projection"
+        in REQUIRED_RUNTIME_MODULES
+    )
+    assert (
+        "custom_components.yeelight_pro.capabilities.platform_contract_logging"
+        in REQUIRED_RUNTIME_MODULES
+    )
+
+
 def test_required_modules_include_platform_contract_evidence() -> None:
     """本地 HA 安装态必须保留平台候选能力证据 helper."""
     assert (
@@ -137,6 +149,10 @@ def test_required_modules_include_runtime_inference_helper() -> None:
     """本地 HA 安装态必须保留运行时推断 helper."""
     assert (
         "custom_components.yeelight_pro.converter.runtime_inference_helpers"
+        in REQUIRED_RUNTIME_MODULES
+    )
+    assert (
+        "custom_components.yeelight_pro.converter.runtime_registry_events"
         in REQUIRED_RUNTIME_MODULES
     )
 
@@ -230,6 +246,14 @@ def test_required_modules_include_event_projector_helper() -> None:
     )
     assert (
         "custom_components.yeelight_pro.projector.event_helpers"
+        in REQUIRED_RUNTIME_MODULES
+    )
+
+
+def test_required_modules_include_climate_projector_helper() -> None:
+    """本地 HA 安装态必须保留拆分后的 climate projector helper."""
+    assert (
+        "custom_components.yeelight_pro.projector.climate_helpers"
         in REQUIRED_RUNTIME_MODULES
     )
 

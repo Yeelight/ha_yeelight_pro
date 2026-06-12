@@ -66,6 +66,19 @@ def test_projector_sensor_old_import_path() -> None:
     assert callable(project_sensors)
 
 
+def test_projector_climate_old_import_path() -> None:
+    """projector.climate 必须继续导出旧路径对象."""
+    from custom_components.yeelight_pro.projector.climate import (
+        HAClimateProjection,
+        project_climate,
+        project_climates,
+    )
+
+    assert HAClimateProjection.__name__ == "HAClimateProjection"
+    assert callable(project_climate)
+    assert callable(project_climates)
+
+
 def test_projector_package_public_exports() -> None:
     """projector 包聚合导出必须保持稳定."""
     from custom_components.yeelight_pro.projector import (

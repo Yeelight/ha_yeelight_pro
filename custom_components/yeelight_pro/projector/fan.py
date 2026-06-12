@@ -13,6 +13,7 @@ from homeassistant.components.fan import FanEntityFeature
 from ..utils import to_bool
 from .common import (
     NumericRange,
+    component_state_view,
     load_instance as _load_instance,
     load_product_model as _load_product_model,
     payload_available,
@@ -85,7 +86,12 @@ def project_fans(device_payload: Mapping[str, Any], *, domain: str) -> list[HAFa
         if not _looks_like_fan_component(component, product_component):
             continue
 
-        state = dict(component.state)
+        state = component_state_view(
+            params,
+            instance,
+            component,
+            ("vmcp", "vmcf"),
+        )
         power_key = _resolve_control_key(
             component.component_id,
             _power_key(state, product_component),

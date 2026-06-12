@@ -348,6 +348,7 @@ def test_contact_runtime_capabilities_override_conflicting_product_catalog_compo
     assert candidates == {
         ("binary_sensor", "door"),
         ("binary_sensor", "tamper"),
+        ("event", "contact_sensor"),
     }
 
 
