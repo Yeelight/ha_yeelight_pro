@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 from typing import Any, Mapping
 
 from homeassistant.components.light import ColorMode
@@ -51,6 +52,7 @@ from .platform_evidence import (
 )
 
 LIGHT_COLOR_MODE_HINT_KEY = _LIGHT_COLOR_MODE_HINT_KEY
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -112,6 +114,15 @@ def _project_legacy_light(
     """兼容旧版扁平载荷格式的灯光投影。"""
     state = dict(device_payload.get("params") or {})
     if not _payload_can_project_light(device_payload, state):
+        _LOGGER.debug(
+            "Skipping legacy light projection: device_id=%s category=%s type=%s "
+            "props=%s reason=%s",
+            device_payload.get("device_id"),
+            device_payload.get("category"),
+            device_payload.get("type"),
+            sorted(str(key) for key in state),
+            _payload_light_skip_reason(device_payload, state),
+        )
         return None
 
     features = _infer_features_from_payload(device_payload, state)
@@ -233,14 +244,22 @@ def _light_components(
     product_model = load_product_model(device_payload)
     components: list[ComponentInstanceModel] = []
     for component in instance.components:
-        if _light_component_score(component, device_payload, product_model) > 0:
+        score = _light_component_score(component, device_payload, product_model)
+        if score > 0:
             components.append(component)
-
-    if components:
-        return components
-    if _instance_can_fallback_to_light(device_payload, instance):
-        return [instance.components[0]]
-    return []
+            continue
+        product = product_component(product_model, component.component_id)
+        _LOGGER.debug(
+            "Skipping light component projection: device_id=%s component_id=%s "
+            "category=%s product_category=%s props=%s reason=%s",
+            instance.device_id,
+            component.component_id,
+            component.category,
+            None if product is None else product.category,
+            sorted(str(key) for key in component.state),
+            _light_component_skip_reason(component, device_payload, product_model),
+        )
+    return components
 
 
 def _select_light_component(
@@ -259,10 +278,6 @@ def _select_light_component(
     if scored:
         scored.sort(reverse=True, key=lambda item: (item[0], item[1]))
         return scored[0][2]
-
-    if _instance_can_fallback_to_light(device_payload, instance):
-        return instance.components[0]
-
     return None
 
 
@@ -302,30 +317,49 @@ def _light_component_score(
     return score
 
 
-def _instance_can_fallback_to_light(
-    device_payload: Mapping[str, Any],
-    instance: HADeviceInstanceModel,
-) -> bool:
-    """Return true only for payloads that are still plausibly lights."""
-    if not instance.components:
-        return False
-    return _payload_can_project_light(device_payload, instance.components[0].state)
-
-
 def _payload_can_project_light(
     device_payload: Mapping[str, Any],
     state: Mapping[str, Any],
 ) -> bool:
     """Avoid projecting broad cloud ``type=light`` rows as real lights."""
+    return _payload_light_skip_reason(device_payload, state) is None
+
+
+def _payload_light_skip_reason(
+    device_payload: Mapping[str, Any],
+    state: Mapping[str, Any],
+) -> str | None:
+    """Return why a flat payload cannot be projected as a light."""
     if state_blocks_light_projection(device_payload, state):
-        return False
+        return "state_blocks_light_projection"
     if not {"p", "l", "ct", "c"} & set(state):
-        return False
+        return "missing_light_properties"
 
     if payload_has_light_evidence(device_payload, state):
-        return True
+        return None
 
-    return _legacy_type_light_has_controls(device_payload, state)
+    if _legacy_type_light_has_controls(device_payload, state):
+        return None
+    return "missing_light_capability_evidence"
+
+
+def _light_component_skip_reason(
+    component: ComponentInstanceModel,
+    device_payload: Mapping[str, Any],
+    product_model: Any | None,
+) -> str:
+    """Return the strongest reason a component was not projected as light."""
+    state = component.state
+    product = product_component(product_model, component.component_id)
+    features = _resolve_light_features(component, device_payload, product)
+    has_component_evidence = component_has_light_evidence(component, product)
+    if not has_component_evidence and not _payload_can_project_light(device_payload, state):
+        return "missing_light_capability_evidence"
+    if not features and state_blocks_light_projection(device_payload, state):
+        return "state_blocks_light_projection"
+    if not features and not _state_has_light_property(state):
+        return "missing_light_state_property"
+    return "score_zero"
 
 
 def _legacy_type_light_has_controls(

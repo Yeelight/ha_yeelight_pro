@@ -16,6 +16,7 @@ from custom_components.yeelight_pro.event_support import normalize_runtime_event
 from custom_components.yeelight_pro.lan_payload import (
     lan_event_payloads,
     lan_property_updates,
+    lan_scene_updates,
 )
 
 
@@ -51,17 +52,38 @@ def test_lan_property_updates_normalize_gateway_post_prop_frame() -> None:
     }
 
 
-def test_lan_property_updates_preserve_online_only_change() -> None:
-    """LAN 推送只带 o 字段时也应能更新在线状态。"""
-    updates = lan_property_updates(
+def test_lan_scene_updates_preserve_scene_name_and_state() -> None:
+    """LAN 场景状态帧应保留场景名称和状态，供 coordinator 合并。"""
+    updates = lan_scene_updates(
+        {
+            "id": 1,
+            "method": "gateway_post.prop",
+            "nodes": [
+                {
+                    "id": 1001,
+                    "nt": 2,
+                    "params": {"p": True},
+                }
+            ],
+            "scenes": [{"id": 413, "n": "Home", "params": {"state": "active"}}],
+        }
+    )
+
+    assert len(updates) == 1
+    assert updates[0].scene_id == 413
+    assert updates[0].name == "Home"
+    assert updates[0].state == "active"
+
+
+    property_updates = lan_property_updates(
         {
             "method": "gateway_post.prop",
             "nodes": [{"id": 1001, "nt": 2, "o": False}],
         }
     )
 
-    assert len(updates) == 1
-    assert updates[0].params == {"o": False}
+    assert len(property_updates) == 1
+    assert property_updates[0].params == {"o": False}
 
 
 def test_lan_property_updates_ignore_outgoing_gateway_set_prop() -> None:

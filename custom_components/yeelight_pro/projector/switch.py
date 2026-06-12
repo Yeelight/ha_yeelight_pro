@@ -7,9 +7,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 from typing import Any, Mapping
 
-from ..canonical.models import HADeviceInstanceModel
+from ..canonical.models import ComponentInstanceModel, HADeviceInstanceModel
 from ..entity_category import entity_category_for_property
 from ..utils import to_bool, to_str
 from .common import (
@@ -35,6 +36,8 @@ from .switch_helpers import (
     _resolve_component_control_key,
     _switch_channel_allowed,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -79,8 +82,18 @@ def _project_instance_switches(
 ) -> list[HASwitchProjection]:
     """基于 HADeviceInstanceModel 投影 switch 组件."""
     if instance is None:
+        _LOGGER.debug(
+            "Skipping instance switch projection: device_id=%s reason=no_device_instance",
+            device_payload.get("device_id"),
+        )
         return []
     if not _allows_component_switch_projection(device_payload, instance):
+        _LOGGER.debug(
+            "Skipping component switch projection: device_id=%s category=%s "
+            "reason=parent_category_blocks_switch_without_component_evidence",
+            instance.device_id,
+            device_payload.get("iot_category") or device_payload.get("category"),
+        )
         return []
 
     product_model = _load_product_model(device_payload)
@@ -91,14 +104,33 @@ def _project_instance_switches(
     projections: list[HASwitchProjection] = []
 
     for component in instance.components:
-        if not _looks_like_switch_component(component):
+        schema_component = product_component(product_model, component.component_id)
+        if not _looks_like_switch_component(component, schema_component):
+            _log_switch_component_skip(
+                instance,
+                component,
+                schema_component,
+                "missing_switch_component_evidence",
+            )
             continue
         if not _switch_channel_allowed(
             device_payload,
             component_index(component.component_id),
         ):
+            _log_switch_component_skip(
+                instance,
+                component,
+                schema_component,
+                "channel_exceeds_product_hint",
+            )
             continue
         if _extract_indexed_switch_keys(component.state):
+            _log_switch_component_skip(
+                instance,
+                component,
+                schema_component,
+                "indexed_keys_projected_from_raw_params",
+            )
             continue
 
         prop = _direct_switch_prop(component.state) or _schema_switch_prop(
@@ -106,6 +138,12 @@ def _project_instance_switches(
             component.component_id,
         )
         if prop is None:
+            _log_switch_component_skip(
+                instance,
+                component,
+                schema_component,
+                "missing_switch_control_property",
+            )
             continue
 
         value = component.state.get(prop)
@@ -129,10 +167,7 @@ def _project_instance_switches(
                 available=schema_backed_component_available(
                     payload_available(device_payload, instance),
                     component,
-                    schema_component=product_component(
-                        product_model,
-                        component.component_id,
-                    ),
+                    schema_component=schema_component,
                 ),
                 is_on=bool(value),
                 control_key=control_key,
@@ -185,6 +220,14 @@ def _project_raw_switches(
     available = to_bool(device_payload.get("online"), default=True)
 
     if not _allows_raw_switch_fallback(device_payload):
+        _LOGGER.debug(
+            "Skipping raw switch projection: device_id=%s category=%s type=%s "
+            "props=%s reason=raw_switch_not_supported_by_category_or_component",
+            device_id,
+            device_payload.get("iot_category") or device_payload.get("category"),
+            device_payload.get("type"),
+            sorted(str(key) for key in params),
+        )
         return []
 
     raw_keys = _extract_indexed_switch_keys(params)
@@ -216,6 +259,14 @@ def _project_raw_switches(
             return projections
 
     if device_payload.get("type") != "switch":
+        _LOGGER.debug(
+            "Skipping direct raw switch projection: device_id=%s category=%s "
+            "type=%s props=%s reason=missing_indexed_keys_and_legacy_switch_type",
+            device_id,
+            device_payload.get("iot_category") or device_payload.get("category"),
+            device_payload.get("type"),
+            sorted(str(key) for key in params),
+        )
         return []
 
     direct_prop = _direct_switch_prop(params) or "p"
@@ -233,3 +284,22 @@ def _project_raw_switches(
             entity_category=entity_category_for_property(direct_prop),
         )
     ]
+
+
+def _log_switch_component_skip(
+    instance: HADeviceInstanceModel,
+    component: ComponentInstanceModel,
+    schema_component: Any | None,
+    reason: str,
+) -> None:
+    """Log why a component did not become a switch entity."""
+    _LOGGER.debug(
+        "Skipping switch component projection: device_id=%s component_id=%s "
+        "category=%s product_category=%s props=%s reason=%s",
+        instance.device_id,
+        component.component_id,
+        component.category,
+        None if schema_component is None else schema_component.category,
+        sorted(str(key) for key in component.state),
+        reason,
+    )

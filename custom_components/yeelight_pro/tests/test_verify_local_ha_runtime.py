@@ -8,6 +8,7 @@ from unittest.mock import Mock
 from scripts.verify_local_ha import (
     DEFAULT_ENTITY_COUNTS,
     VerificationReport,
+    latest_setup_runtime_lines,
     verify_logs,
     verify_runtime_entity_counts,
     verify_synthetic_log_recovery,
@@ -137,37 +138,93 @@ def test_verify_runtime_entity_counts_normalizes_spaced_platform_logs() -> None:
 def test_verify_runtime_entity_counts_sums_latest_reconcile_per_entry() -> None:
     """cloud+LAN 多 entry 并存时，应按每个 entry 最新 active 求和。"""
     counts = {
-        "button": 21,
+        "button": 20,
         "light": 44,
-        "number": 15,
-        "select": 8,
-        "sensor": 44,
+        "number": 14,
+        "select": 3,
+        "sensor": 43,
         "switch": 87,
+    }
+    lan_counts = {
         "binary_sensor": 1,
+        "button": 1,
+        "light": 1,
+        "number": 1,
+        "select": 5,
+        "sensor": 1,
+    }
+    expected_counts = {
+        domain: counts.get(domain, 0) + lan_counts.get(domain, 0)
+        for domain in set(counts) | set(lan_counts)
     }
     report = VerificationReport()
-    lines = _runtime_entity_lines(counts, active=213) + [
+    lines = _runtime_entity_lines(counts, active=211) + [
+        *_runtime_add_lines(lan_counts),
         (
             "2026-06-10 INFO [custom_components.yeelight_pro.entity_lifecycle] "
             "Reconciled Yeelight Pro entity registry for entry lan-entry: "
-            "active=7 pending_stale=0 disabled=0 restored=0"
+            "active=10 pending_stale=0 disabled=0 restored=0"
         ),
         (
             "2026-06-10 INFO [custom_components.yeelight_pro.entity_lifecycle] "
             "Reconciled Yeelight Pro entity registry for entry entry-1: "
-            "active=213 pending_stale=0 disabled=0 restored=0"
+            "active=211 pending_stale=0 disabled=0 restored=0"
         ),
     ]
 
     verify_runtime_entity_counts(
         lines,
         report,
-        expected_entity_counts=counts,
+        expected_entity_counts=expected_counts,
     )
 
     assert report.ok
-    assert any("runtime active entities: 220" in fact for fact in report.facts)
-    assert report.metrics["runtime_entities"] == 220
+    assert any("runtime active entities: 221" in fact for fact in report.facts)
+    assert report.metrics["runtime_entities"] == 221
+
+
+def test_latest_setup_runtime_lines_keeps_cloud_and_lan_same_startup() -> None:
+    """同一轮 HA 启动中的 cloud+LAN entry 日志都应参与 runtime 计数。"""
+    lines = [
+        "old Added 1 switch entities",
+        "old Reconciled Yeelight Pro entity registry for entry old-lan: active=1 pending_stale=0",
+        "old Yeelight Pro LAN-only setup complete for gateway 192.168.0.252:65443",
+        "new Added 20 button entities",
+        "new Reconciled Yeelight Pro entity registry for entry cloud-entry: active=177 pending_stale=0",
+        "new Yeelight Pro integration setup complete for house 429392 (cloud mode)",
+        "new Added 1 binary sensor entities",
+        "new Reconciled Yeelight Pro entity registry for entry lan-entry: active=10 pending_stale=0",
+        "new Yeelight Pro LAN-only setup complete for gateway 192.168.0.252:65443",
+    ]
+
+    latest = latest_setup_runtime_lines(lines)
+
+    assert latest[0] == "new Added 20 button entities"
+    assert latest[-1].endswith("192.168.0.252:65443")
+
+
+def test_latest_setup_runtime_lines_keeps_cloud_when_lan_reconnects_later() -> None:
+    """LAN 晚于 cloud 重连时，不应丢掉当前 cloud entry 的最新窗口。"""
+    lines = [
+        "old Added 99 switch entities",
+        "old Reconciled Yeelight Pro entity registry for entry old-cloud: active=99 pending_stale=0",
+        "old Yeelight Pro integration setup complete for house old (cloud mode)",
+        "cloud Added 20 button entities",
+        "cloud Reconciled Yeelight Pro entity registry for entry cloud-entry: active=177 pending_stale=0",
+        "cloud Yeelight Pro integration setup complete for house 429392 (cloud mode)",
+        "lan Added 1 binary sensor entities",
+        "lan Reconciled Yeelight Pro entity registry for entry lan-entry: active=10 pending_stale=0",
+        "lan Yeelight Pro LAN-only setup complete for gateway 192.168.0.252:65443",
+        "lan-reconnect Added 2 select entities",
+        "lan-reconnect Reconciled Yeelight Pro entity registry for entry lan-entry: active=11 pending_stale=0",
+        "lan-reconnect Yeelight Pro LAN-only setup complete for gateway 192.168.0.252:65443",
+    ]
+
+    latest = latest_setup_runtime_lines(lines)
+
+    assert "cloud Added 20 button entities" in latest
+    assert "lan-reconnect Added 2 select entities" in latest
+    assert all("old Added 99 switch entities" != line for line in latest)
 
 
 def test_verify_runtime_entity_counts_rejects_old_switch_leak() -> None:
@@ -259,14 +316,23 @@ def _runtime_entity_lines(
 ) -> list[str]:
     """Return representative HA log lines for active entity verification."""
     active_count = sum(counts.values()) if active is None else active
+    return _runtime_add_lines(counts, spaced_binary=spaced_binary) + [
+        "2026-06-10 INFO [custom_components.yeelight_pro.entity_lifecycle] "
+        "Reconciled Yeelight Pro entity registry for entry entry-1: "
+        f"active={active_count} pending_stale=0 disabled=0 restored=0",
+    ]
+
+
+def _runtime_add_lines(
+    counts: dict[str, int],
+    *,
+    spaced_binary: bool = False,
+) -> list[str]:
+    """Return representative HA platform add log lines."""
     return [
         f"2026-06-10 INFO [custom_components.yeelight_pro.dynamic_entities] "
         f"Added {count} {_log_domain(domain, spaced_binary=spaced_binary)} entities"
         for domain, count in counts.items()
-    ] + [
-        "2026-06-10 INFO [custom_components.yeelight_pro.entity_lifecycle] "
-        "Reconciled Yeelight Pro entity registry for entry entry-1: "
-        f"active={active_count} pending_stale=0 disabled=0 restored=0",
     ]
 
 

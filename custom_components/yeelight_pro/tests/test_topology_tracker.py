@@ -50,8 +50,8 @@ def _update(
     areas: list[dict[str, Any]] | None = None,
     rooms: list[dict[str, Any]] | None = None,
     groups: list[dict[str, Any]] | None = None,
-    scenes: list[dict[str, Any]] | None = None,
     houses: list[dict[str, Any]] | None = None,
+    scenes: list[dict[str, Any]] | None = None,
 ) -> None:
     """用默认空拓扑降低单测噪音."""
     tracker.update(
@@ -60,8 +60,8 @@ def _update(
         areas=areas or EMPTY_TOPOLOGY["areas"],
         rooms=rooms or EMPTY_TOPOLOGY["rooms"],
         groups=groups or EMPTY_TOPOLOGY["groups"],
-        scenes=scenes or EMPTY_TOPOLOGY["scenes"],
         houses=houses or EMPTY_TOPOLOGY["houses"],
+        scenes=scenes or EMPTY_TOPOLOGY["scenes"],
     )
 
 
@@ -261,6 +261,18 @@ def test_update_ignores_different_mapping_key_order() -> None:
 
     assert tracker.generation == first_generation
     _assert_empty_diff(tracker)
+
+
+def test_update_marks_house_metadata_changes() -> None:
+    """LAN 整屋/房屋节点改名应进入 topology diff，供 Repairs 摘要展示。"""
+    tracker = TopologyTracker()
+
+    _update(tracker, houses=[{"id": 1, "name": "家庭"}])
+    _update(tracker, houses=[{"id": 1, "name": "绿地中央公园"}])
+
+    assert tracker.generation == 2
+    assert tracker.diff_summary.metadata_changed["houses"] == 1
+    assert tracker.diff_summary.total_metadata_changed == 1
 
 
 def test_repeated_unchanged_update_clears_previous_diff() -> None:

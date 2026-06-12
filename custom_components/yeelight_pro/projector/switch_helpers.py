@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any, Mapping
 
-from ..canonical.models import ComponentInstanceModel, HADeviceInstanceModel
+from ..canonical.models import ComponentInstanceModel, ComponentModel, HADeviceInstanceModel
 from ..capabilities.registry import (
     component_platform_hint,
     format_component_property_key,
@@ -14,6 +14,7 @@ from ..capabilities.registry import (
 from ..device_display import channel_name_label, switch_channel_count_hint
 from ..utils import to_category, to_int
 from .common import component_index
+from .common import load_product_model, product_component
 from .event_input import is_event_input_category, is_event_input_component
 from .platform_evidence import component_has_switch_evidence
 
@@ -54,7 +55,14 @@ def _allows_component_switch_projection(
     """Allow schema-backed switch components on mixed-category products."""
     if _allows_switch_projection(device_payload):
         return True
-    return any(_looks_like_switch_component(component) for component in instance.components)
+    product_model = load_product_model(device_payload)
+    return any(
+        _looks_like_switch_component(
+            component,
+            product_component(product_model, component.component_id),
+        )
+        for component in instance.components
+    )
 
 
 def _allows_raw_switch_fallback(device_payload: Mapping[str, Any]) -> bool:
@@ -103,7 +111,10 @@ def _component_state_key_map(
     return mapping
 
 
-def _looks_like_switch_component(component: ComponentInstanceModel) -> bool:
+def _looks_like_switch_component(
+    component: ComponentInstanceModel,
+    product_component: ComponentModel | None = None,
+) -> bool:
     """判断组件是否具备官方 relay switch 证据."""
     category = to_category(component.category)
 
@@ -133,13 +144,30 @@ def _looks_like_switch_component(component: ComponentInstanceModel) -> bool:
     if non_switch_features & features:
         return False
 
-    if component_has_switch_evidence(component):
+    if component_has_switch_evidence(component, product_component):
+        return True
+    if _looks_like_indexed_switch_channel(component, category):
         return True
     return bool(
         category.replace("_", " ") == "switch control"
         and _direct_switch_prop(component.state)
         and component_index(component.component_id) is not None
     )
+
+
+def _looks_like_indexed_switch_channel(
+    component: ComponentInstanceModel,
+    category: str,
+) -> bool:
+    """Return true for canonical indexed relay-switch channels."""
+    if category not in {"relay_switch", "switch"}:
+        return False
+    if not _direct_switch_prop(component.state):
+        return False
+    index = component_index(component.component_id)
+    if index is None:
+        return False
+    return component.component_id.startswith(("relay_switch_", "switch_"))
 
 
 def _direct_switch_prop(state: Mapping[str, Any]) -> str | None:

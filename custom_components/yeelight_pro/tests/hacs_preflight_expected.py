@@ -154,6 +154,7 @@ EXPECTED_COMPONENT_FILES = {
     "entity_lifecycle_entity_id.py",
     "ha_device_registry.py",
     "ha_house_registry.py",
+    "light_group.py",
     "registry_cleanup_service.py",
 }
 EXPECTED_TEST_FILES = {
@@ -249,6 +250,7 @@ EXPECTED_TEST_FILES = {
     "test_property_hydration_response_shapes.py",
     "test_property_hydration.py",
     "test_spec_correction.py",
+    "test_projection_component_boundaries.py",
     "test_projection_boundaries.py",
     "test_projection_entity_categories.py",
     "test_projection_event_topology.py",

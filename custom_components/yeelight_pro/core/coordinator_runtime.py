@@ -106,22 +106,23 @@ class CoordinatorRuntimeMixin:
             return []
 
         bridge = _runtime_bridge(self)
-        if bridge.apply_property_updates(
+        changed = bridge.apply_property_updates(
             property_updates_from_adapter(lan_property_updates(payload))
-        ):
-            self.async_update_listeners()
+        )
 
-        # 场景状态同步
+        # 场景状态同步；同一帧内的设备/场景变化合并成一次 HA 状态通知。
         scene_updates = lan_scene_updates(payload)
         if scene_updates:
-            if _apply_lan_scene_updates_to_coordinator(self, scene_updates):
-                self.async_update_listeners()
+            changed = _apply_lan_scene_updates_to_coordinator(self, scene_updates) or changed
             for update in scene_updates:
                 _LOGGER.debug(
                     "LAN scene state: id=%d state=%s",
                     update.scene_id,
                     update.state,
                 )
+
+        if changed:
+            self.async_update_listeners()
 
         return await bridge.dispatch_event_payloads(lan_event_payloads(payload))
 

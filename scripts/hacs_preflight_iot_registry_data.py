@@ -248,6 +248,17 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
             "unsupported outlet/on switch fallback rejection coverage"
         ),
     },
+    "test_projection_component_boundaries.py": {
+        "test_light_component_category_power_only_does_not_project_light": (
+            "component category-only light rejection coverage"
+        ),
+        "test_relay_component_category_power_only_does_not_project_switch": (
+            "component category-only switch rejection coverage"
+        ),
+        "test_curtain_component_category_without_position_does_not_project_cover": (
+            "component category-only cover rejection coverage"
+        ),
+    },
     "test_projection_unsupported_platforms.py": {
         "test_unsupported_vacuum_payload_does_not_project_entities": (
             "unsupported vacuum projection boundary coverage"

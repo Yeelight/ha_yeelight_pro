@@ -75,6 +75,8 @@ def projection_payload(
                 {
                     "component_id": component_id,
                     "category": component_category,
+                    "name": component_category,
+                    "component_type": component_category,
                     "properties": [
                         {
                             "prop_id": prop,

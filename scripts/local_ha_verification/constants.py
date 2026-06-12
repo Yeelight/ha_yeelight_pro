@@ -14,7 +14,7 @@ DEFAULT_HA_URL = "http://localhost:18124"
 DEFAULT_ENTITY_COUNTS = {
     "button": 21,
     "binary_sensor": 1,
-    "light": 44,
+    "light": 51,
     "number": 15,
     "select": 8,
     "sensor": 44,
@@ -62,6 +62,7 @@ REQUIRED_RUNTIME_MODULES = (
     "custom_components.yeelight_pro.lan_payload",
     "custom_components.yeelight_pro.lan_runtime",
     "custom_components.yeelight_pro.live_runtime",
+    "custom_components.yeelight_pro.light_group",
     "custom_components.yeelight_pro.scan_login_contract",
     "custom_components.yeelight_pro.projector.event_identity_helpers",
     "custom_components.yeelight_pro.projector.event_input",

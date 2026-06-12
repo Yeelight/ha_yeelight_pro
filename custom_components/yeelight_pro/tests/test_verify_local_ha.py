@@ -78,6 +78,11 @@ def test_required_modules_include_ha_device_registry_contract() -> None:
     )
 
 
+def test_required_modules_include_group_light_runtime_dependency() -> None:
+    """本地 HA 安装态必须保留 light 平台拆分后的灯组实体模块。"""
+    assert "custom_components.yeelight_pro.light_group" in REQUIRED_RUNTIME_MODULES
+
+
 def test_required_modules_include_client_node_api_contract() -> None:
     """本地 HA 安装态必须保留拆分后的 Open API 节点模块."""
     expected_modules = {

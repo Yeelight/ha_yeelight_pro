@@ -74,6 +74,7 @@ REQUIRED_FILES = {
     "custom_components/yeelight_pro/entity_lifecycle_entity_id.py",
     "custom_components/yeelight_pro/event_identity.py",
     "custom_components/yeelight_pro/ha_house_registry.py",
+    "custom_components/yeelight_pro/light_group.py",
     "custom_components/yeelight_pro/lan_contract.py",
     "custom_components/yeelight_pro/lan_discovery.py",
     "custom_components/yeelight_pro/lan_methods.py",

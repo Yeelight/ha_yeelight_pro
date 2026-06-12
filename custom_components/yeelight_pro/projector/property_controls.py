@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 from typing import Any, Mapping
 
 from ..canonical.models import (
@@ -15,6 +16,8 @@ from ..utils import to_bool
 from .common import NumericRange, load_instance
 from .device import project_payload_device_info
 from .property_control_common import (
+    auxiliary_bool_property_skip_reason,
+    auxiliary_property_skip_reason,
     control_available,
     control_key,
     control_name,
@@ -31,6 +34,8 @@ from .property_control_common import (
     switch_command_values,
     switch_icon,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -159,9 +164,23 @@ def _project_number(
     domain: str,
 ) -> HANumberControlProjection | None:
     if not is_writable_auxiliary_property(prop, component):
+        _log_property_control_skip(
+            "number",
+            instance,
+            component,
+            prop,
+            auxiliary_property_skip_reason(prop, component),
+        )
         return None
     value_range = control_value_range(prop)
     if value_range is None or control_value_list(prop):
+        _log_property_control_skip(
+            "number",
+            instance,
+            component,
+            prop,
+            "missing_numeric_range_or_is_enum",
+        )
         return None
 
     numeric_range = NumericRange(
@@ -194,12 +213,33 @@ def _project_select(
     domain: str,
 ) -> HASelectControlProjection | None:
     if not is_writable_auxiliary_property(prop, component):
+        _log_property_control_skip(
+            "select",
+            instance,
+            component,
+            prop,
+            auxiliary_property_skip_reason(prop, component),
+        )
         return None
     value_list = control_value_list(prop)
     if not value_list:
+        _log_property_control_skip(
+            "select",
+            instance,
+            component,
+            prop,
+            "missing_value_list",
+        )
         return None
     options = tuple(select_options(value_list, HASelectOption))
     if not options:
+        _log_property_control_skip(
+            "select",
+            instance,
+            component,
+            prop,
+            "empty_select_options",
+        )
         return None
 
     return HASelectControlProjection(
@@ -226,6 +266,13 @@ def _project_switch(
     domain: str,
 ) -> HASwitchControlProjection | None:
     if not is_writable_auxiliary_bool_property(prop, component):
+        _log_property_control_skip(
+            "switch",
+            instance,
+            component,
+            prop,
+            auxiliary_bool_property_skip_reason(prop, component),
+        )
         return None
 
     on_value, off_value = switch_command_values(prop)
@@ -242,6 +289,28 @@ def _project_switch(
         device_info=project_payload_device_info(device_payload, instance),
         icon=switch_icon(prop),
         entity_category=entity_category_for_property(prop.prop_id),
+    )
+
+
+def _log_property_control_skip(
+    platform: str,
+    instance: HADeviceInstanceModel,
+    component: ComponentInstanceModel,
+    prop: PropertyModel,
+    reason: str | None,
+) -> None:
+    """Log why a schema property did not become a helper entity."""
+    _LOGGER.debug(
+        "Skipping %s property control projection: device_id=%s component_id=%s "
+        "category=%s prop_id=%s access=%s type=%s reason=%s",
+        platform,
+        instance.device_id,
+        component.component_id,
+        component.category,
+        prop.prop_id,
+        prop.access,
+        prop.property_type or prop.kind or prop.format,
+        reason or "unknown",
     )
 
 

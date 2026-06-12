@@ -50,6 +50,7 @@ def mock_coordinator():
     # 辅助数据直接挂载在 coordinator 上
     coordinator.scenes = []
     coordinator.groups = []
+    coordinator.houses = []
     coordinator.rooms = []
     coordinator.areas = []
     coordinator.async_execute_scene = AsyncMock()

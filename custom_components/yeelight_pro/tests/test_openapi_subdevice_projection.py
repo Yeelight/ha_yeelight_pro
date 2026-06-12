@@ -81,7 +81,7 @@ def test_openapi_subdevice_lights_project_multiple_light_entities() -> None:
 
 
 def test_openapi_subdevice_lights_use_channel_names_without_component_desc() -> None:
-    """多路 light 没有组件描述时，应显示友好的回路名而不是照明/裸数字."""
+    """只有 category=light+p 时不生成 light，避免粗品类掩盖能力缺失."""
     device = _build_device(
         {
             "id": 9018,
@@ -108,8 +108,7 @@ def test_openapi_subdevice_lights_use_channel_names_without_component_desc() -> 
 
     lights = project_lights(device, domain=DOMAIN)
 
-    assert [light.component_id for light in lights] == ["light_1", "light_2"]
-    assert [light.name for light in lights] == ["回路 1", "回路 2"]
+    assert lights == []
 
 
 def test_openapi_subdevice_component_metadata_reaches_runtime_instance() -> None:

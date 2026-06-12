@@ -175,9 +175,17 @@ async def test_coordinator_applies_lan_areas_groups_scenes(
             "nodes": [
                 {"id": 201, "nt": 1, "n": "客厅"},
                 {"id": 301, "nt": 3, "n": "一楼"},
+                {"id": 5001, "nt": 5, "n": "绿地中央公园"},
                 {"id": 1001, "nt": 2, "type": 3, "n": "客厅灯", "roomid": 201},
-                {"id": 3001, "nt": 4, "type": 1, "n": "客厅灯组"},
-                {"id": 4001, "nt": 6, "n": "回家"},
+                {
+                    "id": 3001,
+                    "nt": 4,
+                    "type": 1,
+                    "n": "客厅灯组",
+                    "o": True,
+                    "params": {"p": True, "l": 80, "ct": 4000},
+                },
+                {"id": 4001, "nt": 6, "n": "回家", "params": {"state": "inactive"}},
             ],
         }
     )
@@ -188,9 +196,60 @@ async def test_coordinator_applies_lan_areas_groups_scenes(
     assert coordinator.rooms == [{"id": 201, "name": "客厅"}]
     assert coordinator.areas == [{"id": 301, "name": "一楼"}]
     assert coordinator.groups == [
-        {"id": 3001, "name": "客厅灯组", "type": 1, "node_type": 4}
+        {
+            "id": 3001,
+            "name": "客厅灯组",
+            "type": 1,
+            "node_type": 4,
+            "online": True,
+            "params": {"p": True, "l": 80, "ct": 4000},
+        }
     ]
-    assert coordinator.scenes == [{"id": 4001, "name": "回家"}]
+    assert coordinator.houses == [
+        {"id": 5001, "name": "绿地中央公园", "type": None, "node_type": 5}
+    ]
+    assert coordinator.scenes == [
+        {"id": 4001, "name": "回家", "params": {"state": "inactive"}, "state": "inactive"}
+    ]
+    assert coordinator.topology_generation == 1
+    listener.assert_called_once()
+    remove_listener()
+    await coordinator.async_shutdown()
+
+
+@pytest.mark.asyncio
+async def test_coordinator_merges_lan_scene_state_push(
+    hass: HomeAssistant,
+) -> None:
+    """LAN prop 场景状态推送应合并进现有场景缓存并通知监听器。"""
+    coordinator = YeelightProCoordinator(
+        hass=hass,
+        client=None,
+        house_id=12345,
+    )
+    coordinator.scenes = [{"id": 4001, "name": "回家"}]
+    listener = MagicMock()
+    remove_listener = coordinator.async_add_listener(listener)
+
+    events = await coordinator.async_handle_lan_payload(
+        {
+            "id": 13814,
+            "method": "gateway_post.prop",
+            "nodes": [
+                {"id": 1001, "nt": 2, "params": {"p": True}},
+            ],
+            "scenes": [
+                {"id": 4001, "n": "回家", "params": {"state": "active"}},
+                {"id": 4002, "n": "离家", "params": {"state": "inactive"}},
+            ],
+        }
+    )
+
+    assert events == []
+    assert coordinator.scenes == [
+        {"id": 4001, "name": "回家", "state": "active", "params": {"state": "active"}},
+        {"id": 4002, "name": "离家", "state": "inactive", "params": {"state": "inactive"}},
+    ]
     listener.assert_called_once()
     remove_listener()
     await coordinator.async_shutdown()

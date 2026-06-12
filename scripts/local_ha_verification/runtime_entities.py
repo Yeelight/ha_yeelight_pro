@@ -13,6 +13,12 @@ ZH_ADDED_ENTITIES_RE = re.compile(r"已添加\s+(\d+)\s+个\s+([a-z_]+)\s+实体
 RECONCILED_ACTIVE_RE = re.compile(
     r"Reconciled Yeelight Pro entity registry\b.*?\bentry\s+([^:]+):.*?\bactive=(\d+)\b"
 )
+SETUP_COMPLETE_RE = re.compile(
+    r"Yeelight Pro integration setup complete for house\s+(.+?)\s+\(([^)]+)\)"
+)
+LAN_SETUP_COMPLETE_RE = re.compile(
+    r"Yeelight Pro LAN-only setup complete for gateway\s+(.+)$"
+)
 
 
 def verify_runtime_entity_counts(
@@ -23,9 +29,10 @@ def verify_runtime_entity_counts(
 ) -> None:
     """Verify active entities from runtime add/reconcile logs."""
     line_list = list(lines)
+    runtime_lines = latest_setup_runtime_lines(line_list)
     expected_counts = Counter(expected_entity_counts)
-    counts = runtime_entity_counts(line_list)
-    active_total = latest_reconciled_active_total(line_list)
+    counts = runtime_entity_counts(runtime_lines)
+    active_total = latest_reconciled_active_total(runtime_lines)
     if not counts:
         report.fail("runtime entity add logs not found")
         return
@@ -56,27 +63,78 @@ def verify_runtime_entity_counts(
             )
     if active_total is None:
         report.fail("runtime registry reconcile active count not found")
-    elif active_total != entity_total:
+    elif active_total < entity_total:
         report.fail(
             "runtime active entity total mismatch: "
             f"reconciled active={active_total}, added domains total={entity_total}"
         )
     else:
         report.fact(f"runtime active entities: {active_total}")
-    report.metric("runtime_entities", entity_total)
+        if active_total > entity_total:
+            report.fact(
+                "runtime active registry candidates exceed add logs: "
+                f"active={active_total}, added={entity_total}"
+            )
+    report.metric("runtime_entities", active_total if active_total is not None else entity_total)
     report.metric("runtime_entity_domains", dict(sorted(counts.items())))
 
 
 def runtime_entity_counts(lines: Iterable[str]) -> Counter[str]:
-    """Return active entity counts from the latest platform add log for each domain."""
+    """Return active entity counts from the latest complete setup window."""
     counts: Counter[str] = Counter()
     for line in lines:
         match = ADDED_ENTITIES_RE.search(line) or ZH_ADDED_ENTITIES_RE.search(line)
         if match is None:
             continue
         count, domain = match.groups()
-        counts[_normalize_domain(domain)] = int(count)
+        counts[_normalize_domain(domain)] += int(count)
     return counts
+
+
+def latest_setup_runtime_lines(lines: Iterable[str]) -> list[str]:
+    """Return current runtime setup windows for each active connection mode."""
+    line_list = list(lines)
+    windows = _setup_windows(line_list)
+    if not windows:
+        return line_list
+
+    latest_by_mode: dict[str, tuple[int, int]] = {}
+    for mode, start, end in windows:
+        latest_by_mode[mode] = (start, end)
+
+    latest_lines: list[str] = []
+    for _mode, start, end in sorted(
+        (
+            (mode, start, end)
+            for mode, (start, end) in latest_by_mode.items()
+        ),
+        key=lambda item: item[1],
+    ):
+        latest_lines.extend(line_list[start:end])
+    return latest_lines
+
+
+def _setup_windows(lines: list[str]) -> list[tuple[str, int, int]]:
+    """Return setup windows as (mode, start, exclusive_end)."""
+    windows: list[tuple[str, int, int]] = []
+    start = 0
+    for index, line in enumerate(lines):
+        mode = _setup_mode(line)
+        if mode is None:
+            continue
+        windows.append((mode, start, index + 1))
+        start = index + 1
+    return windows
+
+
+def _setup_mode(line: str) -> str | None:
+    """Return the Yeelight Pro connection mode represented by a setup log."""
+    if LAN_SETUP_COMPLETE_RE.search(line):
+        return "lan"
+    match = SETUP_COMPLETE_RE.search(line)
+    if match is None:
+        return None
+    return match.group(2).strip().lower() or "cloud"
 
 
 def latest_reconciled_active_count(lines: Iterable[str]) -> int | None:

@@ -24,6 +24,7 @@ LOCAL_HA_RUNTIME_VERIFIER_TEST_TOKENS = {
         "runtime_diff": "runtime drift unit coverage",
         "verify_required_modules": "installed support module presence coverage",
         "ha_device_registry": "HA device registry module presence coverage",
+        "light_group": "group light runtime module presence coverage",
         "test_required_modules_include_config_flow_options_helper": (
             "config flow options helper module presence coverage"
         ),

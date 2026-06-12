@@ -13,12 +13,9 @@ from ..canonical.models import (
     ValueRangeModel,
 )
 from ..capabilities.registry import (
-    component_platform_hint,
     format_component_property_key,
-    platform_for_category,
     property_spec,
 )
-from ..core.device_runtime_capabilities import normalize_iot_category
 from ..device_display import channel_name_label
 from ..entity_category import entity_category_for_property
 from ..utils import to_str
@@ -31,6 +28,7 @@ from .common import (
     schema_backed_component_available,
 )
 from .switch_helpers import _component_state_key_map
+from .platform_evidence import component_platform
 
 MAIN_ENTITY_PROPS = frozenset({
     "p",
@@ -100,16 +98,24 @@ def is_writable_auxiliary_property(
     component: ComponentInstanceModel | None = None,
 ) -> bool:
     """Return true for writable range/enum properties owned by helper entities."""
+    return auxiliary_property_skip_reason(prop, component) is None
+
+
+def auxiliary_property_skip_reason(
+    prop: PropertyModel,
+    component: ComponentInstanceModel | None = None,
+) -> str | None:
+    """Return why a range/enum property cannot become a helper entity."""
     spec = property_spec(prop.prop_id)
     if spec is None or not spec.writable:
-        return False
+        return "undocumented_or_registry_read_only_property"
     if _is_main_entity_property(prop.prop_id, component):
-        return False
+        return "owned_by_main_entity"
     if looks_bool(prop):
-        return False
+        return "boolean_property"
     if not _access_allows_write(prop.access):
-        return False
-    return True
+        return "schema_read_only"
+    return None
 
 
 def is_writable_auxiliary_bool_property(
@@ -117,16 +123,24 @@ def is_writable_auxiliary_bool_property(
     component: ComponentInstanceModel | None = None,
 ) -> bool:
     """Return true for documented writable bool helper properties."""
+    return auxiliary_bool_property_skip_reason(prop, component) is None
+
+
+def auxiliary_bool_property_skip_reason(
+    prop: PropertyModel,
+    component: ComponentInstanceModel | None = None,
+) -> str | None:
+    """Return why a bool property cannot become a helper switch entity."""
     spec = property_spec(prop.prop_id)
     if spec is None or not spec.writable:
-        return False
+        return "undocumented_or_registry_read_only_property"
     if _is_main_entity_property(prop.prop_id, component):
-        return False
+        return "owned_by_main_entity"
     if not looks_bool(prop):
-        return False
+        return "not_boolean_property"
     if not _access_allows_write(prop.access):
-        return False
-    return True
+        return "schema_read_only"
+    return None
 
 
 def control_available(
@@ -165,22 +179,20 @@ def _is_main_entity_property(
     platform = _component_platform(component)
     if platform in MAIN_ENTITY_PROPS_BY_PLATFORM:
         return prop_id in MAIN_ENTITY_PROPS_BY_PLATFORM[platform]
+    if platform is None and _looks_like_relay_switch_component(component):
+        return prop_id in MAIN_ENTITY_PROPS_BY_PLATFORM["switch"]
     return prop_id in MAIN_ENTITY_PROPS
 
 
 def _component_platform(component: ComponentInstanceModel) -> str | None:
     """Return documented HA platform for a component without using labels."""
-    for value in (component.component_id, component.category):
-        direct = component_platform_hint(value)
-        if direct:
-            return direct
-        category = normalize_iot_category(value)
-        if not category:
-            continue
-        platform = platform_for_category(category)
-        if platform:
-            return platform
-    return None
+    return component_platform(component)
+
+
+def _looks_like_relay_switch_component(component: ComponentInstanceModel) -> bool:
+    """Return true for canonical relay-switch channels with power control."""
+    category = (component.category or "").lower()
+    return category in {"relay_switch", "switch"}
 
 
 def control_value_range(prop: PropertyModel) -> ValueRangeModel | None:
@@ -352,6 +364,8 @@ __all__ = [
     "control_value_list",
     "control_value_range",
     "entity_category_for_property",
+    "auxiliary_bool_property_skip_reason",
+    "auxiliary_property_skip_reason",
     "is_writable_auxiliary_bool_property",
     "is_writable_auxiliary_property",
     "number_icon",

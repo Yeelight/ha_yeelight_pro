@@ -10,12 +10,14 @@ from ..capabilities.platform_contract_data import (
     CLIMATE_CANDIDATE_PROPS,
     COVER_TARGET_PROPS,
     FAN_CANDIDATE_PROPS,
-    LIGHT_CONTROL_PROPS,
-    RELAY_SWITCH_CONTROL_PROPS,
+)
+from ..capabilities.platform_contract_evidence import (
+    has_light_capability_evidence,
+    has_switch_capability_evidence,
 )
 from ..capabilities.registry import component_platform_hint, platform_for_category
 from ..core.device_runtime_capabilities import normalize_iot_category
-from ..utils import to_category
+from ..utils import to_category, to_int
 
 _COVER_POSITION_PROPS = frozenset({"cp", "rs", *COVER_TARGET_PROPS})
 _SWITCH_CONTROL_PROPS = frozenset({"p", "sp"})
@@ -40,29 +42,25 @@ def component_platform(
     component: ComponentInstanceModel,
     product_component: ComponentModel | None = None,
 ) -> str | None:
-    """Return documented HA platform for a component without using labels."""
+    """Return documented HA platform from component identity, not broad category."""
     values: list[Any] = [
-        component.component_id,
-        component.category,
+        component.component_type,
     ]
     if product_component is not None:
         values.extend(
             (
                 product_component.component_id,
-                product_component.category,
+                product_component.component_type,
+                product_component.name,
             )
         )
+        if product_component.cid is not None:
+            values.append(product_component.cid)
 
     for value in values:
-        direct = component_platform_hint(value)
+        direct = _component_platform_hint_from_identity(value)
         if direct:
             return direct
-        category = normalize_iot_category(value)
-        if not category:
-            continue
-        platform = platform_for_category(category)
-        if platform:
-            return platform
     return None
 
 
@@ -99,10 +97,7 @@ def component_has_light_evidence(
     """Return true when official category or properties identify a light."""
     platform = component_platform(component, product_component)
     props = component_prop_ids(component, product_component)
-    return platform == "light" or (
-        component_category(component, product_component) == "light"
-        and bool(props & LIGHT_CONTROL_PROPS)
-    )
+    return platform == "light" and bool(props & {"p", "l", "ct", "c"})
 
 
 def component_has_switch_evidence(
@@ -114,10 +109,28 @@ def component_has_switch_evidence(
     props = component_prop_ids(component, product_component)
     if platform == "event":
         return False
-    return platform == "switch" or (
-        component_category(component, product_component) == "relay_switch"
-        and bool(props & _SWITCH_CONTROL_PROPS)
-    )
+    return platform == "switch" and bool(props & _SWITCH_CONTROL_PROPS)
+
+
+def component_has_documented_identity(
+    component: ComponentInstanceModel,
+    product_component: ComponentModel | None = None,
+) -> bool:
+    """Return true when a component carries official identity beyond category."""
+    values: tuple[Any, ...]
+    if product_component is not None:
+        values = (
+            product_component.component_id,
+            product_component.component_type,
+            product_component.name,
+            product_component.cid,
+        )
+    else:
+        values = (
+            component.component_type,
+            component.name,
+        )
+    return any(_component_identity_has_hint(value) for value in values)
 
 
 def component_has_cover_evidence(
@@ -127,10 +140,7 @@ def component_has_cover_evidence(
     """Return true when official category or properties identify a curtain."""
     platform = component_platform(component, product_component)
     props = component_prop_ids(component, product_component)
-    return platform == "cover" or (
-        component_category(component, product_component) == "curtain"
-        and bool(props & _COVER_POSITION_PROPS)
-    )
+    return platform == "cover" and bool(props & _COVER_POSITION_PROPS)
 
 
 def component_has_climate_evidence(
@@ -141,9 +151,7 @@ def component_has_climate_evidence(
     props = component_prop_ids(component, product_component)
     if props & FAN_CANDIDATE_PROPS and not props & CLIMATE_CANDIDATE_PROPS:
         return False
-    return component_platform(component, product_component) == "climate" or bool(
-        props & CLIMATE_CANDIDATE_PROPS
-    )
+    return bool(props & CLIMATE_CANDIDATE_PROPS)
 
 
 def component_has_fan_evidence(
@@ -160,8 +168,8 @@ def payload_has_light_evidence(
     state: Mapping[str, Any],
 ) -> bool:
     """Return true when payload category and state support light projection."""
-    return payload_category(device_payload) == "light" and bool(
-        set(state) & LIGHT_CONTROL_PROPS
+    return payload_category(device_payload) == "light" and has_light_capability_evidence(
+        set(state)
     )
 
 
@@ -194,11 +202,30 @@ def payload_has_switch_evidence(
     category = payload_category(device_payload)
     if category != "relay_switch":
         return False
-    return bool(set(state) & RELAY_SWITCH_CONTROL_PROPS)
+    return has_switch_capability_evidence(category, set(state), False)
+
+
+def _component_identity_has_hint(value: Any) -> bool:
+    """Return true for official component aliases or ids, not user labels."""
+    return _component_platform_hint_from_identity(value) is not None
+
+
+def _component_platform_hint_from_identity(value: Any) -> str | None:
+    """Return a platform hint without treating numeric labels as component ids."""
+    if value is None:
+        return None
+    numeric = to_int(value)
+    if numeric is not None:
+        return component_platform_hint(numeric) if not isinstance(value, str) else None
+    text = str(value).strip()
+    if not text or text.isdigit():
+        return None
+    return component_platform_hint(text)
 
 
 __all__ = [
     "component_category",
+    "component_has_documented_identity",
     "component_has_climate_evidence",
     "component_has_cover_evidence",
     "component_has_fan_evidence",

@@ -25,7 +25,6 @@ class YeelightProGroupLight(CoordinatorEntity, LightEntity):
 
     _attr_has_entity_name = True
     _attr_icon = "mdi:lightbulb-group"
-    _attr_supported_color_modes = {ColorMode.BRIGHTNESS, ColorMode.COLOR_TEMP}
     _attr_min_color_temp_kelvin = 2700
     _attr_max_color_temp_kelvin = 6500
 
@@ -86,6 +85,13 @@ class YeelightProGroupLight(CoordinatorEntity, LightEntity):
         """返回灯组色温。"""
         value = self._group_params.get("ct")
         return int(value) if isinstance(value, int | float) and value > 0 else None
+
+    @property
+    def supported_color_modes(self) -> set[ColorMode]:
+        """返回 HA 允许的灯组颜色模式集合。"""
+        if self.color_temp_kelvin is not None:
+            return {ColorMode.COLOR_TEMP}
+        return {ColorMode.BRIGHTNESS}
 
     @property
     def color_mode(self) -> ColorMode:

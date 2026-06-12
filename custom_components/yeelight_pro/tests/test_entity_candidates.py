@@ -104,6 +104,7 @@ def test_entity_candidates_match_lifecycle_active_keys() -> None:
     assert ("switch", "yeelight_pro_relay-1_switch_2") in candidate_keys
     assert all(platform != "vacuum" for platform, _unique_id in candidate_keys)
     assert ("button", "yeelight_pro_scene_scene_1") in candidate_keys
+    assert ("light", "yeelight_pro_group_group_1_light") in candidate_keys
     assert ("scene", "yeelight_pro_scene_scene_1") not in candidate_keys
 
 
@@ -294,8 +295,19 @@ def test_entity_candidates_include_registry_metadata_for_major_platforms() -> No
     assert candidates[("cover", "yeelight_pro_cover-1_cover")].name == "窗帘"
     assert candidates[("climate", "yeelight_pro_climate-1_climate")].name == "温控"
     assert candidates[("button", "yeelight_pro_scene_scene_1")].name == "回家"
+    assert candidates[("light", "yeelight_pro_group_group_1_light")].name == "客厅灯组"
+    assert candidates[("light", "yeelight_pro_group_group_1_light")].icon == "mdi:lightbulb-group"
     assert candidates[("number", "yeelight_pro_group_group_1_brightness")].name == "客厅灯组 亮度"
     assert candidates[("select", "yeelight_pro_12345_select_room")].name == "当前房间"
+
+
+def test_house_select_candidates_keep_lan_only_zero_house_id() -> None:
+    """LAN-only house_id=0 也必须保留固定 select 候选，避免被误判 stale。"""
+    candidate_keys = collect_entity_candidate_keys(_Coordinator(data={}, house_id=0))
+
+    assert ("select", "yeelight_pro_0_select_room") in candidate_keys
+    assert ("select", "yeelight_pro_0_select_group") in candidate_keys
+    assert ("select", "yeelight_pro_0_select_scene") in candidate_keys
 
 
 def test_schema_unknown_actions_do_not_create_device_buttons() -> None:

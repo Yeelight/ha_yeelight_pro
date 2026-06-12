@@ -100,8 +100,11 @@ async def test_coordinator_lan_toggle_error_is_redacted(
 async def test_coordinator_control_group_uses_connected_lan_for_numeric_group_id(
     hass: HomeAssistant,
 ) -> None:
-    """LAN 已连接且 group id 可转数字时，灯组控制应走 nt=4。"""
+    """LAN 已连接且 group id 可转数字时，灯组控制应走 nt=4 并更新本地灯组状态。"""
     coordinator, mock_client = _coordinator_with_device(hass)
+    coordinator.groups = [{"id": 146, "name": "客厅灯组", "params": {"p": True}}]
+    listener = MagicMock()
+    remove_listener = coordinator.async_add_listener(listener)
     lan_runtime = _connected_lan_runtime()
     coordinator.set_lan_runtime(lan_runtime)
 
@@ -115,6 +118,9 @@ async def test_coordinator_control_group_uses_connected_lan_for_numeric_group_id
         [{"id": 146, "nt": 4, "duration": 300, "set": {"p": False}}]
     )
     mock_client.control_group.assert_not_awaited()
+    assert coordinator.groups[0]["params"] == {"p": False}
+    listener.assert_called_once()
+    remove_listener()
 
 
 @pytest.mark.asyncio

@@ -342,8 +342,8 @@ def test_single_openapi_light_uses_device_name_as_primary_entity() -> None:
     assert light.name is None
 
 
-def test_light_component_id_never_generates_generic_light_name() -> None:
-    """技术组件 id 不能生成照明这类泛名，避免 registry 保留无意义 original_name."""
+def test_openapi_light_power_only_does_not_project_light() -> None:
+    """category=light+p 证据不足，不能生造只有开关的灯实体."""
     device = _build_device(
         {
             "id": 9019,
@@ -355,10 +355,7 @@ def test_light_component_id_never_generates_generic_light_name() -> None:
         }
     )
 
-    [light] = project_lights(device, domain=DOMAIN)
-
-    assert light.component_id == "light"
-    assert light.name is None
+    assert project_lights(device, domain=DOMAIN) == []
 
 
 def test_openapi_user_named_double_switch_keeps_structured_third_subdevice() -> None:

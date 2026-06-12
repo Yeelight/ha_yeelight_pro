@@ -32,6 +32,7 @@ def test_create_topology_changed_issue_uses_aggregate_counts(
         areas=[{"id": "area-secret", "name": "Floor 1"}],
         rooms=[{"id": "room-secret"}],
         groups=[{"id": "group-secret"}],
+        houses=[{"id": "house-secret"}],
         scenes=[{"id": "scene-secret"}],
         topology_diff_summary=TopologyDiffSummary(
             previous_generation=3,
@@ -42,6 +43,7 @@ def test_create_topology_changed_issue_uses_aggregate_counts(
                 "areas": 1,
                 "rooms": 0,
                 "groups": 0,
+                "houses": 1,
                 "scenes": 0,
             },
             removed={
@@ -50,6 +52,7 @@ def test_create_topology_changed_issue_uses_aggregate_counts(
                 "areas": 0,
                 "rooms": 0,
                 "groups": 0,
+                "houses": 0,
                 "scenes": 0,
             },
             metadata_changed={
@@ -58,6 +61,7 @@ def test_create_topology_changed_issue_uses_aggregate_counts(
                 "areas": 0,
                 "rooms": 0,
                 "groups": 0,
+                "houses": 0,
                 "scenes": 0,
             },
         ),
@@ -96,6 +100,7 @@ def test_create_topology_changed_issue_uses_aggregate_counts(
                     "areas": 1,
                     "rooms": 0,
                     "groups": 0,
+                    "houses": 1,
                     "scenes": 0,
                 },
                 "removed": {
@@ -104,6 +109,7 @@ def test_create_topology_changed_issue_uses_aggregate_counts(
                     "areas": 0,
                     "rooms": 0,
                     "groups": 0,
+                    "houses": 0,
                     "scenes": 0,
                 },
                 "metadata_changed": {
@@ -112,19 +118,20 @@ def test_create_topology_changed_issue_uses_aggregate_counts(
                     "areas": 0,
                     "rooms": 0,
                     "groups": 0,
+                    "houses": 0,
                     "scenes": 0,
                 },
-                "total_added": 2,
+                "total_added": 3,
                 "total_removed": 0,
                 "total_metadata_changed": 1,
-                "total_changes": 3,
+                "total_changes": 4,
             },
             "devices": 1,
             "gateways": 1,
             "areas": 1,
             "rooms": 1,
             "groups": 1,
-            "houses": 0,
+            "houses": 1,
             "scenes": 1,
         },
         is_fixable=False,
@@ -137,9 +144,9 @@ def test_create_topology_changed_issue_uses_aggregate_counts(
             "areas": "1",
             "rooms": "1",
             "groups": "1",
-            "houses": "0",
+            "houses": "1",
             "scenes": "1",
-            "added": "2",
+            "added": "3",
             "removed": "0",
             "metadata_changed": "1",
         },
@@ -167,6 +174,7 @@ def test_create_topology_changed_issue_falls_back_to_empty_diff(
         areas=[],
         rooms=[],
         groups=[],
+        houses=[],
         scenes=[],
     )
 
@@ -205,7 +213,7 @@ def test_create_topology_changed_issue_whitelists_diff_summary_fields(
                     "url": "https://api.yeelight.com/apis/iot",
                 },
                 "removed": {"rooms": 0},
-                "metadata_changed": {"groups": 1},
+                "metadata_changed": {"groups": 1, "houses": 1},
                 "total_added": 1,
                 "total_removed": 0,
                 "total_metadata_changed": 1,
@@ -223,6 +231,7 @@ def test_create_topology_changed_issue_whitelists_diff_summary_fields(
         areas=[],
         rooms=[],
         groups=[],
+        houses=[],
         scenes=[],
         topology_diff_summary=UnsafeTopologySummary(),
     )
@@ -249,7 +258,7 @@ def test_create_topology_changed_issue_whitelists_diff_summary_fields(
         "total_changes": 2,
         "added": {"devices": 1},
         "removed": {"rooms": 0},
-        "metadata_changed": {"groups": 1},
+        "metadata_changed": {"groups": 1, "houses": 1},
     }
     serialized = json.dumps(create_issue.call_args.kwargs["data"], ensure_ascii=False)
     assert "device-secret-1" not in serialized

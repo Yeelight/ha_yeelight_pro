@@ -249,7 +249,7 @@
   "issues": {
     "device_topology_changed": {
       "title": "Yeelight Pro device list changed",
-      "description": "Yeelight Pro detected a device or topology change and automatically synchronized the Home Assistant device and entity registries.\n\nChange summary: added {added}, removed {removed}, metadata changed {metadata_changed}.\n\nCurrent aggregate counts: devices {devices}, gateways {gateways}, areas {areas}, rooms {rooms}, groups {groups}, scenes {scenes}.\n\nIf devices or entities do not look right, open the integration page to review the entity list and reload the integration if needed."
+      "description": "Yeelight Pro detected a device or topology change and automatically synchronized the Home Assistant device and entity registries.\n\nChange summary: added {added}, removed {removed}, metadata changed {metadata_changed}.\n\nCurrent aggregate counts: devices {devices}, gateways {gateways}, areas {areas}, rooms {rooms}, groups {groups}, houses {houses}, scenes {scenes}.\n\nIf devices or entities do not look right, open the integration page to review the entity list and reload the integration if needed."
     }
   }
 }
