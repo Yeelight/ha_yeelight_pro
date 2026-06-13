@@ -48,6 +48,7 @@ def build_aggregate_runtime_coordinator(
         product_schema_cache_size=2,
     )
     coordinator.house_id = 429392
+    coordinator.analytics_enabled = False
     coordinator.devices = {
         1001: {
             "id": 1001,

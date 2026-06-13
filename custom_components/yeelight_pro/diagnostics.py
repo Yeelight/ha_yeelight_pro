@@ -95,6 +95,7 @@ def _build_runtime_diagnostics(
         "loaded": True,
         "platforms": list(runtime.get("platforms") or []),
         "health": _runtime_health(runtime, coordinator),
+        "analytics": _analytics_diagnostics(runtime),
         "client_capabilities": _client_capabilities(runtime),
         "options": {
             CONF_SCAN_INTERVAL: getattr(coordinator, "scan_interval", None),
@@ -172,6 +173,28 @@ def _entry_option(runtime: Mapping[str, Any], key: str, default: Any) -> Any:
     entry = runtime.get("entry")
     options = getattr(entry, "options", None)
     return options.get(key, default) if isinstance(options, Mapping) else default
+
+
+def _analytics_diagnostics(runtime: Mapping[str, Any]) -> dict[str, Any]:
+    """Return analytics coordinator availability without raw API details."""
+    coordinator = runtime.get("analytics_coordinator")
+    if coordinator is None:
+        return {
+            "enabled": False,
+            "last_update_success": None,
+            "last_exception_type": None,
+            "has_snapshot": False,
+        }
+    return {
+        "enabled": True,
+        "last_update_success": _safe_bool_or_none(
+            getattr(coordinator, "last_update_success", None),
+        ),
+        "last_exception_type": _exception_type_name(
+            getattr(coordinator, "last_exception", None),
+        ),
+        "has_snapshot": getattr(coordinator, "data", None) is not None,
+    }
 
 
 def _property_hydration_diagnostics(coordinator: Any) -> dict[str, int]:

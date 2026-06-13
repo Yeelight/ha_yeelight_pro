@@ -7,6 +7,7 @@ from typing import Any, Mapping, Protocol
 from .commands import (
     async_control_device as async_execute_control_device,
     async_control_group as async_execute_control_group,
+    async_control_node as async_execute_control_node,
     async_execute_scene as async_execute_scene_command,
     async_toggle_device as async_execute_toggle_device,
 )
@@ -15,10 +16,15 @@ from .exceptions import DeviceNotFoundError
 from .lan_control import (
     async_try_lan_control_device,
     async_try_lan_control_group,
+    async_try_lan_control_node,
     async_try_lan_execute_scene,
     async_try_lan_toggle_device,
 )
-from .runtime_state import RuntimeStateStore, merge_runtime_state_into_group_payloads
+from .runtime_state import (
+    RuntimeStateStore,
+    merge_runtime_state_into_group_payloads,
+    merge_runtime_state_into_node_payloads,
+)
 
 
 class _ControlCoordinator(Protocol):
@@ -29,6 +35,9 @@ class _ControlCoordinator(Protocol):
     devices: dict[int, dict[str, Any]]
     gateways: dict[int, dict[str, Any]]
     groups: list[dict[str, Any]]
+    rooms: list[dict[str, Any]]
+    areas: list[dict[str, Any]]
+    houses: list[dict[str, Any]]
     house_id: int
     _device_payload_builder: DevicePayloadBuilder
     _lan_runtime: Any | None
@@ -42,6 +51,15 @@ class _ControlCoordinator(Protocol):
 
     async def async_request_refresh(self) -> None:
         """Request a coordinator refresh."""
+
+    async def async_control_node(
+        self,
+        node_kind: str,
+        resource_id: int | str,
+        params: dict[str, Any],
+        duration: int = 500,
+    ) -> None:
+        """Control a topology node."""
 
 
 class CoordinatorControlMixin:
@@ -154,6 +172,70 @@ class CoordinatorControlMixin:
         ):
             self.async_update_listeners()
 
+    async def async_control_node(
+        self: _ControlCoordinator,
+        node_kind: str,
+        resource_id: int | str,
+        params: dict[str, Any],
+        duration: int = 500,
+    ) -> None:
+        """Control a room, area or house topology node."""
+        if not await async_try_lan_control_node(
+            self._lan_runtime,
+            node_kind=node_kind,
+            resource_id=resource_id,
+            params=params,
+            duration=duration,
+        ):
+            await async_execute_control_node(
+                self.client,
+                house_id=self.house_id,
+                node_kind=node_kind,
+                resource_id=resource_id,
+                params=params,
+                duration=duration,
+            )
+
+        collection = _node_collection(self, node_kind)
+        normalized_node_id = _normalized_device_id(resource_id)
+        if (
+            collection is not None
+            and normalized_node_id is not None
+            and merge_runtime_state_into_node_payloads(
+                collection,
+                node_id=normalized_node_id,
+                params=params,
+            )
+        ):
+            self.async_update_listeners()
+
+    async def async_control_room(
+        self: _ControlCoordinator,
+        room_id: int | str,
+        params: dict[str, Any],
+        duration: int = 500,
+    ) -> None:
+        """Control a room topology node."""
+        await self.async_control_node("room", room_id, params, duration)
+
+    async def async_control_area(
+        self: _ControlCoordinator,
+        area_id: int | str,
+        params: dict[str, Any],
+        duration: int = 500,
+    ) -> None:
+        """Control an area topology node."""
+        await self.async_control_node("area", area_id, params, duration)
+
+    async def async_control_house(
+        self: _ControlCoordinator,
+        house_id: int | str,
+        params: dict[str, Any],
+        duration: int = 500,
+    ) -> None:
+        """Control a house topology node."""
+        await self.async_control_node("house", house_id, params, duration)
+
 
 __all__ = ["CoordinatorControlMixin"]
 
@@ -164,3 +246,19 @@ def _normalized_device_id(device_id: int | str) -> int | None:
         return int(device_id)
     except (TypeError, ValueError):
         return None
+
+
+def _node_collection(
+    coordinator: _ControlCoordinator,
+    node_kind: str,
+) -> list[dict[str, Any]] | None:
+    """Return the cached topology collection for one node kind."""
+    if node_kind == "room":
+        return coordinator.rooms
+    if node_kind == "area":
+        return coordinator.areas
+    if node_kind == "house":
+        return coordinator.houses
+    if node_kind == "group":
+        return coordinator.groups
+    return None

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 import logging
 from typing import Any
@@ -19,6 +20,7 @@ class AuxiliaryData:
     areas: list[dict[str, Any]]
     rooms: list[dict[str, Any]]
     groups: list[dict[str, Any]]
+    houses: list[dict[str, Any]]
     scenes: list[dict[str, Any]]
 
 
@@ -47,6 +49,11 @@ async def async_fetch_auxiliary_data(
             house_id,
             current.groups,
         ),
+        houses=await _fetch_house_snapshot(
+            client,
+            house_id,
+            current.houses,
+        ),
         scenes=await _fetch_list(
             "scenes",
             client.get_scenes,
@@ -54,6 +61,42 @@ async def async_fetch_auxiliary_data(
             current.scenes,
         ),
     )
+
+
+async def _fetch_house_snapshot(
+    client: YeelightProClient,
+    house_id: int,
+    current: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Fetch one house snapshot as a topology row."""
+    try:
+        value = await client.get_house_snapshot(house_id)
+    except AuthenticationError:
+        raise
+    except Exception as err:
+        _LOGGER.warning("Failed to fetch house snapshot: %s", safe_error_summary(err))
+        return current
+    data = value.get("data") if isinstance(value, dict) else None
+    rows = _snapshot_rows(data)
+    if rows:
+        return rows
+    row = _mapping_row(value)
+    return [row] if row else current
+
+
+def _snapshot_rows(value: Any) -> list[dict[str, Any]]:
+    """Normalize documented house snapshot data into topology rows."""
+    row = _mapping_row(value)
+    if row is not None:
+        return [row]
+    if isinstance(value, list):
+        return [row for item in value if (row := _mapping_row(item)) is not None]
+    return []
+
+
+def _mapping_row(value: Any) -> dict[str, Any] | None:
+    """Return a string-keyed mapping row when the API payload is an object."""
+    return dict(value) if isinstance(value, Mapping) else None
 
 
 async def _fetch_list(

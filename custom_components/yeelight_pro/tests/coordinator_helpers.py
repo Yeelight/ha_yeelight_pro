@@ -13,6 +13,7 @@ def _client_with_payloads(
     areas: list[list[dict]] | None = None,
     rooms: list[dict] | None = None,
     groups: list[dict] | None = None,
+    houses: list[dict] | None = None,
     scenes: list[list[dict]] | None = None,
 ) -> AsyncMock:
     """Build a coordinator client mock with stable auxiliary endpoints."""
@@ -23,6 +24,7 @@ def _client_with_payloads(
     client.get_areas.side_effect = areas or [[] for _ in devices]
     client.get_rooms.return_value = rooms or []
     client.get_groups.return_value = groups or []
+    client.get_house_snapshot.return_value = {"data": houses or []}
     client.get_scenes.side_effect = scenes or [[] for _ in devices]
     client.read_nodes_properties.return_value = {"code": "200", "data": {}}
     return client

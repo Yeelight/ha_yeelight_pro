@@ -120,13 +120,29 @@ def merge_runtime_state_into_group_payloads(
     online: bool | None = None,
 ) -> bool:
     """把运行时属性合并进 LAN 灯组缓存。"""
+    return merge_runtime_state_into_node_payloads(
+        groups,
+        node_id=group_id,
+        params=params,
+        online=online,
+    )
+
+
+def merge_runtime_state_into_node_payloads(
+    nodes: list[dict[str, Any]],
+    *,
+    node_id: int,
+    params: Mapping[str, Any],
+    online: bool | None = None,
+) -> bool:
+    """把运行时属性合并进拓扑节点缓存。"""
     changed = False
-    for group in groups:
-        if not isinstance(group, dict) or to_int(group.get("id")) != group_id:
+    for node in nodes:
+        if not isinstance(node, dict) or to_int(node.get("id")) != node_id:
             continue
-        before = repr((group.get("params"), group.get("online")))
-        merge_runtime_state_into_payload(group, params, online=online)
-        changed = changed or before != repr((group.get("params"), group.get("online")))
+        before = repr((node.get("params"), node.get("online")))
+        merge_runtime_state_into_payload(node, params, online=online)
+        changed = changed or before != repr((node.get("params"), node.get("online")))
     return changed
 
 

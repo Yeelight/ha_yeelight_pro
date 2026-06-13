@@ -283,8 +283,15 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "build_runtime_property_model": "runtime template property builder",
         "infer_openapi_events": "explicit OpenAPI runtime event inference helper",
         "infer_runtime_capabilities": "runtime capability inference helper",
+        "_infer_runtime_properties": "runtime property builder facade reuse",
+    },
+    "custom_components/yeelight_pro/converter/runtime_property_builder.py": {
+        "build_runtime_property_model": "runtime template property builder",
+        "infer_runtime_properties": "runtime property inference helper",
         "openapi_runtime_properties": "top-level OpenAPI property metadata reuse",
-        "RUNTIME_PROPERTY_TEMPLATES": "runtime inference template registry use",
+        "RUNTIME_PROPERTY_TEMPLATES": "runtime template registry use",
+        "property_spec": "registry-backed runtime property fallback",
+        "ValueItemModel": "runtime registry enum model conversion",
     },
     "custom_components/yeelight_pro/converter/runtime_model_labels.py": {
         "capability_model_name": "runtime capability model label helper",

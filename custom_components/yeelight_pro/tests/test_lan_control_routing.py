@@ -148,6 +148,101 @@ async def test_coordinator_control_group_falls_back_to_cloud_for_cloud_group_id(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("node_kind", "collection_name", "node_id", "node_type"),
+    [
+        ("room", "rooms", "201", 1),
+        ("area", "areas", "301", 3),
+        ("house", "houses", "5001", 5),
+    ],
+)
+async def test_coordinator_control_node_uses_connected_lan_for_numeric_ids(
+    hass: HomeAssistant,
+    node_kind: str,
+    collection_name: str,
+    node_id: str,
+    node_type: int,
+) -> None:
+    """LAN 已连接且节点 id 可转数字时，空间节点控制应使用对应 nodeType。"""
+    coordinator, mock_client = _coordinator_with_device(hass)
+    setattr(coordinator, collection_name, [{"id": int(node_id), "params": {"p": True}}])
+    listener = MagicMock()
+    remove_listener = coordinator.async_add_listener(listener)
+    lan_runtime = _connected_lan_runtime()
+    coordinator.set_lan_runtime(lan_runtime)
+
+    await coordinator.async_control_node(
+        node_kind,
+        node_id,
+        {"p": False},
+        duration=300,
+    )
+
+    lan_runtime.async_set_properties.assert_awaited_once_with(
+        [{"id": int(node_id), "nt": node_type, "duration": 300, "set": {"p": False}}]
+    )
+    mock_client.control_node_properties.assert_not_awaited()
+    assert getattr(coordinator, collection_name)[0]["params"] == {"p": False}
+    listener.assert_called_once()
+    remove_listener()
+
+
+@pytest.mark.asyncio
+async def test_coordinator_control_node_falls_back_to_cloud_for_cloud_node_id(
+    hass: HomeAssistant,
+) -> None:
+    """非数字云端空间节点 id 不伪装成本地 id，应走通用 Open API node 控制。"""
+    coordinator, mock_client = _coordinator_with_device(hass)
+    lan_runtime = _connected_lan_runtime()
+    coordinator.set_lan_runtime(lan_runtime)
+
+    await coordinator.async_control_node(
+        "room",
+        "room_1",
+        {"p": False},
+        duration=300,
+    )
+
+    lan_runtime.async_set_properties.assert_not_awaited()
+    mock_client.control_node_properties.assert_awaited_once_with(
+        house_id=12345,
+        node_kind="room",
+        resource_id="room_1",
+        command="set",
+        params={"p": False},
+        duration=300,
+    )
+
+
+@pytest.mark.asyncio
+async def test_coordinator_lan_node_control_error_is_redacted(
+    hass: HomeAssistant,
+) -> None:
+    """LAN 空间节点控制失败不能静默云端兜底，且错误只暴露异常类型。"""
+    coordinator, mock_client = _coordinator_with_device(hass)
+    lan_runtime = _connected_lan_runtime()
+    lan_runtime.async_set_properties.side_effect = RuntimeError(
+        "192.168.1.20 token=secret room=201"
+    )
+    coordinator.set_lan_runtime(lan_runtime)
+
+    with pytest.raises(CommandError) as exc_info:
+        await coordinator.async_control_node(
+            "room",
+            "201",
+            {"p": False},
+            duration=300,
+        )
+
+    message = str(exc_info.value)
+    assert message == "Failed to control room over LAN: RuntimeError"
+    assert "192.168.1.20" not in message
+    assert "secret" not in message
+    assert "201" not in message
+    mock_client.control_node_properties.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_coordinator_execute_scene_uses_connected_lan_for_numeric_scene_id(
     hass: HomeAssistant,
 ) -> None:

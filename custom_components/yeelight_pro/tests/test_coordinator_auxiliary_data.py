@@ -40,6 +40,7 @@ async def test_auxiliary_areas_fall_back_to_empty_list_on_error(
         ("get_areas", "areas", [{"id": "area-1", "name": "Floor"}]),
         ("get_rooms", "rooms", [{"id": "room-1", "name": "Living"}]),
         ("get_groups", "groups", [{"id": "group-1", "name": "Main"}]),
+        ("get_house_snapshot", "houses", [{"id": "house-1", "name": "Home"}]),
         ("get_scenes", "scenes", [{"id": "scene-1", "name": "Movie"}]),
     ],
 )
@@ -90,6 +91,38 @@ async def test_auxiliary_soft_failure_logs_only_error_type(
     assert "api.yeelight.com" not in caplog.text
     assert "12345" not in caplog.text
     assert "67890" not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_auxiliary_house_snapshot_accepts_documented_list_data(
+    hass: HomeAssistant,
+) -> None:
+    """家庭概况接口文档返回 data 数组，应归一化成整屋拓扑节点。"""
+    client = _client_with_payloads(
+        devices=[
+            [{"id": 1, "name": "Lamp", "category": "light", "pid": 100}],
+        ],
+    )
+    client.get_house_snapshot.return_value = {
+        "data": [
+            {
+                "id": "house-1",
+                "name": "星河暖居",
+                "properties": [{"propId": "p", "value": True}],
+            }
+        ]
+    }
+    coordinator = YeelightProCoordinator(hass, client, house_id=12345)
+
+    await coordinator._async_update_data()
+
+    assert coordinator.houses == [
+        {
+            "id": "house-1",
+            "name": "星河暖居",
+            "properties": [{"propId": "p", "value": True}],
+        }
+    ]
 
 
 @pytest.mark.asyncio

@@ -49,6 +49,9 @@ async def async_setup_lan_entry(
         entry_data=entry_data,
     )
     coordinator.data = {}
+    coordinator.scenes = []
+    coordinator.analytics_enabled = False
+    coordinator.analytics_data = None
     await coordinator.async_config_entry_first_refresh()
 
     platforms = get_enabled_platforms(entry_options(entry))
@@ -204,6 +207,11 @@ async def async_stop_loaded_runtime(data: Any) -> None:
     stop_lan = getattr(lan_runtime, "async_stop", None)
     if callable(stop_lan):
         await stop_lan()
+
+    analytics_coordinator = data.get("analytics_coordinator")
+    async_shutdown = getattr(analytics_coordinator, "async_shutdown", None)
+    if callable(async_shutdown):
+        await async_shutdown()
 
     client = data.get("client")
     disconnect = getattr(client, "disconnect", None)

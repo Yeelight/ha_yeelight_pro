@@ -23,6 +23,12 @@ from .entity_device_id import source_device_id
 from .dynamic_entities import async_track_dynamic_entities
 from .entity_errors import raise_service_error
 from .light_group import YeelightProGroupLight
+from .node_light import YeelightProNodeLight
+from .node_metadata import (
+    NODE_LIGHT_KINDS,
+    iter_topology_node_rows,
+    topology_node_id,
+)
 from .projector.light import (
     HALightProjection,
     NumericRange,
@@ -90,6 +96,13 @@ def _iter_light_entities(coordinator: YeelightProCoordinator) -> list[LightEntit
         if group_id in (None, ""):
             continue
         lights.append(YeelightProGroupLight(coordinator, str(group_id)))
+
+    for node_kind in NODE_LIGHT_KINDS:
+        for row in iter_topology_node_rows(coordinator, node_kind):
+            node_id = topology_node_id(row, node_kind)
+            if node_id is None:
+                continue
+            lights.append(YeelightProNodeLight(coordinator, node_kind, node_id))
     return lights
 
 

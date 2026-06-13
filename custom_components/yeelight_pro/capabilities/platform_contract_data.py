@@ -102,8 +102,6 @@ RELAY_SWITCH_CONTROL_PROPS = frozenset({
 SWITCH_IDENTITY_PROPS = frozenset({
     "sp",
     "sbp",
-    "slisaon",
-    "slisaon_rdy",
     "jdef",
     "jen",
     "jtm",

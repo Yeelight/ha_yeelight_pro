@@ -95,6 +95,21 @@ def test_property_control_paths_match_documented_contract() -> None:
         node_kind="device",
         resource_id=67890,
     ) == "/v1/open/control/house/12345/control/2/67890/w/properties"
+    assert node_properties_control_path(
+        house_id=12345,
+        node_kind="room",
+        resource_id="room_1",
+    ) == "/v1/open/control/house/12345/control/1/room_1/w/properties"
+    assert node_properties_control_path(
+        house_id=12345,
+        node_kind="area",
+        resource_id="area_1",
+    ) == "/v1/open/control/house/12345/control/3/area_1/w/properties"
+    assert node_properties_control_path(
+        house_id=12345,
+        node_kind="house",
+        resource_id="house_1",
+    ) == "/v1/open/control/house/12345/control/5/house_1/w/properties"
     assert node_property_control_path(
         house_id=12345,
         node_kind="device",
@@ -200,6 +215,41 @@ async def test_client_control_property_methods_use_documented_contracts() -> Non
             "duration": 250,
             "delay": 100,
             "category": "light",
+        },
+    )
+
+
+@pytest.mark.asyncio
+async def test_client_control_room_uses_documented_node_type() -> None:
+    """空间节点控制应复用通用 Open API nodeType 合同。"""
+    client = YeelightProClient(
+        domain="https://api.yeelight.com/apis/iot",
+        access_token="test-token",
+        session=MagicMock(),
+    )
+
+    with patch.object(client, "_request", new_callable=AsyncMock) as mock_request:
+        mock_request.return_value = {"code": "200"}
+        response = await client.control_node_properties(
+            house_id=12345,
+            node_kind="room",
+            resource_id="room_1",
+            command="set",
+            params={"p": True, "l": 80},
+            duration=300,
+        )
+
+    assert response == {"code": "200"}
+    mock_request.assert_awaited_once_with(
+        "POST",
+        "/v1/open/control/house/12345/control/1/room_1/w/properties",
+        json={
+            "command": "set",
+            "params": [
+                {"propName": "p", "value": True},
+                {"propName": "l", "value": 80},
+            ],
+            "duration": 300,
         },
     )
 

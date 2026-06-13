@@ -53,9 +53,15 @@ def mock_coordinator():
     coordinator.houses = []
     coordinator.rooms = []
     coordinator.areas = []
+    coordinator.analytics_enabled = False
+    coordinator.analytics_data = None
     coordinator.async_execute_scene = AsyncMock()
     coordinator.async_control_device = AsyncMock()
     coordinator.async_control_group = AsyncMock()
+    coordinator.async_control_node = AsyncMock()
+    coordinator.async_control_room = AsyncMock()
+    coordinator.async_control_area = AsyncMock()
+    coordinator.async_control_house = AsyncMock()
     return coordinator
 
 

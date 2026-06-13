@@ -92,8 +92,8 @@ def build_lan_topology_payloads(
     """从协议定义的 LAN 拓扑节点构建规范运行时载荷。"""
     result = LanTopologyPayloads()
     node_rows = [node for node in nodes if isinstance(node, Mapping)]
-    result.rooms = _auxiliary_nodes(node_rows, NODE_TYPE_ROOM)
-    result.areas = _auxiliary_nodes(node_rows, NODE_TYPE_AREA)
+    result.rooms = _typed_auxiliary_nodes(node_rows, NODE_TYPE_ROOM)
+    result.areas = _typed_auxiliary_nodes(node_rows, NODE_TYPE_AREA)
     result.groups = _typed_auxiliary_nodes(node_rows, NODE_TYPE_GROUP)
     result.houses = _typed_auxiliary_nodes(node_rows, NODE_TYPE_HOUSE)
     result.scenes = _scene_nodes(node_rows)

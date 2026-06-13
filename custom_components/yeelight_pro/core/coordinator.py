@@ -72,6 +72,8 @@ class YeelightProCoordinator(
         self.groups: list[dict[str, Any]] = []
         self.houses: list[dict[str, Any]] = []
         self.scenes: list[dict[str, Any]] = []
+        self.analytics_enabled = False
+        self.analytics_data: Any | None = None
         self._runtime_state = RuntimeStateStore()
         self._push_event_deduper = RuntimeEventDeduper()
         self._topology_tracker = TopologyTracker()
@@ -153,12 +155,13 @@ class YeelightProCoordinator(
 
             _LOGGER.debug(
                 "Updated %s devices, %s gateways, %s areas, %s rooms, "
-                "%s groups, %s scenes",
+                "%s groups, %s houses, %s scenes",
                 len(data),
                 len(gateway_data),
                 len(self.areas),
                 len(self.rooms),
                 len(self.groups),
+                len(self.houses),
                 len(self.scenes),
             )
             return data
@@ -172,7 +175,7 @@ class YeelightProCoordinator(
             raise self._update_failed("Error communicating with API", err) from None
 
     async def _async_fetch_auxiliary_data(self) -> None:
-        """获取 areas/rooms/groups/scenes 辅助数据."""
+        """获取 areas/rooms/groups/houses/scenes 辅助数据."""
         if self.client is None:
             return
         auxiliary = await async_fetch_auxiliary_data(
@@ -182,12 +185,14 @@ class YeelightProCoordinator(
                 areas=self.areas,
                 rooms=self.rooms,
                 groups=self.groups,
+                houses=self.houses,
                 scenes=self.scenes,
             ),
         )
         self.areas = auxiliary.areas
         self.rooms = auxiliary.rooms
         self.groups = auxiliary.groups
+        self.houses = auxiliary.houses
         self.scenes = auxiliary.scenes
 
     async def _async_get_gateways(

@@ -61,6 +61,15 @@ def make_client() -> AsyncMock:
     client.get_groups.return_value = []
     client.get_rooms.return_value = []
     client.get_areas.return_value = []
+    client.get_house_snapshot.return_value = {"data": {"houseId": 12345, "houseName": "测试家庭"}}
+    client.get_alarm_analysis.return_value = {"data": {}}
+    client.get_alarm_top.return_value = {"data": []}
+    client.get_alarm_trend.return_value = {"data": []}
+    client.get_energy_analysis.return_value = {"data": {}}
+    client.get_energy_trend.return_value = {"data": []}
+    client.get_daily_user_actions.return_value = {"data": {}}
+    client.get_monthly_user_actions.return_value = {"data": {}}
+    client.get_yearly_user_actions.return_value = {"data": {}}
     return client
 
 
@@ -74,6 +83,9 @@ def make_coordinator(hass: HomeAssistant, client: AsyncMock) -> MagicMock:
     coordinator.areas = []
     coordinator.rooms = []
     coordinator.groups = []
+    coordinator.houses = []
+    coordinator.analytics_enabled = False
+    coordinator.analytics_data = None
     coordinator.house_id = 12345
     coordinator.async_config_entry_first_refresh = AsyncMock()
     coordinator.async_execute_scene = AsyncMock()
@@ -92,6 +104,9 @@ def make_setup_coordinator() -> MagicMock:
     coordinator.areas = []
     coordinator.rooms = []
     coordinator.groups = []
+    coordinator.houses = []
+    coordinator.analytics_enabled = False
+    coordinator.analytics_data = None
     coordinator.scenes = []
     coordinator.get_gateway_devices = MagicMock(return_value={})
     coordinator.topology_generation = 0

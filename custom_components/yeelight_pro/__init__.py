@@ -32,6 +32,7 @@ from .const import (
     get_enabled_platforms,
 )
 from .core.client import YeelightProClient
+from .core.analytics_coordinator import YeelightProAnalyticsCoordinator
 from .core.coordinator import YeelightProCoordinator
 from .core.exceptions import AuthenticationError, ConnectionError, safe_error_summary
 from .debug_service import async_register_debug_event_service
@@ -145,6 +146,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await _async_run_registry_maintenance(hass, entry, coordinator)
 
+    analytics_coordinator = YeelightProAnalyticsCoordinator(hass, client, house_id)
+    try:
+        await analytics_coordinator.async_config_entry_first_refresh()
+    except Exception as err:
+        _LOGGER.warning(
+            "Yeelight Pro analytics setup degraded, exposing unavailable sensors: %s",
+            safe_error_summary(err),
+        )
+    coordinator.analytics_enabled = True
+    coordinator.analytics_data = analytics_coordinator.data
+    analytics_coordinator.entry_data = dict(coordinator.entry_data)
+    analytics_coordinator.houses = coordinator.houses
+    analytics_coordinator._main_coordinator = coordinator
+    analytics_coordinator._config_entry = entry
+
     # 存储到 hass.data
     platforms = get_enabled_platforms(_entry_options(entry))
     runtime_data = {
@@ -152,6 +168,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "coordinator": coordinator,
         "entry": entry,
         "platforms": platforms,
+        "analytics_coordinator": analytics_coordinator,
     }
     hass.data[DOMAIN][entry.entry_id] = runtime_data
 

@@ -23,6 +23,7 @@ def test_release_zip_required_files_include_runtime_contracts() -> None:
         "custom_components/yeelight_pro/capabilities/property_index.py",
         "custom_components/yeelight_pro/converter/openapi_properties.py",
         "custom_components/yeelight_pro/converter/runtime_inference_helpers.py",
+        "custom_components/yeelight_pro/converter/runtime_property_builder.py",
         "custom_components/yeelight_pro/converter/runtime_template_controls.py",
         "custom_components/yeelight_pro/converter/runtime_template_hvac.py",
         "custom_components/yeelight_pro/converter/runtime_template_selector.py",

@@ -152,6 +152,10 @@ def test_required_modules_include_runtime_inference_helper() -> None:
         in REQUIRED_RUNTIME_MODULES
     )
     assert (
+        "custom_components.yeelight_pro.converter.runtime_property_builder"
+        in REQUIRED_RUNTIME_MODULES
+    )
+    assert (
         "custom_components.yeelight_pro.converter.runtime_registry_events"
         in REQUIRED_RUNTIME_MODULES
     )

@@ -34,7 +34,7 @@ _TOPOLOGY_DIFF_COUNT_KEYS = frozenset(
         "total_changes",
     }
 )
-_TOPOLOGY_CANDIDATE_SOURCES = frozenset({"scene", "group", "house"})
+_TOPOLOGY_CANDIDATE_SOURCES = frozenset({"scene", "group", "house", "room", "area"})
 
 
 def mapping_values(value: Any) -> list[Mapping[str, Any]]:
@@ -147,6 +147,9 @@ class _CandidateCoordinator:
         self.data = data
         self.scenes = _list_attr(coordinator, "scenes")
         self.groups = _list_attr(coordinator, "groups")
+        self.rooms = _list_attr(coordinator, "rooms")
+        self.areas = _list_attr(coordinator, "areas")
+        self.houses = _list_attr(coordinator, "houses")
         self.house_id = getattr(coordinator, "house_id", None)
         self.hide_unknown_entities = bool(
             getattr(coordinator, "hide_unknown_entities", True)

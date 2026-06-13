@@ -19,6 +19,15 @@ from .entity_candidate_logging import (
     log_device_candidate_summary,
 )
 from .entity_category import ENTITY_CATEGORY_CONFIG, ENTITY_CATEGORY_DIAGNOSTIC
+from .house_metadata import house_device_info
+from .node_metadata import (
+    NODE_LIGHT_KINDS,
+    iter_topology_node_rows,
+    node_kind_icon,
+    node_light_unique_id,
+    topology_node_id,
+    topology_node_name,
+)
 from .projector.binary_sensor import project_binary_sensors
 from .projector.climate import project_climates
 from .projector.cover import project_covers
@@ -45,6 +54,9 @@ class EntityCandidateCoordinator(Protocol):
     data: Mapping[Any, Mapping[str, Any]]
     scenes: list[dict[str, Any]]
     groups: list[dict[str, Any]]
+    rooms: list[dict[str, Any]]
+    areas: list[dict[str, Any]]
+    houses: list[dict[str, Any]]
     house_id: int | None
     hide_unknown_entities: bool
 
@@ -91,6 +103,11 @@ def iter_entity_candidates(
         yield from device_candidates
     yield from _iter_scene_candidates(coordinator.scenes)
     yield from _iter_group_candidates(coordinator.groups)
+    yield from _iter_node_light_candidates(coordinator)
+    yield from _iter_house_analytics_candidates(
+        coordinator.house_id,
+        bool(getattr(coordinator, "analytics_enabled", False)),
+    )
     yield from _iter_house_select_candidates(coordinator.house_id)
 
 
@@ -279,6 +296,73 @@ def _iter_group_candidates(groups: list[dict[str, Any]]) -> Iterator[EntityCandi
             icon="mdi:thermometer",
             entity_category=ENTITY_CATEGORY_CONFIG,
         )
+
+
+def _iter_node_light_candidates(
+    coordinator: EntityCandidateCoordinator,
+) -> Iterator[EntityCandidate]:
+    """生成房间/区域/整屋总控 light 候选。"""
+    for node_kind in NODE_LIGHT_KINDS:
+        for row in iter_topology_node_rows(coordinator, node_kind):
+            node_id = topology_node_id(row, node_kind)
+            if node_id is None:
+                continue
+            yield EntityCandidate(
+                "light",
+                node_light_unique_id(node_kind, node_id),
+                node_kind,
+                component_id=str(node_id),
+                name=topology_node_name(row, node_kind, node_id),
+                icon=node_kind_icon(node_kind),
+            )
+
+
+def _iter_house_analytics_candidates(
+    house_id: int | None,
+    analytics_enabled: bool,
+) -> Iterator[EntityCandidate]:
+    """生成房屋级数据分析 diagnostic sensor 候选。"""
+    if house_id is None or not analytics_enabled:
+        return
+    sensor_names = {
+        "alarm_total": ("报警总数", "mdi:alarm-light"),
+        "alarm_high_risk_count": ("高危设备数量", "mdi:alert-circle"),
+        "energy_total": ("用电量", "mdi:lightning-bolt"),
+        "user_action_count": ("用户操作次数", "mdi:gesture-tap-button"),
+    }
+    for key, (name, icon) in sensor_names.items():
+        yield EntityCandidate(
+            "sensor",
+            f"{DOMAIN}_house_{house_id}_analytics_{key}",
+            "analytics",
+            component_id=key,
+            name=name,
+            icon=icon,
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+            suggested_object_id=_analytics_suggested_object_id(house_id, key, name),
+        )
+
+
+def _analytics_suggested_object_id(
+    house_id: int,
+    key: str,
+    name: str,
+) -> str | None:
+    """Return the same house-level object-id seed used by analytics entities."""
+    return suggested_entity_object_id(
+        house_device_info(_HouseCandidateCoordinator(house_id)),
+        entity_name=name,
+        fallback_id=f"house_{house_id}_analytics_{key}",
+    )
+
+
+class _HouseCandidateCoordinator:
+    """Minimal coordinator shape for house-level suggested object ids."""
+
+    def __init__(self, house_id: int) -> None:
+        self.house_id = house_id
+        self.entry_data: dict[str, Any] = {}
+        self.houses: list[dict[str, Any]] = []
 
 
 def _iter_house_select_candidates(

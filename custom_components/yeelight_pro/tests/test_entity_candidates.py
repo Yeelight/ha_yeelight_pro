@@ -20,7 +20,12 @@ class _Coordinator:
     data: Mapping[Any, Mapping[str, Any]]
     scenes: list[dict[str, Any]] = field(default_factory=list)
     groups: list[dict[str, Any]] = field(default_factory=list)
+    rooms: list[dict[str, Any]] = field(default_factory=list)
+    areas: list[dict[str, Any]] = field(default_factory=list)
+    houses: list[dict[str, Any]] = field(default_factory=list)
     house_id: int | None = None
+    analytics_enabled: bool = False
+    analytics_data: object | None = None
     hide_unknown_entities: bool = True
     options: dict[str, Any] = field(default_factory=dict)
 
@@ -93,6 +98,9 @@ def test_entity_candidates_match_lifecycle_active_keys() -> None:
         },
         scenes=[{"id": "scene_1"}],
         groups=[{"id": "group_1"}],
+        rooms=[{"id": "room_1", "name": "客厅"}],
+        areas=[{"id": "area_1", "name": "一楼"}],
+        houses=[{"id": "house_1", "name": "星河暖居"}],
         house_id=12345,
     )
 
@@ -105,6 +113,9 @@ def test_entity_candidates_match_lifecycle_active_keys() -> None:
     assert all(platform != "vacuum" for platform, _unique_id in candidate_keys)
     assert ("button", "yeelight_pro_scene_scene_1") in candidate_keys
     assert ("light", "yeelight_pro_group_group_1_light") in candidate_keys
+    assert ("light", "yeelight_pro_room_room_1_light") in candidate_keys
+    assert ("light", "yeelight_pro_area_area_1_light") in candidate_keys
+    assert ("light", "yeelight_pro_house_house_1_light") in candidate_keys
     assert ("scene", "yeelight_pro_scene_scene_1") not in candidate_keys
 
 
@@ -282,6 +293,9 @@ def test_entity_candidates_include_registry_metadata_for_major_platforms() -> No
         },
         scenes=[{"id": "scene_1", "name": "回家"}],
         groups=[{"id": "group_1", "name": "客厅灯组"}],
+        rooms=[{"id": "room_1", "name": "客厅"}],
+        areas=[{"id": "area_1", "name": "一楼"}],
+        houses=[{"id": "house_1", "name": "星河暖居"}],
         house_id=12345,
     )
 
@@ -297,6 +311,12 @@ def test_entity_candidates_include_registry_metadata_for_major_platforms() -> No
     assert candidates[("button", "yeelight_pro_scene_scene_1")].name == "回家"
     assert candidates[("light", "yeelight_pro_group_group_1_light")].name == "客厅灯组"
     assert candidates[("light", "yeelight_pro_group_group_1_light")].icon == "mdi:lightbulb-group"
+    assert candidates[("light", "yeelight_pro_room_room_1_light")].name == "客厅"
+    assert candidates[("light", "yeelight_pro_room_room_1_light")].icon == "mdi:floor-plan"
+    assert candidates[("light", "yeelight_pro_area_area_1_light")].name == "一楼"
+    assert candidates[("light", "yeelight_pro_area_area_1_light")].icon == "mdi:select-group"
+    assert candidates[("light", "yeelight_pro_house_house_1_light")].name == "星河暖居"
+    assert candidates[("light", "yeelight_pro_house_house_1_light")].icon == "mdi:home-lightbulb"
     assert candidates[("number", "yeelight_pro_group_group_1_brightness")].name == "客厅灯组 亮度"
     assert candidates[("select", "yeelight_pro_12345_select_room")].name == "当前房间"
 
@@ -308,6 +328,26 @@ def test_house_select_candidates_keep_lan_only_zero_house_id() -> None:
     assert ("select", "yeelight_pro_0_select_room") in candidate_keys
     assert ("select", "yeelight_pro_0_select_group") in candidate_keys
     assert ("select", "yeelight_pro_0_select_scene") in candidate_keys
+
+
+def test_analytics_candidates_are_house_level_diagnostic_sensors() -> None:
+    """analytics 候选随云端能力启用生成，初次 API 失败时仍保留 unavailable 实体。"""
+    coordinator = _Coordinator(
+        data={},
+        house_id=12345,
+        analytics_enabled=True,
+    )
+
+    candidates = {
+        (item.platform, item.unique_id): item
+        for item in iter_entity_candidates(coordinator)
+    }
+
+    assert candidates[("sensor", "yeelight_pro_house_12345_analytics_alarm_total")].name == "报警总数"
+    assert candidates[("sensor", "yeelight_pro_house_12345_analytics_alarm_total")].entity_category == "diagnostic"
+    assert candidates[("sensor", "yeelight_pro_house_12345_analytics_alarm_total")].suggested_object_id == "易来家庭 报警总数"
+    assert ("sensor", "yeelight_pro_house_12345_analytics_energy_total") in candidates
+    assert ("sensor", "yeelight_pro_house_12345_analytics_user_action_count") in candidates
 
 
 def test_schema_unknown_actions_do_not_create_device_buttons() -> None:

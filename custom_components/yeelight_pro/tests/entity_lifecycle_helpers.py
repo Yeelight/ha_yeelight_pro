@@ -67,7 +67,12 @@ def lifecycle_coordinator(
         data=data or {},
         scenes=scenes or [],
         groups=[],
+        rooms=[],
+        areas=[],
+        houses=[],
         house_id=None,
+        analytics_enabled=False,
+        analytics_data=None,
         hide_unknown_entities=False,
         options=options or {},
     )

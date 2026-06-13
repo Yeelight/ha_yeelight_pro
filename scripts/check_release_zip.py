@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 COMPONENT_ROOT = ROOT / "custom_components" / "yeelight_pro"
 
 REQUIRED_FILES = {
+    "custom_components/yeelight_pro/analytics_sensor.py",
     "custom_components/yeelight_pro/__init__.py",
     "custom_components/yeelight_pro/capabilities/product_catalog.py",
     "custom_components/yeelight_pro/capabilities/product_catalog_data.py",
@@ -30,6 +31,7 @@ REQUIRED_FILES = {
     "custom_components/yeelight_pro/converter/openapi_properties.py",
     "custom_components/yeelight_pro/converter/runtime_inference_helpers.py",
     "custom_components/yeelight_pro/converter/runtime_model_labels.py",
+    "custom_components/yeelight_pro/converter/runtime_property_builder.py",
     "custom_components/yeelight_pro/converter/runtime_registry_events.py",
     "custom_components/yeelight_pro/converter/runtime_template_constants.py",
     "custom_components/yeelight_pro/converter/runtime_template_controls.py",
@@ -39,8 +41,10 @@ REQUIRED_FILES = {
     "custom_components/yeelight_pro/converter/runtime_templates.py",
     "custom_components/yeelight_pro/converter/runtime_subdevices.py",
     "custom_components/yeelight_pro/core/client_node_api.py",
+    "custom_components/yeelight_pro/core/client_data_analytics.py",
     "custom_components/yeelight_pro/core/client_node_lists.py",
     "custom_components/yeelight_pro/core/client_node_properties.py",
+    "custom_components/yeelight_pro/core/analytics_coordinator.py",
     "custom_components/yeelight_pro/core/coordinator_controls.py",
     "custom_components/yeelight_pro/core/device_classification_categories.py",
     "custom_components/yeelight_pro/core/device_registry_classification.py",
@@ -80,6 +84,8 @@ REQUIRED_FILES = {
     "custom_components/yeelight_pro/event_identity.py",
     "custom_components/yeelight_pro/ha_house_registry.py",
     "custom_components/yeelight_pro/light_group.py",
+    "custom_components/yeelight_pro/node_light.py",
+    "custom_components/yeelight_pro/node_metadata.py",
     "custom_components/yeelight_pro/lan_contract.py",
     "custom_components/yeelight_pro/lan_discovery.py",
     "custom_components/yeelight_pro/lan_methods.py",

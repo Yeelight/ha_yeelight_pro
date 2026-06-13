@@ -4,6 +4,14 @@ from __future__ import annotations
 import pytest
 
 from custom_components.yeelight_pro.core.client_paths import (
+    monthly_user_actions_path,
+    yearly_user_actions_path,
+    alarm_analysis_path,
+    alarm_top_path,
+    alarm_trend_path,
+    daily_user_actions_path,
+    energy_analysis_path,
+    energy_trend_path,
     house_areas_path,
     house_devices_path,
     house_gateways_path,
@@ -114,6 +122,39 @@ def test_client_paths_match_open_api_contract() -> None:
     )
     assert house_scenes_path(12345) == "/v1/open/node/house/12345/scenes/r/list"
     assert house_snapshot_path(12345) == "/v1/open/node/house/12345/r/info"
+    assert alarm_analysis_path(12345, date_code="2024-08") == (
+        "/v1/open/data/house/12345/alarm/analyse?dateCode=2024-08"
+    )
+    assert alarm_top_path(12345, date_code="2024-08", area_id="area_1") == (
+        "/v1/open/data/house/12345/alarm/top?dateCode=2024-08&areaId=area_1"
+    )
+    assert alarm_trend_path(
+        12345,
+        start_date="2024-08-01",
+        end_date="2024-08-07",
+    ) == (
+        "/v1/open/data/house/12345/alarm/trend?startDate=2024-08-01&endDate=2024-08-07"
+    )
+    assert energy_analysis_path(12345, date_code="2024-08") == (
+        "/v1/open/data/house/12345/energy/analyse?dateCode=2024-08"
+    )
+    assert energy_trend_path(
+        12345,
+        start_date="2024-08-01",
+        end_date="2024-08-07",
+        area_id=301,
+    ) == (
+        "/v1/open/data/house/12345/energy/trend?startDate=2024-08-01&endDate=2024-08-07&areaId=301"
+    )
+    assert daily_user_actions_path(12345, date_code="2024-08-01") == (
+        "/v1/open/data/house/12345/action/r/day?dateCode=2024-08-01"
+    )
+    assert monthly_user_actions_path(12345, date_code="2024-08") == (
+        "/v1/open/data/house/12345/action/r/month?dateCode=2024-08"
+    )
+    assert yearly_user_actions_path(12345, date_code="2024") == (
+        "/v1/open/data/house/12345/action/r/year?dateCode=2024"
+    )
     assert scene_execute_path(12345, "scene_1") == (
         "/v1/open/control/house/12345/control/w/scenes/scene_1"
     )
@@ -135,6 +176,21 @@ def test_node_properties_control_path_uses_registry_node_type() -> None:
         node_kind="device",
         resource_id=67890,
     ) == "/v1/open/control/house/12345/control/2/67890/w/properties"
+    assert node_properties_control_path(
+        house_id=12345,
+        node_kind="room",
+        resource_id="room_1",
+    ) == "/v1/open/control/house/12345/control/1/room_1/w/properties"
+    assert node_properties_control_path(
+        house_id=12345,
+        node_kind="area",
+        resource_id="area_1",
+    ) == "/v1/open/control/house/12345/control/3/area_1/w/properties"
+    assert node_properties_control_path(
+        house_id=12345,
+        node_kind="house",
+        resource_id="house_1",
+    ) == "/v1/open/control/house/12345/control/5/house_1/w/properties"
     assert node_properties_control_path(
         house_id=12345,
         node_kind="group",

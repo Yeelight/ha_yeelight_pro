@@ -7,6 +7,14 @@ from typing import Any
 
 from .exceptions import CommandError, YeelightProError, safe_error_summary
 
+_LAN_NODE_TYPES = {
+    "room": 1,
+    "device": 2,
+    "area": 3,
+    "group": 4,
+    "house": 5,
+}
+
 
 async def async_try_lan_control_device(
     lan_runtime: Any,
@@ -100,20 +108,39 @@ async def async_try_lan_control_group(
     duration: int = 500,
 ) -> bool:
     """Send a group property command through an active LAN runtime if possible."""
-    node_id = _lan_uint_id(group_id)
-    if node_id is None:
+    return await async_try_lan_control_node(
+        lan_runtime,
+        node_kind="group",
+        resource_id=group_id,
+        params=params,
+        duration=duration,
+    )
+
+
+async def async_try_lan_control_node(
+    lan_runtime: Any,
+    *,
+    node_kind: str,
+    resource_id: int | str,
+    params: Mapping[str, Any],
+    duration: int = 500,
+) -> bool:
+    """Send a topology-node property command through LAN when possible."""
+    node_id = _lan_uint_id(resource_id)
+    node_type = _LAN_NODE_TYPES.get(node_kind)
+    if node_id is None or node_type is None:
         return False
     return await _async_try_send_lan_properties(
         lan_runtime,
         nodes=[
             {
                 "id": node_id,
-                "nt": 4,
+                "nt": node_type,
                 "duration": duration,
                 "set": dict(params),
             }
         ],
-        action="control group",
+        action=f"control {node_kind}",
     )
 
 
@@ -244,6 +271,7 @@ __all__ = [
     "async_try_lan_adjust_device",
     "async_try_lan_control_device",
     "async_try_lan_control_group",
+    "async_try_lan_control_node",
     "async_try_lan_execute_scene",
     "async_try_lan_simulate_event",
     "async_try_lan_toggle_device",

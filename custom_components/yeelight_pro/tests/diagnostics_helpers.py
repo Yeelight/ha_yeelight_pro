@@ -106,6 +106,8 @@ def build_empty_diagnostics_coordinator(
     coordinator.rooms = []
     coordinator.groups = []
     coordinator.scenes = []
+    coordinator.analytics_enabled = False
+    coordinator.analytics_data = None
     return coordinator
 
 

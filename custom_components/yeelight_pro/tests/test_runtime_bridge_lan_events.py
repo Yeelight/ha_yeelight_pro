@@ -170,7 +170,9 @@ async def test_coordinator_applies_lan_topology_auxiliary_nodes(
     assert device["ha_platform"] == "light"
     assert device["device_info"]["model"] == "色温灯"
     assert device["device_info"]["suggested_area"] == "客厅"
-    assert coordinator.rooms == [{"id": 2001, "name": "客厅"}]
+    assert coordinator.rooms == [
+        {"id": 2001, "name": "客厅", "type": None, "node_type": 1}
+    ]
     assert coordinator.groups == [
         {"id": 3001, "name": "客厅灯组", "type": 1, "node_type": 4}
     ]

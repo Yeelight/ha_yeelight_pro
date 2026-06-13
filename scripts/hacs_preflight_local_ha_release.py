@@ -127,6 +127,9 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         "hacs_preflight_platform_mapping_data.py": (
             "platform mapping token registry required release file guard"
         ),
+        "hacs_preflight_iot_registry_projection_data.py": (
+            "IoT projection token registry required release file guard"
+        ),
         "hacs_preflight_local_ha_protocol_contracts.py": (
             "protocol token registry required release file guard"
         ),
@@ -170,6 +173,9 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         "config_flow_options.py": "options flow helper zip required file guard",
         "runtime_inference_helpers.py": (
             "runtime inference helper zip required file guard"
+        ),
+        "runtime_property_builder.py": (
+            "runtime property builder zip required file guard"
         ),
         "runtime_registry_events.py": (
             "runtime registry event helper zip required file guard"

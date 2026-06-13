@@ -26,6 +26,10 @@ async def test_light_platform_adds_new_entities_after_refresh(mock_hass) -> None
     coordinator.hass = None
     coordinator.data = {1: legacy_light(1, name="客厅灯")}
     coordinator.devices = coordinator.data
+    coordinator.groups = []
+    coordinator.rooms = []
+    coordinator.areas = []
+    coordinator.houses = []
     coordinator.get_device.side_effect = (
         lambda device_id: coordinator.data.get(device_id)
     )
@@ -65,11 +69,57 @@ async def test_light_platform_adds_new_entities_after_refresh(mock_hass) -> None
     assert add_entities.call_count == 2
 
 
+@pytest.mark.asyncio
+async def test_light_platform_adds_topology_node_entities_after_refresh(mock_hass) -> None:
+    """light 平台应在拓扑刷新后补建房间/区域/整屋总控实体."""
+    coordinator = MagicMock()
+    coordinator.hass = None
+    coordinator.data = {}
+    coordinator.devices = {}
+    coordinator.groups = []
+    coordinator.rooms = []
+    coordinator.areas = []
+    coordinator.houses = []
+    coordinator.get_device.return_value = None
+    listeners: list = []
+
+    def _add_listener(listener):
+        listeners.append(listener)
+        return lambda: None
+
+    coordinator.async_add_listener = MagicMock(side_effect=_add_listener)
+
+    entry = entry_with_unload_hook()
+    mock_hass.data = {DOMAIN: {entry.entry_id: {"coordinator": coordinator}}}
+    add_entities = MagicMock()
+
+    await async_setup_light_entry(mock_hass, entry, add_entities)
+
+    assert add_entities.call_count == 0
+    assert len(listeners) == 1
+
+    coordinator.rooms = [{"id": "room_1", "name": "客厅", "params": {"p": True}}]
+    coordinator.areas = [{"id": "area_1", "name": "一楼", "params": {"p": True}}]
+    coordinator.houses = [{"id": "house_1", "name": "星河暖居", "params": {"p": True}}]
+    listeners[0]()
+
+    assert add_entities.call_count == 1
+    assert [entity.unique_id for entity in add_entities.call_args.args[0]] == [
+        "yeelight_pro_room_room_1_light",
+        "yeelight_pro_area_area_1_light",
+        "yeelight_pro_house_house_1_light",
+    ]
+
+
 def test_light_entity_factory_uses_payload_source_device_id() -> None:
     """平台实体创建必须使用 payload 真实 id，不能依赖 coordinator.data 的临时 key."""
     coordinator = MagicMock()
     coordinator.data = {"temporary-key": legacy_light(304784333, name="厨房操作台灯")}
     coordinator.devices = {304784333: coordinator.data["temporary-key"]}
+    coordinator.groups = []
+    coordinator.rooms = []
+    coordinator.areas = []
+    coordinator.houses = []
     coordinator.get_device.side_effect = lambda device_id: coordinator.devices.get(
         int(device_id)
     )

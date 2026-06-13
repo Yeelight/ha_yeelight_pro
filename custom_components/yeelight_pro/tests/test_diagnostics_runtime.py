@@ -4,6 +4,8 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock
 
+from homeassistant.helpers.update_coordinator import UpdateFailed
+
 import pytest
 
 from homeassistant.core import HomeAssistant
@@ -63,6 +65,12 @@ async def test_diagnostics_reports_aggregate_runtime_data(
         "platforms_match_options": False,
         "push": None,
         "lan": None,
+    }
+    assert data["runtime"]["analytics"] == {
+        "enabled": False,
+        "last_update_success": None,
+        "last_exception_type": None,
+        "has_snapshot": False,
     }
     assert data["runtime"]["client_capabilities"]["connection_mode"] == CONNECTION_MODE_CLOUD
     assert data["runtime"]["options"] == {
@@ -147,25 +155,27 @@ async def test_diagnostics_reports_aggregate_runtime_data(
         "writable_properties": 2,
     }
     assert data["runtime"]["entity_candidates"] == {
-        "total": 7,
+        "total": 9,
         "platforms": {
             "button": 1,
-            "light": 1,
+            "light": 3,
             "number": 2,
             "select": 3,
         },
         "device_platforms": {},
         "sources": {
+            "area": 1,
             "group": 3,
             "house": 3,
+            "room": 1,
             "scene": 1,
         },
         "source_classes": {
-            "topology": 7,
+            "topology": 9,
         },
         "duplicate_key_count": 0,
         "availability": {
-            "available": 7,
+            "available": 9,
             "unavailable": 0,
         },
     }
@@ -214,25 +224,27 @@ async def test_diagnostics_reports_aggregate_runtime_data(
         },
     }
     assert data["runtime"]["entity_import_filter_preview"] == {
-        "total": 7,
+        "total": 9,
         "platforms": {
             "button": 1,
-            "light": 1,
+            "light": 3,
             "number": 2,
             "select": 3,
         },
         "device_platforms": {},
         "sources": {
+            "area": 1,
             "group": 3,
             "house": 3,
+            "room": 1,
             "scene": 1,
         },
         "source_classes": {
-            "topology": 7,
+            "topology": 9,
         },
         "duplicate_key_count": 0,
         "availability": {
-            "available": 7,
+            "available": 9,
             "unavailable": 0,
         },
     }
@@ -329,8 +341,46 @@ async def test_diagnostics_reports_safe_runtime_health(
         "push": None,
         "lan": None,
     }
+    assert data["runtime"]["analytics"] == {
+        "enabled": False,
+        "last_update_success": None,
+        "last_exception_type": None,
+        "has_snapshot": False,
+    }
     dumped = json.dumps(data, ensure_ascii=False)
     assert "RuntimeError" in dumped
+    assert "api.yeelight.com/apis/iot/house/429392" not in dumped
+    assert "token-secret" not in dumped
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_reports_analytics_soft_failure_without_details(
+    hass: HomeAssistant,
+    diagnostics_entry: MagicMock,
+) -> None:
+    """analytics 初次失败只暴露聚合状态，不导出 HTTP 细节。"""
+    coordinator = build_empty_diagnostics_coordinator()
+    analytics_coordinator = MagicMock()
+    analytics_coordinator.last_update_success = False
+    analytics_coordinator.last_exception = UpdateFailed(
+        "Failed https://api.yeelight.com/apis/iot/house/429392 token-secret"
+    )
+    analytics_coordinator.data = None
+    install_runtime_entry(hass, diagnostics_entry, coordinator, platforms=["sensor"])
+    hass.data[DOMAIN][diagnostics_entry.entry_id]["analytics_coordinator"] = (
+        analytics_coordinator
+    )
+
+    data = await async_get_config_entry_diagnostics(hass, diagnostics_entry)
+
+    assert data["runtime"]["analytics"] == {
+        "enabled": True,
+        "last_update_success": False,
+        "last_exception_type": "UpdateFailed",
+        "has_snapshot": False,
+    }
+    dumped = json.dumps(data, ensure_ascii=False)
+    assert "UpdateFailed" in dumped
     assert "api.yeelight.com/apis/iot/house/429392" not in dumped
     assert "token-secret" not in dumped
 

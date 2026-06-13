@@ -79,3 +79,30 @@ async def async_control_group(
         raise CommandError(
             f"Failed to control group: {safe_error_summary(err)}"
         ) from None
+
+
+async def async_control_node(
+    client: YeelightProClient,
+    *,
+    house_id: int,
+    node_kind: str,
+    resource_id: int | str,
+    params: dict[str, Any],
+    duration: int,
+) -> None:
+    """Execute a generic topology-node property command."""
+    try:
+        await client.control_node_properties(
+            house_id=house_id,
+            node_kind=node_kind,
+            resource_id=resource_id,
+            command="set",
+            params=params,
+            duration=duration,
+        )
+    except YeelightProError:
+        raise
+    except Exception as err:
+        raise CommandError(
+            f"Failed to control {node_kind}: {safe_error_summary(err)}"
+        ) from None

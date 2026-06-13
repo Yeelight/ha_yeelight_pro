@@ -10,6 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .analytics_sensor import async_setup_analytics_sensors
 from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
 from .device_display import suggested_entity_object_id
@@ -40,7 +41,13 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """设置 Yeelight Pro sensor 平台."""
-    coordinator: YeelightProCoordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
+    loaded = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator: YeelightProCoordinator = loaded["coordinator"]
+    analytics_entities = await async_setup_analytics_sensors(
+        loaded.get("analytics_coordinator")
+    )
+    if analytics_entities:
+        async_add_entities(analytics_entities)
 
     async_track_dynamic_entities(
         config_entry,

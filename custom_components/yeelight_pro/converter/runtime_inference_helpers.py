@@ -5,20 +5,24 @@ from __future__ import annotations
 import logging
 from typing import Any, Mapping
 
-from ..canonical.models import ComponentModel, EventModel, PropertyModel, ValueRangeModel
+from ..canonical.models import (
+    ComponentModel,
+    EventModel,
+    PropertyModel,
+)
 from ..capabilities.events import normalize_event_type
 from ..event_identity import SAFETY_EVENT_COMPONENT_ID, SAFETY_EVENT_TYPES
-from .openapi_properties import openapi_runtime_properties
+from .runtime_property_builder import (
+    build_runtime_property_model,
+    infer_runtime_properties as _infer_runtime_properties,
+)
 from .runtime_registry_events import (
     log_registry_event_inference,
     registry_component_event_models,
     registry_component_for_identity,
 )
-from .runtime_templates import INDEXED_SWITCH_KEY_RE, RUNTIME_PROPERTY_TEMPLATES
-from .runtime_template_selector import (
-    runtime_property_ids_from_params,
-    runtime_template_key,
-)
+from .runtime_templates import INDEXED_SWITCH_KEY_RE
+from .runtime_template_selector import runtime_template_key
 from .runtime_subdevices import infer_subdevice_components as _infer_subdevice_components
 
 _LOGGER = logging.getLogger(__name__)
@@ -53,15 +57,22 @@ def infer_runtime_components(payload: Mapping[str, Any]) -> list[ComponentModel]
         return []
 
     component_id = _runtime_event_component_id(template_key, payload)
-    component_name = "新风" if component_id == "fresh_air" else component_id
-    component_category = (
-        "temp_control" if component_id == "fresh_air" else template_key
-    )
     registry_component = _registry_component_for_runtime(
         template_key,
         payload,
         component_id=component_id,
         property_ids=tuple(prop.prop_id for prop in properties),
+    )
+    component_name = _runtime_component_name(component_id, registry_component)
+    component_category = _runtime_component_category(
+        component_id,
+        template_key,
+        registry_component,
+    )
+    component_type = (
+        registry_component.component_type
+        if registry_component is not None
+        else "custom"
     )
     if not events:
         events = registry_component_event_models(registry_component)
@@ -77,8 +88,13 @@ def infer_runtime_components(payload: Mapping[str, Any]) -> list[ComponentModel]
     return [
         ComponentModel(
             component_id=component_id,
+            cid=(
+                registry_component.component_id
+                if registry_component is not None
+                else None
+            ),
             name=component_name,
-            component_type="custom",
+            component_type=component_type,
             category=component_category or category or device_type,
             capabilities=infer_runtime_capabilities(template_key, properties),
             properties=properties,
@@ -86,6 +102,24 @@ def infer_runtime_components(payload: Mapping[str, Any]) -> list[ComponentModel]
             actions=[],
         )
     ]
+
+
+def _runtime_component_name(component_id: str, registry_component: Any | None) -> str:
+    """Return registry-backed component name without using user device names."""
+    if registry_component is not None and registry_component.name:
+        return str(registry_component.name)
+    return "新风" if component_id == "fresh_air" else component_id
+
+
+def _runtime_component_category(
+    component_id: str,
+    template_key: str | None,
+    registry_component: Any | None,
+) -> str | None:
+    """Return official component category when identity evidence is available."""
+    if registry_component is not None and registry_component.category:
+        return registry_component.category
+    return "temp_control" if component_id == "fresh_air" else template_key
 
 
 def infer_indexed_switch_components(
@@ -134,34 +168,12 @@ def infer_runtime_properties(
     payload: Mapping[str, Any] | None = None,
 ) -> list[PropertyModel]:
     """根据设备类型和运行时参数推断属性列表。"""
-    templates = RUNTIME_PROPERTY_TEMPLATES.get(template_key or "")
-    if not templates:
-        return []
-
-    source_props: set[str]
-    if params:
-        source_props = runtime_property_ids_from_params(params)
-    elif _payload_event_models(payload):
-        source_props = set()
-    else:
-        source_props = set()
-
-    properties = {
-        prop.prop_id: prop
-        for prop in openapi_runtime_properties(
-            template_key,
-            payload,
-            build_property=build_runtime_property_model,
-            string_value=string_value,
-        )
-    }
-    for prop_id in templates:
-        if prop_id not in source_props:
-            continue
-        property_model = build_runtime_property_model(prop_id, template_key or "")
-        if property_model is not None:
-            properties.setdefault(prop_id, property_model)
-    return list(properties.values())
+    return _infer_runtime_properties(
+        template_key,
+        params,
+        payload=payload,
+        string_value=string_value,
+    )
 
 
 def infer_runtime_events(
@@ -182,36 +194,6 @@ def infer_runtime_events(
 def infer_openapi_events(payload: Mapping[str, Any]) -> list[EventModel]:
     """Build runtime events from explicit OpenAPI event rows."""
     return _payload_event_models(payload)
-
-
-def build_runtime_property_model(
-    prop_id: str,
-    device_type: str,
-) -> PropertyModel | None:
-    """根据模板构建属性模型。"""
-    template = RUNTIME_PROPERTY_TEMPLATES.get(device_type, {}).get(prop_id)
-    if template is None:
-        return None
-
-    value_range = template.get("value_range")
-    return PropertyModel(
-        prop_id=prop_id,
-        name=template.get("name"),
-        kind=template.get("kind"),
-        property_type=template.get("property_type"),
-        format=template.get("format"),
-        unit=template.get("unit"),
-        access=template.get("access"),
-        value_range=(
-            ValueRangeModel(
-                min=value_range[0],
-                max=value_range[1],
-                step=value_range[2],
-            )
-            if value_range is not None
-            else None
-        ),
-    )
 
 
 def infer_runtime_capabilities(

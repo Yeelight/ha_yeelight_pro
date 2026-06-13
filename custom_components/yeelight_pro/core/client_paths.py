@@ -54,6 +54,97 @@ def house_snapshot_path(house_id: int) -> str:
     return f"/v1/open/node/house/{house_id}/r/info"
 
 
+def alarm_analysis_path(
+    house_id: int,
+    *,
+    date_code: str,
+    area_id: int | str | None = None,
+) -> str:
+    """报警统计路径。"""
+    return _with_query(
+        f"/v1/open/data/house/{house_id}/alarm/analyse",
+        {"dateCode": date_code, "areaId": area_id},
+    )
+
+
+def alarm_top_path(
+    house_id: int,
+    *,
+    date_code: str,
+    area_id: int | str | None = None,
+) -> str:
+    """高危设备路径。"""
+    return _with_query(
+        f"/v1/open/data/house/{house_id}/alarm/top",
+        {"dateCode": date_code, "areaId": area_id},
+    )
+
+
+def alarm_trend_path(
+    house_id: int,
+    *,
+    start_date: str,
+    end_date: str,
+    area_id: int | str | None = None,
+) -> str:
+    """报警趋势路径。"""
+    return _with_query(
+        f"/v1/open/data/house/{house_id}/alarm/trend",
+        {"startDate": start_date, "endDate": end_date, "areaId": area_id},
+    )
+
+
+def energy_analysis_path(
+    house_id: int,
+    *,
+    date_code: str,
+    area_id: int | str | None = None,
+) -> str:
+    """能源统计路径。"""
+    return _with_query(
+        f"/v1/open/data/house/{house_id}/energy/analyse",
+        {"dateCode": date_code, "areaId": area_id},
+    )
+
+
+def energy_trend_path(
+    house_id: int,
+    *,
+    start_date: str,
+    end_date: str,
+    area_id: int | str | None = None,
+) -> str:
+    """能耗趋势路径。"""
+    return _with_query(
+        f"/v1/open/data/house/{house_id}/energy/trend",
+        {"startDate": start_date, "endDate": end_date, "areaId": area_id},
+    )
+
+
+def daily_user_actions_path(house_id: int, *, date_code: str) -> str:
+    """日度用户行为统计路径。"""
+    return _with_query(
+        f"/v1/open/data/house/{house_id}/action/r/day",
+        {"dateCode": date_code},
+    )
+
+
+def monthly_user_actions_path(house_id: int, *, date_code: str) -> str:
+    """月度用户行为统计路径。"""
+    return _with_query(
+        f"/v1/open/data/house/{house_id}/action/r/month",
+        {"dateCode": date_code},
+    )
+
+
+def yearly_user_actions_path(house_id: int, *, date_code: str) -> str:
+    """年度用户行为统计路径。"""
+    return _with_query(
+        f"/v1/open/data/house/{house_id}/action/r/year",
+        {"dateCode": date_code},
+    )
+
+
 def scene_execute_path(house_id: int, scene_id: str) -> str:
     """场景执行路径。"""
     return f"/v1/open/control/house/{house_id}/control/w/scenes/{scene_id}"

@@ -33,6 +33,14 @@ def test_client_keeps_open_api_methods_after_helper_split() -> None:
         "get_scenes",
         "get_areas",
         "get_house_snapshot",
+        "get_alarm_analysis",
+        "get_alarm_top",
+        "get_alarm_trend",
+        "get_energy_analysis",
+        "get_energy_trend",
+        "get_daily_user_actions",
+        "get_monthly_user_actions",
+        "get_yearly_user_actions",
     }
 
     for method_name in expected_methods:

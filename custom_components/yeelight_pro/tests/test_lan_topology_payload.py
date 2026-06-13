@@ -173,8 +173,8 @@ async def test_coordinator_applies_lan_areas_groups_scenes(
             "id": 13813,
             "method": "gateway_post.topology",
             "nodes": [
-                {"id": 201, "nt": 1, "n": "客厅"},
-                {"id": 301, "nt": 3, "n": "一楼"},
+                {"id": 201, "nt": 1, "n": "客厅", "o": True, "params": {"p": True}},
+                {"id": 301, "nt": 3, "n": "一楼", "o": False, "params": {"p": False}},
                 {"id": 5001, "nt": 5, "n": "绿地中央公园"},
                 {"id": 1001, "nt": 2, "type": 3, "n": "客厅灯", "roomid": 201},
                 {
@@ -193,8 +193,26 @@ async def test_coordinator_applies_lan_areas_groups_scenes(
     assert events == []
     assert coordinator.data == coordinator.devices
     assert list(coordinator.devices) == [1001]
-    assert coordinator.rooms == [{"id": 201, "name": "客厅"}]
-    assert coordinator.areas == [{"id": 301, "name": "一楼"}]
+    assert coordinator.rooms == [
+        {
+            "id": 201,
+            "name": "客厅",
+            "type": None,
+            "node_type": 1,
+            "online": True,
+            "params": {"p": True},
+        }
+    ]
+    assert coordinator.areas == [
+        {
+            "id": 301,
+            "name": "一楼",
+            "type": None,
+            "node_type": 3,
+            "online": False,
+            "params": {"p": False},
+        }
+    ]
     assert coordinator.groups == [
         {
             "id": 3001,

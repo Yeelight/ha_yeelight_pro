@@ -15,7 +15,12 @@ class LifecycleCoordinator:
     data: Mapping[Any, Mapping[str, Any]]
     scenes: list[dict[str, Any]] = field(default_factory=list)
     groups: list[dict[str, Any]] = field(default_factory=list)
+    rooms: list[dict[str, Any]] = field(default_factory=list)
+    areas: list[dict[str, Any]] = field(default_factory=list)
+    houses: list[dict[str, Any]] = field(default_factory=list)
     house_id: int | None = None
+    analytics_enabled: bool = False
+    analytics_data: object | None = None
     hide_unknown_entities: bool = True
 
 
