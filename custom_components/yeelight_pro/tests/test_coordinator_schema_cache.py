@@ -5,7 +5,12 @@ import pytest
 
 from homeassistant.core import HomeAssistant
 
+from custom_components.yeelight_pro.const import DOMAIN
 from custom_components.yeelight_pro.core.coordinator import YeelightProCoordinator
+from custom_components.yeelight_pro.identity import (
+    entry_identity_scope,
+    scoped_device_identifier,
+)
 
 from .coordinator_helpers import _client_with_payloads, _lamp_schema
 
@@ -41,9 +46,9 @@ async def test_update_data_attaches_schema_aware_canonical_models(
     assert device["ha_product_model"]["product"]["model_id"] == "YL-100"
     assert device["ha_device_instance"]["product_ref"] == {"model_id": "YL-100"}
     device_info = device["ha_device_instance"]["device_info"]
+    scope = entry_identity_scope({}, 12345)
     assert device_info["identifiers"] == [
-        ["yeelight_pro", "1"],
-        ["yeelight_pro", "device:1"],
+        [DOMAIN, scoped_device_identifier(scope, 1)],
     ]
     assert device_info["name"] == "Schema Lamp"
     assert device_info["model"] == "Schema Lamp Product"
@@ -135,9 +140,9 @@ async def test_update_data_infers_device_info_when_product_schema_missing(
     device = data[304784333]
 
     assert device["ha_product_model"]["schema_version"] == "runtime-v1"
+    scope = entry_identity_scope({}, 12345)
     assert device["ha_device_instance"]["device_info"]["identifiers"] == [
-        ["yeelight_pro", "304784333"],
-        ["yeelight_pro", "device:304784333"],
+        [DOMAIN, scoped_device_identifier(scope, 304784333)],
     ]
     assert device["ha_device_instance"]["device_info"]["name"] == "客厅筒灯 1"
     assert device["ha_device_instance"]["device_info"]["suggested_area"] == "客厅"

@@ -10,7 +10,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.yeelight_pro.const import DOMAIN
+from custom_components.yeelight_pro.const import (
+    CONF_CONNECTION_MODE,
+    CONF_LAN_GATEWAY_IP,
+    CONF_LAN_GATEWAY_PORT,
+    CONNECTION_MODE_LAN,
+    DOMAIN,
+)
 from custom_components.yeelight_pro.core.coordinator import YeelightProCoordinator
 from custom_components.yeelight_pro.core.device_payload import DevicePayloadBuilder
 from custom_components.yeelight_pro.core.lan_topology_payload import (
@@ -18,6 +24,11 @@ from custom_components.yeelight_pro.core.lan_topology_payload import (
 )
 from custom_components.yeelight_pro.entity_candidates import iter_device_entity_candidates
 from custom_components.yeelight_pro.ha_device_registry import async_sync_gateway_devices
+from custom_components.yeelight_pro.identity import (
+    entry_identity_scope,
+    scoped_device_identifier,
+    scoped_entity_unique_id,
+)
 
 
 def _build(nodes: list[dict]) -> dict[int, dict]:
@@ -124,13 +135,24 @@ async def test_lan_topology_syncs_source_devices_and_relinks_entities(
     entry = MockConfigEntry(domain=DOMAIN, entry_id="entry-lan")
     entry.add_to_hass(hass)
     entity_registry = er.async_get(hass)
+    lan_entry_data = {
+        CONF_CONNECTION_MODE: CONNECTION_MODE_LAN,
+        CONF_LAN_GATEWAY_IP: "127.0.0.1",
+        CONF_LAN_GATEWAY_PORT: 65443,
+    }
+    lan_scope = entry_identity_scope(lan_entry_data, 0)
     entity_entry = entity_registry.async_get_or_create(
         "light",
         DOMAIN,
-        "yeelight_pro_1001_light",
+        scoped_entity_unique_id(lan_scope, "device", 1001, "light"),
         config_entry=entry,
     )
-    coordinator = YeelightProCoordinator(hass=hass, client=None, house_id=0)
+    coordinator = YeelightProCoordinator(
+        hass=hass,
+        client=None,
+        house_id=0,
+        entry_data=lan_entry_data,
+    )
 
     await coordinator.async_handle_lan_payload(
         {
@@ -144,7 +166,9 @@ async def test_lan_topology_syncs_source_devices_and_relinks_entities(
     )
     await async_sync_gateway_devices(hass, entry, coordinator)
 
-    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "1001")})
+    device = dr.async_get(hass).async_get_device(
+        identifiers={(DOMAIN, scoped_device_identifier(lan_scope, 1001))}
+    )
     linked_entity = entity_registry.async_get(entity_entry.entity_id)
 
     assert device is not None

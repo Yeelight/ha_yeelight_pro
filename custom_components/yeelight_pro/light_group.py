@@ -7,12 +7,12 @@ from typing import Any, Dict
 from homeassistant.components.light import ATTR_BRIGHTNESS, ColorMode, LightEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
 from .core.coordinator import YeelightProCoordinator
 from .core.exceptions import YeelightProError
 from .device_display import suggested_entity_object_id
 from .entity_errors import raise_service_error
 from .house_metadata import house_device_info
+from .identity import entity_unique_id
 
 try:
     from homeassistant.components.light import ATTR_COLOR_TEMP_KELVIN
@@ -36,7 +36,12 @@ class YeelightProGroupLight(CoordinatorEntity, LightEntity):
         """初始化灯组灯光实体。"""
         super().__init__(coordinator)
         self._group_id = group_id
-        self._attr_unique_id = f"{DOMAIN}_group_{self._group_id}_light"
+        self._attr_unique_id = entity_unique_id(
+            coordinator,
+            "group",
+            self._group_id,
+            "light",
+        )
 
     @property
     def _group(self) -> dict[str, Any] | None:

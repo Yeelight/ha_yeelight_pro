@@ -12,6 +12,7 @@ from .const import (
     CONF_ACCOUNT_USER_ID,
     CONF_ACCOUNT_USERNAME,
     CONF_OPEN_API_CLIENT_ID,
+    CONF_OPEN_API_CLIENT_SECRET,
     CONF_REFRESH_TOKEN,
     CONF_SCAN_LOGIN_REFRESH,
     CONF_TOKEN_EXPIRES_IN,
@@ -45,6 +46,7 @@ class _ScanLoginFlowProtocol(Protocol):
     _cloud_region: str
     _domain: str | None
     _open_api_client_id: str
+    _open_api_client_secret: str
     _refresh_token: str
     _scan_login_account_key: str
     _scan_login_device: str
@@ -231,6 +233,7 @@ class ScanLoginConfigFlowMixin:
         flow._token_expires_in = data.get(CONF_TOKEN_EXPIRES_IN)
         flow._token_type = data.get(CONF_TOKEN_TYPE, "")
         flow._open_api_client_id = data.get(CONF_OPEN_API_CLIENT_ID, "")
+        flow._open_api_client_secret = data.get(CONF_OPEN_API_CLIENT_SECRET, "")
         flow._account_user_id = data.get(CONF_ACCOUNT_USER_ID)
         flow._account_username = data.get(CONF_ACCOUNT_USERNAME, "")
         flow._scan_login_account_key = scan_login_account_key(token)

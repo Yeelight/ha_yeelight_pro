@@ -23,6 +23,7 @@ from .const import (
     CONF_CLOUD_REGION,
     CONF_CONNECTION_MODE,
     CONF_OPEN_API_CLIENT_ID,
+    CONF_OPEN_API_CLIENT_SECRET,
     CONF_PRIVATE_DOMAIN,
     CONF_REFRESH_TOKEN,
     CONF_SCAN_LOGIN_DEVICE,
@@ -46,6 +47,7 @@ class _ReauthFlowProtocol(Protocol):
     _connection_mode: str | None
     _domain: str | None
     _open_api_client_id: str
+    _open_api_client_secret: str
     _reauth_entry_data: dict[str, Any]
     _reauth_in_progress: bool
     _refresh_token: str
@@ -182,6 +184,10 @@ class ReauthConfigFlowMixin:
             CONF_TOKEN_EXPIRES_IN: flow._token_expires_in,
             CONF_TOKEN_TYPE: flow._token_type,
             CONF_OPEN_API_CLIENT_ID: flow._open_api_client_id,
+            CONF_OPEN_API_CLIENT_SECRET: (
+                flow._open_api_client_secret
+                or entry.data.get(CONF_OPEN_API_CLIENT_SECRET, "")
+            ),
             CONF_ACCOUNT_USER_ID: flow._account_user_id,
             CONF_ACCOUNT_USERNAME: flow._account_username,
             CONF_SCAN_LOGIN_DEVICE: flow._scan_login_device,

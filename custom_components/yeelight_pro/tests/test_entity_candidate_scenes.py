@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from custom_components.yeelight_pro.entity_candidates import iter_entity_candidates
+from custom_components.yeelight_pro.identity import entry_identity_scope, scoped_entity_unique_id
 
 from .test_entity_candidates import _Coordinator
 
@@ -15,13 +16,14 @@ def test_entity_candidates_project_cloud_scenes_as_buttons_only() -> None:
     )
     candidates = list(iter_entity_candidates(coordinator))
 
+    scene_uid = scoped_entity_unique_id(entry_identity_scope({}, 0), "scene", "same_scene")
     assert [(item.platform, item.unique_id) for item in candidates] == [
-        ("button", "yeelight_pro_scene_same_scene"),
+        ("button", scene_uid),
     ]
     assert candidates[0].name == "回家"
     assert candidates[0].icon == "mdi:palette"
     assert {item.key for item in candidates} == {
-        ("button", "yeelight_pro_scene_same_scene"),
+        ("button", scene_uid),
     }
 
 

@@ -351,5 +351,9 @@ def _entity_device_id(entity: Entity, unique_id: str) -> int | None:
     if not unique_id.startswith(prefix):
         return None
     remainder = unique_id[len(prefix):]
-    first_part = remainder.split("_", 1)[0]
+    marker = "_device_"
+    if marker in remainder:
+        first_part = remainder.rsplit(marker, 1)[-1].split("_", 1)[0]
+    else:
+        first_part = remainder.split("_", 1)[0]
     return int(first_part) if first_part.isdigit() else None

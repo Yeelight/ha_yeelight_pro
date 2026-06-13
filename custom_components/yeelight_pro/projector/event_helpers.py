@@ -14,6 +14,7 @@ from ..event_identity import (
     SAFETY_EVENT_TYPES,
     is_safety_event_device,
 )
+from ..identity import payload_entity_unique_id_prefix
 from ..utils import matches_category, to_bool, to_category, to_str
 from .common import component_index, humanize_component_id, schema_backed_component_available
 from .device import project_payload_device_info
@@ -166,9 +167,10 @@ def event_fallback_projection(
         instance.online if instance is not None else device_payload.get("online"),
         default=True,
     )
+    unique_id_prefix = payload_entity_unique_id_prefix(device_payload, domain=domain)
     return HAEventProjection(
         component_id=component_id,
-        unique_id=f"{domain}_{source_device_id}_{component_id}_event",
+        unique_id=f"{unique_id_prefix}_{source_device_id}_{component_id}_event",
         name=_fallback_event_name(component_id, device_payload, product_model),
         available=available,
         event_types=list(fallback_event_types),

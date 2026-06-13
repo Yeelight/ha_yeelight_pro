@@ -19,6 +19,7 @@ from .device_display import suggested_entity_object_id
 from .dynamic_entities import async_track_dynamic_entities
 from .entity_device_id import source_device_id
 from .entity_errors import raise_service_error
+from .identity import device_entity_unique_id
 from .projector.climate import HAClimateProjection, project_climates
 from .projector.climate_helpers import (
     climate_raw_fan_for_mode,
@@ -93,7 +94,11 @@ class YeelightProClimate(CoordinatorEntity, ClimateEntity):
         self._attr_unique_id = (
             projection.unique_id
             if projection is not None
-            else f"{DOMAIN}_{device_id}_{component_id or 'climate'}"
+            else device_entity_unique_id(
+                coordinator,
+                device_id,
+                component_id or "climate",
+            )
         )
         self._attr_has_entity_name = True
         self._attr_temperature_unit = UnitOfTemperature.CELSIUS

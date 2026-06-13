@@ -55,6 +55,7 @@ _TOKEN_TYPE_FIELDS = ("tokenType", "token_type")
 _REFRESH_TOKEN_FIELDS = ("refreshToken", "refresh_token")
 _EXPIRES_IN_FIELDS = ("expiresIn", "expires_in")
 _CLIENT_ID_FIELDS = ("clientId", "client_id")
+_CLIENT_SECRET_FIELDS = ("clientSecret", "client_secret")
 _USER_ID_FIELDS = ("id", "userId", "user_id")
 
 
@@ -81,6 +82,7 @@ class YeelightAccountToken:
     region: str
     device: str
     client_id: str
+    client_secret: str
     username: str
     jti: str
 
@@ -227,6 +229,12 @@ def parse_scan_login_status(payload: Mapping[str, Any]) -> YeelightScanLoginQrCo
     return parse_scan_login_response(payload)
 
 
+def parse_account_token(payload: Mapping[str, Any]) -> YeelightAccountToken:
+    """Parse a documented OAuth token response without raw payload exposure."""
+    raise_for_body_error(payload)
+    return _parse_scan_login_token(payload)
+
+
 def _parse_scan_login_token(value: Any) -> YeelightAccountToken:
     """Parse scan-login token field aliases."""
     if not isinstance(value, Mapping):
@@ -247,6 +255,7 @@ def _parse_scan_login_token(value: Any) -> YeelightAccountToken:
         region=_optional_text(value.get("region")),
         device=_optional_text(value.get("device")),
         client_id=_optional_text(_first_value(value, *_CLIENT_ID_FIELDS)),
+        client_secret=_optional_text(_first_value(value, *_CLIENT_SECRET_FIELDS)),
         username=_optional_text(value.get("username")),
         jti=_optional_text(value.get("jti")),
     )
@@ -343,7 +352,7 @@ __all__ = [
     "build_scan_login_qrcode_path",
     "build_scan_login_status_path",
     "iot_base_url",
-    "normalize_cloud_region",
+    "parse_account_token",
     "parse_scan_login_response",
     "parse_scan_login_status",
     "scan_login_check_path",

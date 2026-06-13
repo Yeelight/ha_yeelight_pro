@@ -11,6 +11,7 @@ from homeassistant.components.cover import CoverDeviceClass
 
 from ..canonical.models import HADeviceInstanceModel
 from ..device_display import channel_name_label
+from ..identity import payload_entity_unique_id_prefix
 from ..utils import to_str
 from .common import (
     component_index,
@@ -97,9 +98,10 @@ def _project_legacy_cover(
         return None
 
     device_id = str(device_payload.get("device_id", "unknown"))
+    unique_id_prefix = payload_entity_unique_id_prefix(device_payload, domain=domain)
     return _build_cover_projection(
         component_id="cover",
-        unique_id=f"{domain}_{device_id}_cover",
+        unique_id=f"{unique_id_prefix}_{device_id}_cover",
         name="窗帘",
         available=payload_available(device_payload),
         state=params,
@@ -125,9 +127,10 @@ def _project_instance_cover(
         component,
         schema_component=product_component,
     )
+    unique_id_prefix = payload_entity_unique_id_prefix(device_payload, domain=domain)
     return _build_cover_projection(
         component_id=component.component_id,
-        unique_id=f"{domain}_{instance.device_id}_{component.component_id}",
+        unique_id=f"{unique_id_prefix}_{instance.device_id}_{component.component_id}",
         name=_project_cover_name(component, total=total, device_payload=device_payload),
         available=available,
         state=params,

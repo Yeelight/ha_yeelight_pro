@@ -7,6 +7,7 @@ import re
 from typing import Any
 
 from .const import CONF_HOUSE_NAME, DEFAULT_HOUSE_NAME, DOMAIN
+from .identity import coordinator_identity_scope, scoped_house_identifier
 
 _HOUSE_PLACEHOLDER_RE = re.compile(
     r"^(?:house|home|project|yeelight(?:\s+pro)?)\s+[\w:-]+$",
@@ -25,12 +26,13 @@ def house_name_from_data(entry_data: Mapping[str, Any] | None) -> str:
 
 def house_device_info(coordinator: Any, *, name_suffix: str | None = None) -> dict[str, Any]:
     """返回家庭级辅助实体共享的 HA device_info。"""
-    house_id = _text(getattr(coordinator, "house_id", None)) or "house"
+    house_id = _text(getattr(coordinator, "house_id", None)) or "0"
     base_name = _coordinator_house_name(coordinator) or house_name_from_data(
         getattr(coordinator, "entry_data", None)
     )
+    scope = coordinator_identity_scope(coordinator)
     return {
-        "identifiers": {(DOMAIN, f"house:{house_id}"), (DOMAIN, house_id)},
+        "identifiers": {(DOMAIN, scoped_house_identifier(scope, house_id))},
         "manufacturer": "Yeelight",
         "model": "Yeelight Pro 家庭",
         "name": f"{base_name} {name_suffix}" if name_suffix else base_name,

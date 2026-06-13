@@ -13,6 +13,7 @@ from .device_display import suggested_entity_object_id
 from .dynamic_entities import async_track_dynamic_entities
 from .entity_device_id import source_device_id
 from .entity_category import ha_entity_category
+from .identity import device_entity_unique_id
 from .projector.binary_sensor import (
     HABinarySensorProjection,
     project_binary_sensors,
@@ -84,7 +85,7 @@ class YeelightProBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self._attr_unique_id = (
             projection.unique_id
             if projection is not None
-            else f"{DOMAIN}_{device_id}_{component_id}"
+            else device_entity_unique_id(coordinator, device_id, component_id)
         )
         self._attr_has_entity_name = True
 

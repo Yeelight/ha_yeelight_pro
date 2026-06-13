@@ -101,7 +101,10 @@ def is_source_device(device: Mapping[str, Any], *, domain: str = "yeelight_pro")
             and identifier[0] == domain
         ):
             continue
-        if str(identifier[1]).startswith("device:"):
+        text = str(identifier[1])
+        if ":device:" in text:
+            return True
+        if text.startswith("device:"):
             return True
     return False
 

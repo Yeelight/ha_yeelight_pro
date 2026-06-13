@@ -69,7 +69,7 @@ def test_local_ha_verification_contract_requires_safety_tokens(
     assert any("destructive house transfer denylist" in error for error in errors)
     assert any("dangerous Open API runtime guard" in error for error in errors)
     assert any("house transfer endpoint runtime denylist" in error for error in errors)
-    assert any("protocol token registry required release file guard" in error for error in errors)
+    assert any("component release file group import" in error for error in errors)
     assert any("scan-login production test token guard" in error for error in errors)
     assert any("scan-login production probe script guard" in error for error in errors)
     assert any("scan-login HA-free contract path guard" in error for error in errors)

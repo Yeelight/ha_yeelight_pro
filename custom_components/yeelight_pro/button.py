@@ -20,6 +20,7 @@ from .core.exceptions import YeelightProError
 from .dynamic_entities import async_track_dynamic_entities
 from .entity_errors import raise_service_error
 from .house_metadata import house_device_info
+from .identity import entity_unique_id
 from .scene_helpers import scene_row_id, scene_row_name
 
 _LOGGER = logging.getLogger(__name__)
@@ -94,7 +95,7 @@ class YeelightProSceneButton(CoordinatorEntity, ButtonEntity):
         if scene_id is None:
             raise ValueError("scene row missing id")
         self._scene_id = scene_id
-        self._attr_unique_id = f"{DOMAIN}_scene_{self._scene_id}"
+        self._attr_unique_id = entity_unique_id(coordinator, "scene", self._scene_id)
         self._attr_name = scene_row_name(scene, self._scene_id)
 
     @property

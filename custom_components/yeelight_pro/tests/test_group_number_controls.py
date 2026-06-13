@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import pytest
 
+from custom_components.yeelight_pro.identity import entry_identity_scope, scoped_house_identifier
 from custom_components.yeelight_pro.number import (
     YeelightProGroupBrightness,
     YeelightProGroupColorTemp,
@@ -23,9 +24,9 @@ async def test_group_brightness_number_uses_iot_property_key(mock_coordinator) -
         "group_1",
         {"l": 42},
     )
+    scope = entry_identity_scope(mock_coordinator.entry_data, mock_coordinator.house_id)
     assert entity.device_info["identifiers"] == {
-        ("yeelight_pro", "12345"),
-        ("yeelight_pro", "house:12345"),
+        ("yeelight_pro", scoped_house_identifier(scope, mock_coordinator.house_id)),
     }
     assert entity.device_info["name"] == "绿地中央公园 灯组"
 

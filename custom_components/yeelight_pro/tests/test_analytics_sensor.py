@@ -11,6 +11,7 @@ from custom_components.yeelight_pro.analytics_sensor import (
     YeelightProAnalyticsSensor,
 )
 from custom_components.yeelight_pro.core.analytics_coordinator import AnalyticsSnapshot
+from custom_components.yeelight_pro.identity import entry_identity_scope, scoped_entity_unique_id
 
 
 def test_analytics_sensors_expose_house_level_diagnostics() -> None:
@@ -55,7 +56,12 @@ def test_analytics_sensors_expose_house_level_diagnostics() -> None:
         for description in ANALYTICS_SENSOR_DESCRIPTIONS
     }
 
-    assert sensors["alarm_total"].unique_id == "yeelight_pro_house_12345_analytics_alarm_total"
+    expected_uid = scoped_entity_unique_id(
+        entry_identity_scope({"house_name": "星河暖居"}, 12345),
+        "analytics",
+        "alarm_total",
+    )
+    assert sensors["alarm_total"].unique_id == expected_uid
     assert sensors["alarm_total"].suggested_object_id == "星河暖居 报警总数"
     assert sensors["alarm_total"].native_value == 4274
     assert sensors["alarm_total"].entity_category == EntityCategory.DIAGNOSTIC

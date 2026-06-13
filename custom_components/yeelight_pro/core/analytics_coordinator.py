@@ -46,6 +46,7 @@ class YeelightProAnalyticsCoordinator(DataUpdateCoordinator[AnalyticsSnapshot]):
         hass: HomeAssistant,
         client: YeelightProClient,
         house_id: int,
+        entry_data: Mapping[str, Any] | None = None,
     ) -> None:
         """初始化 analytics coordinator。"""
         super().__init__(
@@ -56,7 +57,7 @@ class YeelightProAnalyticsCoordinator(DataUpdateCoordinator[AnalyticsSnapshot]):
         )
         self.client = client
         self.house_id = house_id
-        self.entry_data: dict[str, Any] = {}
+        self.entry_data = dict(entry_data or {})
         self.houses: list[dict[str, Any]] = []
 
     async def _async_update_data(self) -> AnalyticsSnapshot:

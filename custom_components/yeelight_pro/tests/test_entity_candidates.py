@@ -2,78 +2,19 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Mapping
-
 from custom_components.yeelight_pro.entity_candidates import (
     collect_entity_candidate_keys,
     iter_device_entity_candidates,
     iter_entity_candidates,
 )
 from custom_components.yeelight_pro.entity_lifecycle import collect_active_entity_keys
+from custom_components.yeelight_pro.identity import entry_identity_scope
+
+from .entity_candidate_test_helpers import _Coordinator, _light_payload, _uid
 
 
-@dataclass
-class _Coordinator:
-    """Minimal coordinator shape required by entity candidate projection."""
-
-    data: Mapping[Any, Mapping[str, Any]]
-    scenes: list[dict[str, Any]] = field(default_factory=list)
-    groups: list[dict[str, Any]] = field(default_factory=list)
-    rooms: list[dict[str, Any]] = field(default_factory=list)
-    areas: list[dict[str, Any]] = field(default_factory=list)
-    houses: list[dict[str, Any]] = field(default_factory=list)
-    house_id: int | None = None
-    analytics_enabled: bool = False
-    analytics_data: object | None = None
-    hide_unknown_entities: bool = True
-    options: dict[str, Any] = field(default_factory=dict)
-
-
-def _light_payload() -> dict[str, Any]:
-    """Build a minimal canonical light payload."""
-    return {
-        "device_id": "light-1",
-        "category": "light",
-        "type": "light",
-        "online": True,
-        "params": {"p": True, "l": 80},
-        "ha_device_instance": {
-            "device_id": "light-1",
-            "name": "Light",
-            "online": True,
-            "device_info": {
-                "identifiers": [["yeelight_pro", "light-1"]],
-                "manufacturer": "Yeelight",
-                "model": "light",
-                "name": "Light",
-            },
-            "components": [
-                {
-                    "component_id": "main_light",
-                    "category": "color temperature light",
-                    "available": True,
-                    "state": {"p": True, "l": 80},
-                }
-            ],
-        },
-        "ha_product_model": {
-            "schema_version": "v1",
-            "product": {
-                "model_id": "model-light-1",
-                "manufacturer": "Yeelight",
-                "model": "light",
-                "category": "light",
-            },
-            "components": [
-                {
-                    "component_id": "main_light",
-                    "category": "color temperature light",
-                    "events": [],
-                }
-            ],
-        },
-    }
+_SCOPE_HOUSE_0 = entry_identity_scope({}, 0)
+_SCOPE_HOUSE_12345 = entry_identity_scope({}, 12345)
 
 
 def test_entity_candidates_match_lifecycle_active_keys() -> None:
@@ -111,12 +52,12 @@ def test_entity_candidates_match_lifecycle_active_keys() -> None:
     assert ("switch", "yeelight_pro_relay-1_switch_1") in candidate_keys
     assert ("switch", "yeelight_pro_relay-1_switch_2") in candidate_keys
     assert all(platform != "vacuum" for platform, _unique_id in candidate_keys)
-    assert ("button", "yeelight_pro_scene_scene_1") in candidate_keys
-    assert ("light", "yeelight_pro_group_group_1_light") in candidate_keys
-    assert ("light", "yeelight_pro_room_room_1_light") in candidate_keys
-    assert ("light", "yeelight_pro_area_area_1_light") in candidate_keys
-    assert ("light", "yeelight_pro_house_house_1_light") in candidate_keys
-    assert ("scene", "yeelight_pro_scene_scene_1") not in candidate_keys
+    assert ("button", _uid(_SCOPE_HOUSE_12345, "scene", "scene_1")) in candidate_keys
+    assert ("light", _uid(_SCOPE_HOUSE_12345, "group", "group_1", "light")) in candidate_keys
+    assert ("light", _uid(_SCOPE_HOUSE_12345, "room", "room_1", "light")) in candidate_keys
+    assert ("light", _uid(_SCOPE_HOUSE_12345, "area", "area_1", "light")) in candidate_keys
+    assert ("light", _uid(_SCOPE_HOUSE_12345, "house", "house_1", "light")) in candidate_keys
+    assert ("scene", _uid(_SCOPE_HOUSE_12345, "scene", "scene_1")) not in candidate_keys
 
 
 def test_entity_candidates_apply_device_import_filter_to_device_sources_only() -> None:
@@ -145,7 +86,7 @@ def test_entity_candidates_apply_device_import_filter_to_device_sources_only() -
 
     assert ("light", "yeelight_pro_light-1_main_light") in candidate_keys
     assert ("light", "yeelight_pro_blocked-light_main_light") not in candidate_keys
-    assert ("button", "yeelight_pro_scene_scene_1") in candidate_keys
+    assert ("button", _uid(_SCOPE_HOUSE_0, "scene", "scene_1")) in candidate_keys
 
 
 def test_device_entity_candidate_metadata_is_diagnostics_safe() -> None:
@@ -308,26 +249,26 @@ def test_entity_candidates_include_registry_metadata_for_major_platforms() -> No
     assert candidates[("light", "yeelight_pro_light-1_main_light")].icon == "mdi:lightbulb"
     assert candidates[("cover", "yeelight_pro_cover-1_cover")].name == "窗帘"
     assert candidates[("climate", "yeelight_pro_climate-1_climate")].name == "温控"
-    assert candidates[("button", "yeelight_pro_scene_scene_1")].name == "回家"
-    assert candidates[("light", "yeelight_pro_group_group_1_light")].name == "客厅灯组"
-    assert candidates[("light", "yeelight_pro_group_group_1_light")].icon == "mdi:lightbulb-group"
-    assert candidates[("light", "yeelight_pro_room_room_1_light")].name == "客厅"
-    assert candidates[("light", "yeelight_pro_room_room_1_light")].icon == "mdi:floor-plan"
-    assert candidates[("light", "yeelight_pro_area_area_1_light")].name == "一楼"
-    assert candidates[("light", "yeelight_pro_area_area_1_light")].icon == "mdi:select-group"
-    assert candidates[("light", "yeelight_pro_house_house_1_light")].name == "星河暖居"
-    assert candidates[("light", "yeelight_pro_house_house_1_light")].icon == "mdi:home-lightbulb"
-    assert candidates[("number", "yeelight_pro_group_group_1_brightness")].name == "客厅灯组 亮度"
-    assert candidates[("select", "yeelight_pro_12345_select_room")].name == "当前房间"
+    assert candidates[("button", _uid(_SCOPE_HOUSE_12345, "scene", "scene_1"))].name == "回家"
+    assert candidates[("light", _uid(_SCOPE_HOUSE_12345, "group", "group_1", "light"))].name == "客厅灯组"
+    assert candidates[("light", _uid(_SCOPE_HOUSE_12345, "group", "group_1", "light"))].icon == "mdi:lightbulb-group"
+    assert candidates[("light", _uid(_SCOPE_HOUSE_12345, "room", "room_1", "light"))].name == "客厅"
+    assert candidates[("light", _uid(_SCOPE_HOUSE_12345, "room", "room_1", "light"))].icon == "mdi:floor-plan"
+    assert candidates[("light", _uid(_SCOPE_HOUSE_12345, "area", "area_1", "light"))].name == "一楼"
+    assert candidates[("light", _uid(_SCOPE_HOUSE_12345, "area", "area_1", "light"))].icon == "mdi:select-group"
+    assert candidates[("light", _uid(_SCOPE_HOUSE_12345, "house", "house_1", "light"))].name == "星河暖居"
+    assert candidates[("light", _uid(_SCOPE_HOUSE_12345, "house", "house_1", "light"))].icon == "mdi:home-lightbulb"
+    assert candidates[("number", _uid(_SCOPE_HOUSE_12345, "group", "group_1", "brightness"))].name == "客厅灯组 亮度"
+    assert candidates[("select", _uid(_SCOPE_HOUSE_12345, "select", "room"))].name == "当前房间"
 
 
 def test_house_select_candidates_keep_lan_only_zero_house_id() -> None:
     """LAN-only house_id=0 也必须保留固定 select 候选，避免被误判 stale。"""
     candidate_keys = collect_entity_candidate_keys(_Coordinator(data={}, house_id=0))
 
-    assert ("select", "yeelight_pro_0_select_room") in candidate_keys
-    assert ("select", "yeelight_pro_0_select_group") in candidate_keys
-    assert ("select", "yeelight_pro_0_select_scene") in candidate_keys
+    assert ("select", _uid(_SCOPE_HOUSE_0, "select", "room")) in candidate_keys
+    assert ("select", _uid(_SCOPE_HOUSE_0, "select", "group")) in candidate_keys
+    assert ("select", _uid(_SCOPE_HOUSE_0, "select", "scene")) in candidate_keys
 
 
 def test_analytics_candidates_are_house_level_diagnostic_sensors() -> None:
@@ -343,78 +284,9 @@ def test_analytics_candidates_are_house_level_diagnostic_sensors() -> None:
         for item in iter_entity_candidates(coordinator)
     }
 
-    assert candidates[("sensor", "yeelight_pro_house_12345_analytics_alarm_total")].name == "报警总数"
-    assert candidates[("sensor", "yeelight_pro_house_12345_analytics_alarm_total")].entity_category == "diagnostic"
-    assert candidates[("sensor", "yeelight_pro_house_12345_analytics_alarm_total")].suggested_object_id == "易来家庭 报警总数"
-    assert ("sensor", "yeelight_pro_house_12345_analytics_energy_total") in candidates
-    assert ("sensor", "yeelight_pro_house_12345_analytics_user_action_count") in candidates
-
-
-def test_schema_unknown_actions_do_not_create_device_buttons() -> None:
-    """未知产品动作不能在缺少官方执行 API 时泛化成设备 button。"""
-    payload = _light_payload()
-    payload["device_id"] = "action-device-1"
-    payload["ha_device_instance"]["device_id"] = "action-device-1"
-    payload["ha_device_instance"]["device_info"]["identifiers"] = [
-        ["yeelight_pro", "action-device-1"]
-    ]
-    payload["ha_product_model"]["components"][0]["actions"] = [
-        {
-            "action_id": "vendor_reset",
-            "name": "vendor reset",
-            "in": [],
-            "out": [],
-        }
-    ]
-
-    candidate_keys = collect_entity_candidate_keys(_Coordinator(data={"device": payload}))
-
-    assert ("light", "yeelight_pro_action-device-1_main_light") in candidate_keys
-    assert not any(key[0] == "button" for key in candidate_keys)
-
-
-def test_schema_writable_auxiliary_properties_create_control_candidates() -> None:
-    """可写辅助属性应按类型进入 switch/select 生命周期候选集合."""
-    payload = _light_payload()
-    payload["device_id"] = "aux-device-1"
-    payload["ha_device_instance"]["device_id"] = "aux-device-1"
-    payload["ha_device_instance"]["components"][0]["state"].update({
-        "acrc": True,
-        "li": 1,
-        "rd": "0",
-    })
-    payload["ha_device_instance"]["device_info"]["identifiers"] = [
-        ["yeelight_pro", "aux-device-1"]
-    ]
-    payload["ha_product_model"]["components"][0]["properties"] = [
-        {"prop_id": "l", "access": "read_write", "value_range": {"min": 1, "max": 100}},
-        {
-            "prop_id": "acrc",
-            "name": "空调遥控器",
-            "access": "read_write",
-            "property_type": "bool",
-            "format": "bool",
-        },
-        {
-            "prop_id": "li",
-            "name": "指示灯",
-            "access": "read_write",
-            "property_type": "int",
-        },
-        {
-            "prop_id": "rd",
-            "name": "电机方向",
-            "access": "read_write",
-            "property_type": "int",
-        },
-    ]
-
-    candidates = {
-        (item.platform, item.unique_id): item
-        for item in iter_device_entity_candidates(payload)
-    }
-
-    assert ("switch", "yeelight_pro_aux-device-1_main_light_acrc_switch") in candidates
-    assert ("switch", "yeelight_pro_aux-device-1_main_light_li_switch") in candidates
-    assert ("select", "yeelight_pro_aux-device-1_main_light_rd_select") in candidates
-    assert not any(unique_id.endswith("_l_number") for _platform, unique_id in candidates)
+    alarm_total_uid = _uid(_SCOPE_HOUSE_12345, "analytics", "alarm_total")
+    assert candidates[("sensor", alarm_total_uid)].name == "报警总数"
+    assert candidates[("sensor", alarm_total_uid)].entity_category == "diagnostic"
+    assert candidates[("sensor", alarm_total_uid)].suggested_object_id == "易来家庭 报警总数"
+    assert ("sensor", _uid(_SCOPE_HOUSE_12345, "analytics", "energy_total")) in candidates
+    assert ("sensor", _uid(_SCOPE_HOUSE_12345, "analytics", "user_action_count")) in candidates

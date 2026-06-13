@@ -12,6 +12,7 @@ from custom_components.yeelight_pro.entity_lifecycle import (
     async_reconcile_entity_registry,
     entity_registry_reconcile_diagnostics,
 )
+from custom_components.yeelight_pro.identity import entry_identity_scope, scoped_entity_unique_id
 
 from .entity_lifecycle_helpers import (
     FakeEntityRegistry,
@@ -238,15 +239,17 @@ async def test_reconcile_marks_removed_scene_domain_stale_when_button_is_active(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """删除原生 scene 平台后，同 unique_id 的 button 保留，scene 进入 stale."""
+    scope = entry_identity_scope({}, 0)
+    scene_uid = scoped_entity_unique_id(scope, "scene", "scene_1")
     registry = FakeEntityRegistry(
         [
             registry_entry(
-                unique_id="yeelight_pro_scene_scene_1",
+                unique_id=scene_uid,
                 entity_id="scene.duplicate",
                 domain="scene",
             ),
             registry_entry(
-                unique_id="yeelight_pro_scene_scene_1",
+                unique_id=scene_uid,
                 entity_id="button.duplicate",
                 domain="button",
                 original_name="情景 scene_1",
@@ -263,10 +266,10 @@ async def test_reconcile_marks_removed_scene_domain_stale_when_button_is_active(
         coordinator,
     )
 
-    assert active_unique_ids == {"yeelight_pro_scene_scene_1"}
+    assert active_unique_ids == {scene_uid}
     assert registry.removed_entity_ids == []
     assert getattr(coordinator, "_yeelight_pro_pending_stale_entity_keys") == {
-        ("scene", "yeelight_pro_scene_scene_1")
+        ("scene", scene_uid)
     }
     assert entity_registry_reconcile_diagnostics(coordinator) == reconcile_diagnostics(
         active=1,
@@ -282,10 +285,12 @@ async def test_reconcile_clears_pending_when_stale_registry_entry_is_active_agai
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """stale entry 重新出现在 active keys 后清空 pending 状态."""
+    scope = entry_identity_scope({}, 0)
+    restored_uid = scoped_entity_unique_id(scope, "scene", "restored")
     registry = FakeEntityRegistry(
         [
             registry_entry(
-                unique_id="yeelight_pro_scene_restored",
+                unique_id=restored_uid,
                 entity_id="button.restored",
                 domain="button",
                 original_name="情景 restored",
@@ -309,7 +314,7 @@ async def test_reconcile_clears_pending_when_stale_registry_entry_is_active_agai
         coordinator,
     )
 
-    assert active_unique_ids == {"yeelight_pro_scene_restored"}
+    assert active_unique_ids == {restored_uid}
     assert registry.removed_entity_ids == []
     assert getattr(coordinator, "_yeelight_pro_pending_stale_entity_keys") == set()
     assert entity_registry_reconcile_diagnostics(coordinator) == reconcile_diagnostics(

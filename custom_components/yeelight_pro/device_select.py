@@ -15,6 +15,7 @@ from .device_display import suggested_entity_object_id
 from .entity_device_id import source_device_id
 from .entity_category import ha_entity_category
 from .entity_errors import raise_service_error
+from .identity import device_entity_unique_id
 from .projector.property_controls import (
     HASelectControlProjection,
     project_select_controls,
@@ -63,7 +64,7 @@ class YeelightProDeviceSelect(CoordinatorEntity, SelectEntity):
         self._attr_unique_id = (
             projection.unique_id
             if projection is not None
-            else f"{DOMAIN}_{device_id}_{component_id}"
+            else device_entity_unique_id(coordinator, device_id, component_id)
         )
 
     @property

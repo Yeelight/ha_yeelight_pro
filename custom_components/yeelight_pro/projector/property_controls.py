@@ -11,6 +11,7 @@ from ..canonical.models import (
     HADeviceInstanceModel,
     PropertyModel,
 )
+from ..identity import payload_entity_unique_id_prefix
 from ..utils import to_float
 from ..utils import to_bool
 from .common import NumericRange, component_property_value, load_instance
@@ -188,10 +189,11 @@ def _project_number(
         max=value_range.max,
         step=value_range.step,
     )
+    unique_id_prefix = payload_entity_unique_id_prefix(device_payload, domain=domain)
     return HANumberControlProjection(
         component_id=f"{component.component_id}_{prop.prop_id}_number",
         prop_id=prop.prop_id,
-        unique_id=f"{domain}_{instance.device_id}_{component.component_id}_{prop.prop_id}_number",
+        unique_id=f"{unique_id_prefix}_{instance.device_id}_{component.component_id}_{prop.prop_id}_number",
         name=control_name(component, prop, device_payload=device_payload),
         available=control_available(device_payload, instance, component),
         value=to_float(
@@ -249,10 +251,11 @@ def _project_select(
         )
         return None
 
+    unique_id_prefix = payload_entity_unique_id_prefix(device_payload, domain=domain)
     return HASelectControlProjection(
         component_id=f"{component.component_id}_{prop.prop_id}_select",
         prop_id=prop.prop_id,
-        unique_id=f"{domain}_{instance.device_id}_{component.component_id}_{prop.prop_id}_select",
+        unique_id=f"{unique_id_prefix}_{instance.device_id}_{component.component_id}_{prop.prop_id}_select",
         name=control_name(component, prop, device_payload=device_payload),
         available=control_available(device_payload, instance, component),
         value=component_property_value(
@@ -288,10 +291,11 @@ def _project_switch(
         return None
 
     on_value, off_value = switch_command_values(prop)
+    unique_id_prefix = payload_entity_unique_id_prefix(device_payload, domain=domain)
     return HASwitchControlProjection(
         component_id=f"{component.component_id}_{prop.prop_id}_switch",
         prop_id=prop.prop_id,
-        unique_id=f"{domain}_{instance.device_id}_{component.component_id}_{prop.prop_id}_switch",
+        unique_id=f"{unique_id_prefix}_{instance.device_id}_{component.component_id}_{prop.prop_id}_switch",
         name=control_name(component, prop, device_payload=device_payload),
         available=control_available(device_payload, instance, component),
         is_on=to_bool(

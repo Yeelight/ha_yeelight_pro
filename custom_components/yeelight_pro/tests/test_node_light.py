@@ -4,15 +4,16 @@ from __future__ import annotations
 
 import pytest
 
+from custom_components.yeelight_pro.identity import entry_identity_scope, scoped_entity_unique_id
 from custom_components.yeelight_pro.node_light import YeelightProNodeLight
 
 
 @pytest.mark.parametrize(
-    ("node_kind", "collection", "node_id", "expected_unique_id"),
+    ("node_kind", "collection", "node_id"),
     [
-        ("room", "rooms", "room_1", "yeelight_pro_room_room_1_light"),
-        ("area", "areas", "area_1", "yeelight_pro_area_area_1_light"),
-        ("house", "houses", "house_1", "yeelight_pro_house_house_1_light"),
+        ("room", "rooms", "room_1"),
+        ("area", "areas", "area_1"),
+        ("house", "houses", "house_1"),
     ],
 )
 def test_node_light_reads_cached_topology_state(
@@ -20,7 +21,6 @@ def test_node_light_reads_cached_topology_state(
     node_kind: str,
     collection: str,
     node_id: str,
-    expected_unique_id: str,
 ) -> None:
     """节点 light 应从对应拓扑缓存读取名称、状态和属性."""
     setattr(
@@ -37,7 +37,8 @@ def test_node_light_reads_cached_topology_state(
     )
     entity = YeelightProNodeLight(mock_coordinator, node_kind, node_id)
 
-    assert entity.unique_id == expected_unique_id
+    scope = entry_identity_scope(mock_coordinator.entry_data, mock_coordinator.house_id)
+    assert entity.unique_id == scoped_entity_unique_id(scope, node_kind, node_id, "light")
     assert entity.name == "客厅"
     assert entity.available is True
     assert entity.is_on is True

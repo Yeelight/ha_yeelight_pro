@@ -12,6 +12,7 @@ from .core.exceptions import YeelightProError
 from .device_display import suggested_entity_object_id
 from .entity_errors import raise_service_error
 from .house_metadata import house_device_info
+from .identity import coordinator_identity_scope
 from .node_metadata import (
     node_kind_icon,
     node_kind_label,
@@ -45,7 +46,11 @@ class YeelightProNodeLight(CoordinatorEntity, LightEntity):
         super().__init__(coordinator)
         self._node_kind = node_kind
         self._node_id = node_id
-        self._attr_unique_id = node_light_unique_id(node_kind, node_id)
+        self._attr_unique_id = node_light_unique_id(
+            coordinator_identity_scope(coordinator),
+            node_kind,
+            node_id,
+        )
         self._attr_icon = node_kind_icon(node_kind)
 
     @property

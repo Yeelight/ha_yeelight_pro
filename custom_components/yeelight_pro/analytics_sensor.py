@@ -9,15 +9,14 @@ from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
-    SensorStateClass,
 )
 from homeassistant.const import EntityCategory, UnitOfEnergy
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
 from .core.analytics_coordinator import AnalyticsSnapshot, YeelightProAnalyticsCoordinator
 from .device_display import suggested_entity_object_id
 from .house_metadata import house_device_info
+from .identity import entity_unique_id
 
 _VALUE_EXTRACTOR = Callable[[AnalyticsSnapshot], Any]
 _ATTRIBUTES_EXTRACTOR = Callable[[AnalyticsSnapshot], dict[str, Any]]
@@ -113,8 +112,10 @@ class YeelightProAnalyticsSensor(CoordinatorEntity, SensorEntity):
         """初始化 analytics sensor。"""
         super().__init__(coordinator)
         self.entity_description = description
-        self._attr_unique_id = (
-            f"{DOMAIN}_house_{coordinator.house_id}_analytics_{description.key}"
+        self._attr_unique_id = entity_unique_id(
+            coordinator,
+            "analytics",
+            description.key,
         )
         self._attr_translation_key = f"analytics_{description.key}"
         self._attr_name = description.name

@@ -18,6 +18,7 @@ from .const import (
     CONF_ACCOUNT_USER_ID,
     CONF_ACCOUNT_USERNAME,
     CONF_OPEN_API_CLIENT_ID,
+    CONF_OPEN_API_CLIENT_SECRET,
     CONF_REFRESH_TOKEN,
     CONF_SCAN_LOGIN_DEVICE,
     CONF_SCAN_LOGIN_QRCODE,
@@ -112,6 +113,8 @@ def scan_login_entry_data(
     }
     if token.client_id:
         data[CONF_OPEN_API_CLIENT_ID] = token.client_id
+    if token.client_secret:
+        data[CONF_OPEN_API_CLIENT_SECRET] = token.client_secret
     if token.user_id is not None:
         data[CONF_ACCOUNT_USER_ID] = token.user_id
     if token.username:

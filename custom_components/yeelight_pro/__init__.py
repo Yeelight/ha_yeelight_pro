@@ -54,6 +54,7 @@ from .ha_device_registry import (
     device_payload_identifiers as _device_payload_identifiers,
 )
 from .live_runtime import async_start_live_runtime
+from .oauth_refresh import async_refresh_entry_token
 from .repair_issues import (
     async_delete_topology_changed_issues,
 )
@@ -121,6 +122,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         client_id=client_id,
         session=session,
     )
+    client.set_token_refresh_handler(
+        lambda: _async_refresh_runtime_token(hass, entry, client)
+    )
+    try:
+        refresh_result = await async_refresh_entry_token(hass, entry, client)
+        if refresh_result.refreshed:
+            entry_data = refresh_result.entry_data
+            access_token = entry_data[CONF_ACCESS_TOKEN]
+            client_id = entry_data.get(CONF_OPEN_API_CLIENT_ID, "")
+    except AuthenticationError:
+        raise ConfigEntryAuthFailed("Yeelight Pro authentication failed") from None
+    except ConnectionError as err:
+        raise ConfigEntryNotReady(
+            f"Connection failed: {safe_error_summary(err)}"
+        ) from None
 
     # 验证服务可达性（仅检查连通性，token 在 config_flow 已验证）
     try:
@@ -146,7 +162,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await _async_run_registry_maintenance(hass, entry, coordinator)
 
-    analytics_coordinator = YeelightProAnalyticsCoordinator(hass, client, house_id)
+    analytics_coordinator = YeelightProAnalyticsCoordinator(
+        hass,
+        client,
+        house_id,
+        entry_data=coordinator.entry_data,
+    )
     try:
         await analytics_coordinator.async_config_entry_first_refresh()
     except Exception as err:
@@ -196,6 +217,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
 
     return True
+
+
+async def _async_refresh_runtime_token(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    client: YeelightProClient,
+) -> None:
+    """Refresh an expired runtime token or preserve auth failure semantics."""
+    try:
+        await async_refresh_entry_token(hass, entry, client, force=True)
+    except AuthenticationError:
+        raise ConfigEntryAuthFailed("Yeelight Pro authentication failed") from None
+    except ConnectionError as err:
+        raise ConfigEntryNotReady(
+            f"Connection failed: {safe_error_summary(err)}"
+        ) from None
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

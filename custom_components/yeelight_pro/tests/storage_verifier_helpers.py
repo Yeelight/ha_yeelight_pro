@@ -35,7 +35,8 @@ def config_entry() -> dict[str, Any]:
             "connection_mode": "cloud",
             "house_id": 1,
             "house_name": "绿地中央公园",
-            "open_api_client_id": "",
+            "open_api_client_id": "secret-client-id",
+            "open_api_client_secret": "secret-client-secret",
             "private_domain": "",
             "refresh_token": "secret-refresh",
             "scan_login_device": "secret-device",
@@ -70,6 +71,7 @@ def lan_config_entry() -> dict[str, Any]:
         "local_gateway_host": "192.168.0.252",
         "local_gateway_port": 65443,
         "open_api_client_id": "",
+        "open_api_client_secret": "",
         "private_domain": "",
         "refresh_token": "",
         "scan_login_device": "",
@@ -133,17 +135,18 @@ def yeelight_entities() -> list[dict[str, str | None]]:
 
 
 def _unique_id(domain: str, index: int) -> str:
-    """Return source-like unique ids for device platforms."""
+    """Return source-like scoped unique ids for registry fixtures."""
+    scope = "cloud_cn_account_fixture_house_1"
     if domain in {"light", "switch"}:
         source_id = "304784333" if domain == "light" else "304784336"
         component = "light" if domain == "light" else "switch"
-        return f"yeelight_pro_{source_id}_{component}_{index}"
+        return f"yeelight_pro_{scope}_device_{source_id}_{component}_{index}"
     if domain == "select":
         selectors = ("room", "group", "scene")
         if index < len(selectors):
-            return f"yeelight_pro_1_select_{selectors[index]}"
-        return f"yeelight_pro_304784336_switch_{index}_mode_select"
-    return f"yeelight_pro_topology_{domain}_{index}"
+            return f"yeelight_pro_{scope}_select_{selectors[index]}"
+        return f"yeelight_pro_{scope}_device_304784336_switch_{index}_mode_select"
+    return f"yeelight_pro_{scope}_topology_{domain}_{index}"
 
 
 def _device_id(domain: str, index: int) -> str | None:

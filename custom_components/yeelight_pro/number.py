@@ -23,6 +23,7 @@ from .entity_device_id import source_device_id
 from .entity_category import ha_entity_category
 from .entity_errors import raise_service_error
 from .house_metadata import house_device_info
+from .identity import device_entity_unique_id, entity_unique_id
 from .projector.property_controls import (
     HANumberControlProjection,
     project_number_controls,
@@ -109,7 +110,7 @@ class YeelightProDeviceNumber(CoordinatorEntity, NumberEntity):
         self._attr_unique_id = (
             projection.unique_id
             if projection is not None
-            else f"{DOMAIN}_{device_id}_{component_id}"
+            else device_entity_unique_id(coordinator, device_id, component_id)
         )
 
     @property
@@ -235,7 +236,12 @@ class YeelightProGroupBrightness(NumberEntity):
         super().__init__()
         self._coordinator = coordinator
         self._group_id = group_id
-        self._attr_unique_id = f"{DOMAIN}_group_{group_id}_brightness"
+        self._attr_unique_id = entity_unique_id(
+            coordinator,
+            "group",
+            group_id,
+            "brightness",
+        )
         self._attr_name = f"{group_name} 亮度"
         self._attr_native_value: float | None = None
 
@@ -280,7 +286,12 @@ class YeelightProGroupColorTemp(NumberEntity):
         super().__init__()
         self._coordinator = coordinator
         self._group_id = group_id
-        self._attr_unique_id = f"{DOMAIN}_group_{group_id}_color_temp"
+        self._attr_unique_id = entity_unique_id(
+            coordinator,
+            "group",
+            group_id,
+            "color_temp",
+        )
         self._attr_name = f"{group_name} 色温"
         self._attr_native_value: float | None = None
 

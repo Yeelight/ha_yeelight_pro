@@ -132,21 +132,21 @@ def test_verify_storage_rejects_house_selects_without_name_or_translation_key(
         {
             "platform": "yeelight_pro",
             "entity_id": "select.yeelight_pro_1",
-            "unique_id": "yeelight_pro_1_select_room",
+            "unique_id": "yeelight_pro_cloud_cn_account_fixture_house_1_select_room",
             "original_name": None,
             "device_id": None,
         },
         {
             "platform": "yeelight_pro",
             "entity_id": "select.yeelight_pro_2",
-            "unique_id": "yeelight_pro_1_select_group",
+            "unique_id": "yeelight_pro_cloud_cn_account_fixture_house_1_select_group",
             "original_name": "当前灯组",
             "device_id": None,
         },
         {
             "platform": "yeelight_pro",
             "entity_id": "select.yeelight_pro_3",
-            "unique_id": "yeelight_pro_1_select_scene",
+            "unique_id": "yeelight_pro_cloud_cn_account_fixture_house_1_select_scene",
             "original_name": "当前场景",
             "device_id": None,
         },
@@ -230,7 +230,7 @@ def test_verify_storage_rejects_device_backed_entities_without_device_id(
     """设备来源实体必须挂到 HA device registry."""
     entities = _yeelight_entities()
     for entity in entities:
-        if entity.get("unique_id") == "yeelight_pro_304784333_light_0":
+        if entity.get("unique_id") == "yeelight_pro_cloud_cn_account_fixture_house_1_device_304784333_light_0":
             entity["device_id"] = None
             break
     _write_storage(tmp_path, "core.config_entries", {"entries": [_config_entry()]})

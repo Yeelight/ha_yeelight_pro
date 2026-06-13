@@ -19,6 +19,7 @@ from .const import (
     CONF_HOUSE_ID,
     CONF_HOUSE_NAME,
     CONF_OPEN_API_CLIENT_ID,
+    CONF_OPEN_API_CLIENT_SECRET,
     CONF_PRIVATE_DOMAIN,
     CONF_REFRESH_TOKEN,
     CONF_SCAN_LOGIN_DEVICE,
@@ -102,6 +103,7 @@ class YeelightProConfigFlow(
         self._scan_login_poll_task_ref = None
         self._scan_login_account_key = UNKNOWN_ACCOUNT_KEY
         self._open_api_client_id = ""
+        self._open_api_client_secret = ""
         self._device_choices: tuple[DevicePickerChoice, ...] = ()
         self._house_choices: dict[Any, str] = {}
         self._selected_device_ids: list[str] = []
@@ -322,6 +324,7 @@ class YeelightProConfigFlow(
             CONF_HOUSE_ID: self._house_id,
             CONF_HOUSE_NAME: self._house_name,
             CONF_OPEN_API_CLIENT_ID: self._open_api_client_id,
+            CONF_OPEN_API_CLIENT_SECRET: self._open_api_client_secret,
             CONF_ACCOUNT_USER_ID: self._account_user_id,
             CONF_ACCOUNT_USERNAME: self._account_username,
             CONF_SCAN_LOGIN_DEVICE: self._scan_login_device,

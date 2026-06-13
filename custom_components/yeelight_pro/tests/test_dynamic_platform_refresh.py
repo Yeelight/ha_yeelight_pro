@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from custom_components.yeelight_pro.const import DOMAIN
+from custom_components.yeelight_pro.identity import entry_identity_scope, scoped_entity_unique_id
 from custom_components.yeelight_pro.fan import async_setup_entry as async_setup_fan_entry
 from custom_components.yeelight_pro.light import (
     _iter_light_entities,
@@ -74,6 +75,8 @@ async def test_light_platform_adds_topology_node_entities_after_refresh(mock_has
     """light 平台应在拓扑刷新后补建房间/区域/整屋总控实体."""
     coordinator = MagicMock()
     coordinator.hass = None
+    coordinator.entry_data = {}
+    coordinator.house_id = 12345
     coordinator.data = {}
     coordinator.devices = {}
     coordinator.groups = []
@@ -104,16 +107,19 @@ async def test_light_platform_adds_topology_node_entities_after_refresh(mock_has
     listeners[0]()
 
     assert add_entities.call_count == 1
+    scope = entry_identity_scope({}, 12345)
     assert [entity.unique_id for entity in add_entities.call_args.args[0]] == [
-        "yeelight_pro_room_room_1_light",
-        "yeelight_pro_area_area_1_light",
-        "yeelight_pro_house_house_1_light",
+        scoped_entity_unique_id(scope, "room", "room_1", "light"),
+        scoped_entity_unique_id(scope, "area", "area_1", "light"),
+        scoped_entity_unique_id(scope, "house", "house_1", "light"),
     ]
 
 
 def test_light_entity_factory_uses_payload_source_device_id() -> None:
     """平台实体创建必须使用 payload 真实 id，不能依赖 coordinator.data 的临时 key."""
     coordinator = MagicMock()
+    coordinator.entry_data = {}
+    coordinator.house_id = 0
     coordinator.data = {"temporary-key": legacy_light(304784333, name="厨房操作台灯")}
     coordinator.devices = {304784333: coordinator.data["temporary-key"]}
     coordinator.groups = []

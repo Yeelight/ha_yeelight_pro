@@ -18,6 +18,7 @@ from ..const import (
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
 )
+from ..identity import apply_identity_scope_to_device_maps
 from .auxiliary_data import AuxiliaryData, async_fetch_auxiliary_data
 from .client import YeelightProClient
 from .coordinator_controls import CoordinatorControlMixin
@@ -148,6 +149,12 @@ class YeelightProCoordinator(
                 rooms=self.rooms,
                 areas=self.areas,
             )
+            apply_identity_scope_to_device_maps(
+                entry_data=self.entry_data,
+                house_id=self.house_id,
+                devices=data,
+                gateways=gateway_data,
+            )
 
             self.devices = data
             self.gateways = gateway_data
@@ -257,10 +264,17 @@ class YeelightProCoordinator(
         try:
             normalized_device_id = int(device_id)
         except (TypeError, ValueError):
-            return self.devices.get(device_id)  # type: ignore[arg-type]
-        if device := self.devices.get(normalized_device_id):
-            return device
-        return self.devices.get(str(normalized_device_id))  # type: ignore[call-overload]
+            normalized_device_id = None
+        if normalized_device_id is not None:
+            return self.devices.get(normalized_device_id)
+        return next(
+            (
+                payload
+                for payload in self.devices.values()
+                if str(payload.get("device_id") or payload.get("id")) == str(device_id)
+            ),
+            None,
+        )
 
     def get_gateway_devices(self) -> Dict[int, Dict[str, Any]]:
         """获取网关设备."""

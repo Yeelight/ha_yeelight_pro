@@ -9,6 +9,7 @@ from typing import Any, Mapping
 from ..canonical.models import ComponentInstanceModel, HADeviceInstanceModel, HAProductModel
 from ..device_display import channel_name_label
 from ..entity_category import entity_category_for_property
+from ..identity import payload_entity_unique_id_prefix
 from ..utils import to_bool, to_str
 from .device import flatten_instance_state, project_payload_device_info
 from .event_input import is_event_input_device
@@ -125,6 +126,7 @@ def project_binary_sensors(
     params = _runtime_state(device_payload, instance)
     device_info = project_payload_device_info(device_payload, instance)
     device_id = str(device_payload.get("device_id", "unknown"))
+    unique_id_prefix = payload_entity_unique_id_prefix(device_payload, domain=domain)
     base_available = payload_available(device_payload, instance)
     event_style_device = is_event_input_device(device_payload)
 
@@ -180,7 +182,7 @@ def project_binary_sensors(
         projections.append(
             HABinarySensorProjection(
                 component_id=component_id,
-                unique_id=f"{domain}_{device_id}_{component_id}",
+                unique_id=f"{unique_id_prefix}_{device_id}_{component_id}",
                 name=_scoped_projection_name(component, spec["label"], scoped=scoped),
                 available=schema_backed_component_available(
                     base_available,

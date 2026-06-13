@@ -73,13 +73,17 @@ def entity_domain(entity: Mapping[str, Any]) -> str | None:
 
 
 def source_device_id_from_unique_id(value: Any) -> str | None:
-    """Extract source device id from Yeelight entity unique_id."""
+    """Extract source device id from Yeelight device-backed entity unique_id."""
     if not isinstance(value, str):
         return None
     prefix = f"{DOMAIN}_"
     if not value.startswith(prefix):
         return None
     suffix = value[len(prefix):]
+    marker = "_device_"
+    if marker in suffix:
+        source_device_id = suffix.rsplit(marker, 1)[-1].split("_", 1)[0]
+        return source_device_id if source_device_id.isdigit() else None
     if suffix.endswith(("_select_room", "_select_group", "_select_scene")):
         return None
     source_device_id = suffix.split("_", 1)[0]

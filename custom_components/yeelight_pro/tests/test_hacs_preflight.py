@@ -65,6 +65,7 @@ def test_iot_registry_contract_check_requires_coverage_tokens(
     _write_test_file(tests_root / "test_projection_component_state_keys.py", "")
     _write_test_file(tests_root / "test_projection_state_sensors.py", "")
     _write_test_file(tests_root / "test_entity_candidates.py", "")
+    _write_test_file(tests_root / "test_entity_candidate_schema_boundaries.py", "")
     _write_test_file(tests_root / "test_entity_candidates_iot_boundaries.py", "")
     _write_test_file(tests_root / "test_group_number_controls.py", "")
     _write_test_file(tests_root / "test_select_dynamic_options.py", "")

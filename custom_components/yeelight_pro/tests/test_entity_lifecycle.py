@@ -8,6 +8,7 @@ from custom_components.yeelight_pro.entity_lifecycle import (
     collect_active_entity_unique_ids,
     entity_registry_reconcile_diagnostics,
 )
+from custom_components.yeelight_pro.identity import entry_identity_scope, scoped_entity_unique_id
 
 from .entity_lifecycle_helpers import lifecycle_coordinator
 
@@ -23,13 +24,14 @@ def test_collect_active_entity_keys_projects_cloud_scenes_as_buttons_only() -> N
 
     keys = collect_active_entity_keys(coordinator)
 
-    assert ("button", "yeelight_pro_scene_scene_1") in keys
-    assert ("light", "yeelight_pro_group_group_1_light") in keys
-    assert ("number", "yeelight_pro_group_group_1_brightness") in keys
-    assert ("number", "yeelight_pro_group_group_1_color_temp") in keys
-    assert ("select", "yeelight_pro_12345_select_room") in keys
-    assert ("select", "yeelight_pro_12345_select_group") in keys
-    assert ("select", "yeelight_pro_12345_select_scene") in keys
+    scope = entry_identity_scope({}, 12345)
+    assert ("button", scoped_entity_unique_id(scope, "scene", "scene_1")) in keys
+    assert ("light", scoped_entity_unique_id(scope, "group", "group_1", "light")) in keys
+    assert ("number", scoped_entity_unique_id(scope, "group", "group_1", "brightness")) in keys
+    assert ("number", scoped_entity_unique_id(scope, "group", "group_1", "color_temp")) in keys
+    assert ("select", scoped_entity_unique_id(scope, "select", "room")) in keys
+    assert ("select", scoped_entity_unique_id(scope, "select", "group")) in keys
+    assert ("select", scoped_entity_unique_id(scope, "select", "scene")) in keys
     assert len(keys) == 7
 
 
@@ -61,9 +63,10 @@ def test_collect_active_entity_unique_ids_preserves_legacy_unique_id_view() -> N
         house_id=None,
     )
 
+    scope = entry_identity_scope({}, 0)
     unique_ids = collect_active_entity_unique_ids(coordinator)
 
-    assert unique_ids == {"yeelight_pro_scene_scene_1"}
+    assert unique_ids == {scoped_entity_unique_id(scope, "scene", "scene_1")}
 
 
 def test_entity_registry_reconcile_diagnostics_ignores_foreign_summary() -> None:

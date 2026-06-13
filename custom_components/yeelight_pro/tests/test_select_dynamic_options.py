@@ -6,6 +6,7 @@ import pytest
 
 from homeassistant.exceptions import HomeAssistantError
 
+from custom_components.yeelight_pro.identity import entry_identity_scope, scoped_house_identifier
 from custom_components.yeelight_pro.select import (
     EMPTY_OPTION,
     ERROR_UNKNOWN_GROUP_OPTION,
@@ -60,9 +61,9 @@ async def test_room_select_uses_latest_coordinator_rooms(mock_coordinator) -> No
     assert select.options == ["书房"]
     assert select.current_option is None
     assert select.device_info["name"] == "绿地中央公园 拓扑"
+    scope = entry_identity_scope(mock_coordinator.entry_data, mock_coordinator.house_id)
     assert select.device_info["identifiers"] == {
-        ("yeelight_pro", "12345"),
-        ("yeelight_pro", "house:12345"),
+        ("yeelight_pro", scoped_house_identifier(scope, mock_coordinator.house_id)),
     }
 
     await select.async_select_option("书房")

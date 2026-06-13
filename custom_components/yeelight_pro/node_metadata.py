@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from typing import Any
 
-from .const import DOMAIN
+from .identity import scoped_entity_unique_id
 from .utils import to_str
 
 NODE_LIGHT_KINDS = ("room", "area", "house")
@@ -92,9 +92,9 @@ def topology_node_params(row: Mapping[str, Any]) -> dict[str, Any]:
     return {}
 
 
-def node_light_unique_id(node_kind: str, node_id: str) -> str:
-    """Return the stable HA unique_id for a topology node light."""
-    return f"{DOMAIN}_{node_kind}_{node_id}_light"
+def node_light_unique_id(scope: str, node_kind: str, node_id: str) -> str:
+    """Return the scoped HA unique_id for a topology node light."""
+    return scoped_entity_unique_id(scope, node_kind, node_id, "light")
 
 
 def node_kind_label(node_kind: str) -> str:

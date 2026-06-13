@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import inspect
 import logging
-from collections.abc import Iterable
 from typing import Any, Mapping, Protocol
 
 from homeassistant.config_entries import ConfigEntry
@@ -18,6 +17,11 @@ from homeassistant.helpers import (
 from .const import DOMAIN
 from .device_display import registry_model_value
 from .ha_house_registry import sync_house_device
+from .house_metadata import house_device_info
+from .ha_device_registry_source import (
+    source_device_id_from_unique_id,
+    source_device_ids as payload_source_device_ids,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -140,7 +144,7 @@ async def async_sync_gateway_devices(
             sorted(identifiers),
         )
         if not is_gateway:
-            for source_device_id in _source_device_ids(device_payload, identifiers):
+            for source_device_id in payload_source_device_ids(device_payload, identifiers):
                 source_device_ids[source_device_id] = device_entry.id
         return True
 
@@ -179,8 +183,9 @@ def active_device_identifiers(
     identifiers: set[tuple[str, str]] = set()
 
     if coordinator.house_id is not None:
-        identifiers.add((DOMAIN, str(coordinator.house_id)))
-        identifiers.add((DOMAIN, f"house:{coordinator.house_id}"))
+        identifiers.update(normalize_registry_pairs(
+            house_device_info(coordinator).get("identifiers")
+        ))
 
     for device_payload in coordinator.get_gateway_devices().values():
         identifiers.update(device_payload_identifiers(device_payload))
@@ -334,7 +339,7 @@ def _sync_entity_device_links(
     ):
         if registry_entry.platform != DOMAIN or getattr(registry_entry, "device_id", None):
             continue
-        source_device_id = _source_device_id_from_unique_id(registry_entry.unique_id)
+        source_device_id = source_device_id_from_unique_id(registry_entry.unique_id)
         if source_device_id is None:
             continue
         ha_device_id = source_device_ids.get(source_device_id)
@@ -346,34 +351,6 @@ def _sync_entity_device_links(
         )
         updated_count += 1
     return updated_count
-
-
-def _source_device_ids(
-    device_payload: Mapping[str, Any],
-    identifiers: Iterable[tuple[str, str]],
-) -> set[str]:
-    """Return source device ids that may appear in entity unique_ids."""
-    source_ids: set[str] = set()
-    for key in ("device_id", "deviceId", "id"):
-        value = device_payload.get(key)
-        if value is not None:
-            source_ids.add(str(value))
-    for domain, identifier in identifiers:
-        if domain != DOMAIN:
-            continue
-        text = str(identifier)
-        source_ids.add(text.removeprefix("device:"))
-    return {value for value in source_ids if value}
-
-
-def _source_device_id_from_unique_id(unique_id: str) -> str | None:
-    """Extract Yeelight source device id from a device-backed unique_id."""
-    prefix = f"{DOMAIN}_"
-    if not unique_id.startswith(prefix):
-        return None
-    remainder = unique_id[len(prefix):]
-    source_device_id = remainder.split("_", 1)[0]
-    return source_device_id if source_device_id.isdigit() else None
 
 
 def _method_supports(method: Any, parameter_name: str) -> bool:

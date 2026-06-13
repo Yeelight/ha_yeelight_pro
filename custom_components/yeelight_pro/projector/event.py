@@ -9,6 +9,7 @@ from typing import Any, Mapping
 from homeassistant.components.event import EventDeviceClass
 
 from ..const import DOMAIN
+from ..identity import payload_entity_unique_id_prefix
 from ..utils import to_bool
 from .common import load_instance as _load_instance
 from .common import load_product_model as _load_product_model
@@ -75,6 +76,7 @@ def project_events(device_payload: Mapping[str, Any], *, domain: str) -> list[HA
     }
     event_components = _event_components(product_model, device_payload)
     device_info = project_payload_device_info(device_payload, instance)
+    unique_id_prefix = payload_entity_unique_id_prefix(device_payload, domain=domain)
 
     projections: list[HAEventProjection] = []
     total = len(event_components)
@@ -83,7 +85,7 @@ def project_events(device_payload: Mapping[str, Any], *, domain: str) -> list[HA
         projections.append(
             HAEventProjection(
                 component_id=component.component_id,
-                unique_id=f"{domain}_{source_device_id}_{component.component_id}_event",
+                unique_id=f"{unique_id_prefix}_{source_device_id}_{component.component_id}_event",
                 name=_event_name(
                     component,
                     total=total,

@@ -72,7 +72,7 @@ IOT_PROJECTION_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
             "empty value control category metadata-only coverage"
         ),
     },
-    "test_entity_candidates.py": {
+    "test_entity_candidate_schema_boundaries.py": {
         "test_schema_unknown_actions_do_not_create_device_buttons": (
             "unknown action button fallback rejection coverage"
         ),

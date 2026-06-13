@@ -10,6 +10,7 @@ from typing import Any, Mapping
 
 from homeassistant.components.fan import FanEntityFeature
 
+from ..identity import payload_entity_unique_id_prefix
 from ..utils import to_bool
 from .common import (
     NumericRange,
@@ -78,6 +79,7 @@ def project_fans(device_payload: Mapping[str, Any], *, domain: str) -> list[HAFa
     product_model = _load_product_model(device_payload)
     params = _params(device_payload)
     device_info = project_payload_device_info(device_payload, instance)
+    unique_id_prefix = payload_entity_unique_id_prefix(device_payload, domain=domain)
     key_map = _component_state_key_map(instance)
     projections: list[HAFanProjection] = []
 
@@ -136,7 +138,7 @@ def project_fans(device_payload: Mapping[str, Any], *, domain: str) -> list[HAFa
         projections.append(
             HAFanProjection(
                 component_id=component.component_id,
-                unique_id=f"{domain}_{instance.device_id}_{component.component_id}",
+                unique_id=f"{unique_id_prefix}_{instance.device_id}_{component.component_id}",
                 name=_project_fan_name(component),
                 available=schema_backed_component_available(
                     payload_available(device_payload, instance),
@@ -173,6 +175,7 @@ def _project_raw_fresh_air(
         return None
 
     device_id = str(device_payload.get("device_id", "unknown"))
+    unique_id_prefix = payload_entity_unique_id_prefix(device_payload, domain=domain)
     speed_key = "vmcf" if "vmcf" in params else None
     speed_range = _fallback_speed_range(params)
     supported_features = _supported_features(
@@ -186,7 +189,7 @@ def _project_raw_fresh_air(
 
     return HAFanProjection(
         component_id="fresh_air",
-        unique_id=f"{domain}_{device_id}_fresh_air",
+        unique_id=f"{unique_id_prefix}_{device_id}_fresh_air",
         name="新风",
         available=to_bool(device_payload.get("online"), default=True),
         is_on=_is_on(params, "vmcp" if "vmcp" in params else None, speed_key, None),

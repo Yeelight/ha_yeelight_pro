@@ -6,6 +6,12 @@ from typing import Any
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from ..const import DOMAIN
+from ..identity import (
+    coordinator_identity_scope,
+    device_entity_unique_id,
+    scoped_device_identifier,
+)
 from ..core.coordinator import YeelightProCoordinator
 
 
@@ -24,7 +30,11 @@ class YeelightProEntity(CoordinatorEntity[YeelightProCoordinator], Entity):
         super().__init__(coordinator)
         self._device_id = device_id
         self._component_id = component_id
-        self._attr_unique_id = f"yeelight_pro_{device_id}_{component_id}"
+        self._attr_unique_id = device_entity_unique_id(
+            coordinator,
+            device_id,
+            component_id,
+        )
 
     @property
     def device_data(self) -> dict[str, Any] | None:
@@ -39,7 +49,15 @@ class YeelightProEntity(CoordinatorEntity[YeelightProCoordinator], Entity):
             return {}
 
         return {
-            "identifiers": {("yeelight_pro", str(self._device_id))},
+            "identifiers": {
+                (
+                    DOMAIN,
+                    scoped_device_identifier(
+                        coordinator_identity_scope(self.coordinator),
+                        self._device_id,
+                    ),
+                )
+            },
             "name": data.get("name", f"Device {self._device_id}"),
             "manufacturer": "Yeelight",
             "model": data.get("product_schema", {}).get("name", "Unknown"),

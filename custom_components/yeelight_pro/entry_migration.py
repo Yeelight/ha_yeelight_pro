@@ -26,6 +26,7 @@ from .const import (
     CONF_LOCAL_GATEWAY_HOST,
     CONF_LOCAL_GATEWAY_PORT,
     CONF_OPEN_API_CLIENT_ID,
+    CONF_OPEN_API_CLIENT_SECRET,
     CONF_PRIVATE_DOMAIN,
     CONF_REFRESH_TOKEN,
     CONF_SCAN_INTERVAL,
@@ -121,6 +122,7 @@ def normalize_entry_data(value: Mapping[str, Any]) -> dict[str, Any]:
             CONF_HOUSE_NAME: "",
             CONF_CLOUD_REGION: "",
             CONF_OPEN_API_CLIENT_ID: "",
+            CONF_OPEN_API_CLIENT_SECRET: "",
             CONF_ACCOUNT_USER_ID: None,
             CONF_ACCOUNT_USERNAME: "",
             CONF_SCAN_LOGIN_DEVICE: "",
@@ -179,6 +181,14 @@ def normalize_entry_data(value: Mapping[str, Any]) -> dict[str, Any]:
         CONF_CLOUD_REGION: _cloud_region(source, cloud_domain),
         CONF_OPEN_API_CLIENT_ID: _string(
             _first_value(source, CONF_OPEN_API_CLIENT_ID, "clientId", "client_id")
+        ),
+        CONF_OPEN_API_CLIENT_SECRET: _string(
+            _first_value(
+                source,
+                CONF_OPEN_API_CLIENT_SECRET,
+                "clientSecret",
+                "client_secret",
+            )
         ),
         CONF_ACCOUNT_USER_ID: _optional_int(
             _first_value(source, CONF_ACCOUNT_USER_ID, "id", "user_id")

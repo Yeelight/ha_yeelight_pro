@@ -4,7 +4,7 @@
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 from aiohttp import ClientSession, ClientTimeout
 
@@ -15,6 +15,7 @@ from .client_request import build_client_headers, request_json
 from .exceptions import (
     AuthenticationError,
     ConnectionError,
+    TokenExpiredError,
     safe_error_summary,
 )
 from .scan_login import (
@@ -41,6 +42,14 @@ class YeelightProClient(YeelightProNodeApiMixin):
         self.session = session
         self.timeout = ClientTimeout(total=timeout)
         self._connected = False
+        self._token_refresh_handler: Callable[[], Awaitable[None]] | None = None
+
+    def set_token_refresh_handler(
+        self,
+        handler: Callable[[], Awaitable[None]] | None,
+    ) -> None:
+        """Attach a one-shot token refresh hook used after 401 responses."""
+        self._token_refresh_handler = handler
 
     @property
     def base_url(self) -> str:
@@ -63,9 +72,40 @@ class YeelightProClient(YeelightProNodeApiMixin):
         path: str,
         *,
         with_auth: bool = True,
+        _retry_on_token_refresh: bool = True,
         **kwargs,
     ) -> dict[str, Any]:
-        """发送 HTTP 请求."""
+        """发送 HTTP 请求。"""
+        try:
+            return await self._request_once(
+                method,
+                path,
+                with_auth=with_auth,
+                **kwargs,
+            )
+        except TokenExpiredError:
+            if not with_auth or not _retry_on_token_refresh:
+                raise
+            handler = self._token_refresh_handler
+            if handler is None:
+                raise
+            await handler()
+            return await self._request_once(
+                method,
+                path,
+                with_auth=with_auth,
+                **kwargs,
+            )
+
+    async def _request_once(
+        self,
+        method: str,
+        path: str,
+        *,
+        with_auth: bool = True,
+        **kwargs,
+    ) -> dict[str, Any]:
+        """Send one HTTP request without automatic token refresh."""
         base = self.base_url.rstrip("/")
         url = f"{base}{path}"
         return await request_json(

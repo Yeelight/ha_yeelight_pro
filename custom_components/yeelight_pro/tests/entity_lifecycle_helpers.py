@@ -75,6 +75,7 @@ def lifecycle_coordinator(
         analytics_data=None,
         hide_unknown_entities=False,
         options=options or {},
+        entry_data={},
     )
 
 

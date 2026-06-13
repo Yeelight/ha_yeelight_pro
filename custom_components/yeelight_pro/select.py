@@ -22,6 +22,7 @@ from .device_select import iter_device_select_entities
 from .dynamic_entities import async_track_dynamic_entities
 from .entity_errors import raise_service_error
 from .house_metadata import house_device_info
+from .identity import entity_unique_id
 from .scene_helpers import scene_row_id, scene_row_name
 
 _LOGGER = logging.getLogger(__name__)
@@ -120,7 +121,7 @@ class YeelightProRoomSelect(CoordinatorEntity, SelectEntity):
     ) -> None:
         """初始化房间选择器."""
         super().__init__(coordinator)
-        self._attr_unique_id = f"{DOMAIN}_{coordinator.house_id}_select_room"
+        self._attr_unique_id = entity_unique_id(coordinator, "select", "room")
         self._attr_name = NAME_ROOM
         self._selected: str | None = None
 
@@ -175,7 +176,7 @@ class YeelightProGroupSelect(CoordinatorEntity, SelectEntity):
     ) -> None:
         """初始化灯组选择器."""
         super().__init__(coordinator)
-        self._attr_unique_id = f"{DOMAIN}_{coordinator.house_id}_select_group"
+        self._attr_unique_id = entity_unique_id(coordinator, "select", "group")
         self._attr_name = NAME_GROUP
         self._selected: str | None = None
 
@@ -230,7 +231,7 @@ class YeelightProSceneSelect(CoordinatorEntity, SelectEntity):
     ) -> None:
         """初始化场景选择器."""
         super().__init__(coordinator)
-        self._attr_unique_id = f"{DOMAIN}_{coordinator.house_id}_select_scene"
+        self._attr_unique_id = entity_unique_id(coordinator, "select", "scene")
         self._attr_name = NAME_SCENE
         self._last_executed: str | None = None
 

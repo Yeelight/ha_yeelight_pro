@@ -16,22 +16,15 @@ from ..canonical.models import (
     HADeviceInstanceModel,
     HAProductModel,
 )
+from ..identity import payload_entity_unique_id_prefix
 from .common import (
     load_product_model,
     payload_available,
     product_component,
     schema_backed_component_available,
 )
-from .climate_helpers import (
-    climate_fan_mode,
-    climate_fan_mode_values,
-    climate_fan_modes,
-    climate_hvac_mode,
-    climate_hvac_modes,
-    climate_skip_reason,
-    state_key,
-    state_value,
-)
+from .climate_helpers import climate_skip_reason
+from .climate_projection import build_climate_projection
 from .device import flatten_instance_state, project_payload_device_info
 from .platform_evidence import (
     component_has_climate_evidence,
@@ -117,9 +110,11 @@ def _project_legacy_climate(
         return None
 
     device_id = str(device_payload.get("device_id", "unknown"))
-    return _build_climate_projection(
+    unique_id_prefix = payload_entity_unique_id_prefix(device_payload, domain=domain)
+    return build_climate_projection(
+        HAClimateProjection,
         component_id="climate",
-        unique_id=f"{domain}_{device_id}_climate",
+        unique_id=f"{unique_id_prefix}_{device_id}_climate",
         name="温控",
         available=payload_available(device_payload),
         state=params,
@@ -175,9 +170,16 @@ def _project_instance_climate(
     )
     mode_prop = _first_available_property(params, component, ("acm",))
     fan_prop = _first_available_property(params, component, ("acf",))
-    return _build_climate_projection(
+    return build_climate_projection(
+        HAClimateProjection,
         component_id=component.component_id,
-        unique_id=_project_climate_unique_id(instance, component, total=total, domain=domain),
+        unique_id=_project_climate_unique_id(
+            device_payload,
+            instance,
+            component,
+            total=total,
+            domain=domain,
+        ),
         name=_project_climate_name(component, total=total),
         available=available,
         state=params,
@@ -204,62 +206,6 @@ def _project_instance_climate(
         current_temperature_key=current_prop,
         schema_component=schema_component,
         device_info=project_payload_device_info(device_payload, instance),
-    )
-
-
-def _build_climate_projection(
-    *,
-    component_id: str,
-    unique_id: str,
-    name: str | None,
-    available: bool,
-    state: Mapping[str, Any],
-    power_key: str | None,
-    target_temperature_key: str | None,
-    mode_key: str | None,
-    fan_mode_key: str | None,
-    current_temperature_key: str | None,
-    schema_component: Any | None,
-    device_info: dict[str, Any] | None,
-) -> HAClimateProjection:
-    """根据运行时状态构造 Home Assistant climate projection."""
-    supported_features = ClimateEntityFeature(0)
-    if target_temperature_key is not None:
-        supported_features |= ClimateEntityFeature.TARGET_TEMPERATURE
-    if fan_mode_key is not None:
-        supported_features |= ClimateEntityFeature.FAN_MODE
-
-    return HAClimateProjection(
-        component_id=component_id,
-        unique_id=unique_id,
-        name=name,
-        available=available,
-        current_temperature=(
-            _float(state_value(state, current_temperature_key))
-            if state_key(current_temperature_key)
-            else None
-        ),
-        target_temperature=(
-            _float(state_value(state, target_temperature_key))
-            if state_key(target_temperature_key)
-            else None
-        ),
-        hvac_mode=climate_hvac_mode(state, power_key=power_key, mode_key=mode_key),
-        hvac_modes=climate_hvac_modes(mode_key),
-        supported_features=supported_features,
-        power_key=power_key,
-        target_temperature_key=target_temperature_key,
-        mode_key=mode_key,
-        fan_mode_key=fan_mode_key,
-        fan_mode=climate_fan_mode(state, fan_mode_key),
-        fan_modes=climate_fan_modes(schema_component, fan_key=fan_mode_key),
-        fan_mode_values=(
-            climate_fan_mode_values(schema_component)
-            if fan_mode_key is not None
-            else {}
-        ),
-        device_info=device_info,
-        icon="mdi:air-conditioner",
     )
 
 
@@ -377,23 +323,17 @@ def _project_climate_name(
 
 
 def _project_climate_unique_id(
+    device_payload: Mapping[str, Any],
     instance: HADeviceInstanceModel,
     component: ComponentInstanceModel,
     *,
     total: int,
     domain: str,
 ) -> str:
-    """Return stable unique_id, preserving the historical single-climate shape."""
+    """Return stable unique_id with the runtime identity scope applied."""
+    unique_id_prefix = payload_entity_unique_id_prefix(device_payload, domain=domain)
     if total <= 1 and component.component_id in {"air_conditioner", "climate"}:
-        return f"{domain}_{instance.device_id}_climate"
-    return f"{domain}_{instance.device_id}_{component.component_id}_climate"
+        return f"{unique_id_prefix}_{instance.device_id}_climate"
+    return f"{unique_id_prefix}_{instance.device_id}_{component.component_id}_climate"
 
-
-def _float(value: Any) -> float | None:
-    """安全浮点数转换。"""
-    if value is None or value == "":
-        return None
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
+__all__ = ["HAClimateProjection", "project_climate", "project_climates"]

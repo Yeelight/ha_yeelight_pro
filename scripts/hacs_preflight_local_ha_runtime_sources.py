@@ -47,8 +47,8 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "async_try_lan_control_group": "LAN group write routing helper",
         "async_try_lan_execute_scene": "LAN scene execution routing helper",
         "async_set_properties": "LAN runtime property write call",
-        "\"nt\": 2": "LAN node type for documented device writes",
-        "\"nt\": 4": "LAN node type for documented group writes",
+        '"device": 2': "LAN node type for documented device writes",
+        '"group": 4': "LAN node type for documented group writes",
         "\"set\": dict(params)": "LAN gateway_set.prop set-payload boundary",
         "\"toggle\": list(properties)": "LAN gateway_set.prop toggle boundary",
         "scenes=[{\"id\": node_id, \"duration\": duration}]": (

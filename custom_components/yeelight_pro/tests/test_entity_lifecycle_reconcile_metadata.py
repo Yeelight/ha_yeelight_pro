@@ -11,6 +11,7 @@ from custom_components.yeelight_pro.entity_lifecycle import (
     async_reconcile_entity_registry,
     entity_registry_reconcile_diagnostics,
 )
+from custom_components.yeelight_pro.identity import entry_identity_scope, scoped_entity_unique_id
 
 from .entity_lifecycle_helpers import (
     FakeEntityRegistry,
@@ -84,10 +85,14 @@ async def test_reconcile_refreshes_static_house_select_metadata(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """house-level select 旧 registry 条目也必须回填友好名称和图标."""
+    scope = entry_identity_scope({}, 429392)
+    room_uid = scoped_entity_unique_id(scope, "select", "room")
+    group_uid = scoped_entity_unique_id(scope, "select", "group")
+    scene_uid = scoped_entity_unique_id(scope, "select", "scene")
     registry = FakeEntityRegistry(
         [
             registry_entry(
-                unique_id="yeelight_pro_429392_select_room",
+                unique_id=room_uid,
                 entity_id="select.yeelight_pro_429392",
                 domain="select",
                 original_name=None,
@@ -95,7 +100,7 @@ async def test_reconcile_refreshes_static_house_select_metadata(
                 has_entity_name=None,
             ),
             registry_entry(
-                unique_id="yeelight_pro_429392_select_group",
+                unique_id=group_uid,
                 entity_id="select.yeelight_pro_429392_2",
                 domain="select",
                 original_name=None,
@@ -103,7 +108,7 @@ async def test_reconcile_refreshes_static_house_select_metadata(
                 has_entity_name=None,
             ),
             registry_entry(
-                unique_id="yeelight_pro_429392_select_scene",
+                unique_id=scene_uid,
                 entity_id="select.yeelight_pro_429392_3",
                 domain="select",
                 original_name=None,
@@ -123,9 +128,9 @@ async def test_reconcile_refreshes_static_house_select_metadata(
     )
 
     assert active_unique_ids == {
-        "yeelight_pro_429392_select_room",
-        "yeelight_pro_429392_select_group",
-        "yeelight_pro_429392_select_scene",
+        room_uid,
+        group_uid,
+        scene_uid,
     }
     assert registry.updated_entities == [
         (
@@ -173,17 +178,19 @@ async def test_reconcile_does_not_refresh_removed_scene_domain_metadata(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """同 unique_id 下只刷新 active button，旧 scene 平台继续走 stale 审计."""
+    scope = entry_identity_scope({}, 0)
+    scene_uid = scoped_entity_unique_id(scope, "scene", "scene_1")
     registry = FakeEntityRegistry(
         [
             registry_entry(
-                unique_id="yeelight_pro_scene_scene_1",
+                unique_id=scene_uid,
                 entity_id="scene.old_scene",
                 domain="scene",
                 original_name="旧场景",
                 original_icon="mdi:home",
             ),
             registry_entry(
-                unique_id="yeelight_pro_scene_scene_1",
+                unique_id=scene_uid,
                 entity_id="button.scene_1",
                 domain="button",
                 original_name=None,
@@ -201,7 +208,7 @@ async def test_reconcile_does_not_refresh_removed_scene_domain_metadata(
         coordinator,
     )
 
-    assert active_unique_ids == {"yeelight_pro_scene_scene_1"}
+    assert active_unique_ids == {scene_uid}
     assert registry.updated_entities == [
         (
             "button.scene_1",
@@ -216,7 +223,7 @@ async def test_reconcile_does_not_refresh_removed_scene_domain_metadata(
     ]
     assert registry.entries[0].original_name == "旧场景"
     assert getattr(coordinator, "_yeelight_pro_pending_stale_entity_keys") == {
-        ("scene", "yeelight_pro_scene_scene_1")
+        ("scene", scene_uid)
     }
     assert entity_registry_reconcile_diagnostics(coordinator) == reconcile_diagnostics(
         active=1,

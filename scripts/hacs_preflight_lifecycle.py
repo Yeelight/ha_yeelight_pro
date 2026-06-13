@@ -92,10 +92,10 @@ LIFECYCLE_CONTRACT_TOKENS = {
         ),
     },
     "tests/test_ha_device_registry.py": {
-        "test_sync_gateway_devices_updates_legacy_house_placeholder_devices": (
-            "legacy house helper placeholder migration coverage"
+        "test_sync_gateway_devices_updates_house_helper_device_metadata": (
+            "scoped house helper metadata coverage"
         ),
-        "House 12345": "legacy house placeholder fixture",
+        "scoped_house_identifier": "scoped house helper identifier fixture",
         "Yeelight Pro 家庭": "friendly house helper model assertion",
     },
     "tests/ha_device_registry_helpers.py": {

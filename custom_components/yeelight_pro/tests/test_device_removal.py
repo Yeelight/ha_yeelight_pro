@@ -13,6 +13,10 @@ from homeassistant.core import HomeAssistant
 from custom_components.yeelight_pro import async_remove_config_entry_device
 from custom_components.yeelight_pro.const import DOMAIN
 from custom_components.yeelight_pro.core.coordinator import YeelightProCoordinator
+from custom_components.yeelight_pro.identity import (
+    entry_identity_scope,
+    scoped_house_identifier,
+)
 
 
 def _entry(entry_id: str = "entry-1") -> MagicMock:
@@ -45,6 +49,8 @@ def _coordinator(hass: HomeAssistant) -> MagicMock:
     """Build a coordinator test double."""
     coordinator = MagicMock(spec=YeelightProCoordinator)
     coordinator.house_id = 12345
+    coordinator.entry_data = {}
+    coordinator.houses = []
     coordinator.data = {}
     coordinator.get_gateway_devices.return_value = {}
     hass.data[DOMAIN] = {
@@ -96,10 +102,13 @@ async def test_remove_config_entry_device_rejects_active_house_device(
     """House-level helper devices are active while the coordinator is loaded."""
     _coordinator(hass)
 
+    scope = entry_identity_scope({}, 12345)
+    house_identifier = scoped_house_identifier(scope, 12345)
+
     allowed = await async_remove_config_entry_device(
         hass,
         _entry(),
-        _device_entry((DOMAIN, "12345")),
+        _device_entry((DOMAIN, house_identifier)),
     )
 
     assert allowed is False

@@ -12,6 +12,7 @@ from typing import Any, Mapping
 
 from ..canonical.models import ComponentInstanceModel, HADeviceInstanceModel
 from ..entity_category import entity_category_for_property
+from ..identity import payload_entity_unique_id_prefix
 from ..utils import to_bool, to_str
 from .common import (
     component_index,
@@ -100,6 +101,7 @@ def _project_instance_switches(
     product_model = _load_product_model(device_payload)
     base_name = instance.name or to_str(device_payload.get("name"))
     device_info = project_payload_device_info(device_payload, instance)
+    unique_id_prefix = payload_entity_unique_id_prefix(device_payload, domain=domain)
     params = _params(device_payload)
     key_map = _component_state_key_map(instance)
     projections: list[HASwitchProjection] = []
@@ -156,7 +158,7 @@ def _project_instance_switches(
         projections.append(
             HASwitchProjection(
                 component_id=component.component_id,
-                unique_id=f"{domain}_{instance.device_id}_{component.component_id}",
+                unique_id=f"{unique_id_prefix}_{instance.device_id}_{component.component_id}",
                 name=_build_switch_name(
                     base_name,
                     component.component_id,
@@ -215,6 +217,7 @@ def _project_raw_switches(
     """基于原始 params 投影 switch（无实例模型时的回退路径）."""
     params = _params(device_payload)
     device_id = str(device_payload.get("device_id", "unknown"))
+    unique_id_prefix = payload_entity_unique_id_prefix(device_payload, domain=domain)
     base_name = to_str(device_payload.get("name")) or device_id
     device_info = project_payload_device_info(device_payload, instance)
     available = to_bool(device_payload.get("online"), default=True)
@@ -240,7 +243,7 @@ def _project_raw_switches(
             projections.append(
                 HASwitchProjection(
                     component_id=component_id,
-                    unique_id=f"{domain}_{device_id}_{component_id}",
+                    unique_id=f"{unique_id_prefix}_{device_id}_{component_id}",
                     name=_build_switch_name(
                         base_name,
                         component_id,
@@ -274,7 +277,7 @@ def _project_raw_switches(
     return [
         HASwitchProjection(
             component_id=component_id,
-            unique_id=f"{domain}_{device_id}_{component_id}",
+            unique_id=f"{unique_id_prefix}_{device_id}_{component_id}",
             name=base_name,
             available=available,
             is_on=bool(params.get(direct_prop, False)),

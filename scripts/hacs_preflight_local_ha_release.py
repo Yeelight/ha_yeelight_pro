@@ -124,6 +124,12 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         "scripts/hacs_preflight_release_files.py": (
             "required release file registry self-guard"
         ),
+        "RELEASE_COMPONENT_FILES": "component release file group import",
+        "RELEASE_TEST_FILES": "test release file group import",
+    },
+    "scripts/hacs_preflight_release_file_groups.py": {
+        "RELEASE_COMPONENT_FILES": "component release file group registry",
+        "RELEASE_TEST_FILES": "test release file group registry",
         "hacs_preflight_platform_mapping_data.py": (
             "platform mapping token registry required release file guard"
         ),

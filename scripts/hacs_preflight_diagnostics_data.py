@@ -74,6 +74,20 @@ DIAGNOSTICS_CONTRACT_TEST_TOKENS = {
         "entity_registry_reconcile": "registry reconciliation summary is covered",
         "entity_registry_cleanup_audit": "registry cleanup audit summary is covered",
     },
+    "tests/test_diagnostics_runtime_redaction.py": {
+        "test_diagnostics_reports_safe_property_hydration_aggregates": (
+            "property hydration redaction coverage"
+        ),
+        "test_diagnostics_reports_safe_runtime_health": "runtime health redaction coverage",
+        "test_diagnostics_reports_analytics_soft_failure_without_details": (
+            "analytics soft-failure redaction coverage"
+        ),
+        "test_diagnostics_reports_optional_lan_start_failure_without_details": (
+            "optional LAN failure redaction coverage"
+        ),
+        "api.yeelight.com/apis/iot/house/429392": "runtime URL leakage marker",
+        "token-secret": "runtime token leakage marker",
+    },
     "tests/diagnostics_runtime_helpers.py": {
         "build_aggregate_runtime_coordinator": (
             "aggregate runtime diagnostics fixture helper"

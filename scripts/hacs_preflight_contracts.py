@@ -120,8 +120,8 @@ def check_lan_contract_tests(component_root: Path) -> list[str]:
             "async_try_lan_toggle_device": "LAN device toggle routing helper",
             "async_try_lan_control_group": "LAN group write routing helper",
             "async_try_lan_execute_scene": "LAN scene execution routing helper",
-            "\"nt\": 2": "LAN device node type",
-            "\"nt\": 4": "LAN group node type",
+            '"device": 2': "LAN device node type",
+            '"group": 4': "LAN group node type",
             "\"toggle\": list(properties)": "LAN toggle payload boundary",
             "scenes=[{\"id\": node_id, \"duration\": duration}]": (
                 "LAN scene payload boundary"

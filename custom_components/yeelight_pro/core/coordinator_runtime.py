@@ -9,6 +9,7 @@ from typing import Any, Mapping, Protocol
 from homeassistant.core import HomeAssistant
 
 from ..event_support import YeelightRuntimeEvent
+from ..identity import apply_identity_scope_to_device_maps
 from ..lan_payload import (
     LanSceneStateUpdate,
     lan_event_payloads,
@@ -156,6 +157,12 @@ def _apply_lan_topology_to_coordinator(
         nodes,
         builder=coordinator._device_payload_builder,
         apply_runtime_overrides=coordinator._runtime_state.apply_to_device,
+    )
+
+    apply_identity_scope_to_device_maps(
+        entry_data=getattr(coordinator, "entry_data", None),
+        house_id=getattr(coordinator, "house_id", None),
+        devices=topology_payloads.devices,
     )
 
     # LAN topology 是网关当前拓扑快照，空集合也要同步以便 registry cleanup 生效。

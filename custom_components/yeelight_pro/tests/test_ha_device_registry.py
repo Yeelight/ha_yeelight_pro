@@ -12,6 +12,10 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.yeelight_pro.const import DOMAIN
 from custom_components.yeelight_pro.ha_device_registry import async_sync_gateway_devices
+from custom_components.yeelight_pro.identity import (
+    entry_identity_scope,
+    scoped_house_identifier,
+)
 
 from .ha_device_registry_helpers import (
     DeviceRegistryCoordinator,
@@ -169,21 +173,23 @@ async def test_sync_gateway_devices_relinks_existing_device_entities(
     assert updated_entity.device_id == device.id
 
 
-async def test_sync_gateway_devices_updates_legacy_house_placeholder_devices(
+async def test_sync_gateway_devices_updates_house_helper_device_metadata(
     hass: HomeAssistant,
 ) -> None:
-    """旧家庭壳设备不能继续显示 Yeelight Pro/House 加 id 的占位名."""
+    """家庭壳设备使用当前 scope identifier 并清理占位用户名称。"""
     entry = _entry()
     entry.add_to_hass(hass)
+    coordinator = DeviceRegistryCoordinator({})
+    scope = entry_identity_scope(coordinator.entry_data, coordinator.house_id)
+    house_identifier = scoped_house_identifier(scope, coordinator.house_id)
     device_registry = dr.async_get(hass)
     legacy = device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
-        identifiers={(DOMAIN, "12345")},
+        identifiers={(DOMAIN, house_identifier)},
         manufacturer="Yeelight",
         name="Yeelight Pro 12345",
     )
     device_registry.async_update_device(legacy.id, name_by_user="House 12345")
-    coordinator = DeviceRegistryCoordinator({})
 
     await async_sync_gateway_devices(hass, entry, coordinator)
 
@@ -192,8 +198,7 @@ async def test_sync_gateway_devices_updates_legacy_house_placeholder_devices(
     assert updated.name == "绿地中央公园"
     assert updated.name_by_user is None
     assert updated.model == "Yeelight Pro 家庭"
-    assert (DOMAIN, "12345") in updated.identifiers
-    assert (DOMAIN, "house:12345") in updated.identifiers
+    assert updated.identifiers == {(DOMAIN, house_identifier)}
 
 
 async def test_sync_gateway_devices_schedules_save_to_drop_legacy_unknown_fields(

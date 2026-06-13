@@ -13,6 +13,7 @@ from homeassistant.components.light import ColorMode
 
 from ..canonical.models import ComponentInstanceModel, HADeviceInstanceModel
 from ..core.device_runtime_capabilities import state_blocks_light_projection
+from ..identity import payload_entity_unique_id_prefix
 from ..utils import to_bool, to_category
 from .common import (
     NumericRange,
@@ -151,10 +152,11 @@ def _project_legacy_light(
     )
     is_on = to_bool(state.get("p"))
     device_id = str(device_payload.get("device_id", "unknown"))
+    unique_id_prefix = payload_entity_unique_id_prefix(device_payload, domain=domain)
 
     return HALightProjection(
         component_id="light",
-        unique_id=f"{domain}_{device_id}_light",
+        unique_id=f"{unique_id_prefix}_{device_id}_light",
         name=None,
         available=to_bool(device_payload.get("online"), default=True),
         is_on=is_on,
@@ -213,10 +215,11 @@ def _project_instance_light(
         ),
     )
     is_on = to_bool(state.get("p"))
+    unique_id_prefix = payload_entity_unique_id_prefix(device_payload, domain=domain)
 
     return HALightProjection(
         component_id=component.component_id,
-        unique_id=f"{domain}_{instance.device_id}_{component.component_id}",
+        unique_id=f"{unique_id_prefix}_{instance.device_id}_{component.component_id}",
         name=_project_light_name(component, total=total),
         available=schema_backed_component_available(
             payload_available(device_payload, instance),
