@@ -4,8 +4,12 @@ All notable changes to the Yeelight Pro integration will be documented in this f
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-06-15
+
 ### Fixed
 
+- Added bundled HACS brand icon assets so validation no longer falls back to the Home Assistant brands repository.
+- Stabilized the GitHub Actions test gate on Python 3.11, matching the release and validation workflows used for HACS publication.
 - Fixed write APIs that referenced an implicit `client.house_id`; control, toggle, scene, and group commands now receive `house_id` explicitly.
 - Preserved authentication failures as `ConfigEntryAuthFailed` so Home Assistant can trigger reauthentication.
 - Made `pytest -q` reproducible from the integration root through local `pyproject.toml` settings.

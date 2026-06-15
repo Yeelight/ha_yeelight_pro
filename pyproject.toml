@@ -1,6 +1,6 @@
 [project]
 name = "ha-yeelight-pro"
-version = "1.0.0"
+version = "1.0.2"
 description = "Yeelight Pro integration for Home Assistant"
 requires-python = ">=3.11"
 

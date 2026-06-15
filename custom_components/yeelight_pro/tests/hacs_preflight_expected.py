@@ -73,6 +73,7 @@ EXPECTED_COMPONENT_FILES = {
     "adapters/device_helpers.py",
     "adapters/product_helpers.py",
     "analytics_sensor.py",
+    "brand/icon.png",
     "capabilities/documented_catalog.py",
     "capabilities/ha_core_platforms.py",
     "capabilities/ha_platforms.py",

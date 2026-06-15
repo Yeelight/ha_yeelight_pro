@@ -12,6 +12,7 @@ RELEASE_COMPONENT_FILES = {
     "custom_components/yeelight_pro/adapters/device_helpers.py",
     "custom_components/yeelight_pro/adapters/product_helpers.py",
     "custom_components/yeelight_pro/analytics_sensor.py",
+    "custom_components/yeelight_pro/brand/icon.png",
     "custom_components/yeelight_pro/capabilities/documented_catalog.py",
     "custom_components/yeelight_pro/capabilities/ha_core_platforms.py",
     "custom_components/yeelight_pro/capabilities/ha_platforms.py",
