@@ -51,6 +51,7 @@ def _client() -> AsyncMock:
     """Build a client test double."""
     client = AsyncMock(spec=YeelightProClient)
     client.check_health.return_value = True
+    client.disconnect = AsyncMock()
     return client
 
 
@@ -78,10 +79,11 @@ async def test_setup_entry_normalizes_legacy_options(
     hass.data.setdefault(DOMAIN, {})
     entry = _config_entry_with_legacy_options()
     register_config_entry(hass, entry)
+    client = _client()
 
     with patch(
         "custom_components.yeelight_pro.YeelightProClient",
-        return_value=_client(),
+        return_value=client,
     ), patch(
         "custom_components.yeelight_pro.YeelightProCoordinator",
     ) as coordinator_class, patch(
@@ -105,6 +107,13 @@ async def test_setup_entry_normalizes_legacy_options(
         assert await async_setup_entry(hass, entry) is True
         coordinator.topology_generation = 2
         listener_holder["listener"]()
+        from custom_components.yeelight_pro import async_unload_entry
+
+        with patch(
+            "homeassistant.config_entries.ConfigEntries.async_unload_platforms",
+            return_value=True,
+        ):
+            assert await async_unload_entry(hass, entry) is True
 
     coordinator_options = coordinator_class.call_args.kwargs["options"]
     assert coordinator_options[CONF_SCAN_INTERVAL] == MAX_SCAN_INTERVAL
@@ -114,4 +123,5 @@ async def test_setup_entry_normalizes_legacy_options(
     assert coordinator_options[CONF_HIDE_UNKNOWN_ENTITIES] is False
     assert coordinator_options[CONF_TOPOLOGY_CHANGE_REPAIRS] is False
     assert forward_setups.await_args is not None
+    client.disconnect.assert_awaited_once()
     create_issue.assert_not_called()
