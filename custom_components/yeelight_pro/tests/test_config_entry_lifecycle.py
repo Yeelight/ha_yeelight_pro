@@ -164,7 +164,11 @@ async def test_setup_entry_binds_analytics_without_private_injection(
     ), patch(
         "homeassistant.config_entries.ConfigEntries.async_forward_entry_setups",
         new_callable=AsyncMock,
-    ):
+    ), patch(
+        "custom_components.yeelight_pro.core.analytics_coordinator."
+        "YeelightProAnalyticsCoordinator.async_config_entry_first_refresh",
+        new_callable=AsyncMock,
+    ) as analytics_first_refresh:
         from custom_components.yeelight_pro import async_setup_entry
 
         assert await async_setup_entry(hass, mock_config_entry) is True
@@ -175,6 +179,7 @@ async def test_setup_entry_binds_analytics_without_private_injection(
     assert not hasattr(analytics_coordinator, "_main_coordinator")
     assert not hasattr(analytics_coordinator, "_config_entry")
     assert analytics_coordinator.config_entry.entry_id == mock_config_entry.entry_id
+    analytics_first_refresh.assert_not_awaited()
     assert coordinator.analytics_data is analytics_coordinator.data
     await analytics_coordinator.async_shutdown()
 

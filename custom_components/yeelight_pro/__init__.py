@@ -176,7 +176,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             entry_data=coordinator.entry_data,
         )
         try:
-            await analytics_coordinator.async_config_entry_first_refresh()
+            await analytics_coordinator.async_refresh()
         except Exception as err:
             _LOGGER.warning(
                 "Yeelight Pro analytics setup degraded, exposing unavailable sensors: %s",
