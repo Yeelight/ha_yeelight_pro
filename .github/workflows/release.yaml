@@ -3,8 +3,6 @@ name: Release
 on:
   push:
     tags: ["v*"]
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       tag:
@@ -42,8 +40,10 @@ jobs:
           python scripts/check_release_zip.py --write yeelight_pro.zip
 
       - name: Upload to release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: yeelight_pro.zip
-          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
-          generate_release_notes: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          gh release view "$RELEASE_TAG" >/dev/null 2>&1 || \
+            gh release create "$RELEASE_TAG" --generate-notes --title "Yeelight Pro $RELEASE_TAG"
+          gh release upload "$RELEASE_TAG" yeelight_pro.zip --clobber
