@@ -12,6 +12,8 @@ from .device_payload import (
     RuntimeOverrideApplier,
     refresh_classification_metadata,
 )
+from .lan_topology_merge import merge_lan_payload
+from .lan_sensor_values import normalize_lan_device_params
 
 NODE_TYPE_ROOM = 1
 NODE_TYPE_DEVICE = 2
@@ -27,6 +29,16 @@ _LIGHT_PARAMS: dict[int, dict[str, Any]] = {
     4: {"p": False, "l": 100, "ct": 4000, "c": 0xFFFFFF, "m": 2},
     14: {"p": False, "l": 100, "ct": 4000},
 }
+_BATH_HEATER_PARAMS: dict[str, Any] = {
+    "p": False,
+    "bhm": 1,
+    "do": 1,
+    "ve": 0,
+    "fa": 0,
+    "he": 0,
+    "tgt": 26,
+    "t": 26,
+}
 _LAN_TYPE_SPECS: dict[int, dict[str, Any]] = {
     1: {"category": "light", "model": "开关灯", "params": _LIGHT_PARAMS[1]},
     2: {"category": "light", "model": "亮度灯", "params": _LIGHT_PARAMS[2]},
@@ -38,7 +50,11 @@ _LAN_TYPE_SPECS: dict[int, dict[str, Any]] = {
     13: {"category": "relay_switch", "model": "继电器开关", "switch_prop": "sp"},
     14: {"category": "light", "model": "色温灯", "params": _LIGHT_PARAMS[14]},
     15: {"category": "temp_control", "model": "温控设备", "params": {"acp": False, "actt": 26, "acct": 26}},
-    128: {"category": "scene_panel", "model": "情景面板", "events": ("click", "hold")},
+    128: {
+        "category": "scene_panel",
+        "model": "情景面板",
+        "events": ("click", "hold", "release_after_hold"),
+    },
     129: {
         "category": "human_sensor",
         "model": "人体传感器",
@@ -66,8 +82,12 @@ _LAN_TYPE_SPECS: dict[int, dict[str, Any]] = {
         "params": {"mv": False, "luminance": 0},
         "events": ("motion_detected", "motion_undetected"),
     },
-    2049: {"category": "temp_control", "model": "温控设备", "params": {"p": False, "tgt": 26, "t": 26}},
-    2052: {"category": "human_sensor", "model": "人体传感器", "events": ("human_enter", "human_leave", "handwave")},
+    2049: {
+        "category": "temp_control",
+        "model": "浴霸加热器",
+        "params": _BATH_HEATER_PARAMS,
+    },
+    2052: {"category": "other", "model": "TOF传感器", "events": ("handwave",)},
 }
 
 
@@ -107,6 +127,7 @@ def build_lan_topology_payloads(
         normalized = builder.normalize(payload, {})
         normalized["id"] = node_id
         normalized["device_id"] = node_id
+        normalized = merge_lan_payload(result.devices.get(node_id), normalized)
         normalized = apply_runtime_overrides(normalized)
         builder.attach_canonical_models_if_available(
             normalized,
@@ -136,7 +157,7 @@ def _device_payload_from_node(node: Mapping[str, Any]) -> dict[str, Any]:
     spec = _LAN_TYPE_SPECS.get(lan_type or -1, {})
     category = to_str(spec.get("category")) or "other"
     model = to_str(spec.get("model")) or "易来设备"
-    params = _params_for_node(node, spec)
+    params = _params_for_node(node, spec, lan_type=lan_type)
 
     payload: dict[str, Any] = {
         "id": node_id,
@@ -169,19 +190,29 @@ def _device_payload_from_node(node: Mapping[str, Any]) -> dict[str, Any]:
         payload["subDeviceList"] = subdevices
     if events := _events_for_spec(spec):
         payload["events"] = events
+    if event_subdevice := _event_subdevice_for_node(node, spec, category):
+        payload.setdefault("subDeviceList", []).append(event_subdevice)
     return payload
 
 
-def _params_for_node(node: Mapping[str, Any], spec: Mapping[str, Any]) -> dict[str, Any]:
+def _params_for_node(
+    node: Mapping[str, Any],
+    spec: Mapping[str, Any],
+    *,
+    lan_type: int | None,
+) -> dict[str, Any]:
     raw_params = spec.get("params")
     params = dict(raw_params) if isinstance(raw_params, Mapping) else {}
+    node_params = node.get("params")
+    if isinstance(node_params, Mapping):
+        params.update(dict(node_params))
     switch_prop = to_str(spec.get("switch_prop"))
     if switch_prop is None:
-        return params
+        return normalize_lan_device_params(params, lan_type=lan_type)
     count = _channel_count(node, default=to_int(spec.get("channels")) or 1)
     for index in range(1, count + 1):
-        params[f"{index}-{switch_prop}"] = False
-    return params
+        params.setdefault(f"{index}-{switch_prop}", False)
+    return normalize_lan_device_params(params, lan_type=lan_type)
 
 
 def _subdevices_for_node(
@@ -205,6 +236,29 @@ def _subdevices_for_node(
             "properties": [{"propId": switch_prop, "access": "read_write"}],
         })
     return subdevices
+
+
+def _event_subdevice_for_node(
+    node: Mapping[str, Any],
+    spec: Mapping[str, Any],
+    category: str,
+) -> dict[str, Any] | None:
+    events = _events_for_spec(spec)
+    if not events:
+        return None
+    if category not in {"scene_panel", "knob_switch"}:
+        return None
+    return {
+        "index": _event_subdevice_index(node),
+        "category": category,
+        "name": None,
+        "events": events,
+    }
+
+
+def _event_subdevice_index(node: Mapping[str, Any]) -> int:
+    """Use a high stable index so event-only rows do not collide with relays."""
+    return (to_int(node.get("ch_num")) or 2) + 1
 
 
 def _events_for_spec(spec: Mapping[str, Any]) -> list[dict[str, Any]]:

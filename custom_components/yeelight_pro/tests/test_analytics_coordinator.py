@@ -11,6 +11,7 @@ from homeassistant.helpers.update_coordinator import UpdateFailed
 import pytest
 
 from custom_components.yeelight_pro.core.analytics_coordinator import (
+    AnalyticsSnapshot,
     YeelightProAnalyticsCoordinator,
 )
 from custom_components.yeelight_pro.core.client import YeelightProClient
@@ -143,3 +144,30 @@ async def test_analytics_coordinator_keeps_last_snapshot_on_soft_failure(hass) -
     await coordinator.async_refresh()
 
     assert coordinator.data is first_snapshot
+
+
+@pytest.mark.asyncio
+async def test_analytics_coordinator_binding_syncs_main_coordinator_snapshot(hass) -> None:
+    """analytics coordinator 应通过显式绑定同步主 coordinator 诊断缓存。"""
+    client = AsyncMock(spec=YeelightProClient)
+    coordinator = YeelightProAnalyticsCoordinator(hass, client, 12345)
+    main_coordinator = MagicMock()
+    main_coordinator.analytics_data = None
+    main_coordinator.entry_data = {"house_name": "星河暖居"}
+    main_coordinator.houses = [{"id": 12345, "name": "星河暖居"}]
+    entry = MagicMock()
+    entry.async_on_unload = MagicMock()
+
+    coordinator.bind_runtime_coordinator(main_coordinator, entry=entry)
+    snapshot = AnalyticsSnapshot(
+        date_code="2024-08",
+        day_code="2024-08-08",
+        trend_start_date="2024-08-02",
+        trend_end_date="2024-08-08",
+    )
+    coordinator.async_set_updated_data(snapshot)
+
+    assert coordinator.entry_data == {"house_name": "星河暖居"}
+    assert coordinator.houses == [{"id": 12345, "name": "星河暖居"}]
+    assert main_coordinator.analytics_data is snapshot
+    await coordinator.async_shutdown()

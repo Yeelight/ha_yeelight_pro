@@ -29,6 +29,7 @@ from custom_components.yeelight_pro.lan_contract import (
     lan_property_updates,
     parse_discovery_response,
 )
+from custom_components.yeelight_pro.lan_methods import LAN_DEVICE_DISCOVERY_MESSAGE
 
 from .diagnostics_helpers import build_diagnostics_entry
 
@@ -38,6 +39,29 @@ def test_lan_constants_match_gateway_discovery_contract() -> None:
     assert LAN_DISCOVERY_MESSAGE == "YEELIGHT_GATEWAY_CONTROL_DISCOVER"
     assert LAN_DISCOVERY_PORT == 1982
     assert LAN_GATEWAY_PORT == 65443
+
+
+def test_lan_constants_match_wifi_panel_discovery_contract() -> None:
+    """WiFi 全面屏使用独立 UDP 发现文本和 device_* 方法族。"""
+    assert LAN_DEVICE_DISCOVERY_MESSAGE == "YEELIGHT_DEVICE_CONTROL_DISCOVER"
+    builder = LanMessageBuilder()
+
+    topology = builder.device_get_topology()
+    prop = builder.device_set_properties([
+        {"id": 7919, "nt": 2, "set": {"1-p": False}},
+    ])
+
+    assert topology == {
+        "version": "1.0",
+        "id": 1,
+        "method": "device_get.topology",
+    }
+    assert prop == {
+        "version": "1.0",
+        "id": 2,
+        "method": "device_set.prop",
+        "nodes": [{"id": 7919, "nt": 2, "set": {"1-p": False}}],
+    }
 
 
 def test_parse_discovery_response_accepts_documented_fields() -> None:

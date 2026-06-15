@@ -203,3 +203,10 @@ def test_dali_energy_projects_runtime_diagnostic_sensors() -> None:
     assert by_component["active_power"].entity_category == "diagnostic"
     assert by_component["operating_time"].native_value == 3600
     assert by_component["operating_time"].entity_category == "diagnostic"
+    assert by_component["external_supply_voltage"].native_value == 220
+    assert by_component["external_supply_voltage"].device_class == "voltage"
+    assert by_component["external_supply_voltage"].native_unit_of_measurement == "V"
+    assert by_component["external_supply_voltage"].state_class == "measurement"
+    assert by_component["light_source_voltage"].native_value == 36
+    assert by_component["light_source_voltage"].device_class == "voltage"
+    assert by_component["light_source_voltage"].native_unit_of_measurement == "V"

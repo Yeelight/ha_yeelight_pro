@@ -171,6 +171,7 @@ def test_official_io_type_property_alias_maps_to_canonical_io() -> None:
     [
         ("online", "o"),
         ("Connectivity Protocols type", "cpt"),
+        ("component_num_config", "c_n_c"),
         ("run power", "run_power"),
         ("relay", "rl"),
         ("support relay", "support_rl"),

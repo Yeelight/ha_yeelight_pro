@@ -103,10 +103,18 @@ def check_lan_contract_tests(component_root: Path) -> list[str]:
             "allow_broadcast": "UDP broadcast enable flag",
             "parse_discovery_response": "discovery parser runtime use",
             "LAN_DISCOVERY_MESSAGE": "discovery message runtime use",
+            "LAN_DEVICE_DISCOVERY_MESSAGE": "WiFi panel discovery message runtime use",
+        },
+        "lan_runtime_endpoints.py": {
+            "LAN_ENDPOINT_WIFI_PANEL": "WiFi panel endpoint kind",
+            "device_get_topology": "WiFi panel topology method selector",
+            "device_set_properties": "WiFi panel property method selector",
+            "unsupported_wifi_panel_request": "unsupported WiFi panel request guard",
         },
         "lan_runtime.py": {
             "async_discover_lan_gateway": "hostless LAN discovery fallback",
             "Yeelight Pro LAN gateway host is required": "discovery failure guard",
+            "endpoint_kind_from_product_id": "discovered pid endpoint selection",
         },
         "lan_payload.py": {
             "YeelightLanPropertyUpdate": "LAN property update model",
@@ -142,6 +150,7 @@ def check_lan_contract_tests(component_root: Path) -> list[str]:
         },
         "tests/test_lan_contract.py": {
             "YEELIGHT_GATEWAY_CONTROL_DISCOVER": "gateway discovery text coverage",
+            "YEELIGHT_DEVICE_CONTROL_DISCOVER": "WiFi panel discovery text coverage",
             "parse_discovery_response": "discovery parser coverage",
             "encode_lan_frame": "CRLF frame encoder coverage",
             "decode_lan_frames": "CRLF frame decoder coverage",
@@ -154,6 +163,7 @@ def check_lan_contract_tests(component_root: Path) -> list[str]:
             "async_discover_lan_gateway": "UDP discovery runtime coverage",
             "allow_broadcast": "UDP broadcast option coverage",
             "LAN_DISCOVERY_BROADCAST_HOST": "UDP broadcast address coverage",
+            "YEELIGHT_DEVICE_CONTROL_DISCOVER": "WiFi panel broadcast coverage",
             "ignores_invalid_response_until_timeout": (
                 "invalid discovery response timeout coverage"
             ),
@@ -164,6 +174,17 @@ def check_lan_contract_tests(component_root: Path) -> list[str]:
             ),
             "test_start_lan_runtime_requires_discovery_when_host_missing": (
                 "LAN discovery miss failure coverage"
+            ),
+        },
+        "tests/test_lan_runtime_wifi_panel.py": {
+            "test_start_lan_runtime_uses_wifi_panel_endpoint_for_discovered_pid_2": (
+                "WiFi panel discovery pid route coverage"
+            ),
+            "test_lan_runtime_writes_wifi_panel_topology_and_property_frames": (
+                "WiFi panel device method coverage"
+            ),
+            "test_wifi_panel_runtime_rejects_unsupported_scene_payload": (
+                "WiFi panel unsupported scene guard coverage"
             ),
         },
         "tests/test_lan_control_routing.py": {

@@ -15,6 +15,7 @@ from .const import (
     CONF_LOCAL_GATEWAY_CONTROL,
     CONF_LOCAL_GATEWAY_HOST,
     CONF_LOCAL_GATEWAY_PORT,
+    CONF_LOCAL_GATEWAY_PRODUCT_ID,
     DEFAULT_LOCAL_GATEWAY_PORT,
 )
 from .lan_contract import (
@@ -25,6 +26,13 @@ from .lan_contract import (
     is_lan_ack_response,
 )
 from .lan_discovery import async_discover_lan_gateway
+from .lan_runtime_endpoints import (
+    LAN_ENDPOINT_GATEWAY,
+    LAN_ENDPOINT_WIFI_PANEL,
+    endpoint_kind_from_product_id,
+    set_properties_message,
+    topology_message,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -73,6 +81,7 @@ class LanGatewayRuntime:
 
     host: str
     port: int = DEFAULT_LOCAL_GATEWAY_PORT
+    endpoint_kind: str = LAN_ENDPOINT_GATEWAY
     open_connection: Callable[..., Awaitable[tuple[Any, Any]]] = asyncio.open_connection
     _builder: LanMessageBuilder = field(default_factory=LanMessageBuilder)
     _reader: Any | None = None
@@ -131,7 +140,7 @@ class LanGatewayRuntime:
 
     async def async_get_topology(self) -> None:
         """Send a documented topology request over the active connection."""
-        await self.async_send(self._builder.get_topology())
+        await self.async_send(topology_message(self._builder, self.endpoint_kind))
 
     async def async_set_properties(
         self,
@@ -143,7 +152,14 @@ class LanGatewayRuntime:
 
         返回网关 ACK 数据（含 result 字段），超时返回 None。
         """
-        message = self._builder.set_properties(nodes, scenes=scenes)
+        message = set_properties_message(
+            self._builder,
+            self.endpoint_kind,
+            nodes,
+            scenes=scenes,
+        )
+        if message.get("result") == "error":
+            return message
         return await self.async_send_and_wait(message)
 
     async def async_send(self, message: Mapping[str, Any]) -> None:
@@ -352,21 +368,28 @@ async def async_start_lan_runtime(
     enabled, host, port = lan_runtime_options(entry)
     if not enabled:
         return None
+    endpoint_kind = endpoint_kind_from_product_id(
+        entry.options.get(CONF_LOCAL_GATEWAY_PRODUCT_ID)
+        if isinstance(entry.options, Mapping)
+        else None
+    )
     if not host:
         discovered = await async_discover_lan_gateway()
         if discovered is None:
             raise HomeAssistantError("Yeelight Pro LAN gateway host is required")
         host = discovered.ip
-    runtime = LanGatewayRuntime(host=host, port=port)
+        endpoint_kind = endpoint_kind_from_product_id(discovered.product_id)
+    runtime = LanGatewayRuntime(host=host, port=port, endpoint_kind=endpoint_kind)
     await runtime.async_start(coordinator.async_handle_lan_payload)
     await runtime.async_get_topology()
     return runtime
-
 
 __all__ = [
     "LanGatewayRuntime",
     "LanPayloadCallback",
     "LanRuntimeHealth",
+    "LAN_ENDPOINT_GATEWAY",
+    "LAN_ENDPOINT_WIFI_PANEL",
     "async_start_lan_runtime",
     "lan_runtime_options",
 ]

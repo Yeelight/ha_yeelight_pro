@@ -7,6 +7,12 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "LOCAL_HA_RUNTIME_SOURCE_TOKENS": "runtime component source token registry",
         "custom_components/yeelight_pro/core/schema_cache.py": "schema cache source token coverage",
         "custom_components/yeelight_pro/core/lan_control.py": "LAN source token coverage",
+        "custom_components/yeelight_pro/core/lan_sensor_values.py": (
+            "LAN sensor value normalization source token coverage"
+        ),
+        "custom_components/yeelight_pro/core/lan_topology_merge.py": (
+            "LAN topology merge source token coverage"
+        ),
         "custom_components/yeelight_pro/core/lan_topology_payload.py": (
             "LAN topology payload source token coverage"
         ),
@@ -56,6 +62,20 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         ),
         "_lan_uint_id": "LAN numeric id fallback guard",
         "safe_error_summary": "LAN control error redaction helper",
+    },
+    "custom_components/yeelight_pro/core/lan_sensor_values.py": {
+        "normalize_lan_device_params": "LAN sensor value normalization helper",
+        "LAN_TEMPERATURE_HUMIDITY_TYPE = 136": (
+            "documented LAN temperature humidity sensor type"
+        ),
+        "LAN_TEMPERATURE_HUMIDITY_SCALE = 100": (
+            "documented LAN temperature humidity scale"
+        ),
+    },
+    "custom_components/yeelight_pro/core/lan_topology_merge.py": {
+        "merge_lan_payload": "LAN same-id physical endpoint merge helper",
+        "mixed_lan_types": "LAN mixed endpoint classification marker",
+        "_merged_rows_by_identity": "LAN merged row de-duplication helper",
     },
     "custom_components/yeelight_pro/core/lan_topology_payload.py": {
         "build_lan_topology_payloads": "LAN topology normalization facade",

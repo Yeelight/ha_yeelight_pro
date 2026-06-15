@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
+from inspect import isawaitable
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -29,6 +30,8 @@ from .runtime_options import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+_LAN_TOPOLOGY_READY_TIMEOUT = 10.0
+_LAN_INITIAL_STATE_READY_TIMEOUT = 1.0
 
 
 async def async_setup_lan_entry(
@@ -74,18 +77,25 @@ async def async_setup_lan_entry(
         try:
             # 创建拓扑就绪事件：第一个拓扑推送到达后才继续
             topology_ready = asyncio.Event()
+            state_ready = asyncio.Event()
             original_handler = coordinator.async_handle_lan_payload
 
             async def _lan_handler_with_topology_wait(
                 payload: Mapping[str, Any],
             ) -> list:
-                """拦截第一个拓扑推送，通知就绪事件."""
+                """拦截首个拓扑/属性推送，通知启动就绪事件."""
                 result = await original_handler(payload)
-                if not topology_ready.is_set():
-                    from .lan_payload import lan_topology_update
+                from .lan_methods import METHOD_DEVICE_POST_PROP, METHOD_POST_PROP
+                from .lan_payload import lan_topology_update
 
+                if not topology_ready.is_set():
                     if lan_topology_update(payload) is not None:
                         topology_ready.set()
+                if not state_ready.is_set() and payload.get("method") in {
+                    METHOD_DEVICE_POST_PROP,
+                    METHOD_POST_PROP,
+                }:
+                    state_ready.set()
                 return result
 
             runtime = LanGatewayRuntime(host=lan_ip, port=lan_port)
@@ -94,15 +104,27 @@ async def async_setup_lan_entry(
 
             # 等待拓扑推送到达（最多 10 秒）
             try:
-                await asyncio.wait_for(topology_ready.wait(), timeout=10.0)
+                await asyncio.wait_for(
+                    topology_ready.wait(),
+                    timeout=_LAN_TOPOLOGY_READY_TIMEOUT,
+                )
                 _LOGGER.info(
                     "Yeelight Pro LAN topology received for gateway %s:%s",
                     lan_ip,
                     lan_port,
                 )
-                # 网关在拓扑后立即发送属性同步（gateway_post.prop），
-                # 短暂等待让属性更新到达，使平台能创建有状态的实体
-                await asyncio.sleep(1)
+                try:
+                    await asyncio.wait_for(
+                        state_ready.wait(),
+                        timeout=_LAN_INITIAL_STATE_READY_TIMEOUT,
+                    )
+                except asyncio.TimeoutError:
+                    _LOGGER.debug(
+                        "Yeelight Pro LAN initial state sync not received before "
+                        "platform setup for gateway %s:%s",
+                        lan_ip,
+                        lan_port,
+                    )
             except asyncio.TimeoutError:
                 _LOGGER.warning(
                     "Yeelight Pro LAN topology timeout for gateway %s:%s, "
@@ -124,9 +146,13 @@ async def async_setup_lan_entry(
     else:
         _LOGGER.warning("Yeelight Pro LAN mode: no gateway IP configured")
 
-    setup_topology_listener(hass, entry, coordinator)
-    await hass.config_entries.async_forward_entry_setups(entry, platforms)
-    await async_run_registry_maintenance(hass, entry, coordinator)
+    try:
+        setup_topology_listener(hass, entry, coordinator)
+        await hass.config_entries.async_forward_entry_setups(entry, platforms)
+        await async_run_registry_maintenance(hass, entry, coordinator)
+    except Exception:
+        await async_cleanup_failed_setup(hass, entry, runtime_data)
+        raise
     _LOGGER.info(
         "Yeelight Pro LAN-only setup complete for gateway %s:%s",
         lan_ip,
@@ -217,6 +243,34 @@ async def async_stop_loaded_runtime(data: Any) -> None:
     disconnect = getattr(client, "disconnect", None)
     if callable(disconnect):
         await disconnect()
+
+
+async def async_cleanup_failed_setup(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    runtime_data: Mapping[str, Any],
+) -> None:
+    """Best-effort cleanup for setup failures after runtime objects are loaded."""
+    try:
+        await async_stop_loaded_runtime(runtime_data)
+    except Exception as err:
+        _LOGGER.warning(
+            "Yeelight Pro setup cleanup failed: %s",
+            safe_error_summary(err),
+        )
+    coordinator = runtime_data.get("coordinator")
+    async_shutdown = getattr(coordinator, "async_shutdown", None)
+    if callable(async_shutdown):
+        try:
+            result = async_shutdown()
+            if isawaitable(result):
+                await result
+        except Exception as err:
+            _LOGGER.warning(
+                "Yeelight Pro coordinator shutdown after setup failure failed: %s",
+                safe_error_summary(err),
+            )
+    hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
 
 
 async def async_start_optional_lan_runtime(

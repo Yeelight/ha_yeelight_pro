@@ -34,6 +34,7 @@ from .property_control_common import (
     select_options,
     switch_command_values,
     switch_icon,
+    writable_control_value_list,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -230,7 +231,7 @@ def _project_select(
             auxiliary_property_skip_reason(prop, component),
         )
         return None
-    value_list = control_value_list(prop)
+    value_list = writable_control_value_list(prop)
     if not value_list:
         _log_property_control_skip(
             "select",

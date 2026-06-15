@@ -12,8 +12,10 @@ from custom_components.yeelight_pro.lan_contract import (
 )
 from custom_components.yeelight_pro.lan_discovery import (
     LAN_DISCOVERY_BROADCAST_HOST,
+    LAN_DISCOVERY_MESSAGES,
     async_discover_lan_gateway,
 )
+from custom_components.yeelight_pro.lan_methods import LAN_DEVICE_DISCOVERY_MESSAGE
 
 
 class FakeDatagramTransport:
@@ -57,13 +59,23 @@ async def test_discover_lan_gateway_broadcasts_and_parses_first_response() -> No
     assert response is not None
     assert response.ip == "192.168.1.101"
     assert response.device_id == "22535"
-    assert transport.sent == [
-        (
-            LAN_DISCOVERY_MESSAGE.encode("utf-8"),
-            (LAN_DISCOVERY_BROADCAST_HOST, LAN_DISCOVERY_PORT),
-        )
+    assert [item[0] for item in transport.sent] == [
+        LAN_DISCOVERY_MESSAGE.encode("utf-8"),
+        LAN_DEVICE_DISCOVERY_MESSAGE.encode("utf-8"),
     ]
+    assert all(
+        item[1] == (LAN_DISCOVERY_BROADCAST_HOST, LAN_DISCOVERY_PORT)
+        for item in transport.sent
+    )
     assert transport.closed is True
+
+
+def test_lan_discovery_messages_cover_gateway_and_wifi_panel_docs() -> None:
+    """自动发现应覆盖网关和 WiFi 全面屏两种文档广播文本。"""
+    assert LAN_DISCOVERY_MESSAGES == (
+        "YEELIGHT_GATEWAY_CONTROL_DISCOVER",
+        "YEELIGHT_DEVICE_CONTROL_DISCOVER",
+    )
 
 
 @pytest.mark.asyncio

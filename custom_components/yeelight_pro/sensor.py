@@ -29,6 +29,7 @@ SENSOR_DEVICE_CLASS_MAP = {
     "illuminance": SensorDeviceClass.ILLUMINANCE,
     "power": SensorDeviceClass.POWER,
     "energy": SensorDeviceClass.ENERGY,
+    "voltage": SensorDeviceClass.VOLTAGE,
 }
 SENSOR_STATE_CLASS_MAP = {
     "measurement": SensorStateClass.MEASUREMENT,

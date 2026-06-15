@@ -175,17 +175,21 @@ async def async_reconcile_entity_registry(
     )
     _LOGGER.info(
         "Reconciled Yeelight Pro entity registry for entry %s: active=%s "
-        "pending_stale=%s disabled=%s restored=%s metadata_updated=%s "
-        "registry_entries=%s stale=%s active_domains=%s stale_domains=%s "
-        "pending_stale_domains=%s registry_domains=%s",
+        "pending_stale=%s stale=%s restored=%s metadata_updated=%s",
         entry.entry_id,
         len(active_entity_keys),
         len(pending_stale_keys),
-        0,
+        len(stale_keys),
         restored,
         metadata_updated,
+    )
+    _LOGGER.debug(
+        "Yeelight Pro entity registry reconcile detail for entry %s: "
+        "registry_entries=%s disabled=%s active_domains=%s stale_domains=%s "
+        "pending_stale_domains=%s registry_domains=%s",
+        entry.entry_id,
         len(registry_entries),
-        len(stale_keys),
+        0,
         _entity_key_domain_counts(active_entity_keys),
         _entity_key_domain_counts(stale_keys),
         _entity_key_domain_counts(pending_stale_keys),

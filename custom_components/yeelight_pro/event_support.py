@@ -116,8 +116,8 @@ def safe_runtime_event_params(params: Mapping[str, Any]) -> dict[str, Any]:
 
 def _is_fallback_component_id(component_id: str) -> bool:
     """判断 component_id 是否来自推送 adapter 的保守 fallback."""
-    return component_id in {"lan_event", "push_event"} or component_id.startswith(
-        "node_type_"
+    return component_id in {"lan_event", "push_event", "wifi_panel"} or (
+        component_id.startswith("node_type_")
     )
 
 

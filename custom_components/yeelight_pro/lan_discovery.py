@@ -12,9 +12,14 @@ from .lan_contract import (
     LanDiscoveryResponse,
     parse_discovery_response,
 )
+from .lan_methods import LAN_DEVICE_DISCOVERY_MESSAGE
 
 LAN_DISCOVERY_TIMEOUT_SECONDS = 3.0
 LAN_DISCOVERY_BROADCAST_HOST = "255.255.255.255"
+LAN_DISCOVERY_MESSAGES = (
+    LAN_DISCOVERY_MESSAGE,
+    LAN_DEVICE_DISCOVERY_MESSAGE,
+)
 
 
 class LanDatagramTransport(Protocol):
@@ -35,6 +40,7 @@ class LanDiscoveryProtocol(asyncio.DatagramProtocol):
     """Collect the first valid Yeelight Pro discovery response."""
 
     loop: asyncio.AbstractEventLoop
+    discovery_messages: tuple[str, ...] = LAN_DISCOVERY_MESSAGES
     response: asyncio.Future[LanDiscoveryResponse] = field(init=False)
     transport: LanDatagramTransport | None = None
 
@@ -45,10 +51,11 @@ class LanDiscoveryProtocol(asyncio.DatagramProtocol):
     def connection_made(self, transport: Any) -> None:
         """Keep the UDP transport and send the documented broadcast request."""
         self.transport = transport
-        transport.sendto(
-            LAN_DISCOVERY_MESSAGE.encode("utf-8"),
-            (LAN_DISCOVERY_BROADCAST_HOST, LAN_DISCOVERY_PORT),
-        )
+        for message in self.discovery_messages:
+            transport.sendto(
+                message.encode("utf-8"),
+                (LAN_DISCOVERY_BROADCAST_HOST, LAN_DISCOVERY_PORT),
+            )
 
     def datagram_received(self, data: bytes, addr: tuple[str, int]) -> None:
         """Parse one discovery response datagram."""
@@ -71,16 +78,18 @@ class LanDiscoveryProtocol(asyncio.DatagramProtocol):
 class LanDiscoveryMultiProtocol(asyncio.DatagramProtocol):
     """Collect multiple Yeelight Pro discovery responses within a timeout."""
 
+    discovery_messages: tuple[str, ...] = LAN_DISCOVERY_MESSAGES
     responses: list[LanDiscoveryResponse] = field(default_factory=list)
     transport: LanDatagramTransport | None = None
 
     def connection_made(self, transport: Any) -> None:
         """Keep the UDP transport and send the documented broadcast request."""
         self.transport = transport
-        transport.sendto(
-            LAN_DISCOVERY_MESSAGE.encode("utf-8"),
-            (LAN_DISCOVERY_BROADCAST_HOST, LAN_DISCOVERY_PORT),
-        )
+        for message in self.discovery_messages:
+            transport.sendto(
+                message.encode("utf-8"),
+                (LAN_DISCOVERY_BROADCAST_HOST, LAN_DISCOVERY_PORT),
+            )
 
     def datagram_received(self, data: bytes, addr: tuple[str, int]) -> None:
         """Parse and collect one discovery response datagram."""
@@ -148,6 +157,7 @@ async def async_discover_all_lan_gateways(
 
 __all__ = [
     "LAN_DISCOVERY_BROADCAST_HOST",
+    "LAN_DISCOVERY_MESSAGES",
     "LAN_DISCOVERY_TIMEOUT_SECONDS",
     "LanDatagramTransport",
     "LanDiscoveryProtocol",

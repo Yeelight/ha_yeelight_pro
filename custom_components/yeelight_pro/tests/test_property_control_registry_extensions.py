@@ -74,7 +74,6 @@ def test_temp_control_registry_properties_split_into_selects_and_numbers() -> No
         ("2", "除雾"),
         ("3", "快速除雾"),
         ("4", "极速加热"),
-        ("5", "其他模式"),
     ]
     assert [(item.value, item.label) for item in selects["ve"].options] == [
         ("0", "关闭"),
@@ -90,6 +89,27 @@ def test_temp_control_registry_properties_split_into_selects_and_numbers() -> No
     assert numbers["sa"].native_range.max == 120
     assert numbers["do"].entity_category is None
     assert numbers["sa"].entity_category == "config"
+
+
+def test_bath_heat_mode_excludes_read_only_other_mode_from_write_options() -> None:
+    """浴霸模式 5 是只读上报态，不能作为 HA select 可写选项."""
+    payload = _payload_with_props(
+        category="temp_control",
+        state={"bhm": "5"},
+        props=("bhm",),
+    )
+
+    select = next(
+        item for item in project_select_controls(payload, domain=DOMAIN) if item.prop_id == "bhm"
+    )
+
+    assert select.value == "5"
+    assert [(item.value, item.label) for item in select.options] == [
+        ("1", "干燥"),
+        ("2", "除雾"),
+        ("3", "快速除雾"),
+        ("4", "极速加热"),
+    ]
 
 
 def test_light_and_ac_registry_config_properties_project_controls() -> None:

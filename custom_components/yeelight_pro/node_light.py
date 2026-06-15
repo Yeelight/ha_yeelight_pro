@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from typing import Any, Dict, Mapping
 
-from homeassistant.components.light import ATTR_BRIGHTNESS, ColorMode, LightEntity
+from homeassistant.components.light import (
+    ATTR_BRIGHTNESS,
+    ATTR_RGB_COLOR,
+    ColorMode,
+    LightEntity,
+)
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .core.coordinator import YeelightProCoordinator
@@ -13,6 +18,11 @@ from .device_display import suggested_entity_object_id
 from .entity_errors import raise_service_error
 from .house_metadata import house_device_info
 from .identity import coordinator_identity_scope
+from .light_group import (
+    _color_mode_from_params,
+    _rgb_color_from_params,
+    _supported_color_modes_from_params,
+)
 from .node_metadata import (
     node_kind_icon,
     node_kind_label,
@@ -22,6 +32,10 @@ from .node_metadata import (
     topology_node_params,
 )
 from .utils import to_bool
+from .projector.light_helpers import (
+    DEFAULT_MAX_COLOR_TEMP_KELVIN,
+    DEFAULT_MIN_COLOR_TEMP_KELVIN,
+)
 
 try:
     from homeassistant.components.light import ATTR_COLOR_TEMP_KELVIN
@@ -33,8 +47,8 @@ class YeelightProNodeLight(CoordinatorEntity, LightEntity):
     """Yeelight Pro 房间/区域/整屋总控灯光实体。"""
 
     _attr_has_entity_name = True
-    _attr_min_color_temp_kelvin = 2700
-    _attr_max_color_temp_kelvin = 6500
+    _attr_min_color_temp_kelvin = DEFAULT_MIN_COLOR_TEMP_KELVIN
+    _attr_max_color_temp_kelvin = DEFAULT_MAX_COLOR_TEMP_KELVIN
 
     def __init__(
         self,
@@ -114,23 +128,19 @@ class YeelightProNodeLight(CoordinatorEntity, LightEntity):
         return int(value) if isinstance(value, int | float) and value > 0 else None
 
     @property
+    def rgb_color(self) -> tuple[int, int, int] | None:
+        """返回节点总控 RGB 颜色。"""
+        return _rgb_color_from_params(self._node_params)
+
+    @property
     def supported_color_modes(self) -> set[ColorMode]:
         """返回 HA 允许的节点总控颜色模式集合。"""
-        params = self._node_params
-        if "ct" in params:
-            return {ColorMode.COLOR_TEMP}
-        if "l" in params:
-            return {ColorMode.BRIGHTNESS}
-        return {ColorMode.ONOFF}
+        return _supported_color_modes_from_params(self._node_params)
 
     @property
     def color_mode(self) -> ColorMode:
         """返回当前节点总控颜色模式。"""
-        if self.color_temp_kelvin is not None:
-            return ColorMode.COLOR_TEMP
-        if self.brightness is not None:
-            return ColorMode.BRIGHTNESS
-        return ColorMode.ONOFF
+        return _color_mode_from_params(self._node_params)
 
     @property
     def _node_params(self) -> dict[str, Any]:
@@ -146,6 +156,9 @@ class YeelightProNodeLight(CoordinatorEntity, LightEntity):
             params["l"] = int(round(brightness * 100 / 255))
         if ATTR_COLOR_TEMP_KELVIN in kwargs:
             params["ct"] = int(kwargs[ATTR_COLOR_TEMP_KELVIN])
+        if ATTR_RGB_COLOR in kwargs and "c" in self._node_params:
+            r, g, b = kwargs[ATTR_RGB_COLOR]
+            params["c"] = (r << 16) | (g << 8) | b
         try:
             await self.coordinator.async_control_node(
                 self._node_kind,

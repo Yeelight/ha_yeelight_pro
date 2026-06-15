@@ -36,6 +36,7 @@ from .light_helpers import (
     _infer_features_from_payload,
     _project_brightness,
     _project_color_temp,
+    _project_color_temp_kelvin,
     _project_icon,
     _project_light_name,
     _project_max_mireds,
@@ -68,6 +69,7 @@ class HALightProjection:
     is_on: bool
     brightness: int | None
     color_temp: int | None
+    color_temp_kelvin: int | None
     rgb_color: tuple[int, int, int] | None
     supported_color_modes: set[ColorMode]
     color_mode: ColorMode
@@ -162,6 +164,7 @@ def _project_legacy_light(
         is_on=is_on,
         brightness=_project_brightness(state, brightness_range, is_on=is_on),
         color_temp=_project_color_temp(state),
+        color_temp_kelvin=_project_color_temp_kelvin(state),
         rgb_color=_project_rgb_color(state),
         supported_color_modes=supported_color_modes,
         color_mode=color_mode,
@@ -229,6 +232,7 @@ def _project_instance_light(
         is_on=is_on,
         brightness=_project_brightness(state, brightness_range, is_on=is_on),
         color_temp=_project_color_temp(state),
+        color_temp_kelvin=_project_color_temp_kelvin(state),
         rgb_color=_project_rgb_color(state),
         supported_color_modes=supported_color_modes,
         color_mode=color_mode,

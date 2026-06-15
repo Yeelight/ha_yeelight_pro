@@ -75,6 +75,7 @@ DALI_ENERGY_PROJECTED_PROPS = frozenset({
     "sys_s",
     "temp",
 })
+DECIVOLT_SENSOR_PROPS = frozenset({"esv", "lsv"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -134,21 +135,34 @@ def registry_sensor_spec(prop: str) -> SensorSpec | None:
     if prop == "temp":
         component_id = "internal_temperature"
         label = "内部温度"
+    unit = (capability.unit if capability is not None else None) or spec.unit
+    device_class = capability.device_class if capability is not None else None
+    if prop in DECIVOLT_SENSOR_PROPS:
+        unit = "V"
+        device_class = "voltage"
     return SensorSpec(
         component_id=component_id,
         label=label,
-        device_class=capability.device_class if capability is not None else None,
-        unit=(capability.unit if capability is not None else None) or spec.unit,
-        state_class=state_class_for_device_class(
-            capability.device_class if capability is not None else None
-        ),
+        device_class=device_class,
+        unit=unit,
+        state_class=state_class_for_device_class(device_class),
         icon=icon_for_property(prop)
         or (
             registry_sensor_icon(prop, spec)
-            if capability is None or capability.device_class is None
+            if capability is None or device_class is None
             else None
         ),
     )
+
+
+def sensor_native_value(prop: str, value: object) -> object:
+    """Return the HA-facing native value for documented sensor units."""
+    if prop not in DECIVOLT_SENSOR_PROPS or isinstance(value, bool):
+        return value
+    try:
+        return float(value) / 10
+    except (TypeError, ValueError):
+        return value
 
 
 def state_class_for_device_class(device_class: str | None) -> str | None:
@@ -157,7 +171,7 @@ def state_class_for_device_class(device_class: str | None) -> str | None:
         return "measurement"
     if device_class == "energy":
         return "total_increasing"
-    if device_class in {"temperature", "humidity", "illuminance", "battery"}:
+    if device_class in {"temperature", "humidity", "illuminance", "battery", "voltage"}:
         return "measurement"
     return None
 
@@ -198,6 +212,7 @@ __all__ = [
     "SensorSpec",
     "icon_for_property",
     "registry_sensor_spec",
+    "sensor_native_value",
     "sensor_entity_category",
     "should_project_registry_sensor",
     "state_class_for_device_class",

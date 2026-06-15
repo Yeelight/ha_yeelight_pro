@@ -21,6 +21,12 @@ from .projector.cover import HACoverProjection, project_covers
 
 _LOGGER = logging.getLogger(__name__)
 ERROR_COVER_PROJECTION_UNAVAILABLE = "无法解析窗帘投影"
+_COVER_BASE_FEATURES = (
+    CoverEntityFeature.OPEN
+    | CoverEntityFeature.CLOSE
+    | CoverEntityFeature.SET_POSITION
+)
+_COVER_STOP_ACTION = {"motorAdjust": {"type": "pause"}}
 
 
 async def async_setup_entry(
@@ -90,11 +96,6 @@ class YeelightProCover(CoordinatorEntity, CoverEntity):
             )
         )
         self._attr_has_entity_name = True
-        self._attr_supported_features = (
-            CoverEntityFeature.OPEN
-            | CoverEntityFeature.CLOSE
-            | CoverEntityFeature.SET_POSITION
-        )
 
     @property
     def _projection(self) -> HACoverProjection | None:
@@ -191,6 +192,19 @@ class YeelightProCover(CoordinatorEntity, CoverEntity):
             return projection.is_closing
         return False
 
+    @property
+    def supported_features(self) -> CoverEntityFeature:
+        """Return cover features currently supported by this entry."""
+        features = _COVER_BASE_FEATURES
+        can_control_action = getattr(
+            self.coordinator,
+            "can_control_device_action",
+            None,
+        )
+        if callable(can_control_action) and can_control_action() is True:
+            features |= CoverEntityFeature.STOP
+        return features
+
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
         await self._async_set_target_position("cover.open_cover", 100)
@@ -203,6 +217,26 @@ class YeelightProCover(CoordinatorEntity, CoverEntity):
         """Move the cover to a specific position."""
         position = kwargs.get("position", 0)
         await self._async_set_target_position("cover.set_cover_position", position)
+
+    async def async_stop_cover(self, **kwargs: Any) -> None:
+        """Pause cover movement through the documented LAN motor action."""
+        projection = self._projection
+        if projection is None:
+            _LOGGER.debug(
+                "Skipping cover stop: device_id=%s component_id=%s reason=%s",
+                self._device_id,
+                self._component_id,
+                "projection_unavailable",
+            )
+            raise HomeAssistantError(ERROR_COVER_PROJECTION_UNAVAILABLE)
+
+        try:
+            await self.coordinator.async_action_device(
+                self._device_id,
+                _COVER_STOP_ACTION,
+            )
+        except YeelightProError as err:
+            raise_service_error("cover.stop_cover", err)
 
     async def _async_set_target_position(self, action: str, position: Any) -> None:
         """下发窗帘目标位置，按 projection 选择组件级控制键."""

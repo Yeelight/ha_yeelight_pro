@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import pytest
 
+from homeassistant.components.light import ColorMode
+
 from custom_components.yeelight_pro.light_group import YeelightProGroupLight
 
 
@@ -60,4 +62,30 @@ def test_group_light_exposes_runtime_state_and_house_device_info(mock_coordinato
     assert entity.is_on is True
     assert entity.brightness == 128
     assert entity.color_temp_kelvin == 4100
+    assert entity.supported_color_modes == {ColorMode.COLOR_TEMP}
     assert entity.device_info["name"] == "绿地中央公园 灯组"
+
+
+@pytest.mark.asyncio
+async def test_group_light_supports_rgb_only_with_color_param(mock_coordinator) -> None:
+    """灯组只有在 params 含 c 时才暴露并控制 RGB。"""
+    mock_coordinator.groups = [
+        {
+            "id": "group_1",
+            "name": "客厅灯组",
+            "online": True,
+            "params": {"p": True, "l": 50, "ct": 4100, "c": 0x112233, "m": 1},
+        }
+    ]
+    entity = YeelightProGroupLight(mock_coordinator, "group_1")
+
+    assert entity.rgb_color == (0x11, 0x22, 0x33)
+    assert entity.supported_color_modes == {ColorMode.COLOR_TEMP, ColorMode.RGB}
+    assert entity.color_mode == ColorMode.RGB
+
+    await entity.async_turn_on(rgb_color=(0x44, 0x55, 0x66))
+
+    mock_coordinator.async_control_group.assert_awaited_once_with(
+        "group_1",
+        {"p": True, "c": 0x445566},
+    )

@@ -80,6 +80,9 @@ AUXILIARY_BOOL_CONFIG_PROPS = frozenset({
     "time_hidden",
     "weather_hidden",
 })
+READ_ONLY_ENUM_CODES_BY_PROP = {
+    "bhm": frozenset({"5"}),
+}
 
 
 def schema_properties(
@@ -220,6 +223,15 @@ def control_value_list(prop: PropertyModel) -> list[ValueItemModel]:
         ValueItemModel(code=str(code), desc=to_str(label) or str(code))
         for code, label in spec.value_list.items()
     ]
+
+
+def writable_control_value_list(prop: PropertyModel) -> list[ValueItemModel]:
+    """Return enum values that are valid write targets for helper selects."""
+    items = control_value_list(prop)
+    read_only_codes = READ_ONLY_ENUM_CODES_BY_PROP.get(prop.prop_id)
+    if not read_only_codes:
+        return items
+    return [item for item in items if str(item.code) not in read_only_codes]
 
 
 def control_unit(prop: PropertyModel) -> str | None:
@@ -370,4 +382,5 @@ __all__ = [
     "select_options",
     "switch_command_values",
     "switch_icon",
+    "writable_control_value_list",
 ]

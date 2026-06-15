@@ -38,6 +38,7 @@ from .core.exceptions import AuthenticationError, ConnectionError, safe_error_su
 from .debug_service import async_register_debug_event_service
 from .entry_setup import (
     async_post_manual_refresh as _async_post_manual_refresh,
+    async_cleanup_failed_setup as _async_cleanup_failed_setup,
     async_run_registry_maintenance as _async_run_registry_maintenance,
     async_setup_lan_entry as _async_setup_lan_entry,
     async_start_optional_lan_runtime as _async_start_optional_lan_runtime,
@@ -177,10 +178,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
     coordinator.analytics_enabled = True
     coordinator.analytics_data = analytics_coordinator.data
-    analytics_coordinator.entry_data = dict(coordinator.entry_data)
-    analytics_coordinator.houses = coordinator.houses
-    analytics_coordinator._main_coordinator = coordinator
-    analytics_coordinator._config_entry = entry
+    analytics_coordinator.bind_runtime_coordinator(coordinator, entry=entry)
 
     # 存储到 hass.data
     platforms = get_enabled_platforms(_entry_options(entry))
@@ -197,18 +195,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         push_manager = await async_start_live_runtime(hass, entry, coordinator)
         if push_manager is not None:
             runtime_data["push_manager"] = push_manager
+        await _async_start_optional_lan_runtime(entry, coordinator, runtime_data)
+
+        # 拓扑变更监听
+        _setup_topology_listener(hass, entry, coordinator)
+
+        # 设置平台
+        await hass.config_entries.async_forward_entry_setups(entry, platforms)
+        await _async_run_registry_maintenance(hass, entry, coordinator)
     except Exception:
-        await _async_stop_loaded_runtime(runtime_data)
-        hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+        await _async_cleanup_failed_setup(hass, entry, runtime_data)
         raise
-    await _async_start_optional_lan_runtime(entry, coordinator, runtime_data)
-
-    # 拓扑变更监听
-    _setup_topology_listener(hass, entry, coordinator)
-
-    # 设置平台
-    await hass.config_entries.async_forward_entry_setups(entry, platforms)
-    await _async_run_registry_maintenance(hass, entry, coordinator)
 
     _LOGGER.info(
         "Yeelight Pro integration setup complete for house %s (%s mode)",
@@ -282,7 +279,9 @@ async def async_remove_config_entry_device(
     return True
 
 
-async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Reload config entry."""
-    await async_unload_entry(hass, entry)
-    await async_setup_entry(hass, entry)
+    unload_ok = await async_unload_entry(hass, entry)
+    if not unload_ok:
+        return False
+    return await async_setup_entry(hass, entry)

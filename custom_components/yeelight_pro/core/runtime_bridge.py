@@ -23,6 +23,7 @@ from ..event_support import (
     runtime_event_to_bus_payload,
 )
 from .runtime_state import RuntimeStateStore, merge_runtime_state_into_group_payloads
+from .lan_sensor_values import normalize_lan_device_params
 
 CanonicalRebuilder = Callable[[dict[str, Any]], None]
 DeviceLookup = Callable[[int], Mapping[str, Any] | None]
@@ -72,20 +73,21 @@ class RuntimePayloadBridge:
         for update in updates:
             if not update.params:
                 continue
+            params = self._normalized_params(update)
             if _is_group_update(update):
                 changed = (
                     self._groups is not None
                     and merge_runtime_state_into_group_payloads(
                         self._groups,
                         group_id=update.node_id,
-                        params=update.params,
+                        params=params,
                     )
                 ) or changed
                 continue
             changed = True
             self._runtime_state.store_update(
                 update.node_id,
-                update.params,
+                params,
                 devices=self._devices,
                 gateways=self._gateways,
                 data=self._data,
@@ -93,6 +95,20 @@ class RuntimePayloadBridge:
                 groups=self._groups,
             )
         return changed
+
+    def _normalized_params(self, update: RuntimePropertyUpdate) -> dict[str, Any]:
+        """Return params normalized against the loaded device metadata."""
+        device = self._loaded_payload(update.node_id)
+        lan_type = device.get("lan_type") if isinstance(device, Mapping) else None
+        return normalize_lan_device_params(update.params, lan_type=lan_type)
+
+    def _loaded_payload(self, node_id: int) -> Mapping[str, Any] | None:
+        """Return the currently loaded payload for a property update."""
+        for source in (self._devices, self._gateways, self._data):
+            payload = source.get(node_id)
+            if isinstance(payload, Mapping):
+                return payload
+        return None
 
     async def dispatch_event_payloads(
         self,

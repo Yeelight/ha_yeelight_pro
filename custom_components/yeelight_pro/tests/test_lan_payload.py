@@ -140,6 +140,7 @@ def test_lan_event_payloads_normalize_gateway_post_event_frame() -> None:
     ("source", "expected"),
     [
         ("panel.release", "release_after_hold"),
+        ("keyClick", "click"),
         ("approach.true", "human_enter"),
         ("approach.false", "human_leave"),
         ("handwave", "handwave"),
@@ -186,6 +187,35 @@ def test_lan_event_payloads_redact_sensitive_event_params() -> None:
     assert "22535" not in str(event)
     assert "secret-access-token" not in str(event)
     assert "secret-token" not in str(event)
+
+
+def test_lan_device_event_payloads_normalize_wifi_panel_keyclick() -> None:
+    """WiFi 全面屏文档的 keyClick 应进入同一个点击自动化事件类型。"""
+    [event] = lan_event_payloads(
+        {
+            "id": 116,
+            "method": "device_post.event",
+            "version": "1.0",
+            "params": {
+                "id": 7919,
+                "type": "keyClick",
+                "params": {"key": 1, "count": 1},
+            },
+        }
+    )
+
+    assert event == {
+        ATTR_SOURCE_DEVICE_ID: "7919",
+        ATTR_COMPONENT_ID: "wifi_panel",
+        ATTR_EVENT_TYPE: "keyClick",
+        ATTR_EVENT_ATTRIBUTES: {
+            "method": "device_post.event",
+            "message_id": "116",
+            "params": {"key": 1, "count": 1},
+            "raw_event": "keyClick",
+        },
+    }
+    assert normalize_runtime_event_payload(event).event_type == "click"
 
 
 @pytest.mark.parametrize(

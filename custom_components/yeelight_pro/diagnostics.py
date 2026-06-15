@@ -227,7 +227,30 @@ def _iot_registry_diagnostics() -> dict[str, Any]:
 def _client_capabilities(runtime: Mapping[str, Any]) -> dict[str, Any]:
     """Return safe connection capability flags without endpoint or token data."""
     entry = runtime.get("entry")
-    return _client_capabilities_for_entry(entry)
+    capabilities = _client_capabilities_for_entry(entry)
+    connection_mode = capabilities["connection_mode"]
+    has_cloud_client = runtime.get("client") is not None
+    has_push_runtime = _runtime_manager_available(runtime.get("push_manager"))
+    has_lan_runtime = _runtime_manager_available(runtime.get("lan_runtime"))
+    capabilities.update(
+        {
+            "cloud_http_polling": (
+                connection_mode == CONNECTION_MODE_CLOUD and has_cloud_client
+            ),
+            "private_http_polling": (
+                connection_mode == CONNECTION_MODE_PRIVATE and has_cloud_client
+            ),
+            "lan_direct_control": has_lan_runtime,
+            "scan_login_runtime": has_cloud_client,
+            "websocket_transport_runtime": has_push_runtime,
+            "push_connection": has_push_runtime,
+            "websocket_subscription": has_push_runtime,
+            "websocket_event_notifications": has_push_runtime,
+            "local_gateway_control": has_lan_runtime,
+            "lan_control": has_lan_runtime,
+        }
+    )
+    return capabilities
 
 
 def _client_capabilities_for_entry(entry: Any) -> dict[str, Any]:
@@ -298,6 +321,20 @@ def _manager_health(manager: Any) -> dict[str, Any] | None:
     if callable(as_dict):
         return as_dict()
     return None
+
+
+def _runtime_manager_available(manager: Any) -> bool:
+    """Return whether a runtime manager is loaded and not a recorded startup failure."""
+    if manager is None:
+        return False
+    health = _manager_health(manager)
+    if health is None:
+        return True
+    running = health.get("running")
+    connected = health.get("connected")
+    if running is False and connected is False:
+        return False
+    return True
 
 
 def _runtime_entry_options(runtime: Mapping[str, Any]) -> Mapping[str, Any]:

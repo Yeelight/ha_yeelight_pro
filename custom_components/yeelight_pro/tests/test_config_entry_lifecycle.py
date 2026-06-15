@@ -1,6 +1,8 @@
 """Config entry lifecycle tests."""
 from __future__ import annotations
 
+import asyncio
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -12,11 +14,14 @@ from homeassistant.core import HomeAssistant
 from custom_components.yeelight_pro.const import (
     CONF_CONNECTION_MODE,
     CONF_HOUSE_ID,
+    CONF_LAN_GATEWAY_IP,
+    CONF_LAN_GATEWAY_PORT,
     CONF_LIVE_UPDATES,
     CONF_LOCAL_GATEWAY_CONTROL,
     CONF_LOCAL_GATEWAY_HOST,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
     CONNECTION_MODE_CLOUD,
+    CONNECTION_MODE_LAN,
     DOMAIN,
 )
 
@@ -143,6 +148,39 @@ async def test_setup_entry_passes_open_api_client_id_to_client(
 
     client_class.assert_called_once()
     assert client_class.call_args.kwargs["client_id"] == "client-1"
+
+
+@pytest.mark.asyncio
+async def test_setup_entry_binds_analytics_without_private_injection(
+    hass: HomeAssistant,
+    mock_config_entry: MagicMock,
+    mock_client: AsyncMock,
+) -> None:
+    """Setup 应通过 analytics coordinator 公开方法绑定主 coordinator。"""
+    hass.data.setdefault(DOMAIN, {})
+    coordinator = make_setup_coordinator()
+
+    with patch(
+        "custom_components.yeelight_pro.YeelightProClient",
+        return_value=mock_client,
+    ), patch(
+        "custom_components.yeelight_pro.YeelightProCoordinator",
+        return_value=coordinator,
+    ), patch(
+        "homeassistant.config_entries.ConfigEntries.async_forward_entry_setups",
+        new_callable=AsyncMock,
+    ):
+        from custom_components.yeelight_pro import async_setup_entry
+
+        assert await async_setup_entry(hass, mock_config_entry) is True
+
+    analytics_coordinator = hass.data[DOMAIN][mock_config_entry.entry_id][
+        "analytics_coordinator"
+    ]
+    assert not hasattr(analytics_coordinator, "_main_coordinator")
+    assert not hasattr(analytics_coordinator, "_config_entry")
+    assert coordinator.analytics_data is analytics_coordinator.data
+    await analytics_coordinator.async_shutdown()
 
 
 @pytest.mark.asyncio
@@ -372,3 +410,194 @@ async def test_setup_entry_keeps_polling_when_live_runtime_initial_connect_fails
 
     forward_platforms.assert_awaited_once()
     assert hass.data[DOMAIN][mock_config_entry.entry_id]["push_manager"] is push_manager
+
+
+@pytest.mark.asyncio
+async def test_setup_entry_cleans_runtime_when_platform_forward_fails(
+    hass: HomeAssistant,
+    mock_config_entry: MagicMock,
+    mock_client: AsyncMock,
+) -> None:
+    """平台加载失败时应清理已启动 runtime，避免留下后台连接。"""
+    hass.data.setdefault(DOMAIN, {})
+    mock_config_entry.options = {
+        CONF_LIVE_UPDATES: True,
+        CONF_LOCAL_GATEWAY_CONTROL: True,
+        CONF_LOCAL_GATEWAY_HOST: "192.168.1.20",
+    }
+    push_manager = AsyncMock()
+    push_manager.async_stop = AsyncMock()
+    lan_runtime = AsyncMock()
+    lan_runtime.async_stop = AsyncMock()
+    mock_client.disconnect = AsyncMock()
+
+    with patch(
+        "custom_components.yeelight_pro.YeelightProClient",
+        return_value=mock_client,
+    ), patch(
+        "custom_components.yeelight_pro.YeelightProCoordinator",
+    ) as coordinator_class, patch(
+        "custom_components.yeelight_pro.async_start_live_runtime",
+        AsyncMock(return_value=push_manager),
+    ), patch(
+        "custom_components.yeelight_pro.entry_setup.async_start_lan_runtime",
+        AsyncMock(return_value=lan_runtime),
+    ), patch(
+        "homeassistant.config_entries.ConfigEntries.async_forward_entry_setups",
+        AsyncMock(side_effect=RuntimeError("platform failed")),
+    ):
+        coordinator_class.return_value = make_setup_coordinator()
+
+        from custom_components.yeelight_pro import async_setup_entry
+
+        with pytest.raises(RuntimeError, match="platform failed"):
+            await async_setup_entry(hass, mock_config_entry)
+
+    push_manager.async_stop.assert_awaited_once()
+    lan_runtime.async_stop.assert_awaited_once()
+    mock_client.disconnect.assert_awaited_once()
+    assert mock_config_entry.entry_id not in hass.data[DOMAIN]
+
+
+@pytest.mark.asyncio
+async def test_lan_entry_waits_for_property_ready_without_fixed_sleep(
+    hass: HomeAssistant,
+) -> None:
+    """LAN-only setup 收到属性同步后应立即继续，不再固定 sleep(1)。"""
+    hass.data.setdefault(DOMAIN, {})
+    entry = MagicMock(spec=ConfigEntry)
+    entry.entry_id = "lan_entry"
+    entry.domain = DOMAIN
+    entry.data = {
+        CONF_CONNECTION_MODE: CONNECTION_MODE_LAN,
+        CONF_LAN_GATEWAY_IP: "192.168.1.20",
+        CONF_LAN_GATEWAY_PORT: 65443,
+    }
+    entry.options = {}
+    entry.async_on_unload = MagicMock()
+    entry.add_update_listener = MagicMock(return_value=MagicMock())
+    register_config_entry(hass, entry)
+    runtime_holder: dict[str, Any] = {}
+
+    class FakeRuntime:
+        def __init__(self, *, host: str, port: int) -> None:
+            self.host = host
+            self.port = port
+            self.callback = None
+            runtime_holder["runtime"] = self
+
+        async def async_start(self, callback) -> None:
+            self.callback = callback
+
+        async def async_get_topology(self) -> None:
+            assert self.callback is not None
+            await self.callback(
+                {
+                    "method": "gateway_post.topology",
+                    "nodes": [
+                        {"id": 67890, "nt": 2, "type": 3, "name": "客厅灯"}
+                    ],
+                }
+            )
+            await self.callback(
+                {
+                    "method": "gateway_post.prop",
+                    "nodes": [{"id": 67890, "nt": 2, "params": {"p": True}}],
+                }
+            )
+
+    original_sleep = asyncio.sleep
+
+    async def _forbid_fixed_sleep(delay: float) -> None:
+        if delay == 1:
+            raise AssertionError(f"unexpected fixed sleep: {delay}")
+        await original_sleep(0)
+
+    with patch(
+        "custom_components.yeelight_pro.lan_runtime.LanGatewayRuntime",
+        FakeRuntime,
+    ), patch(
+        "homeassistant.config_entries.ConfigEntries.async_forward_entry_setups",
+        new_callable=AsyncMock,
+    ), patch(
+        "custom_components.yeelight_pro.entry_setup.async_sync_gateway_devices",
+        AsyncMock(),
+    ), patch(
+        "custom_components.yeelight_pro.entry_setup.async_reconcile_entity_registry",
+        AsyncMock(return_value=set()),
+    ), patch.object(
+        asyncio,
+        "sleep",
+        _forbid_fixed_sleep,
+    ):
+        from custom_components.yeelight_pro import async_setup_entry
+
+        assert await async_setup_entry(hass, entry) is True
+
+    runtime = runtime_holder["runtime"]
+    assert runtime.host == "192.168.1.20"
+    assert hass.data[DOMAIN][entry.entry_id]["lan_runtime"] is runtime
+    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    await coordinator.async_shutdown()
+
+
+@pytest.mark.asyncio
+async def test_lan_entry_cleans_runtime_when_platform_forward_fails(
+    hass: HomeAssistant,
+) -> None:
+    """LAN-only 平台加载失败时应关闭 TCP runtime 并清除 runtime data."""
+    hass.data.setdefault(DOMAIN, {})
+    entry = MagicMock(spec=ConfigEntry)
+    entry.entry_id = "lan_forward_failure"
+    entry.domain = DOMAIN
+    entry.data = {
+        CONF_CONNECTION_MODE: CONNECTION_MODE_LAN,
+        CONF_LAN_GATEWAY_IP: "192.168.1.20",
+        CONF_LAN_GATEWAY_PORT: 65443,
+    }
+    entry.options = {}
+    entry.async_on_unload = MagicMock()
+    entry.add_update_listener = MagicMock(return_value=MagicMock())
+    register_config_entry(hass, entry)
+    runtime_holder: dict[str, Any] = {}
+
+    class FakeRuntime:
+        def __init__(self, *, host: str, port: int) -> None:
+            self.host = host
+            self.port = port
+            self.callback = None
+            self.async_stop = AsyncMock()
+            runtime_holder["runtime"] = self
+
+        async def async_start(self, callback) -> None:
+            self.callback = callback
+
+        async def async_get_topology(self) -> None:
+            assert self.callback is not None
+            await self.callback(
+                {
+                    "method": "gateway_post.topology",
+                    "nodes": [{"id": 67890, "nt": 2, "type": 3}],
+                }
+            )
+
+    with patch(
+        "custom_components.yeelight_pro.lan_runtime.LanGatewayRuntime",
+        FakeRuntime,
+    ), patch(
+        "homeassistant.config_entries.ConfigEntries.async_forward_entry_setups",
+        AsyncMock(side_effect=RuntimeError("platform failed")),
+    ), patch(
+        "custom_components.yeelight_pro.entry_setup.async_sync_gateway_devices",
+        AsyncMock(),
+    ), patch(
+        "custom_components.yeelight_pro.entry_setup.async_reconcile_entity_registry",
+        AsyncMock(return_value=set()),
+    ):
+        from custom_components.yeelight_pro import async_setup_entry
+
+        with pytest.raises(RuntimeError, match="platform failed"):
+            await async_setup_entry(hass, entry)
+
+    runtime_holder["runtime"].async_stop.assert_awaited_once()
+    assert entry.entry_id not in hass.data[DOMAIN]

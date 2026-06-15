@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from homeassistant.components.light import ATTR_BRIGHTNESS, ColorMode, LightEntity
+from homeassistant.components.light import (
+    ATTR_BRIGHTNESS,
+    ATTR_RGB_COLOR,
+    ColorMode,
+    LightEntity,
+)
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .core.coordinator import YeelightProCoordinator
@@ -13,6 +18,11 @@ from .device_display import suggested_entity_object_id
 from .entity_errors import raise_service_error
 from .house_metadata import house_device_info
 from .identity import entity_unique_id
+from .projector.light_helpers import (
+    DEFAULT_MAX_COLOR_TEMP_KELVIN,
+    DEFAULT_MIN_COLOR_TEMP_KELVIN,
+)
+from .utils import to_int
 
 try:
     from homeassistant.components.light import ATTR_COLOR_TEMP_KELVIN
@@ -25,8 +35,8 @@ class YeelightProGroupLight(CoordinatorEntity, LightEntity):
 
     _attr_has_entity_name = True
     _attr_icon = "mdi:lightbulb-group"
-    _attr_min_color_temp_kelvin = 2700
-    _attr_max_color_temp_kelvin = 6500
+    _attr_min_color_temp_kelvin = DEFAULT_MIN_COLOR_TEMP_KELVIN
+    _attr_max_color_temp_kelvin = DEFAULT_MAX_COLOR_TEMP_KELVIN
 
     def __init__(
         self,
@@ -92,18 +102,19 @@ class YeelightProGroupLight(CoordinatorEntity, LightEntity):
         return int(value) if isinstance(value, int | float) and value > 0 else None
 
     @property
+    def rgb_color(self) -> tuple[int, int, int] | None:
+        """返回灯组 RGB 颜色。"""
+        return _rgb_color_from_params(self._group_params)
+
+    @property
     def supported_color_modes(self) -> set[ColorMode]:
         """返回 HA 允许的灯组颜色模式集合。"""
-        if self.color_temp_kelvin is not None:
-            return {ColorMode.COLOR_TEMP}
-        return {ColorMode.BRIGHTNESS}
+        return _supported_color_modes_from_params(self._group_params)
 
     @property
     def color_mode(self) -> ColorMode:
         """返回当前灯组颜色模式。"""
-        if self.color_temp_kelvin is not None:
-            return ColorMode.COLOR_TEMP
-        return ColorMode.BRIGHTNESS
+        return _color_mode_from_params(self._group_params)
 
     @property
     def suggested_object_id(self) -> str | None:
@@ -129,6 +140,9 @@ class YeelightProGroupLight(CoordinatorEntity, LightEntity):
             params["l"] = int(round(brightness * 100 / 255))
         if ATTR_COLOR_TEMP_KELVIN in kwargs:
             params["ct"] = int(kwargs[ATTR_COLOR_TEMP_KELVIN])
+        if ATTR_RGB_COLOR in kwargs and "c" in self._group_params:
+            r, g, b = kwargs[ATTR_RGB_COLOR]
+            params["c"] = (r << 16) | (g << 8) | b
         try:
             await self.coordinator.async_control_group(self._group_id, params)
         except YeelightProError as err:
@@ -140,6 +154,51 @@ class YeelightProGroupLight(CoordinatorEntity, LightEntity):
             await self.coordinator.async_control_group(self._group_id, {"p": False})
         except YeelightProError as err:
             raise_service_error("light.turn_off", err)
+
+
+def _supported_color_modes_from_params(params: dict[str, Any]) -> set[ColorMode]:
+    """根据灯组/节点当前参数证据推断 HA 颜色模式。"""
+    modes: set[ColorMode] = set()
+    if "ct" in params:
+        modes.add(ColorMode.COLOR_TEMP)
+    if "c" in params:
+        modes.add(ColorMode.RGB)
+    if modes:
+        return modes
+    if "l" in params:
+        return {ColorMode.BRIGHTNESS}
+    return {ColorMode.ONOFF}
+
+
+def _color_mode_from_params(params: dict[str, Any]) -> ColorMode:
+    """解析当前灯光模式，优先使用易来 m 模式字段。"""
+    supported = _supported_color_modes_from_params(params)
+    mode = to_int(params.get("m"))
+    if mode == 1 and ColorMode.RGB in supported:
+        return ColorMode.RGB
+    if mode == 2 and ColorMode.COLOR_TEMP in supported:
+        return ColorMode.COLOR_TEMP
+    if _color_temp_from_params(params) is not None and ColorMode.COLOR_TEMP in supported:
+        return ColorMode.COLOR_TEMP
+    if _rgb_color_from_params(params) is not None and ColorMode.RGB in supported:
+        return ColorMode.RGB
+    if ColorMode.BRIGHTNESS in supported:
+        return ColorMode.BRIGHTNESS
+    return ColorMode.ONOFF
+
+
+def _color_temp_from_params(params: dict[str, Any]) -> int | None:
+    """读取 params 中的开尔文色温。"""
+    value = params.get("ct")
+    return int(value) if isinstance(value, int | float) and value > 0 else None
+
+
+def _rgb_color_from_params(params: dict[str, Any]) -> tuple[int, int, int] | None:
+    """读取 params 中的 RGB 整数色彩。"""
+    color = to_int(params.get("c"))
+    if color is None:
+        return None
+    return ((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF)
 
 
 __all__ = ["YeelightProGroupLight"]

@@ -12,11 +12,18 @@ from ..utils import to_category, to_int, to_str
 from .common import NumericRange, component_index, humanize_component_id
 from .platform_evidence import payload_category
 
+DEFAULT_MIN_COLOR_TEMP_KELVIN = 2700
+DEFAULT_MAX_COLOR_TEMP_KELVIN = 6500
 DEFAULT_BRIGHTNESS_RANGE = (1, 100, 1)
-DEFAULT_COLOR_TEMP_RANGE_KELVIN = (2700, 6500, None)
+DEFAULT_COLOR_TEMP_RANGE_KELVIN = (
+    DEFAULT_MIN_COLOR_TEMP_KELVIN,
+    DEFAULT_MAX_COLOR_TEMP_KELVIN,
+    None,
+)
 LIGHT_COLOR_MODE_HINT_KEY = "light_color_mode"
 LIGHT_COLOR_TEMP_MODE_TOKENS = {"color_temp", "colortemp", "ct", "temperature", "temp"}
 LIGHT_RGB_MODE_TOKENS = {"rgb", "color", "colour"}
+LEGACY_LIGHT_PRODUCT_TYPES = frozenset({2, 3, 4, 14, 30})
 
 
 def _resolve_light_features(
@@ -43,17 +50,18 @@ def _infer_features_from_payload(
     state: Mapping[str, Any],
 ) -> set[str]:
     """从载荷和状态中推断灯光特征。"""
-    product_type = device_payload.get("product_type")
     features: set[str] = set()
 
     if "p" in state:
         features.add("onoff")
-    if "l" in state or product_type in {2, 3, 4, 14, 30}:
+    if "l" in state:
         features.add("brightness")
-    if "ct" in state or product_type == 3:
+    if "ct" in state:
         features.add("color_temp")
-    if "c" in state or product_type == 4:
+    if "c" in state:
         features.add("rgb")
+    if not features and _payload_is_light(device_payload):
+        features.update(_legacy_product_type_features(device_payload.get("product_type")))
 
     return features
 
@@ -98,7 +106,7 @@ def _resolve_color_mode(
     if inferred_mode in supported_color_modes:
         return inferred_mode
 
-    for mode in (ColorMode.RGB, ColorMode.COLOR_TEMP, ColorMode.BRIGHTNESS, ColorMode.ONOFF):
+    for mode in (ColorMode.COLOR_TEMP, ColorMode.BRIGHTNESS, ColorMode.RGB, ColorMode.ONOFF):
         if mode in supported_color_modes:
             return mode
     return ColorMode.ONOFF
@@ -129,10 +137,18 @@ def _project_brightness(
 
 def _project_color_temp(state: Mapping[str, Any]) -> int | None:
     """将开尔文色温转换为 HA mired 单位。"""
+    kelvin = _project_color_temp_kelvin(state)
+    if kelvin is None:
+        return None
+    return int(1000000 / kelvin)
+
+
+def _project_color_temp_kelvin(state: Mapping[str, Any]) -> int | None:
+    """返回原始开尔文色温，避免 mired 往返造成精度漂移。"""
     kelvin = to_int(state.get("ct"))
     if kelvin is None or kelvin <= 0:
         return None
-    return int(1000000 / kelvin)
+    return kelvin
 
 
 def _project_rgb_color(state: Mapping[str, Any]) -> tuple[int, int, int] | None:
@@ -316,6 +332,19 @@ def _has_brightness_capability(features: set[str], state: Mapping[str, Any]) -> 
 def _has_color_temp_capability(features: set[str], state: Mapping[str, Any]) -> bool:
     """判断是否具有色温控制能力。"""
     return "color_temp" in features or "ct" in state
+
+
+def _legacy_product_type_features(product_type: Any) -> set[str]:
+    """仅在无 schema/state 能力时兼容旧 product_type 灯型提示。"""
+    normalized = to_int(product_type)
+    if normalized not in LEGACY_LIGHT_PRODUCT_TYPES:
+        return set()
+    features = {"onoff", "brightness"}
+    if normalized == 3:
+        features.add("color_temp")
+    if normalized == 4:
+        features.add("rgb")
+    return features
 
 
 def _hinted_light_color_mode(device_payload: Mapping[str, Any]) -> ColorMode | None:

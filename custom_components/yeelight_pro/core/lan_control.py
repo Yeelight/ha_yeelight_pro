@@ -84,6 +84,11 @@ async def async_try_lan_action_device(
     )
 
 
+def lan_runtime_connected(lan_runtime: Any) -> bool:
+    """Return whether an injected LAN runtime can currently send commands."""
+    return _lan_runtime_connected(lan_runtime)
+
+
 async def async_try_lan_toggle_device(
     lan_runtime: Any,
     *,
@@ -275,4 +280,5 @@ __all__ = [
     "async_try_lan_execute_scene",
     "async_try_lan_simulate_event",
     "async_try_lan_toggle_device",
+    "lan_runtime_connected",
 ]

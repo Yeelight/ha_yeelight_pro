@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import pytest
 
+from homeassistant.components.light import ColorMode
+
 from custom_components.yeelight_pro.identity import entry_identity_scope, scoped_entity_unique_id
 from custom_components.yeelight_pro.node_light import YeelightProNodeLight
 
@@ -44,6 +46,7 @@ def test_node_light_reads_cached_topology_state(
     assert entity.is_on is True
     assert entity.brightness == 204
     assert entity.color_temp_kelvin == 4000
+    assert entity.supported_color_modes == {ColorMode.COLOR_TEMP}
     assert entity.device_info["model"] == "Yeelight Pro 家庭"
 
 
@@ -106,3 +109,29 @@ def test_node_light_unavailable_when_node_missing(mock_coordinator) -> None:
     assert entity.available is False
     assert entity.name is None
     assert entity.is_on is False
+
+
+@pytest.mark.asyncio
+async def test_node_light_supports_rgb_only_with_color_param(mock_coordinator) -> None:
+    """节点总控只有在 params 含 c 时才暴露并控制 RGB。"""
+    mock_coordinator.rooms = [
+        {
+            "id": "room_1",
+            "name": "客厅",
+            "online": True,
+            "params": {"p": True, "l": 50, "ct": 4100, "c": 0x112233, "m": 1},
+        }
+    ]
+    entity = YeelightProNodeLight(mock_coordinator, "room", "room_1")
+
+    assert entity.rgb_color == (0x11, 0x22, 0x33)
+    assert entity.supported_color_modes == {ColorMode.COLOR_TEMP, ColorMode.RGB}
+    assert entity.color_mode == ColorMode.RGB
+
+    await entity.async_turn_on(rgb_color=(0x44, 0x55, 0x66))
+
+    mock_coordinator.async_control_node.assert_awaited_once_with(
+        "room",
+        "room_1",
+        {"p": True, "c": 0x445566},
+    )

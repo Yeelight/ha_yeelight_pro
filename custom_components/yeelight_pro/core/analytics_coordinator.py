@@ -59,6 +59,47 @@ class YeelightProAnalyticsCoordinator(DataUpdateCoordinator[AnalyticsSnapshot]):
         self.house_id = house_id
         self.entry_data = dict(entry_data or {})
         self.houses: list[dict[str, Any]] = []
+        self._runtime_coordinator: Any | None = None
+
+    def bind_runtime_coordinator(
+        self,
+        coordinator: Any,
+        *,
+        entry: Any | None = None,
+    ) -> None:
+        """显式绑定主 coordinator，用于同步 analytics 快照和房屋 metadata。"""
+        del entry
+        self._runtime_coordinator = coordinator
+        self.sync_runtime_metadata(coordinator)
+        self._sync_runtime_snapshot(coordinator)
+
+    def async_set_updated_data(self, data: AnalyticsSnapshot) -> None:
+        """Set externally pushed analytics data and sync the runtime cache."""
+        super().async_set_updated_data(data)
+        self._sync_bound_runtime_snapshot(data)
+
+    def sync_runtime_metadata(self, coordinator: Any) -> None:
+        """从主 coordinator 同步 analytics sensor 需要的稳定 metadata。"""
+        entry_data = getattr(coordinator, "entry_data", None)
+        if isinstance(entry_data, Mapping):
+            self.entry_data = dict(entry_data)
+
+        houses = getattr(coordinator, "houses", None)
+        if isinstance(houses, list):
+            self.houses = houses
+
+    def _sync_runtime_snapshot(self, coordinator: Any) -> None:
+        """把最新 analytics snapshot 写回主 coordinator 的诊断缓存。"""
+        if hasattr(coordinator, "analytics_data"):
+            coordinator.analytics_data = self.data
+
+    def _sync_bound_runtime_snapshot(self, snapshot: AnalyticsSnapshot | None) -> None:
+        """同步已绑定主 coordinator 的 analytics snapshot。"""
+        if self._runtime_coordinator is not None and hasattr(
+            self._runtime_coordinator,
+            "analytics_data",
+        ):
+            self._runtime_coordinator.analytics_data = snapshot
 
     async def _async_update_data(self) -> AnalyticsSnapshot:
         """Fetch one low-frequency analytics snapshot."""
@@ -107,12 +148,13 @@ class YeelightProAnalyticsCoordinator(DataUpdateCoordinator[AnalyticsSnapshot]):
                     "Failed to refresh Yeelight Pro analytics, keeping last snapshot: %s",
                     safe_error_summary(err),
                 )
+                self._sync_bound_runtime_snapshot(self.data)
                 return self.data
             raise UpdateFailed(
                 f"Failed to refresh Yeelight Pro analytics: {safe_error_summary(err)}"
             ) from None
 
-        return AnalyticsSnapshot(
+        snapshot = AnalyticsSnapshot(
             date_code=period.month_code,
             day_code=period.day_code,
             trend_start_date=period.trend_start_date,
@@ -126,6 +168,8 @@ class YeelightProAnalyticsCoordinator(DataUpdateCoordinator[AnalyticsSnapshot]):
             monthly_user_actions=_response_dict(monthly_user_actions),
             yearly_user_actions=_response_dict(yearly_user_actions),
         )
+        self._sync_bound_runtime_snapshot(snapshot)
+        return snapshot
 
 
 @dataclass(frozen=True, slots=True)

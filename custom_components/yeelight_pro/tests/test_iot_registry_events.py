@@ -18,6 +18,8 @@ from custom_components.yeelight_pro.capabilities.registry import normalize_event
         ("motion.false", "motion_undetected"),
         ("panel.click", "click"),
         ("panel.hold", "hold"),
+        ("panel.release", "release_after_hold"),
+        ("keyClick", "click"),
         ("传感器已接触", "sensor_contacted"),
         ("传感器未接触", "sensor_not_contacted"),
         ("power.alarm", "power_alarm"),
@@ -75,12 +77,21 @@ def test_motion_event_component_matrix_matches_event_summary_csv() -> None:
         assert {"motion_detected", "motion_undetected"}.issubset(component.events)
 
 
-def test_release_after_hold_remains_unassigned_until_docs_confirm_components() -> None:
-    """按住后松开目前缺少明确组件归属，不能提前扩大事件投影面。"""
+def test_release_after_hold_event_component_matrix_matches_lan_docs() -> None:
+    """panel.release 在 LAN 事件表中与点击/长按共享控制面板事件面。"""
     registry = iot_registry()
+    expected_components = {
+        "wireless switch channel",
+        "scene control button",
+        "switch control",
+        "dali scene control button",
+    }
     events = {event.normalized: event for event in registry.events}
 
-    assert events["release_after_hold"].components == ()
+    assert set(events["release_after_hold"].components) == expected_components
+    for component_alias in expected_components:
+        component = registry.component_map[component_alias]
+        assert "release_after_hold" in component.events
 
 
 def test_csv_unscoped_events_remain_unassigned_until_docs_confirm_components() -> None:

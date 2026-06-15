@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import traceback
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from homeassistant.components.cover import CoverEntityFeature
 from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.yeelight_pro.core.exceptions import YeelightProError
@@ -74,6 +75,27 @@ def test_cover_handles_missing_device_payload(mock_coordinator) -> None:
     assert cover.available is False
     assert cover.current_cover_position is None
     assert cover.device_info is None
+
+
+def test_cover_stop_feature_is_hidden_without_strict_lan_action_capability(
+    mock_coordinator,
+) -> None:
+    """未确认 LAN action 可用时，不向 HA 暴露 STOP。"""
+    mock_coordinator.get_device.return_value = _cover_payload()
+    cover = YeelightProCover(mock_coordinator, 12345)
+
+    assert not cover.supported_features & CoverEntityFeature.STOP
+
+
+def test_cover_stop_feature_is_exposed_when_lan_action_is_available(
+    mock_coordinator,
+) -> None:
+    """LAN action 可用时，HA cover 才显示停止按钮。"""
+    mock_coordinator.get_device.return_value = _cover_payload()
+    mock_coordinator.can_control_device_action = MagicMock(return_value=True)
+    cover = YeelightProCover(mock_coordinator, 12345)
+
+    assert cover.supported_features & CoverEntityFeature.STOP
 
 
 @pytest.mark.asyncio
@@ -149,6 +171,23 @@ async def test_multi_component_cover_sends_component_target_key(mock_coordinator
 
 
 @pytest.mark.asyncio
+async def test_stop_cover_sends_documented_lan_motor_pause_action(
+    mock_coordinator,
+) -> None:
+    """停止窗帘应使用 LAN action.motorAdjust.pause。"""
+    mock_coordinator.get_device.return_value = _cover_payload()
+    mock_coordinator.async_action_device = AsyncMock()
+    cover = YeelightProCover(mock_coordinator, 12345)
+
+    await cover.async_stop_cover()
+
+    mock_coordinator.async_action_device.assert_awaited_once_with(
+        12345,
+        {"motorAdjust": {"type": "pause"}},
+    )
+
+
+@pytest.mark.asyncio
 async def test_open_cover_control_error_is_redacted(mock_coordinator) -> None:
     """Cover 控制错误不得泄露 token、URL 或设备标识."""
     mock_coordinator.get_device.return_value = _cover_payload()
@@ -159,3 +198,16 @@ async def test_open_cover_control_error_is_redacted(mock_coordinator) -> None:
         await cover.async_open_cover()
 
     _assert_redacted(exc_info.value, action="cover.open_cover")
+
+
+@pytest.mark.asyncio
+async def test_stop_cover_control_error_is_redacted(mock_coordinator) -> None:
+    """Cover 停止错误也必须走统一脱敏出口。"""
+    mock_coordinator.get_device.return_value = _cover_payload()
+    mock_coordinator.async_action_device = AsyncMock(side_effect=_sensitive_error())
+    cover = YeelightProCover(mock_coordinator, 12345)
+
+    with pytest.raises(HomeAssistantError) as exc_info:
+        await cover.async_stop_cover()
+
+    _assert_redacted(exc_info.value, action="cover.stop_cover")

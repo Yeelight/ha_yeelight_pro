@@ -23,9 +23,11 @@ from .const import (
     CONF_HOUSE_NAME,
     CONF_LAN_GATEWAY_IP,
     CONF_LAN_GATEWAY_PORT,
+    CONF_LAN_GATEWAY_PRODUCT_ID,
     CONF_LOCAL_GATEWAY_CONTROL,
     CONF_LOCAL_GATEWAY_HOST,
     CONF_LOCAL_GATEWAY_PORT,
+    CONF_LOCAL_GATEWAY_PRODUCT_ID,
     CONF_OPEN_API_CLIENT_ID,
     CONF_PRIVATE_DOMAIN,
     CONF_REFRESH_TOKEN,
@@ -43,8 +45,9 @@ class _LanConfigFlowProtocol(Protocol):
 
     _lan_gateway_ip: str
     _lan_gateway_port: int
+    _lan_gateway_product_id: int | None
     _lan_discovered_list: list[tuple[str, int, str]]
-    _lan_discovered_map: dict[str, tuple[str, int]]
+    _lan_discovered_map: dict[str, tuple[str, int, int | None]]
 
     def async_show_form(self, **kwargs: Any) -> FlowResult:
         """Return a Home Assistant config-flow form."""
@@ -79,7 +82,11 @@ class LanConfigFlowMixin:
                 return await self.async_step_lan_manual()
             gateway = flow._lan_discovered_map.get(selected)
             if gateway is not None:
-                flow._lan_gateway_ip, flow._lan_gateway_port = gateway
+                (
+                    flow._lan_gateway_ip,
+                    flow._lan_gateway_port,
+                    flow._lan_gateway_product_id,
+                ) = gateway
                 try:
                     await async_validate_lan_connection(
                         flow._lan_gateway_ip,
@@ -95,11 +102,15 @@ class LanConfigFlowMixin:
             return await self.async_step_lan_manual()
 
         flow._lan_discovered_list = [
-            (gateway.ip, DEFAULT_LAN_GATEWAY_PORT, f"{gateway.ip} (MAC: {gateway.mac})")
+            (
+                gateway.ip,
+                DEFAULT_LAN_GATEWAY_PORT,
+                f"{gateway.ip} (PID: {gateway.product_id}, MAC: {gateway.mac})",
+            )
             for gateway in discovered
         ]
         flow._lan_discovered_map = {
-            gateway.ip: (gateway.ip, DEFAULT_LAN_GATEWAY_PORT)
+            gateway.ip: (gateway.ip, DEFAULT_LAN_GATEWAY_PORT, gateway.product_id)
             for gateway in discovered
         }
 
@@ -122,6 +133,7 @@ class LanConfigFlowMixin:
             flow._lan_gateway_port = int(
                 user_input.get(CONF_LAN_GATEWAY_PORT, DEFAULT_LAN_GATEWAY_PORT)
             )
+            flow._lan_gateway_product_id = None
             try:
                 await async_validate_lan_connection(
                     flow._lan_gateway_ip,
@@ -162,6 +174,7 @@ class LanConfigFlowMixin:
             CONF_SCAN_LOGIN_DEVICE: "",
             CONF_LAN_GATEWAY_IP: flow._lan_gateway_ip,
             CONF_LAN_GATEWAY_PORT: flow._lan_gateway_port,
+            CONF_LAN_GATEWAY_PRODUCT_ID: flow._lan_gateway_product_id,
         }
         return flow.async_create_entry(
             title=config_entry_title(data),
@@ -170,6 +183,7 @@ class LanConfigFlowMixin:
                 CONF_LOCAL_GATEWAY_CONTROL: True,
                 CONF_LOCAL_GATEWAY_HOST: flow._lan_gateway_ip,
                 CONF_LOCAL_GATEWAY_PORT: flow._lan_gateway_port,
+                CONF_LOCAL_GATEWAY_PRODUCT_ID: flow._lan_gateway_product_id,
             },
         )
 

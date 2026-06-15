@@ -163,14 +163,6 @@ async def async_setup_analytics_sensors(
     """Build analytics sensors when cloud analytics is available."""
     if analytics_coordinator is None:
         return []
-    coordinator = getattr(analytics_coordinator, "_main_coordinator", None)
-    if coordinator is not None:
-        remove_listener = analytics_coordinator.async_add_listener(
-            lambda: setattr(coordinator, "analytics_data", analytics_coordinator.data)
-        )
-        entry = getattr(analytics_coordinator, "_config_entry", None)
-        if entry is not None:
-            entry.async_on_unload(remove_listener)
     return [
         YeelightProAnalyticsSensor(analytics_coordinator, description)
         for description in ANALYTICS_SENSOR_DESCRIPTIONS

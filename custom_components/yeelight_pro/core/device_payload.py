@@ -305,7 +305,11 @@ def _set_effective_iot_category(
 def refresh_classification_metadata(payload: dict[str, Any]) -> None:
     """Refresh IoT category and HA platform hints after schema inference."""
     _remember_source_category(payload)
-    iot_category = infer_iot_category(payload)
+    iot_category = (
+        str(payload["iot_category"])
+        if payload.get("mixed_lan_types") and payload.get("iot_category")
+        else infer_iot_category(payload)
+    )
     _set_effective_iot_category(payload, iot_category)
     candidates = platform_candidates_for_payload(payload)
     if candidates:

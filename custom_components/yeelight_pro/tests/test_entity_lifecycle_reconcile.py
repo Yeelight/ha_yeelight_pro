@@ -130,7 +130,7 @@ async def test_reconcile_treats_filtered_device_entities_as_stale_without_remova
     patch_entity_registry(monkeypatch, registry)
 
     with caplog.at_level(
-        logging.INFO,
+        logging.DEBUG,
         logger="custom_components.yeelight_pro.entity_lifecycle",
     ):
         active_unique_ids = await async_reconcile_entity_registry(
@@ -153,8 +153,25 @@ async def test_reconcile_treats_filtered_device_entities_as_stale_without_remova
         for record in caplog.records
         if record.name == "custom_components.yeelight_pro.entity_lifecycle"
     )
+    info_logs = "\n".join(
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "custom_components.yeelight_pro.entity_lifecycle"
+        and record.levelno == logging.INFO
+    )
+    debug_logs = "\n".join(
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "custom_components.yeelight_pro.entity_lifecycle"
+        and record.levelno == logging.DEBUG
+    )
+    assert "active=0 pending_stale=1 stale=1 restored=0 metadata_updated=0" in info_logs
+    assert "stale_domains" not in info_logs
+    assert "pending_stale_domains" not in info_logs
     assert "stale_domains={'light': 1}" in lifecycle_logs
     assert "pending_stale_domains={'light': 1}" in lifecycle_logs
+    assert "stale_domains={'light': 1}" in debug_logs
+    assert "pending_stale_domains={'light': 1}" in debug_logs
     assert secret_unique_id not in lifecycle_logs
     assert secret_entity_id not in lifecycle_logs
 

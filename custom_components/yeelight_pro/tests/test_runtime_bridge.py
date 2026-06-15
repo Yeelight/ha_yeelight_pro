@@ -205,6 +205,64 @@ async def test_lan_runtime_update_rebuilds_scaled_canonical_state(
     assert by_component["energy_consumption"].native_value == 25.0
 
 
+@pytest.mark.asyncio
+async def test_lan_runtime_update_scales_temperature_humidity_raw_value(
+    hass: HomeAssistant,
+) -> None:
+    """LAN type=136 后续属性推送也必须按协议把 t/100。"""
+    coordinator = YeelightProCoordinator(
+        hass=hass,
+        client=MagicMock(),
+        house_id=12345,
+    )
+    coordinator.devices = {
+        228219: {
+            "id": 228219,
+            "device_id": 228219,
+            "name": "LAN Temp Humidity",
+            "category": "other",
+            "type": "other",
+            "online": True,
+            "lan_type": 136,
+            "params": {"t": 0.0, "h": 0},
+            "ha_device_instance": {
+                "device_id": "228219",
+                "name": "LAN Temp Humidity",
+                "online": True,
+                "components": [
+                    {
+                        "component_id": "temp_humidity",
+                        "category": "temperature humidity sensor",
+                        "available": True,
+                        "state": {"t": 0.0, "h": 0},
+                    }
+                ],
+            },
+        }
+    }
+    coordinator.data = coordinator.devices
+
+    await coordinator.async_handle_lan_payload(
+        {
+            "method": "gateway_post.prop",
+            "nodes": [{"id": 228219, "nt": 2, "params": {"t": 2534, "h": 58}}],
+        }
+    )
+
+    refreshed = coordinator.get_device(228219)
+    assert refreshed is not None
+    assert refreshed["params"] == {"t": 25.34, "h": 58}
+    assert refreshed["ha_device_instance"]["components"][0]["state"] == {
+        "t": 25.34,
+        "h": 58,
+    }
+    by_component = {
+        projection.component_id: projection
+        for projection in project_sensors(refreshed, domain=DOMAIN)
+    }
+    assert by_component["temperature"].native_value == 25.34
+
+
 def test_runtime_event_dedupe_key_is_bounded_and_identifier_safe() -> None:
     """事件去重键不能包含 msgId、设备 ID 或原始事件值。"""
     payload = {

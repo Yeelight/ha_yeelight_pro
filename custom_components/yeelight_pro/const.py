@@ -79,10 +79,12 @@ CONF_LIVE_UPDATES = "live_updates"
 CONF_LOCAL_GATEWAY_CONTROL = "local_gateway_control"
 CONF_LOCAL_GATEWAY_HOST = "local_gateway_host"
 CONF_LOCAL_GATEWAY_PORT = "local_gateway_port"
+CONF_LOCAL_GATEWAY_PRODUCT_ID = "local_gateway_product_id"
 
 # LAN 模式配置键
 CONF_LAN_GATEWAY_IP = "lan_gateway_ip"
 CONF_LAN_GATEWAY_PORT = "lan_gateway_port"
+CONF_LAN_GATEWAY_PRODUCT_ID = "lan_gateway_product_id"
 
 # 默认域名
 DEFAULT_CLOUD_DOMAIN = "https://api.yeelight.com/apis/iot"

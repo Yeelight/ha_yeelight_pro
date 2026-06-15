@@ -35,6 +35,10 @@ from .projector.light import (
     NumericRange,
     project_lights,
 )
+from .projector.light_helpers import (
+    DEFAULT_MAX_COLOR_TEMP_KELVIN,
+    DEFAULT_MIN_COLOR_TEMP_KELVIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -205,9 +209,9 @@ class YeelightProLight(CoordinatorEntity, LightEntity):
     def color_temp_kelvin(self) -> int | None:
         """返回色温（开尔文）。"""
         projection = self._projection
-        if projection is None or projection.color_temp is None or projection.color_temp <= 0:
+        if projection is None:
             return None
-        return int(1000000 / projection.color_temp)
+        return projection.color_temp_kelvin
 
     @property
     def rgb_color(self) -> tuple[int, int, int] | None:
@@ -241,7 +245,7 @@ class YeelightProLight(CoordinatorEntity, LightEntity):
             and projection.color_temp_range_kelvin.min is not None
         ):
             return projection.color_temp_range_kelvin.min
-        return 2700
+        return DEFAULT_MIN_COLOR_TEMP_KELVIN
 
     @property
     def max_color_temp_kelvin(self) -> int:
@@ -253,7 +257,7 @@ class YeelightProLight(CoordinatorEntity, LightEntity):
             and projection.color_temp_range_kelvin.max is not None
         ):
             return projection.color_temp_range_kelvin.max
-        return 6500
+        return DEFAULT_MAX_COLOR_TEMP_KELVIN
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """开启灯光。"""
@@ -323,11 +327,11 @@ class YeelightProLight(CoordinatorEntity, LightEntity):
         minimum = (
             color_temp_range.min
             if color_temp_range and color_temp_range.min is not None
-            else 2700
+            else DEFAULT_MIN_COLOR_TEMP_KELVIN
         )
         maximum = (
             color_temp_range.max
             if color_temp_range and color_temp_range.max is not None
-            else 6500
+            else DEFAULT_MAX_COLOR_TEMP_KELVIN
         )
         return max(minimum, min(maximum, kelvin))

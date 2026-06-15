@@ -72,6 +72,42 @@ async def test_coordinator_toggle_device_falls_back_when_lan_health_is_unreadabl
 
 
 @pytest.mark.asyncio
+async def test_lan_only_control_reports_missing_cloud_fallback(
+    hass: HomeAssistant,
+) -> None:
+    """LAN-only entry 无可用 LAN 路由时，应抛领域错误而不是 AttributeError。"""
+    coordinator = YeelightProCoordinator(hass=hass, client=None, house_id=0)
+    coordinator.devices = {67890: {"id": 67890, "name": "客厅灯"}}
+
+    with pytest.raises(CommandError) as exc_info:
+        await coordinator.async_control_device(67890, {"p": True})
+
+    assert str(exc_info.value) == (
+        "Cloud fallback is unavailable for this LAN-only Yeelight Pro entry"
+    )
+
+
+@pytest.mark.asyncio
+async def test_lan_only_group_and_scene_report_missing_cloud_fallback(
+    hass: HomeAssistant,
+) -> None:
+    """LAN-only entry 的 group/scene fallback 也应给出统一领域错误。"""
+    coordinator = YeelightProCoordinator(hass=hass, client=None, house_id=0)
+
+    with pytest.raises(CommandError) as group_error:
+        await coordinator.async_control_group("group_1", {"p": True})
+    with pytest.raises(CommandError) as scene_error:
+        await coordinator.async_execute_scene("scene_1")
+
+    assert str(group_error.value) == (
+        "Cloud fallback is unavailable for this LAN-only Yeelight Pro entry"
+    )
+    assert str(scene_error.value) == (
+        "Cloud fallback is unavailable for this LAN-only Yeelight Pro entry"
+    )
+
+
+@pytest.mark.asyncio
 async def test_coordinator_lan_toggle_error_is_redacted(
     hass: HomeAssistant,
 ) -> None:

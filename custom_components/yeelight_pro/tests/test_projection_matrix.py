@@ -30,9 +30,48 @@ def test_light_projection_uses_component_state_over_raw_params() -> None:
     assert projection.is_on is True
     assert projection.brightness == 203
     assert projection.color_temp == 250
+    assert projection.color_temp_kelvin == 4000
     assert projection.rgb_color == (0x33, 0x66, 0x99)
     assert projection.supported_color_modes == {ColorMode.COLOR_TEMP, ColorMode.RGB}
     assert project_switches(device, domain=DOMAIN) == []
+
+
+def test_light_projection_ambiguous_modes_do_not_default_to_rgb() -> None:
+    """无当前颜色状态证据时，多模式灯应优先显示色温而不是 RGB 调色盘。"""
+    device = projection_payload(
+        device_id="dual-mode-light-1",
+        category="light",
+        component_id="main_light",
+        state={"p": True, "l": 80},
+        component_category="color temperature light",
+        properties=("p", "l", "ct", "c"),
+    )
+
+    projection = project_light(device, domain=DOMAIN)
+
+    assert projection is not None
+    assert projection.supported_color_modes == {ColorMode.COLOR_TEMP, ColorMode.RGB}
+    assert projection.color_mode == ColorMode.COLOR_TEMP
+
+
+def test_light_projection_product_type_does_not_override_state_capabilities() -> None:
+    """已有真实状态能力时，legacy product_type 不应额外注入 RGB 能力。"""
+    device = projection_payload(
+        device_id="ct-product-type-legacy-1",
+        category="light",
+        component_id="main_light",
+        state={"p": True, "l": 80, "ct": 3000},
+        component_category="color temperature light",
+        product_type=4,
+    )
+
+    projection = project_light(device, domain=DOMAIN)
+
+    assert projection is not None
+    assert projection.color_temp == 333
+    assert projection.color_temp_kelvin == 3000
+    assert projection.supported_color_modes == {ColorMode.COLOR_TEMP}
+    assert projection.color_mode == ColorMode.COLOR_TEMP
 
 
 def test_light_projection_preserves_gateway_via_device_info() -> None:

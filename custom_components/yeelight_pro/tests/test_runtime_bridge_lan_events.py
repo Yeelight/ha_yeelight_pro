@@ -137,6 +137,68 @@ async def test_coordinator_infers_lan_event_component_without_node_type(
 
 
 @pytest.mark.asyncio
+async def test_coordinator_infers_wifi_panel_device_event_component(
+    hass: HomeAssistant,
+) -> None:
+    """device_post.event 的 wifi_panel fallback 应按 schema 推断真实组件。"""
+    coordinator = YeelightProCoordinator(
+        hass=hass,
+        client=MagicMock(),
+        house_id=12345,
+    )
+    coordinator.devices = {
+        7919: {
+            "id": 7919,
+            "device_id": 7919,
+            "name": "WiFi Panel",
+            "category": "scene_panel",
+            "type": "event",
+            "ha_product_model": {
+                "components": [
+                    {
+                        "component_id": "scene_panel",
+                        "category": "scene_panel",
+                        "events": [{"name": "panel.click"}],
+                    }
+                ],
+            },
+        }
+    }
+    fired: list[dict] = []
+    hass.bus.async_listen(DEVICE_EVENT_TYPE, lambda event: fired.append(event.data))
+
+    events = await coordinator.async_handle_lan_payload(
+        {
+            "id": 116,
+            "method": "device_post.event",
+            "version": "1.0",
+            "params": {
+                "id": 7919,
+                "type": "keyClick",
+                "params": {"key": 1, "count": 1},
+            },
+        }
+    )
+    await hass.async_block_till_done()
+
+    assert [event.component_id for event in events] == ["scene_panel"]
+    assert [event.event_type for event in events] == ["click"]
+    assert fired == [
+        {
+            ATTR_SOURCE_DEVICE_ID: "7919",
+            ATTR_COMPONENT_ID: "scene_panel",
+            ATTR_EVENT_TYPE: "click",
+            ATTR_EVENT_ATTRIBUTES: {
+                "method": "device_post.event",
+                "message_id": "116",
+                "params": {"key": 1, "count": 1},
+                "raw_event": "keyClick",
+            },
+        }
+    ]
+
+
+@pytest.mark.asyncio
 async def test_coordinator_applies_lan_topology_auxiliary_nodes(
     hass: HomeAssistant,
 ) -> None:

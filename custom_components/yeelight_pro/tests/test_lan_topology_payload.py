@@ -29,6 +29,9 @@ from custom_components.yeelight_pro.identity import (
     scoped_device_identifier,
     scoped_entity_unique_id,
 )
+from custom_components.yeelight_pro.projector.sensor import project_sensors
+from custom_components.yeelight_pro.projector.event import project_events
+from custom_components.yeelight_pro.projector.property_controls import project_select_controls
 
 
 def _build(nodes: list[dict]) -> dict[int, dict]:
@@ -99,6 +102,27 @@ def test_lan_temperature_humidity_sensor_stays_sensor_not_climate() -> None:
     }
 
 
+def test_lan_temperature_humidity_sensor_scales_documented_raw_temperature() -> None:
+    """LAN type=136 的 t 是摄氏度放大 100 倍，入站时应转成真实摄氏值。"""
+    device = _build([
+        {
+            "id": 1006,
+            "nt": 2,
+            "type": 136,
+            "n": "主卧环境",
+            "params": {"t": 2534, "h": 58},
+        },
+    ])[1006]
+
+    sensors = project_sensors(device, domain=DOMAIN)
+    by_component = {item.component_id: item for item in sensors}
+
+    assert device["params"]["t"] == 25.34
+    assert device["ha_device_instance"]["components"][0]["state"]["t"] == 25.34
+    assert by_component["temperature"].native_value == 25.34
+    assert by_component["humidity"].native_value == 58
+
+
 def test_lan_multi_switch_channels_use_friendly_names() -> None:
     """LAN ch_num/cids 应生成索引组件，让多键开关显示左键/中键/右键。"""
     device = _build([
@@ -125,6 +149,71 @@ def test_lan_multi_switch_channels_use_friendly_names() -> None:
         "switch_3",
     ]
     assert [item.name for item in candidates] == ["左键", "中键", "右键"]
+
+
+def test_lan_scene_panel_projects_all_documented_panel_events() -> None:
+    """LAN type=128 应包含 click/hold/release 三类面板事件。"""
+    device = _build([
+        {"id": 1007, "nt": 2, "type": 128, "n": "玄关情景面板"},
+    ])[1007]
+
+    events = project_events(device, domain=DOMAIN)
+
+    assert device["events"] == [
+        {"name": "click"},
+        {"name": "hold"},
+        {"name": "release_after_hold"},
+    ]
+    assert len(events) == 1
+    assert events[0].event_types == ["click", "hold", "release_after_hold"]
+
+
+def test_lan_bath_heater_projects_documented_auxiliary_controls() -> None:
+    """LAN type=2049 浴霸应保留换气/吹风/加热档位和延时关闭控件。"""
+    device = _build([
+        {"id": 1008, "nt": 2, "type": 2049, "n": "主卫浴霸"},
+    ])[1008]
+    candidates = {
+        (item.platform, item.component_id, item.entity_category)
+        for item in iter_device_entity_candidates(device)
+    }
+
+    assert device["device_info"]["model"] == "浴霸加热器"
+    assert device["params"] == {
+        "p": False,
+        "bhm": 1,
+        "do": 1,
+        "ve": 0,
+        "fa": 0,
+        "he": 0,
+        "tgt": 26,
+        "t": 26,
+    }
+    assert ("climate", "temp_control", None) in candidates
+    assert ("select", "temp_control_bhm_select", None) in candidates
+    assert ("number", "temp_control_do_number", None) in candidates
+    assert ("select", "temp_control_ve_select", None) in candidates
+    assert ("select", "temp_control_fa_select", None) in candidates
+    assert ("select", "temp_control_he_select", None) in candidates
+    bath_mode = next(
+        item for item in project_select_controls(device, domain=DOMAIN) if item.prop_id == "bhm"
+    )
+    assert [item.value for item in bath_mode.options] == ["1", "2", "3", "4"]
+
+
+def test_lan_tof_sensor_projects_only_documented_handwave_event() -> None:
+    """LAN type=2052 是 TOF 传感器，只应暴露 handwave 事件。"""
+    device = _build([
+        {"id": 1009, "nt": 2, "type": 2052, "n": "玄关 TOF"},
+    ])[1009]
+
+    events = project_events(device, domain=DOMAIN)
+
+    assert device["iot_category"] == "other"
+    assert device["device_info"]["model"] == "TOF传感器"
+    assert device["events"] == [{"name": "handwave"}]
+    assert len(events) == 1
+    assert events[0].event_types == ["handwave"]
 
 
 @pytest.mark.asyncio

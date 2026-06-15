@@ -27,42 +27,7 @@ from custom_components.yeelight_pro.lan_runtime import (
 )
 
 from .config_entry_lifecycle_helpers import make_config_entry
-
-
-class FakeLanReader:
-    """有限 TCP reader double."""
-
-    def __init__(self, chunks: list[bytes]) -> None:
-        self._chunks = list(chunks)
-
-    async def read(self, size: int) -> bytes:
-        """Return the next chunk, then EOF."""
-        await asyncio.sleep(0)
-        return self._chunks.pop(0) if self._chunks else b""
-
-
-class FakeLanWriter:
-    """记录写入帧的 TCP writer double."""
-
-    def __init__(self) -> None:
-        self.written: list[bytes] = []
-        self.closed = False
-        self.wait_closed_count = 0
-
-    def write(self, data: bytes) -> None:
-        """Record bytes written by the runtime."""
-        self.written.append(data)
-
-    async def drain(self) -> None:
-        """Match asyncio StreamWriter.drain."""
-
-    def close(self) -> None:
-        """Mark the writer closed."""
-        self.closed = True
-
-    async def wait_closed(self) -> None:
-        """Record graceful close wait."""
-        self.wait_closed_count += 1
+from .lan_runtime_helpers import FakeLanReader, FakeLanWriter
 
 
 def test_lan_runtime_options_reads_config_entry_options() -> None:
@@ -115,9 +80,10 @@ async def test_start_lan_runtime_opens_gateway_and_requests_topology(
     created: dict[str, Any] = {}
 
     class FakeRuntime:
-        def __init__(self, *, host: str, port: int) -> None:
+        def __init__(self, *, host: str, port: int, endpoint_kind: str) -> None:
             self.host = host
             self.port = port
+            self.endpoint_kind = endpoint_kind
             self.callback: Callable[[Mapping[str, Any]], Awaitable[object]] | None = None
             self.topology_requested = False
             created["runtime"] = self
@@ -149,6 +115,7 @@ async def test_start_lan_runtime_opens_gateway_and_requests_topology(
     assert runtime is created["runtime"]
     assert fake_runtime.host == "192.168.1.20"
     assert fake_runtime.port == 65444
+    assert fake_runtime.endpoint_kind == "gateway"
     assert fake_runtime.callback is coordinator.async_handle_lan_payload
     assert fake_runtime.topology_requested is True
 
@@ -161,9 +128,10 @@ async def test_start_lan_runtime_discovers_gateway_when_host_is_empty(
     created: dict[str, Any] = {}
 
     class FakeRuntime:
-        def __init__(self, *, host: str, port: int) -> None:
+        def __init__(self, *, host: str, port: int, endpoint_kind: str) -> None:
             self.host = host
             self.port = port
+            self.endpoint_kind = endpoint_kind
             self.callback: Callable[[Mapping[str, Any]], Awaitable[object]] | None = None
             self.topology_requested = False
             created["runtime"] = self
@@ -206,6 +174,7 @@ async def test_start_lan_runtime_discovers_gateway_when_host_is_empty(
     discover.assert_awaited_once()
     assert fake_runtime.host == "192.168.1.101"
     assert fake_runtime.port == 65444
+    assert fake_runtime.endpoint_kind == "gateway"
     assert fake_runtime.callback is coordinator.async_handle_lan_payload
     assert fake_runtime.topology_requested is True
 

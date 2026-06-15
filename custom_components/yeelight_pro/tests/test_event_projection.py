@@ -74,6 +74,32 @@ def test_wireless_switch_channel_with_declared_panel_events_projects_both() -> N
     assert events[0].event_types == ["click", "hold"]
 
 
+def test_scene_button_declared_panel_release_projects_trigger() -> None:
+    """LAN 文档声明 panel.release 后，schema 事件应进入自动化入口。"""
+    device = projection_payload(
+        device_id="scene-release-event-1",
+        category="scene_panel",
+        component_id="scene_button_1",
+        state={},
+        component_category="scene_panel",
+        product_events=[
+            {"event_id": 3, "name": "panel.release"},
+        ],
+    )
+    component = device["ha_product_model"]["components"][0]
+    component["cid"] = 18
+    component["name"] = "scene control button"
+
+    events = project_events(device, domain=DOMAIN)
+
+    assert len(events) == 1
+    assert events[0].component_id == "scene_button_1"
+    assert events[0].event_types == ["release_after_hold"]
+    assert [(trigger.type, trigger.subtype) for trigger in project_device_triggers(device)] == [
+        ("scene_button_1", "release_after_hold"),
+    ]
+
+
 def test_schema_declared_sensor_events_project_event_and_trigger() -> None:
     """schema 明确声明的传感器事件应进入 event entity 和 device trigger。"""
     device = projection_payload(

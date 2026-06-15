@@ -9,7 +9,12 @@ from dataclasses import dataclass
 import logging
 from typing import Any, Mapping
 
-from ..canonical.models import ComponentInstanceModel, HADeviceInstanceModel, HAProductModel
+from ..canonical.models import (
+    ComponentInstanceModel,
+    ComponentModel,
+    HADeviceInstanceModel,
+    HAProductModel,
+)
 from ..const import DEFAULT_HIDE_UNKNOWN_ENTITIES
 from ..device_display import channel_name_label
 from ..identity import payload_entity_unique_id_prefix
@@ -18,7 +23,6 @@ from .common import (
     load_instance,
     load_product_model,
     payload_available,
-    product_component,
 )
 from .device import project_payload_device_info
 from .sensor_helpers import (
@@ -33,6 +37,7 @@ from .sensor_helpers import (
     projection_property_keys,
     registry_sensor_spec,
     runtime_state,
+    sensor_native_value,
     sensor_entity_category,
     sensor_spec_keys_for_instance,
     sensor_specs,
@@ -91,6 +96,7 @@ def project_sensors(
     projections: list[HASensorProjection] = []
     specs = sensor_specs(params)
     occurrences = _sensor_property_occurrences(instance, product_model, params)
+    product_components = _product_component_map(product_model)
     if not occurrences:
         _log_sensor_missing_evidence(device_payload, instance, product_model, params)
     occurrence_counts = _property_occurrence_counts(occurrences)
@@ -122,9 +128,7 @@ def project_sensors(
             )
             continue
         schema_component = (
-            product_component(product_model, component.component_id)
-            if component is not None
-            else None
+            product_components.get(component.component_id) if component is not None else None
         )
         scoped = component is not None and occurrence_counts.get(key, 0) > 1
         component_id = _scoped_component_id(spec.component_id, component, scoped=scoped)
@@ -138,7 +142,7 @@ def project_sensors(
                     component,
                     schema_component=schema_component,
                 ),
-                native_value=value,
+                native_value=sensor_native_value(key, value),
                 device_class=spec.device_class,
                 native_unit_of_measurement=spec.unit,
                 state_class=spec.state_class,
@@ -165,9 +169,10 @@ def _sensor_property_occurrences(
 
     occurrences: list[tuple[str, ComponentInstanceModel | None, Any]] = []
     seen: set[tuple[str | None, str]] = set()
+    product_components = _product_component_map(product_model)
     for component in instance.components:
         component_keys = {str(key): None for key in component.state}
-        schema_component = product_component(product_model, component.component_id)
+        schema_component = product_components.get(component.component_id)
         if schema_component is not None:
             component_keys.update(
                 {prop.prop_id: None for prop in schema_component.properties}
@@ -183,6 +188,15 @@ def _sensor_property_occurrences(
         if key not in scoped_keys:
             occurrences.append((key, None, params.get(key)))
     return occurrences
+
+
+def _product_component_map(
+    product_model: HAProductModel | None,
+) -> dict[str, ComponentModel]:
+    """Return product components indexed by component id."""
+    if product_model is None:
+        return {}
+    return {component.component_id: component for component in product_model.components}
 
 
 def _blocks_event_style_sensor(

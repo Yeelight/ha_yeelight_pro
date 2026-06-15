@@ -12,13 +12,15 @@ from .commands import (
     async_toggle_device as async_execute_toggle_device,
 )
 from .device_payload import DevicePayloadBuilder
-from .exceptions import DeviceNotFoundError
+from .exceptions import CommandError, DeviceNotFoundError
 from .lan_control import (
+    async_try_lan_action_device,
     async_try_lan_control_device,
     async_try_lan_control_group,
     async_try_lan_control_node,
     async_try_lan_execute_scene,
     async_try_lan_toggle_device,
+    lan_runtime_connected,
 )
 from .runtime_state import (
     RuntimeStateStore,
@@ -83,6 +85,7 @@ class CoordinatorControlMixin:
             duration=duration,
         )
         if not lan_ok:
+            _ensure_cloud_client(self)
             await async_execute_control_device(
                 self.client,
                 house_id=self.house_id,
@@ -104,6 +107,32 @@ class CoordinatorControlMixin:
         )
         self.async_update_listeners()
 
+    async def async_action_device(
+        self: _ControlCoordinator,
+        device_id: int | str,
+        action: dict[str, Any],
+    ) -> None:
+        """Send a documented LAN-only device action."""
+        normalized_device_id = _normalized_device_id(device_id)
+        if normalized_device_id is None or not self.get_device(normalized_device_id):
+            raise DeviceNotFoundError("Device not found")
+
+        lan_ok = await async_try_lan_action_device(
+            self._lan_runtime,
+            device_id=normalized_device_id,
+            action=action,
+        )
+        if not lan_ok:
+            raise CommandError(
+                "LAN action is unavailable for this Yeelight Pro entry"
+            )
+
+        await self.async_request_refresh()
+
+    def can_control_device_action(self: _ControlCoordinator) -> bool:
+        """Return whether LAN action commands can be sent right now."""
+        return lan_runtime_connected(self._lan_runtime)
+
     async def async_toggle_device(
         self: _ControlCoordinator,
         device_id: int | str,
@@ -119,6 +148,7 @@ class CoordinatorControlMixin:
             device_id=normalized_device_id,
             properties=properties,
         ):
+            _ensure_cloud_client(self)
             await async_execute_toggle_device(
                 self.client,
                 house_id=self.house_id,
@@ -137,6 +167,7 @@ class CoordinatorControlMixin:
             self._lan_runtime,
             scene_id=scene_id,
         ):
+            _ensure_cloud_client(self)
             await async_execute_scene_command(
                 self.client,
                 house_id=self.house_id,
@@ -156,6 +187,7 @@ class CoordinatorControlMixin:
             params=params,
             duration=duration,
         ):
+            _ensure_cloud_client(self)
             await async_execute_control_group(
                 self.client,
                 house_id=self.house_id,
@@ -187,6 +219,7 @@ class CoordinatorControlMixin:
             params=params,
             duration=duration,
         ):
+            _ensure_cloud_client(self)
             await async_execute_control_node(
                 self.client,
                 house_id=self.house_id,
@@ -262,3 +295,11 @@ def _node_collection(
     if node_kind == "group":
         return coordinator.groups
     return None
+
+
+def _ensure_cloud_client(coordinator: _ControlCoordinator) -> None:
+    """LAN-only entry 无云端客户端时，给出明确且脱敏的控制错误。"""
+    if coordinator.client is None:
+        raise CommandError(
+            "Cloud fallback is unavailable for this LAN-only Yeelight Pro entry"
+        )

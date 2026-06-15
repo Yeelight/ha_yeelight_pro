@@ -235,6 +235,60 @@ class TestYeelightProSensor:
         assert energy.native_unit_of_measurement == "Wh"
         assert energy.state_class == SensorStateClass.TOTAL_INCREASING
 
+    def test_dali_voltage_sensors_use_ha_voltage_units(self, mock_coordinator):
+        """DALI 电压原始值单位为 0.1V，HA sensor 应显示为 V。"""
+        mock_coordinator.hide_unknown_entities = True
+        mock_coordinator.data = {
+            12345: {
+                "id": 12345,
+                "device_id": 12345,
+                "name": "DALI energy",
+                "category": "other",
+                "type": "sensor",
+                "online": True,
+                "params": {},
+                "ha_device_instance": {
+                    "device_id": "12345",
+                    "name": "DALI energy",
+                    "online": True,
+                    "device_info": {
+                        "identifiers": [["yeelight_pro", "12345"]],
+                        "manufacturer": "Yeelight",
+                        "model": "other",
+                        "name": "DALI energy",
+                    },
+                    "components": [
+                        {
+                            "component_id": "dali_energy",
+                            "category": "dali energy",
+                            "available": True,
+                            "state": {"esv": 2200, "lsv": 360},
+                        }
+                    ],
+                },
+            }
+        }
+        mock_coordinator.get_device.return_value = mock_coordinator.data[12345]
+
+        external_voltage = YeelightProSensor(
+            mock_coordinator,
+            12345,
+            component_id="external_supply_voltage",
+        )
+        light_voltage = YeelightProSensor(
+            mock_coordinator,
+            12345,
+            component_id="light_source_voltage",
+        )
+
+        assert external_voltage.native_value == 220
+        assert external_voltage.device_class == SensorDeviceClass.VOLTAGE
+        assert external_voltage.native_unit_of_measurement == "V"
+        assert external_voltage.state_class == SensorStateClass.MEASUREMENT
+        assert light_voltage.native_value == 36
+        assert light_voltage.device_class == SensorDeviceClass.VOLTAGE
+        assert light_voltage.native_unit_of_measurement == "V"
+
     def test_dali_energy_device_class_and_state_class(self, mock_coordinator):
         """dali能量组件的 ap/ae 应暴露 HA 统计语义。"""
         mock_coordinator.hide_unknown_entities = True

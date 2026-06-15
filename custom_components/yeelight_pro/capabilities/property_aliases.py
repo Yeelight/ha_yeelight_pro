@@ -4,6 +4,7 @@ from __future__ import annotations
 
 PROPERTY_ALIASES = {
     "Connectivity Protocols type": "cpt",
+    "component_num_config": "c_n_c",
     "connectivity protocols type": "cpt",
     "io_type": "io",
     "localToken": "ltk",

@@ -130,6 +130,8 @@ REQUIRED_RUNTIME_MODULES = (
     "custom_components.yeelight_pro.core.device_metadata",
     "custom_components.yeelight_pro.core.firmware_metadata",
     "custom_components.yeelight_pro.core.lan_control",
+    "custom_components.yeelight_pro.core.lan_sensor_values",
+    "custom_components.yeelight_pro.core.lan_topology_merge",
     "custom_components.yeelight_pro.core.lan_topology_payload",
     "custom_components.yeelight_pro.core.property_hydration",
     "custom_components.yeelight_pro.core.property_hydration_summary",

@@ -112,8 +112,9 @@ class YeelightProConfigFlow(
         # LAN 模式字段
         self._lan_gateway_ip = ""
         self._lan_gateway_port = DEFAULT_LAN_GATEWAY_PORT
+        self._lan_gateway_product_id: int | None = None
         self._lan_discovered_list: list[tuple[str, int, str]] = []
-        self._lan_discovered_map: dict[str, tuple[str, int]] = {}
+        self._lan_discovered_map: dict[str, tuple[str, int, int | None]] = {}
 
     async def async_step_user(
         self,
