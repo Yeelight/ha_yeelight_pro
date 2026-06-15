@@ -17,6 +17,7 @@ from homeassistant.helpers import (
     device_registry as dr,
 )
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers import config_validation as cv
 
 from .area_service import async_register_area_services
 from .const import (
@@ -64,6 +65,8 @@ from .registry_cleanup_service import async_register_registry_cleanup_service
 from .runtime_options import entry_options as _entry_options
 
 _LOGGER = logging.getLogger(__name__)
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 __all__ = [
     "_active_device_identifiers",

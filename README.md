@@ -123,7 +123,7 @@ cd extensions/ha_yeelight_pro
 pytest -q
 python3 -m compileall -q custom_components/yeelight_pro scripts hacs_publish.py
 ruff check custom_components/yeelight_pro scripts hacs_publish.py
-mypy --ignore-missing-imports --explicit-package-bases custom_components/yeelight_pro scripts hacs_publish.py
+mypy --ignore-missing-imports --explicit-package-bases --exclude custom_components/yeelight_pro/tests custom_components/yeelight_pro scripts hacs_publish.py
 python3 validate_hacs.py
 python3 scripts/check_release_zip.py
 python3 scripts/sync_local_ha_runtime.py

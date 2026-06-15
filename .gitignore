@@ -29,8 +29,21 @@ MANIFEST
 # documentation
 docs/
 !docs/
-!docs/HA_XIAOMI_HOME_GAP_REVIEW.md
+!docs/FINAL_RELEASE_REPORT.md
+!docs/FUNCTIONAL_TEST_GUIDE.md
+!docs/GOAL_COMPLETION_AUDIT.md
+!docs/INSTALL_TEST_PUBLISH_GUIDE.md
 !docs/IOT_SPEC_REGISTRY.md
+!docs/PROJECT_SUMMARY.md
+!docs/RELEASE_STATUS.md
+!docs/TEST_REPORT.md
+docs/REVIEW_REPORT_*.md
+!docs/iot/
+!docs/iot/*.csv
+!docs/iot/Yeelight Pro局域网协议.md
+!docs/iot/易来照明系统开放平台.md
+!docs/iot/物模型-产品定义.md
+!docs/iot/物模型概念定义.md
 
 # PyInstaller
 *.manifest

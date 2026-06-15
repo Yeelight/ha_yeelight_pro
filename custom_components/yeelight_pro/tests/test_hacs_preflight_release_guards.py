@@ -107,6 +107,34 @@ def test_required_release_file_guard_allows_unignored_docs(
     assert hacs_preflight._check_exists() == []
 
 
+def test_required_release_file_guard_allows_unignored_iot_csv_glob(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """docs/iot 的发布用 CSV 可通过精确 glob 放行."""
+    root = tmp_path
+    iot_root = root / "docs" / "iot"
+    iot_root.mkdir(parents=True)
+    _write_test_file(
+        root / ".gitignore",
+        "\n".join([
+            "docs/",
+            "!docs/",
+            "!docs/iot/",
+            "!docs/iot/*.csv",
+        ]),
+    )
+    _write_test_file(iot_root / "基础信息_组件列表.csv", "")
+    monkeypatch.setattr(
+        hacs_preflight_core,
+        "REQUIRED_RELEASE_FILES",
+        {"docs/iot/基础信息_组件列表.csv"},
+    )
+    monkeypatch.setattr(hacs_preflight, "ROOT", root)
+
+    assert hacs_preflight._check_exists() == []
+
+
 @pytest.mark.parametrize("version", ["1", "v1.0.0", "1.0", "01.0.0", "1.0.0-01"])
 def test_json_guard_rejects_non_semantic_manifest_version(
     tmp_path: Path,

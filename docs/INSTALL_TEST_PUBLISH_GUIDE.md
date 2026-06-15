@@ -1,338 +1,64 @@
-# Yeelight Pro - 完整安装测试和发布指南
+# Yeelight Pro 安装、测试和发布前指南
 
-## 🎯 当前状态
+## 当前状态
 
-✅ **已完成：**
-- 代码开发 (50 文件, 9,753 行)
-- 单元测试 (85 个, 100% 通过)
-- 配置文件完整
-- GitHub Release v1.0.0
+当前集成处于发布审查阶段。本地 Home Assistant single/repeat/soak/recovery 验证入口已具备；每个候选版本提交 HACS 前都必须重新运行这些入口并复核脱敏输出。
 
-⏳ **需要用户完成：**
-- 实际 HA 环境测试
-- HACS 提交
-- 官方社区发布
-
----
-
-## 📦 第一步：安装到 Home Assistant
-
-### 方法 1: 手动安装
+## 手动安装
 
 ```bash
-# 1. 克隆仓库
-git clone https://github.com/Yeelight/ha_yeelight_pro.git
-cd ha_yeelight_pro
-
-# 2. 复制到 HA 配置目录
-cp -r custom_components/yeelight_pro /path/to/homeassistant/config/custom_components/
-
-# 3. 重启 Home Assistant
+# Run from the repository root.
+python3 scripts/sync_local_ha_runtime.py --config-dir /path/to/homeassistant/config
 ```
 
-### 方法 2: HACS 安装 (发布后)
+重启 Home Assistant 后，进入“设置 -> 设备与服务 -> 添加集成 -> Yeelight Pro”。
 
-1. 打开 HACS
-2. 搜索 "Yeelight Pro"
-3. 点击安装
-4. 重启 Home Assistant
+## HACS
 
----
+当前仓库包含 HACS 元数据和 zip release 校验脚本。HACS 安装按正式发布流程使用。
 
-## 🧪 第二步：实际功能测试
+## 本地验证清单
 
-### 2.1 配置集成
+- 配置流：云端模式、私有部署模式、家庭选择、错误提示。
+- 选项流：轮询间隔、调试模式、实时更新、本地网关控制、未知能力隐藏。
+- 设备发现：网关、子设备、房间和设备注册表拓扑。
+- 实体投影：灯、传感器、窗帘、温控、开关、场景面板等核心品类。
+- 控制命令：开关、亮度、色温、窗帘位置、温控目标值等已实现控制。
+- 事件：点击、长按、门磁、人感、功率告警等标准化事件。
+- 诊断导出：确认存在 `spec_correction`、`spec_runtime_inventory`、`entity_candidates`、`device_import_filter_preview` 和 `entity_import_filter_preview` 聚合；确认 filter preview 只导出规则维度计数、忽略规则计数和候选维度去重数量；确认 token、house ID、device ID、MAC、私有域名、product model id、component/property/event/action 明细、raw payload 和 raw filter rule 不出现在 JSON 中。
+- 设备 picker：云端配置流在选择家庭后只读加载真实设备列表，默认全选，取消勾选后保存为后续新增设备来源实体的导入过滤规则；云端 entry 的 options 也可重新打开真实设备 picker 调整选择。设备列表加载失败时，setup 可继续创建 entry 且过滤关闭，options 不覆盖现有过滤规则。
+- Registry cleanup：`cleanup_registry` 默认 dry-run；confirm 必须指定 entry 和 dry-run 返回的 audit_id，执行后只禁用 stale entities。
+- 异常：token 失效、网络错误、API 返回错误、设备离线。
+- WebSocket runtime：`live_updates` 显式启用后接入易来事件通知 WebSocket。
+- 本地网关 runtime：`local_gateway_control` 显式启用后接入 LAN TCP runtime，host 为空时按局域网协议执行一次 UDP discovery fallback。启用前确认 token、网关地址或发现范围，以及日志脱敏策略。
 
-1. 打开 Home Assistant
-2. 进入 **设置** → **设备与服务** → **添加集成**
-3. 搜索 **"Yeelight Pro"**
-4. 选择连接模式：
-   - **云端模式**: 输入 Access Token
-   - **私有部署**: 输入服务器地址和 Token
+## 发布前命令
 
-### 2.2 测试清单
-
-#### 设备发现测试
-- [ ] 自动发现所有设备
-- [ ] 设备信息正确显示
-- [ ] 设备状态实时更新
-
-#### 灯光控制测试
-- [ ] 开关灯
-- [ ] 调节亮度 (0-100%)
-- [ ] 调节色温 (2700K-6500K)
-- [ ] RGB 颜色控制 (如果支持)
-
-#### 风扇控制测试
-- [ ] 开关风扇
-- [ ] 调节速度
-- [ ] 切换方向
-- [ ] 预设模式
-
-#### 开关控制测试
-- [ ] 开关操作
-- [ ] 状态显示
-
-#### 传感器测试
-- [ ] 温度传感器
-- [ ] 湿度传感器
-- [ ] 照度传感器
-- [ ] 状态更新
-
-#### 窗帘控制测试
-- [ ] 开关窗帘
-- [ ] 设置位置 (0-100%)
-- [ ] 状态显示
-
-#### 空调控制测试
-- [ ] 开关空调
-- [ ] 设置温度
-- [ ] 设置模式 (制冷/制热/自动)
-- [ ] 状态显示
-
-#### 门锁控制测试
-- [ ] 锁定/解锁
-- [ ] 状态显示
-
-#### 场景执行测试
-- [ ] 执行场景
-- [ ] 场景列表显示
-
-#### 自动化测试
-- [ ] 启用/禁用自动化
-- [ ] 手动触发自动化
-- [ ] 自动化列表显示
-
-#### 灯组控制测试
-- [ ] 控制灯组
-- [ ] 调节灯组亮度
-- [ ] 调节灯组色温
-
-#### 扫地机器人测试
-- [ ] 开始/暂停/停止
-- [ ] 返回充电座
-- [ ] 电池状态
-- [ ] 清扫状态
-
-### 2.3 错误处理测试
-
-- [ ] 网络断开时的行为
-- [ ] Token 过期时的处理
-- [ ] 设备离线时的处理
-- [ ] API 调用失败时的处理
-
-### 2.4 性能测试
-
-- [ ] 首次加载时间
-- [ ] 状态更新延迟
-- [ ] 控制响应时间
-- [ ] 内存使用情况
-
----
-
-## 📝 第三步：记录测试结果
-
-创建测试报告：
-
-```markdown
-# 测试报告
-
-## 测试环境
-- Home Assistant 版本: ____________
-- Python 版本: ____________
-- 测试日期: ____________
-- 测试人员: ____________
-
-## 测试结果
-
-| 测试项 | 结果 | 备注 |
-|--------|------|------|
-| 设备发现 | ⬜ | |
-| 灯光控制 | ⬜ | |
-| 风扇控制 | ⬜ | |
-| 开关控制 | ⬜ | |
-| 传感器 | ⬜ | |
-| 窗帘控制 | ⬜ | |
-| 空调控制 | ⬜ | |
-| 门锁控制 | ⬜ | |
-| 场景执行 | ⬜ | |
-| 自动化 | ⬜ | |
-| 灯组控制 | ⬜ | |
-| 扫地机器人 | ⬜ | |
-| 错误处理 | ⬜ | |
-| 性能测试 | ⬜ | |
-
-## 发现的问题
-
-1. ____________
-2. ____________
-3. ____________
-
-## 建议改进
-
-1. ____________
-2. ____________
-3. ____________
-
-## 测试结论
-
-- [ ] 所有测试通过
-- [ ] 发现问题已修复
-- [ ] 可以发布
-
-测试完成日期: ____________
-测试签名: ____________
+```bash
+# Run from the repository root.
+python3 -m compileall -q custom_components/yeelight_pro
+pytest -q
+python3 validate_hacs.py
+python3 scripts/sync_local_ha_runtime.py
+python3 scripts/verify_local_ha.py
+python3 scripts/verify_local_ha.py --repeat 2 --repeat-delay 0
+python3 scripts/verify_local_ha_soak.py
+python3 scripts/verify_local_ha_recovery.py
+python3 scripts/check_release_zip.py --write yeelight_pro.zip
 ```
 
----
+发布包必须只包含 `custom_components/yeelight_pro/` 下的运行时文件，不包含测试、缓存、coverage 或 pyc 文件。
 
-## 🚀 第四步：HACS 发布
+本地 HA 开发安装也必须使用 `scripts/sync_local_ha_runtime.py`，不要直接 `cp -R`
+整个组件目录；源码树里的 `tests/` 不能进入 Home Assistant 安装态。
 
-### 4.1 准备工作
+`scripts/verify_local_ha.py` 只读检查本地 Docker Home Assistant 安装目录、
+`.storage` 聚合计数、服务定义、容器健康和日志，不打印 token、house ID、
+device ID 或原始 payload。可通过脚本参数指定本地 Home Assistant 配置目录。
 
-确保以下文件完整：
-- [x] manifest.json
-- [x] hacs.json
-- [x] README.md
-- [x] README_zh.md
-- [x] LICENSE
-- [x] CHANGELOG.md
+## 不发布条件
 
-### 4.2 提交到 HACS
-
-1. **访问 HACS 发布页面**
-   - 打开浏览器
-   - 访问: https://hacs.xyz/docs/publish/start
-
-2. **登录 GitHub**
-   - 使用 GitHub 账号登录
-   - 授权 HACS 访问
-
-3. **提交仓库信息**
-   - 仓库 URL: `https://github.com/Yeelight/ha_yeelight_pro`
-   - 类别: `Integration`
-   - 名称: `Yeelight Pro`
-   - 描述: `Yeelight Pro integration for Home Assistant`
-
-4. **等待审核**
-   - 审核时间: 1-7 天
-   - 可能需要修改代码以符合 HACS 标准
-
-5. **发布**
-   - 审核通过后，集成会自动发布到 HACS
-   - 用户可以通过 HACS 搜索并安装
-
----
-
-## 🏪 第五步：官方社区发布 (可选)
-
-### 5.1 说明
-
-- HACS 集成**不需要**提交到 home-assistant/brands
-- home-assistant/brands 仅用于官方核心集成
-- HACS 集成只需通过 HACS 网站提交即可
-
-### 5.2 如果需要提交到官方
-
-如果要将集成提交到官方 Home Assistant：
-
-1. **Fork 官方仓库**
-   - 访问: https://github.com/home-assistant/home-assistant
-   - 点击 "Fork"
-
-2. **添加集成代码**
-   - 在 `homeassistant/components/` 下创建 `yeelight_pro/` 目录
-   - 复制所有集成代码
-
-3. **提交 Pull Request**
-   - 创建 PR 到官方仓库
-   - 等待审核 (1-4 周)
-
-4. **品牌资源**
-   - 访问: https://github.com/home-assistant/brands
-   - 添加 Yeelight Pro 品牌资源
-
----
-
-## 📊 测试统计模板
-
-```markdown
-## 测试统计
-
-- 测试日期: ____________
-- 测试环境: Home Assistant ____________
-- 测试设备: ____________
-
-### 测试结果
-
-- 总测试数: ____________
-- 通过: ____________
-- 失败: ____________
-- 通过率: ____________%
-
-### 发现的问题
-
-| 问题 | 严重程度 | 状态 |
-|------|---------|------|
-|      |         |      |
-
-### 修复的问题
-
-| 问题 | 修复方案 | 验证状态 |
-|------|---------|---------|
-|      |         |         |
-```
-
----
-
-## 🎯 完成检查清单
-
-### 代码开发
-- [x] 代码开发完成
-- [x] 单元测试通过
-- [x] 配置文件完整
-- [x] GitHub Release 创建
-
-### 实际功能测试
-- [ ] 安装到 HA
-- [ ] 配置集成
-- [ ] 测试设备发现
-- [ ] 测试设备控制
-- [ ] 测试错误处理
-- [ ] 测试性能
-- [ ] 记录测试结果
-
-### HACS 发布
-- [ ] 访问 HACS 网站
-- [ ] 登录 GitHub
-- [ ] 提交仓库
-- [ ] 等待审核
-- [ ] 发布成功
-
-### 官方社区发布 (可选)
-- [ ] Fork 官方仓库
-- [ ] 添加集成代码
-- [ ] 提交 PR
-- [ ] 添加品牌资源
-- [ ] 等待审核
-
----
-
-## 📞 联系方式
-
-- **GitHub Issues**: https://github.com/Yeelight/ha_yeelight_pro/issues
-- **GitHub Discussions**: https://github.com/Yeelight/ha_yeelight_pro/discussions
-
----
-
-## 🎉 总结
-
-**Yeelight Pro 集成代码已准备就绪！**
-
-剩余工作需要在真实环境中完成：
-1. 安装到 Home Assistant
-2. 进行实际功能测试
-3. 提交到 HACS
-4. (可选) 提交到官方社区
-
-祝测试顺利！🚀
+- 候选版本未重新通过本地 HA single/repeat/soak/recovery 验证，或脱敏输出显示 runtime drift、服务/i18n/diagnostics 漂移、日志错误或 URL 不可达。
+- 存在未脱敏 token、账号密码、house ID 或原始设备数据。
+- 文档与当前代码能力不一致。
+- release zip 结构检查失败。

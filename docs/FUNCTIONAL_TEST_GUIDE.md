@@ -17,8 +17,8 @@
 git clone https://github.com/Yeelight/ha_yeelight_pro.git
 cd ha_yeelight_pro
 
-# 2. 复制到 HA 配置目录
-cp -r custom_components/yeelight_pro /path/to/homeassistant/config/custom_components/
+# 2. 同步运行时文件到 HA 配置目录
+python3 scripts/sync_local_ha_runtime.py --config-dir /path/to/homeassistant/config
 
 # 3. 重启 Home Assistant
 ```
@@ -41,10 +41,12 @@ cp -r custom_components/yeelight_pro /path/to/homeassistant/config/custom_compon
 
 #### 云端模式配置
 
-1. 输入 Access Token
-2. 点击提交
-3. 选择家庭
-4. 完成配置
+1. 选择账号区域
+2. 使用易来 APP 扫描 Home Assistant 展示的二维码
+3. 等待 Home Assistant 轮询到授权 token
+4. 选择家庭
+5. 选择需要导入的真实设备
+6. 完成配置
 
 #### 私有部署配置
 
@@ -59,7 +61,7 @@ cp -r custom_components/yeelight_pro /path/to/homeassistant/config/custom_compon
 
 - [ ] 自动发现所有设备
 - [ ] 设备信息正确显示
-- [ ] 设备状态实时更新
+- [ ] 设备状态按轮询刷新；可选开启 `live_updates` 验证 WebSocket runtime。
 
 #### 3.2 灯光控制
 
@@ -100,34 +102,23 @@ cp -r custom_components/yeelight_pro /path/to/homeassistant/config/custom_compon
 - [ ] 设置模式
 - [ ] 状态显示
 
-#### 3.8 门锁控制
-
-- [ ] 锁定/解锁
-- [ ] 状态显示
-
-#### 3.9 场景执行
+#### 3.8 场景执行
 
 - [ ] 执行场景
 - [ ] 场景列表显示
 
-#### 3.10 自动化
-
-- [ ] 启用/禁用自动化
-- [ ] 手动触发自动化
-- [ ] 自动化列表显示
-
-#### 3.11 灯组控制
+#### 3.9 灯组控制
 
 - [ ] 控制灯组
 - [ ] 调节灯组亮度
 - [ ] 调节灯组色温
 
-#### 3.12 扫地机器人
+#### 3.10 诊断导出
 
-- [ ] 开始/暂停/停止
-- [ ] 返回充电座
-- [ ] 电池状态
-- [ ] 清扫状态
+- [ ] 导出的 diagnostics JSON 包含 `spec_correction`、`spec_runtime_inventory`、`entity_candidates`、`device_import_filter_preview` 和 `entity_import_filter_preview` 聚合。
+- [ ] `device_import_filter_preview` 只包含规则维度计数、忽略规则计数和候选维度去重数量，不包含原始规则值。
+- [ ] filter preview 不会实际隐藏、删除或禁用实体。
+- [ ] diagnostics JSON 不包含 token、house ID、device ID、MAC、私有域名、product model id、component/property/event/action 明细、原始设备 payload 或原始 filter rule。
 
 ### 4. 错误处理测试
 
@@ -163,11 +154,9 @@ cp -r custom_components/yeelight_pro /path/to/homeassistant/config/custom_compon
 | 传感器 | ⬜ | |
 | 窗帘控制 | ⬜ | |
 | 空调控制 | ⬜ | |
-| 门锁控制 | ⬜ | |
 | 场景执行 | ⬜ | |
-| 自动化 | ⬜ | |
 | 灯组控制 | ⬜ | |
-| 扫地机器人 | ⬜ | |
+| 诊断导出 | ⬜ | |
 | 错误处理 | ⬜ | |
 | 性能测试 | ⬜ | |
 
@@ -187,7 +176,7 @@ cp -r custom_components/yeelight_pro /path/to/homeassistant/config/custom_compon
 
 - [ ] 所有测试通过
 - [ ] 发现问题已修复
-- [ ] 可以发布
+- [ ] 可以进入发布审查
 
 测试完成日期: ____________
 测试签名: ____________

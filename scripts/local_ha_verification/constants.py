@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SOURCE_COMPONENT_ROOT = ROOT / "custom_components" / "yeelight_pro"
 DOMAIN = "yeelight_pro"
 
-DEFAULT_CONTAINER = "lucore-ha-verify"
+DEFAULT_CONTAINER = "yeelight-pro-ha-verify"
 DEFAULT_HA_URL = "http://localhost:18124"
 DEFAULT_ENTITY_COUNTS = {
     "button": 21,

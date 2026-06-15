@@ -25,6 +25,8 @@ CHECKS = [
         "mypy",
         "--ignore-missing-imports",
         "--explicit-package-bases",
+        "--exclude",
+        "custom_components/yeelight_pro/tests",
         "custom_components/yeelight_pro",
         "scripts",
         "hacs_publish.py",

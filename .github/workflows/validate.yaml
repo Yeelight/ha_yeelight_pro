@@ -7,6 +7,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   hassfest:
     runs-on: ubuntu-latest
@@ -34,7 +37,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.11"
 
       - name: Install test dependencies
         run: |
@@ -51,7 +54,7 @@ jobs:
 
       - name: Type-check integration
         run: |
-          mypy --ignore-missing-imports --explicit-package-bases custom_components/yeelight_pro scripts hacs_publish.py
+          mypy --ignore-missing-imports --explicit-package-bases --exclude 'custom_components/yeelight_pro/tests' custom_components/yeelight_pro scripts hacs_publish.py
 
       - name: Run unit tests
         run: |

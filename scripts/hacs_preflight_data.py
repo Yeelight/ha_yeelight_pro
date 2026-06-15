@@ -61,6 +61,8 @@ HACS_PUBLISH_REQUIRED_CHECKS = {
         "mypy",
         "--ignore-missing-imports",
         "--explicit-package-bases",
+        "--exclude",
+        "custom_components/yeelight_pro/tests",
         "custom_components/yeelight_pro",
         "scripts",
         "hacs_publish.py",
@@ -81,6 +83,10 @@ RELEASE_QUALITY_GATE_TOKENS = {
         "mypy": "local release mypy gate",
         '"--ignore-missing-imports"': "local release mypy option",
         '"--explicit-package-bases"': "local release mypy package boundary",
+        '"--exclude"': "local release mypy test-suite exclusion",
+        '"custom_components/yeelight_pro/tests"': (
+            "local release mypy excludes HA test doubles"
+        ),
         '"hacs_publish.py"': "local release script self-check",
     },
     ".github/workflows/validate.yaml": {
@@ -92,7 +98,7 @@ RELEASE_QUALITY_GATE_TOKENS = {
             "GitHub validate lint command"
         ),
         "Type-check integration": "GitHub validate type-check step",
-        "mypy --ignore-missing-imports --explicit-package-bases custom_components/yeelight_pro scripts hacs_publish.py": (
+        "mypy --ignore-missing-imports --explicit-package-bases --exclude 'custom_components/yeelight_pro/tests' custom_components/yeelight_pro scripts hacs_publish.py": (
             "GitHub validate type-check command"
         ),
     },
@@ -133,7 +139,7 @@ RELEASE_QUALITY_GATE_TOKENS = {
         "ruff check custom_components/yeelight_pro scripts hacs_publish.py": (
             "English README lint command"
         ),
-        "mypy --ignore-missing-imports --explicit-package-bases custom_components/yeelight_pro scripts hacs_publish.py": (
+        "mypy --ignore-missing-imports --explicit-package-bases --exclude custom_components/yeelight_pro/tests custom_components/yeelight_pro scripts hacs_publish.py": (
             "English README type-check command"
         ),
         "python3 scripts/sync_local_ha_runtime.py": (
@@ -159,7 +165,7 @@ RELEASE_QUALITY_GATE_TOKENS = {
         "ruff check custom_components/yeelight_pro scripts hacs_publish.py": (
             "Chinese README lint command"
         ),
-        "mypy --ignore-missing-imports --explicit-package-bases custom_components/yeelight_pro scripts hacs_publish.py": (
+        "mypy --ignore-missing-imports --explicit-package-bases --exclude custom_components/yeelight_pro/tests custom_components/yeelight_pro scripts hacs_publish.py": (
             "Chinese README type-check command"
         ),
         "python3 scripts/sync_local_ha_runtime.py": (
@@ -185,7 +191,7 @@ RELEASE_QUALITY_GATE_TOKENS = {
         "ruff check custom_components/yeelight_pro scripts hacs_publish.py": (
             "release guide lint command"
         ),
-        "mypy --ignore-missing-imports --explicit-package-bases custom_components/yeelight_pro scripts hacs_publish.py": (
+        "mypy --ignore-missing-imports --explicit-package-bases --exclude custom_components/yeelight_pro/tests custom_components/yeelight_pro scripts hacs_publish.py": (
             "release guide type-check command"
         ),
         "compile, lint, type-check, tests, local preflight": (

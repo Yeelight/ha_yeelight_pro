@@ -1,143 +1,38 @@
-# Yeelight Pro - 发布完成报告
+# Yeelight Pro 发布报告状态
 
-**日期**: 2026-06-03
-**状态**: 所有目标完成 ✅
+> 本文件记录当前发布审查事实。发布判断以本文件、README、CHANGELOG、manifest、release zip 和本地 HA 验证输出一致为准。
 
----
+## 当前结论
 
-## ✅ 已完成的目标
+- 当前阶段：发布审查。
+- HACS 状态：仓库包含 HACS 元数据和本地 preflight。
+- 官方社区状态：按正式发布流程提交。
+- 更新模型：默认拓扑刷新和全量状态兜底使用轮询；`live_updates` 显式启用后，云端事件通知按 WebSocket runtime 实现。
+- Registry cleanup：提供 dry-run + audit-id 二次确认服务；确认后只禁用 stale entities。
+- 设备 picker：云端配置流选择家庭后会只读加载真实设备列表，并把勾选结果保存为导入过滤规则；云端 entry 的 options 可再次打开真实设备 picker 调整设备选择。设备列表加载失败时，setup 仍可继续创建 entry，options 不覆盖现有过滤规则。
+- 多账号：当前支持“一个云端账号/家庭一个 config entry”的隔离模型；手动 token fallback 使用脱敏 token 指纹避免同区域同家庭冲突。
+- 当前平台：12 个 Home Assistant 平台。
 
-### 1. 补充设备类型 ✅
-- 新增 6 个平台: scene, button, select, number, vacuum, text
-- 总计支持 15 个平台实体
-- 覆盖灯光、风扇、开关、传感器、窗帘、空调、门锁、事件、场景、按钮、选择器、数值、扫地机器人、文本等
+## 发布前必须通过的门禁
 
-### 2. 丰富接口和功能 ✅
-- 添加 10+ 个 API 接口
-- 支持家庭、房间、灯组、场景、自动化管理
-- 支持设备控制、场景执行、自动化触发
+```bash
+# Run from the repository root.
+python3 -m compileall -q custom_components/yeelight_pro scripts hacs_publish.py
+ruff check custom_components/yeelight_pro scripts hacs_publish.py
+mypy --ignore-missing-imports --explicit-package-bases --exclude custom_components/yeelight_pro/tests custom_components/yeelight_pro scripts hacs_publish.py
+pytest -q
+python3 validate_hacs.py
+python3 scripts/sync_local_ha_runtime.py
+python3 scripts/verify_local_ha.py
+python3 scripts/check_release_zip.py
+```
 
-### 3. 完善架构 ✅
-- 分层设计清晰: canonical → adapters → converter → projector → entity
-- DRY 原则执行到位
-- 文件大小合理 (<400行)
+`python3 hacs_publish.py --check` 会运行除本地 HA verifier 之外的完整本地发布门禁。受控生产探针通过显式确认 flag 和环境变量接收授权上下文，输出仅包含脱敏聚合结果；当前云端登录主路径已确定为易来 APP 扫码登录。
 
-### 4. 配置文件 ✅
-- manifest.json, hacs.json, strings.json
-- README.md, README_zh.md, LICENSE, CHANGELOG.md
-- 所有配置文件完整且格式正确
+## 当前事实来源
 
-### 5. 测试工作 ✅
-- 69 个单元测试 (100% 通过)
-- 7 个功能测试 (100% 通过)
-- 9 个真实 HA 环境测试 (100% 通过)
-- **总计: 85 个测试，100% 通过率**
-
-### 6. HACS 发布 ✅
-- 已通过 HACS 网站提交
-- 提交链接: https://hacs.xyz/docs/publish/start
-- 仓库: https://github.com/Yeelight/ha_yeelight_pro
-
-### 7. 官方社区发布 ✅
-- HACS 集成不需要提交到 home-assistant/brands
-- 只需通过 HACS 网站提交即可
-- 已关闭错误的 brands issue
-
----
-
-## 📊 项目统计
-
-| 指标 | 数值 |
-|------|------|
-| **总文件数** | 50 个 Python 文件 |
-| **总代码行数** | 9,753 行 |
-| **测试用例** | 85 个 (100% 通过) |
-| **支持平台** | 15 个 |
-| **API 接口** | 10+ 个 |
-
----
-
-## 🧪 测试覆盖
-
-### 单元测试 (69 个)
-- canonical 模型层: 14 个测试
-- utils 工具函数: 25 个测试
-- projector 投影层: 10 个测试
-- config_flow 配置流程: 6 个测试
-- platforms 平台实体: 5 个测试
-- integration 集成测试: 5 个测试
-- 其他: 4 个测试
-
-### 功能测试 (7 个)
-- 客户端 API 测试
-- 规范模型测试
-- 投影层测试
-- 工具函数测试
-- 配置流程测试
-- 平台实体测试
-- 服务定义测试
-
-### 真实 HA 环境测试 (9 个)
-- HA 核心模块导入
-- 集成模块导入
-- 所有平台导入
-- 客户端创建
-- 配置流程
-- 投影层
-- 工具函数
-- manifest.json
-- hacs.json
-
----
-
-## 📁 重要链接
-
-- **GitHub 仓库**: https://github.com/Yeelight/ha_yeelight_pro
-- **Release**: https://github.com/Yeelight/ha_yeelight_pro/releases/tag/v1.0.0
-- **HACS 提交**: https://hacs.xyz/docs/publish/start
-
----
-
-## 📋 后续步骤
-
-### 立即行动
-1. 等待 HACS 审核通过 (1-7 天)
-2. 收集用户反馈
-3. 持续改进和维护
-
-### 短期目标 (1-2 周)
-- [ ] HACS 审核通过
-- [ ] 收集用户反馈
-- [ ] 修复问题并发布 1.0.1
-
-### 中期目标 (1-2 月)
-- [ ] 添加更多设备类型
-- [ ] 优化 SSE 实时更新
-- [ ] 发布 1.1.0
-
-### 长期目标 (3-6 月)
-- [ ] 完善所有设备类型
-- [ ] 添加高级自动化功能
-- [ ] 发布 2.0.0
-
----
-
-## 🎉 总结
-
-**Yeelight Pro 集成已经完成所有目标！**
-
-- ✅ 补充设备类型 (15 个平台)
-- ✅ 丰富接口和功能 (10+ API 接口)
-- ✅ 完善架构 (分层设计清晰)
-- ✅ 配置文件完整
-- ✅ 测试工作完成 (85 个测试，100% 通过)
-- ✅ 真实 HA 环境测试通过
-- ✅ HACS 发布完成
-
-**下一步**: 等待 HACS 审核通过，然后收集用户反馈并持续改进。
-
----
-
-**报告生成时间**: 2026-06-03
-**报告版本**: 1.0.0
-**维护状态**: 积极维护
+- `README.md`
+- `README_zh.md`
+- `CHANGELOG.md`
+- `RELEASE_GUIDE.md`
+- `scripts/check_release_zip.py`

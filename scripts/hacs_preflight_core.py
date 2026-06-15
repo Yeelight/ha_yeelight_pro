@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import fnmatch
 import importlib
 import json
 from pathlib import Path
@@ -85,11 +86,14 @@ def _is_ignored_by_gitignore(
         normalized = pattern.strip("/").replace("\\", "/")
         if not normalized:
             continue
-        matches = (
-            path == normalized
-            or path.startswith(f"{normalized}/")
-            or path.endswith(f"/{normalized}")
-        )
+        if "*" in normalized:
+            matches = fnmatch.fnmatch(path, normalized)
+        else:
+            matches = (
+                path == normalized
+                or path.startswith(f"{normalized}/")
+                or path.endswith(f"/{normalized}")
+            )
         if matches:
             ignored = not negated
     return ignored

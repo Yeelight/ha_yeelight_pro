@@ -1,0 +1,12 @@
+名称,id,描述,单选
+light,1,灯类,
+contact_sensor,2,接触式传感器类,
+human_sensor,3,人体感应传感器类,
+light_sensor,4,环境光传感器类,
+curtain,5,窗帘类,
+temp_control,6,温控类,
+relay_switch,7,继电器开关类,
+scene_panel,8,情景面板类,
+other,9,其他类,
+gateway,10,网关类,
+knob_switch,11,旋钮开关类,

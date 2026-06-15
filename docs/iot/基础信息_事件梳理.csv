@@ -1,0 +1,12 @@
+文本,描述,支持的组件,支持的产品,附件
+contact.open,接触传感器打开,接触式传感器,"Yeelight商业Q系列智能插卡取电器（低频）,Yeelight Pro S20 门窗传感器",
+contact.close,接触传感器闭合,接触式传感器,"Yeelight商业Q系列智能插卡取电器（低频）,Yeelight Pro S20 门窗传感器",
+contact.alarm,接触传感器告警,接触式传感器,"Yeelight商业Q系列智能插卡取电器（低频）,Yeelight Pro S20 门窗传感器",
+motion.true,有人,"人感传感器,人在传感器,人体红外传感器,dali人感传感器,dali光感传感器","擎洲人体传感器,Yeelight Pro P20 人在传感器,Yeelight Pro S21 人体红外传感器,Yeelight Pro S20 人体传感器,字节跳动升降桌,dali输入设备",
+motion.false,无人,"人感传感器,人在传感器,人体红外传感器,dali人感传感器,dali光感传感器","擎洲人体传感器,Yeelight Pro P20 人在传感器,Yeelight Pro S21 人体红外传感器,Yeelight Pro S20 人体传感器,字节跳动升降桌,dali输入设备",
+panel.click,面板点击,"无线开关通道,情景按键,开关,dali情景按键","Yeelight商业Q系列智能情景开关-四键,Yeelight Pro S20系列8键情景开关(贴装版),Yeelight商业M系列智能复合开关-单键,Yeelight Pro S20系列8键情景开关(单火版),S系列情景开关,E20智能情景面板-六键(零火版),E20智能情景面板-六键(纽扣电池版）,Yeelight Pro S21 智能墙壁开关-单键,Yeelight Pro S21 全面屏开关,Yeelight商业Q系列智能情景开关-单键,Yeelight Pro S21 智能墙壁开关-三键,Yeelight商业M系列智能复合开关-三键,Yeelight商业Q系列智能情景开关-三键,Yeelight Pro干接点输入模块,Yeelight Pro S21 智能墙壁开关-双键,屏幕控制面板mesh版,Yeelight Pro S21 智能情景开关-六键,Yeelight商业M系列智能复合开关-双键,Yeelight Pro S20 双路控制模块（MESH版）,Yeelight Pro M20 智能开关-三键,S系列墙面旋钮屏开关,Yeelight Pro M20 智能开关-双键,Yeelight Pro M20 智能开关-单键,E系列旋钮开关,Yeelight商业Q系列智能情景开关-双键,Yeelight Pro S20系列4键情景开关(贴装版),E系列零火智能开关-三键,E系列零火智能开关-单键,E系列单火智能开关-双键,E系列单火智能开关-三键,E系列零火智能开关-双键,E系列单火智能开关-单键,dali输入设备,自回弹虚拟双路开关,6.9寸智慧屏,可控制两路供电输出的智能开关；SKU：YLP-S20双路控制模块-标准版-白色,智能开关-三键 (rtl8762e版),智能开关-单键 (rtl8762e版),智能开关-双键 (rtl8762e版),智能开关-四键 (rtl8762e版),D系列智能情景面板-四键（纽扣电池版）",
+panel.hold,面板长按,"无线开关通道,情景按键,开关,dali情景按键","Yeelight商业Q系列智能情景开关-四键,Yeelight Pro S20系列8键情景开关(贴装版),Yeelight商业M系列智能复合开关-单键,Yeelight Pro S20系列8键情景开关(单火版),S系列情景开关,E20智能情景面板-六键(零火版),E20智能情景面板-六键(纽扣电池版）,Yeelight Pro S21 智能墙壁开关-单键,Yeelight Pro S21 全面屏开关,Yeelight商业Q系列智能情景开关-单键,Yeelight Pro S21 智能墙壁开关-三键,Yeelight商业M系列智能复合开关-三键,Yeelight商业Q系列智能情景开关-三键,Yeelight Pro干接点输入模块,Yeelight Pro S21 智能墙壁开关-双键,屏幕控制面板mesh版,Yeelight Pro S21 智能情景开关-六键,Yeelight商业M系列智能复合开关-双键,Yeelight Pro S20 双路控制模块（MESH版）,Yeelight Pro M20 智能开关-三键,S系列墙面旋钮屏开关,Yeelight Pro M20 智能开关-双键,Yeelight Pro M20 智能开关-单键,E系列旋钮开关,Yeelight商业Q系列智能情景开关-双键,Yeelight Pro S20系列4键情景开关(贴装版),E系列零火智能开关-三键,E系列零火智能开关-单键,E系列单火智能开关-双键,E系列单火智能开关-三键,E系列零火智能开关-双键,E系列单火智能开关-单键,dali输入设备,自回弹虚拟双路开关,6.9寸智慧屏,可控制两路供电输出的智能开关；SKU：YLP-S20双路控制模块-标准版-白色,智能开关-三键 (rtl8762e版),智能开关-单键 (rtl8762e版),智能开关-双键 (rtl8762e版),智能开关-四键 (rtl8762e版),D系列智能情景面板-四键（纽扣电池版）",
+knob.spin,按钮旋转,旋钮开关,Yeelight Pro M20 旋钮开关,
+,,,,
+,,,,
+,,,,

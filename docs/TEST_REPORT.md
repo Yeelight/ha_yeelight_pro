@@ -1,216 +1,99 @@
-# 测试和发布准备报告
+# Yeelight Pro 测试报告
 
-**日期**: 2026-06-03
-**状态**: 测试通过，准备发布 ✅
+> 测试数量和通过率必须以当前命令输出为准。本文件不固定宣传历史测试数量。
 
----
+## 当前测试入口
 
-## 测试结果
+```bash
+# Run from the repository root.
+python3 -m compileall -q custom_components/yeelight_pro
+pytest -q
+python3 validate_hacs.py
+python3 scripts/verify_local_ha.py
+python3 scripts/verify_local_ha.py --repeat 2 --repeat-delay 0
+python3 scripts/verify_local_ha.py --soak-seconds 2 --soak-interval 1
+python3 scripts/verify_local_ha_soak.py
+python3 scripts/verify_local_ha_recovery.py
+python3 scripts/check_release_zip.py
+python3 scripts/verify_push_websocket.py
+python3 scripts/verify_scan_login.py
+python3 scripts/verify_cloud_devices.py
+python3 scripts/verify_lan_gateway.py
+```
 
-### ✅ 测试通过情况
+当前已验证结果必须以本地最新命令输出为准。本轮已在本地 Home Assistant 验证环境完成启动、实体注册表、手动刷新服务和 cleanup 服务合同实测；受控生产探针默认都必须 fail-closed，并通过显式确认 flag 与环境变量接收授权上下文。
 
-- **总测试数**: 69 个
-- **通过**: 69 个 ✅
-- **失败**: 0 个
-- **错误**: 0 个
-- **通过率**: 100%
+当前覆盖率验证结果：
 
-### 📊 代码覆盖率
+```bash
+pytest --cov --cov-report=term --cov-report=json:coverage.json -q
+```
 
-- **总覆盖率**: 30%
-- **总语句数**: 5,003 行
-- **覆盖语句数**: 1,498 行
-- **未覆盖语句数**: 3,505 行
+覆盖率结果必须以最新命令输出为准。覆盖重点集中在 registry、projector、coordinator、adapter/converter、持久 product schema cache、diagnostics、Repairs 提示、手动刷新服务、平台实体运行时和回归测试。
 
-### 覆盖率详情
+## 覆盖重点
 
-**高覆盖率模块 (>80%)**:
-- ✅ canonical/models.py: 97%
-- ✅ utils.py: 100%
-- ✅ const.py: 100%
-- ✅ core/exceptions.py: 100%
-- ✅ projector/__init__.py: 100%
-- ✅ projector/sensor.py: 82%
-- ✅ tests/: 100%
+- 控制接口必须携带明确 `house_id`。
+- 认证失败必须映射到 Home Assistant 重新认证流程。
+- 配置流、选项流和翻译 JSON 必须可加载。
+- 多区域/多账号 config flow 必须防止同区域同家庭的不同云端账号冲突；扫码登录优先使用账号 ID，手动 token 兜底必须使用脱敏指纹，不能把 token 原文写入 unique_id。
+- 易来 IoT 品类投影必须和 Home Assistant 实体平台分离。
+- 运行时平台集合必须与 `PLATFORMS` 和发布包内容一致。
+- 产品 schema 缓存必须避免同一 PID 每轮重复请求，并在 schema 端点临时失败或 Home Assistant 重启后复用 `.storage` 中已缓存 schema 保持 canonical payload。
+- Home Assistant diagnostics 只能导出配置脱敏数据和运行时聚合指标，不能泄露 token、house ID、设备 ID、MAC、私有域名或原始设备 payload。
+- diagnostics 必须只输出白名单配置、IoT registry 健康、spec correction 计数、canonical spec runtime inventory、entity candidate 计数、option/runtime 对齐状态、filter preview 聚合和运行时健康状态。filter preview 和 option status 只能输出布尔值与计数，不能输出原始过滤规则、unique_id、device_id、house_id、scene/group id、product model id、component/property/event/action 明细或设备 payload。
+- HACS preflight 必须阻断 diagnostics capability flags 漂移：scan-login、push/LAN adapter、live WebSocket opt-in runtime 和 LAN local gateway opt-in runtime 可显式开启。当前云端登录主路径是易来 APP 扫码登录。
+- HACS preflight 必须保留设备导入过滤的非破坏性 runtime gate 覆盖：用户选择的导入范围只作用于新的设备来源实体提交路径，并保留用户禁用实体与 scene/group/house 等非设备辅助实体。
+- HACS preflight 和本地 HA verifier 必须保留 `device_trigger.py` 与 `tests/test_device_trigger.py`，确保事件型设备、场景面板和带事件的开关组件持续暴露 Home Assistant device trigger 自动化入口。
+- 本地 HA verifier 必须同时校验 `services.yaml`、安装态 Python 运行时服务注册、服务字段 required 状态和文档 selector，阻断服务定义、文档字段和 handler schema 漂移。
+- 本地 HA verifier 必须校验安装态 `strings.json`、`translations/en.json`、`translations/zh-Hans.json`：三份文件叶子 key 路径完全一致，关键 config/options/services/Repairs 翻译路径存在，服务翻译与 `services.yaml` 服务集合一致，已翻译的服务字段集合跨语言一致且不得超出 `services.yaml` 字段；Repairs issue 翻译文本中的 `{placeholder}` 必须与安装态 `repair_issues.py` 实际传入的 `translation_placeholders` 完全一致。
+- 本地 HA verifier 必须校验安装态 diagnostics capability flags：当前已验证的 scan-login、push/LAN adapter、live WebSocket opt-in runtime 和 LAN local gateway opt-in runtime。
+- 本地 HA verifier 支持 `--repeat` / `--repeat-delay` 短时重复验证，用于在不调用云端真实 API、不重启 HA 的情况下重复确认安装态、实体数量、服务注册、diagnostics 能力边界、日志和 URL 健康。
+- 本地 HA verifier 支持 `--soak-seconds` / `--soak-interval` 有界稳定性窗口，用于在指定时间窗口内追加多轮采样；窗口内任一轮失败都必须阻断验证。
+- `scripts/verify_local_ha_soak.py` 是 dedicated 外部稳定性入口，默认使用有界窗口并复用同一套本地 HA verifier，不复制安装态、registry、服务、i18n、diagnostics、日志恢复、Docker 和 URL 检查逻辑。
+- `scripts/verify_local_ha_recovery.py` 是 dedicated 容器内恢复/日志验证入口，默认执行重复验证并扩大日志 tail；该入口需要 Docker 日志访问，会拒绝 `--skip-docker`，避免绕过恢复与日志健康检查。
+- 本地 HA verifier 的 repeat/soak 多轮模式必须比较关键聚合指标稳定性：config entry 数量和版本、设备数、实体总数、实体 domain 分布、服务注册列表、diagnostics capability 边界和可选配置键缺失计数。任一指标跨轮漂移都必须阻断验证。
+- 本地 HA verifier 的日志恢复判断必须按日志行顺序处理；临时轮询错误只有在后续出现 HA 恢复标记时才可降级为已恢复事实，恢复标记之后再次出现的错误必须继续阻断验证。
+- 本地 HA verifier 必须校验安装态 config entry 已迁移到当前版本且包含运行时必需键；手动 token 旧 entry 可缺少 `open_api_client_id`，但只能作为聚合事实记录，不能泄露 token、house 或域名值。
+- 本地 HA verifier 必须校验安装态 config entry options 已包含 `scan_interval`、`debug_mode`、`hide_unknown_entities`、`topology_change_repairs`，并校验 `scan_interval` 范围和布尔选项类型；`device_import_filter` 只允许以缺失计数和启用计数形式输出，不能输出过滤规则内容。
+- 本地 HA verifier 必须校验安装态实体 domain 与当前 `PLATFORMS` 对齐；任何未加载平台的旧 registry entry 若仍启用都必须阻断验证。
+- 本地 HA verifier 必须校验安装态 config/options flow 源码契约：options flow 必须通过 `merge_options` 保留高级字段、通过 `normalize_entry_options` 比较确认页、通过 `options_require_reload` 区分 runtime/reload 变更，config flow 必须仍返回 `YeelightProOptionsFlow`。
+- 拓扑变化 Repairs issue 只在 topology generation 变化且选项启用时创建，不能因普通状态轮询重复创建；该选项默认启用以保持现有行为。
+- `yeelight_pro.refresh` 只能做只读刷新和 registry reconciliation，不能绕过现有控制 API 引入新的写路径。
+- fan projector 纯值转换逻辑已拆分到 `projector/fan_value_helpers.py`，`projector/fan_helpers.py` 保留组件识别、控制键和投影支撑边界；旧 `projector.fan` import 路径保持兼容。
+- coordinator 的已接收 runtime/push/LAN payload 处理已拆分到 `core/coordinator_runtime.py`，`core/coordinator.py` 保留轮询、控制和拓扑协调主流程；live WebSocket 与 LAN TCP runtime 由显式 options 启用，默认仍走轮询。
+- WebSocket 事件通知只走 `live_updates` 显式 opt-in runtime；transport 只派发 `type=prop` / `type=event` 业务 payload。`subscribe` / `heartbeat` ACK 控制帧不进入 coordinator payload 计数，控制帧错误只记录 `PushControlFrameError` 这类脱敏异常类型并关闭当前 websocket 进入既有重连边界。
+- `scripts/verify_push_websocket.py` 提供默认 no-network 的生产 WebSocket 验证入口；只有同时传入 `--confirm-production-websocket` 且通过 `YEELIGHT_PRO_PUSH_TOKEN` 环境变量提供 token 时才会连接生产 WebSocket。输出只包含帧数、业务/控制帧计数、字段形态和错误类型等聚合脱敏摘要，不输出 token、URL、原始 payload、设备 ID、MAC 或家庭信息。
+- dedicated soak/recovery 脚本已有单元测试和 release preflight 覆盖；候选版本在容器上执行这些入口并复核脱敏输出。
 
-**中等覆盖率模块 (40-80%)**:
-- ⚠️ config_flow.py: 63%
-- ⚠️ projector/device.py: 67%
-- ⚠️ projector/switch.py: 48%
-- ⚠️ light.py: 43%
-- ⚠️ switch.py: 46%
-- ⚠️ sensor.py: 41%
+## 生产探针矩阵
 
-**低覆盖率模块 (<40%)**:
-- ❌ __init__.py: 17%
-- ❌ core/client.py: 25%
-- ❌ core/coordinator.py: 18%
-- ❌ fan.py: 30%
-- ❌ projector/light.py: 31%
-- ❌ projector/fan.py: 27%
-- ❌ 大部分平台实体: 0%
+- WebSocket：`scripts/verify_push_websocket.py`，显式确认 flag 为 `--confirm-production-websocket`，授权上下文来自 `YEELIGHT_PRO_PUSH_TOKEN`。
+- 扫码登录：`scripts/verify_scan_login.py`，显式确认 flag 为 `--confirm-production-scan-login`，授权上下文来自 `YEELIGHT_PRO_SCAN_LOGIN_DEVICE`。
+- 真实设备列表：`scripts/verify_cloud_devices.py`，显式确认 flag 为 `--confirm-production-cloud-devices`，授权上下文来自 `YEELIGHT_PRO_CLOUD_ACCESS_TOKEN` 和 `YEELIGHT_PRO_CLOUD_HOUSE_ID`。
+- LAN 网关：`scripts/verify_lan_gateway.py`，显式确认 flag 为 `--confirm-production-lan-gateway`，授权上下文来自 `YEELIGHT_PRO_LAN_GATEWAY_HOST`。
+- 所有生产探针输出只包含脱敏聚合结果，不输出 token、URL、house id、client id、host、port、设备 id/name、房间、MAC 或原始 payload。
 
----
+## 本地 Home Assistant 实测
 
-## 测试覆盖的模块
-
-### ✅ 完整测试
-
-1. **canonical 模型层** (14 个测试)
-   - 所有 dataclass 的 from_dict() 方法
-   - 嵌套结构解析
-   - 边界条件处理
-
-2. **utils 工具函数** (25 个测试)
-   - to_bool, to_int, to_float, to_str
-   - to_category, matches_any, matches_category
-   - None 值处理，边界条件
-
-3. **projector 投影层** (10 个测试)
-   - project_light, project_fans
-   - project_switches, project_sensors
-   - 空数据处理
-
-4. **config_flow 配置流程** (6 个测试)
-   - 用户步骤
-   - 云端/私有模式选择
-   - 认证成功/失败
-
-5. **platforms 平台实体** (5 个测试)
-   - 继承关系验证
-   - 初始化测试
-   - 基本属性测试
-
----
-
-## 待改进的测试覆盖
-
-### 优先级 1: 核心模块
-
-1. **core/client.py** (当前 25%)
-   - 需要测试所有 API 方法
-   - 需要测试错误处理
-   - 需要测试分页逻辑
-
-2. **core/coordinator.py** (当前 18%)
-   - 需要测试数据更新逻辑
-   - 需要测试状态管理
-   - 需要测试 SSE 事件处理
-
-3. **__init__.py** (当前 17%)
-   - 需要测试服务注册
-   - 需要测试设备同步
-   - 需要测试实体生命周期
-
-### 优先级 2: 平台实体
-
-1. **所有平台实体** (当前 0-46%)
-   - 需要测试状态属性
-   - 需要测试控制方法
-   - 需要测试投影委托
-
-2. **projector 投影层** (当前 27-82%)
-   - 需要测试更多设备类型
-   - 需要测试边界条件
-   - 需要测试错误处理
-
----
-
-## HACS 发布准备
-
-### ✅ 已完成
-
-1. **配置文件**
-   - ✅ manifest.json - 集成声明
-   - ✅ hacs.json - HACS 配置
-   - ✅ strings.json - 国际化
-   - ✅ services.yaml - 服务定义
-   - ✅ README.md - 英文文档
-   - ✅ README_zh.md - 中文文档
-   - ✅ LICENSE - MIT 许可证
-   - ✅ CHANGELOG.md - 变更日志
-
-2. **代码质量**
-   - ✅ 所有测试通过 (69/69)
-   - ✅ 核心模块测试覆盖
-   - ✅ 无语法错误
-   - ✅ 无导入错误
-
-3. **目录结构**
-   - ✅ HACS 标准结构
-   - ✅ custom_components/yeelight_pro/
-   - ✅ translations/en.json
-
-### ⚠️ 建议改进
-
-1. **测试覆盖率**
-   - 当前: 30%
-   - 目标: >80%
-   - 优先: 核心模块和平台实体
-
-2. **集成测试**
-   - 需要实际 HA 环境测试
-   - 需要云端/私有部署测试
-   - 需要设备控制测试
-
----
-
-## 发布清单
-
-### HACS 发布
-
-- [x] manifest.json 完整
-- [x] hacs.json 配置正确
-- [x] README 文档完整
-- [x] LICENSE 文件存在
-- [x] 测试通过
-- [ ] 测试覆盖率 >80% (可选)
-- [ ] 实际运行测试
-
-### 官方社区发布
-
-- [x] 代码质量检查
-- [x] 文档完整性
-- [x] 国际化支持
-- [ ] hassfest 验证
-- [ ] 实际功能测试
-- [ ] 用户反馈收集
-
----
-
-## 下一步行动
-
-### 立即行动
-
-1. ✅ 创建测试报告
-2. ⏳ 提高测试覆盖率到 50%
-3. ⏳ 进行实际 HA 环境测试
-
-### 短期目标 (本周)
-
-1. 提高测试覆盖率到 70%
-2. 通过 hassfest 验证
-3. 准备 HACS 发布
-
-### 中期目标 (下周)
-
-1. 提高测试覆盖率到 80%
-2. 收集用户反馈
-3. 修复问题并发布
-
----
-
-## 总结
-
-**测试状态**: ✅ 通过
-**发布准备**: 90% 完成
-**代码质量**: 良好
-**文档完整性**: 优秀
-
-所有 69 个测试都通过了，代码质量良好。虽然测试覆盖率只有 30%，但核心模块（canonical, utils, config_flow）的覆盖率已经很高。
-
-**建议**: 可以先发布到 HACS，然后根据用户反馈逐步提高测试覆盖率和功能完善。
-
----
-
-**下一步**: 准备 HACS 发布和官方社区发布。
+- 验证环境由本地 Home Assistant 配置目录和 Docker 运行环境决定。
+- 最近一次安装态更新以最新 `scripts/sync_local_ha_runtime.py` 和
+  `scripts/verify_local_ha.py` 输出为准。
+- 本地安装态关键模块存在检查通过：`refresh_service`、`schema_cache`、`client`、`client_request`、`coordinator_runtime`、`diagnostics`、`diagnostic_options`、`device_trigger`、`repair_issues`、`debug_service`；真实运行时导入结果以 HA 日志无 `ImportError` / `ModuleNotFoundError` 和 setup completion 为准。
+- 当前本地 HA 事实以 `python3 scripts/verify_local_ha.py` 的脱敏聚合输出为准。
+- 本地 HA verifier 已确认服务定义、运行态注册和字段/schema 合同一致：`assign_areas`、`auto_assign_areas`、`debug_emit_event`、`refresh`、`cleanup_registry`。
+- 本地 HA 前端实测已确认 Yeelight Pro 可在“添加集成”中搜索到，配置流 `user` 步骤可打开，cloud 分支可进入“云端认证方式”和 Access Token 表单，private 分支可进入私有部署表单；验证过程中未提交真实 token。
+- 本地 HA verifier 已确认安装态服务集合包含 5 个服务：`assign_areas`、`auto_assign_areas`、`debug_emit_event`、`refresh`、`cleanup_registry`。
+- 本地 HA verifier 已确认安装态 i18n 合同：`strings.json`、`translations/en.json`、`translations/zh-Hans.json` 叶子 key 对齐，关键 config/options/services/Repairs 路径存在，服务翻译和当前 `services.yaml` 服务集合一致，Repairs 翻译占位符与运行态 `translation_placeholders` 对齐。
+- 本地 HA verifier 已确认 diagnostics capability flags 边界：扫码登录、多区域、push/LAN contract 和显式 opt-in runtime flags 均通过安装态校验。
+- 本地 HA verifier 已确认 config entry options 边界：必需 option keys、`scan_interval` 范围、布尔类型和 device import filter 聚合状态均通过安装态校验。
+- 本地 HA verifier 已确认平台/options 对齐：实际实体 domain 与当前 `PLATFORMS` 匹配，未加载平台不会出现在启用实体中。
+- 本地 HA verifier 已确认 flow 契约：options flow 的 merge/reload 确认边界和 config flow 的 options factory 均存在。
+- 本地 HA verifier 已通过单元测试覆盖日志恢复顺序：恢复前的临时轮询错误可记录为已恢复事实，恢复后再次出现且没有新恢复标记的错误会作为未恢复运行时错误阻断。
+- 本地 HA verifier 已通过单元测试和 preflight 合同覆盖 repeat/soak 多轮稳定性指标：匹配时记录稳定事实，实体数量等关键指标漂移时整体失败。
+- `python3 scripts/verify_local_ha.py --repeat 2 --repeat-delay 0` 已完成两轮本地 HA 短跑验证，运行时必需键和必需 options、实体数量、服务注册、diagnostics flags、日志和 URL 健康均通过；本地手动 token entry 缺少可选 `open_api_client_id` 和可选 `device_import_filter`，已按兼容事实记录。
+- `python3 scripts/verify_local_ha.py --soak-seconds 2 --soak-interval 1` 已完成有界本地 HA 稳定性窗口验证，窗口内采样的 config entry、options、实体数量、服务注册、diagnostics flags、日志和 URL 健康均通过。
+- HA 后端日志显示 Yeelight Pro 集成完成加载，未发现 `yeelight_pro` 相关 `ERROR`、`Traceback`、`ImportError` 或平台加载失败。
+- HA entity registry 中 `yeelight_pro` 实体以最新 verifier 脱敏聚合输出为准；registry cleanup 通过 `cleanup_registry` 的 dry-run + audit_id confirm 禁用 stale entries。
+- 已通过登录态 HA 前端上下文调用 `yeelight_pro.refresh`，服务返回 200；日志显示 `Manual Yeelight Pro refresh completed for 1 config entries`，registry reconciliation 聚合数量以最新 verifier 为准。
+- 当前真实样本的 `.storage/yeelight_pro.product_schemas` 由 schema cache verifier 和启动路径共同覆盖；本地 HA 事实以最新 verifier 输出为准。
