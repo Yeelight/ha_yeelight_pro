@@ -15,7 +15,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12"]
+        # Match the HACS release gate; the HA custom-component test stack is
+        # currently validated on Python 3.11 for this integration.
+        python-version: ["3.11"]
 
     steps:
       - uses: actions/checkout@v6
