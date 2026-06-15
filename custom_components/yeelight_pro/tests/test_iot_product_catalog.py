@@ -7,6 +7,13 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from custom_components.yeelight_pro.capabilities import iot_registry
+from custom_components.yeelight_pro.capabilities.product_catalog import (
+    csv_product_catalog,
+    md_only_product_catalog,
+)
+from custom_components.yeelight_pro.capabilities.product_catalog_data import (
+    IOT_PRODUCT_SPECS,
+)
 
 
 IOT_DOCS = Path(__file__).resolve().parents[3] / "docs" / "iot"
@@ -21,8 +28,12 @@ def test_registry_product_catalog_matches_iot_product_csv() -> None:
         if row["pid"].strip()
     }
 
-    assert {item.pid for item in registry.product_catalog.values()} == set(expected)
-    assert len(registry.product_catalog) == 112
+    assert {item.pid for item in IOT_PRODUCT_SPECS} == set(expected)
+    assert set(csv_product_catalog()) == set(expected)
+    assert len(csv_product_catalog()) == 112
+    assert set(md_only_product_catalog()) == {17000012, 17000013}
+    assert set(registry.product_catalog) == set(expected) | {17000012, 17000013}
+    assert len(registry.product_catalog) == 114
 
     s21_switch = registry.product_spec(854018)
     assert s21_switch is not None
@@ -34,6 +45,24 @@ def test_registry_product_catalog_matches_iot_product_csv() -> None:
     assert dali_gateway is not None
     assert dali_gateway.pid == 17000001
     assert dali_gateway.bridge_protocols == ("dali协议",)
+
+
+def test_registry_product_catalog_includes_lan_markdown_only_products() -> None:
+    """LAN 协议 Markdown 补充 PID 应进入运行时 fallback，但不污染 CSV 主表."""
+    registry = iot_registry()
+
+    sky_light = registry.product_spec(17000012)
+    assert sky_light is not None
+    assert sky_light.name == "G60 Pro青空灯"
+    assert sky_light.normal_components == ("色温灯", "人在传感器")
+
+    chandelier = registry.product_spec(17000013)
+    assert chandelier is not None
+    assert chandelier.name == "极致吊灯"
+    assert chandelier.normal_components == ("色温灯", "彩光灯", "TOF传感器")
+
+    assert 17000012 not in csv_product_catalog()
+    assert 17000013 not in csv_product_catalog()
 
 
 def test_registry_product_catalog_components_and_protocols_are_documented() -> None:
@@ -160,6 +189,25 @@ def test_registry_product_model_from_catalog_keeps_mixed_component_identity() ->
         "switch_1",
         "switch_2",
     ]
+
+    sky_light_model = registry.product_model_from_catalog(17000012)
+    assert sky_light_model is not None
+    assert sky_light_model.product.categories == ["light", "human_sensor"]
+    assert [component.component_id for component in sky_light_model.components] == [
+        "light",
+        "human_sensor",
+    ]
+
+    chandelier_model = registry.product_model_from_catalog(17000013)
+    assert chandelier_model is not None
+    assert chandelier_model.product.categories == ["light", "other"]
+    assert [component.component_id for component in chandelier_model.components] == [
+        "light_1",
+        "light_2",
+        "other",
+    ]
+    tof_component = chandelier_model.components[-1]
+    assert [event.name for event in tof_component.events] == ["handwave"]
 
 
 def test_registry_product_model_uses_iot_property_display_names() -> None:

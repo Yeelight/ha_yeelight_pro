@@ -160,3 +160,4 @@ Desktop.ini
 # Linux
 *~
 .directory
+.ace-tool/

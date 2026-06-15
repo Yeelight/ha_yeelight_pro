@@ -8,10 +8,10 @@ from homeassistant.data_entry_flow import FlowResult
 
 from .config_flow_helpers import (
     async_validate_lan_connection,
-    flow_error_from_exception,
     lan_config_schema,
     lan_discovered_schema,
 )
+from .config_flow_precheck import async_precheck_lan_connection, precheck_error_code
 from .const import (
     CONF_ACCESS_TOKEN,
     CONF_ACCOUNT_USER_ID,
@@ -36,6 +36,7 @@ from .const import (
     CONF_TOKEN_TYPE,
     CONNECTION_MODE_LAN,
     DEFAULT_LAN_GATEWAY_PORT,
+    LAN_GATEWAY_PRODUCT_ID_GATEWAY,
 )
 from .entry_title import config_entry_title
 
@@ -87,13 +88,13 @@ class LanConfigFlowMixin:
                     flow._lan_gateway_port,
                     flow._lan_gateway_product_id,
                 ) = gateway
-                try:
-                    await async_validate_lan_connection(
-                        flow._lan_gateway_ip,
-                        flow._lan_gateway_port,
-                    )
-                except Exception as err:
-                    errors["base"] = flow_error_from_exception("lan config", err)
+                result = await async_precheck_lan_connection(
+                    flow._lan_gateway_ip,
+                    flow._lan_gateway_port,
+                    validator=async_validate_lan_connection,
+                )
+                if not result.ok:
+                    errors["base"] = precheck_error_code(result) or "unknown"
                 if not errors:
                     return await flow._create_lan_entry()
 
@@ -133,14 +134,19 @@ class LanConfigFlowMixin:
             flow._lan_gateway_port = int(
                 user_input.get(CONF_LAN_GATEWAY_PORT, DEFAULT_LAN_GATEWAY_PORT)
             )
-            flow._lan_gateway_product_id = None
-            try:
-                await async_validate_lan_connection(
-                    flow._lan_gateway_ip,
-                    flow._lan_gateway_port,
+            flow._lan_gateway_product_id = int(
+                user_input.get(
+                    CONF_LAN_GATEWAY_PRODUCT_ID,
+                    LAN_GATEWAY_PRODUCT_ID_GATEWAY,
                 )
-            except Exception as err:
-                errors["base"] = flow_error_from_exception("lan config", err)
+            )
+            result = await async_precheck_lan_connection(
+                flow._lan_gateway_ip,
+                flow._lan_gateway_port,
+                validator=async_validate_lan_connection,
+            )
+            if not result.ok:
+                errors["base"] = precheck_error_code(result) or "unknown"
             if not errors:
                 return await flow._create_lan_entry()
 

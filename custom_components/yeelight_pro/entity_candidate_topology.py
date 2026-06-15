@@ -180,18 +180,18 @@ def _iter_house_select_candidates(
     """生成固定的家庭级 select 候选。"""
     if coordinator.house_id is None:
         return
-    selector_names = {
-        "room": ("当前房间", "mdi:floor-plan"),
-        "group": ("当前灯组", "mdi:lightbulb-group"),
-        "scene": ("当前场景", "mdi:palette"),
+    selector_icons = {
+        "room": "mdi:floor-plan",
+        "group": "mdi:lightbulb-group",
+        "scene": "mdi:palette",
     }
-    for selector, (name, icon) in selector_names.items():
+    for selector, icon in selector_icons.items():
         yield EntityCandidate(
             "select",
             entity_unique_id(coordinator, "select", selector),
             "house",
             component_id=selector,
-            name=name,
+            name=None,
             icon=icon,
             entity_category=ENTITY_CATEGORY_CONFIG,
         )

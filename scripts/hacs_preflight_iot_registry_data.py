@@ -65,8 +65,8 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         "test_panel_click_and_hold_event_component_matrix_matches_iot_docs": (
             "panel event component-scope coverage"
         ),
-        "test_release_after_hold_remains_unassigned_until_docs_confirm_components": (
-            "unassigned release-after-hold event boundary"
+        "test_release_after_hold_event_component_matrix_matches_lan_docs": (
+            "LAN-documented release-after-hold event component-scope coverage"
         ),
         "test_dali_knob_spin_remains_unassigned_until_docs_confirm_components": (
             "DALI knob event conservative boundary"
@@ -143,6 +143,9 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
     "test_iot_product_catalog.py": {
         "test_registry_product_catalog_matches_iot_product_csv": (
             "CSV product catalog parity coverage"
+        ),
+        "test_registry_product_catalog_includes_lan_markdown_only_products": (
+            "LAN Markdown-only product supplement coverage"
         ),
         "test_registry_product_catalog_components_and_protocols_are_documented": (
             "product catalog component/protocol coverage"

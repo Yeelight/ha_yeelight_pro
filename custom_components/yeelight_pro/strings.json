@@ -71,7 +71,8 @@
         "description": "请输入 Yeelight Pro 网关的局域网地址。\n\n注意：网关需在易来 APP 中开启局域网控制模式。",
         "data": {
           "lan_gateway_ip": "网关 IP 地址",
-          "lan_gateway_port": "网关端口"
+          "lan_gateway_port": "网关端口",
+          "lan_gateway_product_id": "网关类型"
         }
       },
       "cloud_scan_login": {
@@ -188,6 +189,12 @@
         "sg": "新加坡",
         "us": "美国",
         "de": "欧洲"
+      }
+    },
+    "lan_gateway_product_id": {
+      "options": {
+        "1": "Yeelight Pro 网关",
+        "2": "Yeelight WiFi 全面屏"
       }
     }
   },

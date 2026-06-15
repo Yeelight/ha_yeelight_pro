@@ -80,7 +80,12 @@ def test_required_modules_include_ha_device_registry_contract() -> None:
 
 def test_required_modules_include_group_light_runtime_dependency() -> None:
     """本地 HA 安装态必须保留 light 平台拆分后的灯组实体模块。"""
-    assert "custom_components.yeelight_pro.light_group" in REQUIRED_RUNTIME_MODULES
+    expected_modules = {
+        "custom_components.yeelight_pro.light_control_helpers",
+        "custom_components.yeelight_pro.light_group",
+        "custom_components.yeelight_pro.node_light",
+    }
+    assert expected_modules <= set(REQUIRED_RUNTIME_MODULES)
 
 
 def test_required_modules_include_client_node_api_contract() -> None:
@@ -92,6 +97,15 @@ def test_required_modules_include_client_node_api_contract() -> None:
         "custom_components.yeelight_pro.core.client_node_properties",
     }
     assert expected_modules <= set(REQUIRED_RUNTIME_MODULES)
+
+
+def test_required_modules_include_config_flow_precheck() -> None:
+    """本地 HA 安装态必须保留配置流程网络预检 helper。"""
+    assert (
+        "custom_components.yeelight_pro.config_flow_precheck"
+        in REQUIRED_RUNTIME_MODULES
+    )
+
 
 def test_required_modules_include_spec_correction_normalizers() -> None:
     """本地 HA 安装态必须保留拆分后的 spec correction normalizer."""
@@ -166,6 +180,7 @@ def test_required_modules_include_product_catalog_helpers() -> None:
     assert {
         "custom_components.yeelight_pro.capabilities.product_catalog",
         "custom_components.yeelight_pro.capabilities.product_catalog_data",
+        "custom_components.yeelight_pro.capabilities.product_catalog_model",
     } <= set(REQUIRED_RUNTIME_MODULES)
 
 

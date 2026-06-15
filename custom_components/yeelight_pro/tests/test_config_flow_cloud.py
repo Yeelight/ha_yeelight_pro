@@ -183,7 +183,10 @@ async def test_cloud_houses_user_selection_opens_real_device_picker(config_flow)
     """已选家庭后应进入真实设备 picker，而不是直接导入全量设备."""
     prepare_cloud_flow(config_flow)
 
-    with patch.object(
+    with patch(
+        "custom_components.yeelight_pro.config_flow.async_validate_auth",
+        AsyncMock(),
+    ) as validate_auth, patch.object(
         config_flow,
         "async_step_cloud_devices",
         AsyncMock(return_value={"type": FlowResultType.FORM, "step_id": "cloud_devices"}),
@@ -193,4 +196,36 @@ async def test_cloud_houses_user_selection_opens_real_device_picker(config_flow)
     assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "cloud_devices"
     assert config_flow._house_id == 1
+    validate_auth.assert_awaited_once_with(
+        config_flow.hass,
+        domain=config_flow._domain,
+        access_token=config_flow._access_token,
+        client_id=config_flow._open_api_client_id,
+        house_id=1,
+    )
     device_step.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_cloud_houses_user_selection_precheck_failure_stays_on_form(
+    config_flow,
+) -> None:
+    """已选家庭后的 Open API 读预检失败时应停留在家庭选择页。"""
+    prepare_cloud_flow(config_flow)
+    config_flow._house_choices = {1: "Home"}
+
+    with patch(
+        "custom_components.yeelight_pro.config_flow.async_validate_auth",
+        AsyncMock(side_effect=YeelightConnectionError("secret-token url")),
+    ) as validate_auth, patch.object(
+        config_flow,
+        "async_step_cloud_devices",
+        AsyncMock(),
+    ) as device_step:
+        result = await config_flow.async_step_cloud_houses({CONF_HOUSE_ID: 1})
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "cloud_houses"
+    assert result["errors"]["base"] == "cannot_connect"
+    validate_auth.assert_awaited_once()
+    device_step.assert_not_awaited()

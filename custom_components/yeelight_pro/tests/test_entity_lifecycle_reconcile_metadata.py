@@ -136,7 +136,6 @@ async def test_reconcile_refreshes_static_house_select_metadata(
         (
             "select.yeelight_pro_429392",
             {
-                "original_name": "当前房间",
                 "original_icon": "mdi:floor-plan",
                 "entity_category": EntityCategory.CONFIG,
                 "has_entity_name": True,
@@ -146,7 +145,6 @@ async def test_reconcile_refreshes_static_house_select_metadata(
         (
             "select.yeelight_pro_429392_2",
             {
-                "original_name": "当前灯组",
                 "original_icon": "mdi:lightbulb-group",
                 "entity_category": EntityCategory.CONFIG,
                 "has_entity_name": True,
@@ -156,7 +154,6 @@ async def test_reconcile_refreshes_static_house_select_metadata(
         (
             "select.yeelight_pro_429392_3",
             {
-                "original_name": "当前场景",
                 "original_icon": "mdi:palette",
                 "entity_category": EntityCategory.CONFIG,
                 "has_entity_name": True,

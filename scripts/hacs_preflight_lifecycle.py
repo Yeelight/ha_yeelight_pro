@@ -281,7 +281,7 @@ LIFECYCLE_CONTRACT_TOKENS = {
             "failed unload client preservation coverage"
         ),
     },
-    "tests/test_config_entry_lifecycle.py": {
+    "tests/test_config_entry_setup_runtime.py": {
         "test_setup_entry_keeps_polling_when_live_runtime_initial_connect_fails": (
             "live WebSocket initial failure polling fallback coverage"
         ),

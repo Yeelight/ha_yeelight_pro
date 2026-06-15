@@ -14,81 +14,16 @@ from .device_payload import (
 )
 from .lan_topology_merge import merge_lan_payload
 from .lan_sensor_values import normalize_lan_device_params
-
-NODE_TYPE_ROOM = 1
-NODE_TYPE_DEVICE = 2
-NODE_TYPE_AREA = 3
-NODE_TYPE_GROUP = 4
-NODE_TYPE_HOUSE = 5
-NODE_TYPE_SCENE = 6
-
-_LIGHT_PARAMS: dict[int, dict[str, Any]] = {
-    1: {"p": False},
-    2: {"p": False, "l": 100},
-    3: {"p": False, "l": 100, "ct": 4000},
-    4: {"p": False, "l": 100, "ct": 4000, "c": 0xFFFFFF, "m": 2},
-    14: {"p": False, "l": 100, "ct": 4000},
-}
-_BATH_HEATER_PARAMS: dict[str, Any] = {
-    "p": False,
-    "bhm": 1,
-    "do": 1,
-    "ve": 0,
-    "fa": 0,
-    "he": 0,
-    "tgt": 26,
-    "t": 26,
-}
-_LAN_TYPE_SPECS: dict[int, dict[str, Any]] = {
-    1: {"category": "light", "model": "开关灯", "params": _LIGHT_PARAMS[1]},
-    2: {"category": "light", "model": "亮度灯", "params": _LIGHT_PARAMS[2]},
-    3: {"category": "light", "model": "色温灯", "params": _LIGHT_PARAMS[3]},
-    4: {"category": "light", "model": "彩光灯", "params": _LIGHT_PARAMS[4]},
-    6: {"category": "curtain", "model": "窗帘", "params": {"cp": 0, "tp": 0}},
-    7: {"category": "relay_switch", "model": "继电器开关", "switch_prop": "p", "channels": 2},
-    10: {"category": "temp_control", "model": "温控设备", "params": {"acp": False, "actt": 26, "acct": 26}},
-    13: {"category": "relay_switch", "model": "继电器开关", "switch_prop": "sp"},
-    14: {"category": "light", "model": "色温灯", "params": _LIGHT_PARAMS[14]},
-    15: {"category": "temp_control", "model": "温控设备", "params": {"acp": False, "actt": 26, "acct": 26}},
-    128: {
-        "category": "scene_panel",
-        "model": "情景面板",
-        "events": ("click", "hold", "release_after_hold"),
-    },
-    129: {
-        "category": "human_sensor",
-        "model": "人体传感器",
-        "params": {"mv": False},
-        "events": ("motion_detected", "motion_undetected"),
-    },
-    130: {
-        "category": "contact_sensor",
-        "model": "门磁传感器",
-        "params": {"dc": False, "alm": False},
-        "events": ("door_open", "door_close", "door_alarm", "door_normal"),
-    },
-    132: {"category": "knob_switch", "model": "旋钮开关", "events": ("knob_spin",)},
-    134: {
-        "category": "light_sensor",
-        "model": "照度传感器",
-        "params": {"mv": False, "level": 0},
-        "events": ("motion_detected", "motion_undetected"),
-    },
-    135: {"category": "light_sensor", "model": "照度传感器", "params": {"luminance": 0}},
-    136: {"category": "other", "model": "温湿度传感器", "params": {"t": 0, "h": 0}},
-    138: {
-        "category": "human_sensor",
-        "model": "人体传感器",
-        "params": {"mv": False, "luminance": 0},
-        "events": ("motion_detected", "motion_undetected"),
-    },
-    2049: {
-        "category": "temp_control",
-        "model": "浴霸加热器",
-        "params": _BATH_HEATER_PARAMS,
-    },
-    2052: {"category": "other", "model": "TOF传感器", "events": ("handwave",)},
-}
+from .lan_topology_specs import (
+    AC_PROPERTIES,
+    LAN_TYPE_SPECS,
+    NODE_TYPE_AREA,
+    NODE_TYPE_DEVICE,
+    NODE_TYPE_GROUP,
+    NODE_TYPE_HOUSE,
+    NODE_TYPE_ROOM,
+    NODE_TYPE_SCENE,
+)
 
 
 @dataclass(slots=True)
@@ -154,7 +89,7 @@ def _device_payload_from_node(node: Mapping[str, Any]) -> dict[str, Any]:
     """将单个 LAN Mesh 子设备节点转换为接近 OpenAPI 的载荷。"""
     node_id = to_int(node.get("id"))
     lan_type = to_int(node.get("type"))
-    spec = _LAN_TYPE_SPECS.get(lan_type or -1, {})
+    spec = LAN_TYPE_SPECS.get(lan_type or -1, {})
     category = to_str(spec.get("category")) or "other"
     model = to_str(spec.get("model")) or "易来设备"
     params = _params_for_node(node, spec, lan_type=lan_type)
@@ -206,6 +141,8 @@ def _params_for_node(
     node_params = node.get("params")
     if isinstance(node_params, Mapping):
         params.update(dict(node_params))
+    if spec.get("indexed_ac_channels"):
+        params = _indexed_ac_params(node, params)
     switch_prop = to_str(spec.get("switch_prop"))
     if switch_prop is None:
         return normalize_lan_device_params(params, lan_type=lan_type)
@@ -221,6 +158,8 @@ def _subdevices_for_node(
     category: str,
 ) -> list[dict[str, Any]]:
     switch_prop = to_str(spec.get("switch_prop"))
+    if spec.get("indexed_ac_channels"):
+        return _ac_subdevices_for_node(node)
     if switch_prop is None:
         return []
 
@@ -234,6 +173,43 @@ def _subdevices_for_node(
             "category": category,
             "name": None,
             "properties": [{"propId": switch_prop, "access": "read_write"}],
+        })
+    return subdevices
+
+
+def _indexed_ac_params(
+    node: Mapping[str, Any],
+    params: Mapping[str, Any],
+) -> dict[str, Any]:
+    """按 LAN 空调网关的 [index]-xxx 控制协议补齐每路默认状态。"""
+    indexed = {
+        str(key): value
+        for key, value in params.items()
+        if "-" in str(key)
+    }
+    plain_defaults = {
+        str(key): value
+        for key, value in params.items()
+        if "-" not in str(key)
+    }
+    count = _channel_count(node, default=1)
+    for index in range(1, count + 1):
+        for prop, value in plain_defaults.items():
+            indexed.setdefault(f"{index}-{prop}", value)
+    return indexed
+
+
+def _ac_subdevices_for_node(node: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """为 LAN 空调网关生成每路空调组件证据。"""
+    cids = _cid_values(node.get("cids"))
+    subdevices: list[dict[str, Any]] = []
+    for index in range(1, _channel_count(node, default=1) + 1):
+        subdevices.append({
+            "index": index,
+            "cid": cids[index - 1] if index - 1 < len(cids) else None,
+            "category": "air_conditioner",
+            "name": None,
+            "properties": [dict(prop) for prop in AC_PROPERTIES],
         })
     return subdevices
 

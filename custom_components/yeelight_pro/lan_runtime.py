@@ -277,7 +277,7 @@ class LanGatewayRuntime:
             raise
         except Exception as err:
             self._health.last_error_type = type(err).__name__
-            _LOGGER.warning("LAN read loop error: %s", err)
+            _LOGGER.warning("LAN read loop error: %s", type(err).__name__)
         finally:
             self._health.connected = False
             self._flush_pending_acks("read loop exited")

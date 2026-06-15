@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from homeassistant.components.light import ColorMode
+from homeassistant.components.light import ATTR_TRANSITION, ColorMode
 
 from custom_components.yeelight_pro.light_group import YeelightProGroupLight
 
@@ -41,6 +41,25 @@ async def test_group_light_turn_off_uses_group_control(mock_coordinator) -> None
         "group_1",
         {"p": False},
     )
+
+
+@pytest.mark.asyncio
+async def test_group_light_passes_transition_duration(mock_coordinator) -> None:
+    """灯组 light 应把 HA transition 透传为易来 duration。"""
+    mock_coordinator.groups = [
+        {"id": "group_1", "name": "客厅灯组", "params": {"p": False, "l": 50}}
+    ]
+    entity = YeelightProGroupLight(mock_coordinator, "group_1")
+
+    await entity.async_turn_on(**{ATTR_TRANSITION: 1.25})
+    await entity.async_turn_off(**{ATTR_TRANSITION: 0.5})
+
+    assert mock_coordinator.async_control_group.await_args_list[0].kwargs == {
+        "duration": 1250
+    }
+    assert mock_coordinator.async_control_group.await_args_list[1].kwargs == {
+        "duration": 500
+    }
 
 
 def test_group_light_exposes_runtime_state_and_house_device_info(mock_coordinator) -> None:

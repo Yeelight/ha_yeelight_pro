@@ -20,27 +20,41 @@ def multi_curtain_payload() -> dict:
     payload["params"] = {
         "1-cp": 10,
         "1-tp": 30,
+        "1-cra": 45,
+        "1-tra": 90,
         "2-cp": 90,
         "2-tp": 40,
+        "2-cra": 135,
+        "2-tra": 180,
     }
     payload["ha_device_instance"]["extensions"] = {
         "component_state_keys": {
-            "curtain_1": {"cp": "1-cp", "tp": "1-tp"},
-            "curtain_2": {"cp": "2-cp", "tp": "2-tp"},
+            "curtain_1": {
+                "cp": "1-cp",
+                "tp": "1-tp",
+                "cra": "1-cra",
+                "tra": "1-tra",
+            },
+            "curtain_2": {
+                "cp": "2-cp",
+                "tp": "2-tp",
+                "cra": "2-cra",
+                "tra": "2-tra",
+            },
         }
     }
     payload["ha_device_instance"]["components"] = [
         {
             "component_id": "curtain_1",
-            "category": "curtain",
+            "category": "zebra blinds",
             "available": True,
-            "state": {"cp": 10, "tp": 30},
+            "state": {"cp": 10, "tp": 30, "cra": 45, "tra": 90},
         },
         {
             "component_id": "curtain_2",
-            "category": "curtain",
+            "category": "zebra blinds",
             "available": True,
-            "state": {"cp": 90, "tp": 40},
+            "state": {"cp": 90, "tp": 40, "cra": 135, "tra": 180},
         },
     ]
     payload["ha_product_model"]["components"] = [
@@ -80,6 +94,27 @@ def test_multi_curtain_projection_reads_component_scoped_state_keys() -> None:
     ]
     assert [item.target_cover_position for item in projections] == [30, 40]
     assert [item.target_position_key for item in projections] == ["1-tp", "2-tp"]
+    assert [item.current_cover_tilt_position for item in projections] == [25, 75]
+    assert [item.target_cover_tilt_position for item in projections] == [50, 100]
+    assert [item.target_tilt_position_key for item in projections] == ["1-tra", "2-tra"]
+
+
+def test_zebra_blind_schema_exposes_tilt_without_current_state() -> None:
+    """schema 已声明 tra/cra 时，缺少当前读值也应保留 tilt 控制能力."""
+    payload = multi_curtain_payload()
+    for component in payload["ha_device_instance"]["components"]:
+        component["state"] = {}
+    payload["params"] = {
+        "1-cp": 10,
+        "1-tp": 30,
+        "2-cp": 90,
+        "2-tp": 40,
+    }
+
+    projections = project_covers(payload, domain="yeelight_pro")
+
+    assert [item.current_cover_tilt_position for item in projections] == [None, None]
+    assert [item.target_tilt_position_key for item in projections] == ["1-tra", "2-tra"]
 
 
 def _curtain_schema_component(component_id: str) -> dict:
@@ -87,11 +122,13 @@ def _curtain_schema_component(component_id: str) -> dict:
     return {
         "component_id": component_id,
         "category": "curtain",
-        "name": "curtain",
-        "component_type": "curtain",
+        "name": "zebra blinds",
+        "component_type": "zebra blinds",
         "properties": [
             {"prop_id": "cp", "access": "read"},
             {"prop_id": "tp", "access": "read_write"},
+            {"prop_id": "cra", "access": "read"},
+            {"prop_id": "tra", "access": "read_write"},
         ],
         "events": [],
     }

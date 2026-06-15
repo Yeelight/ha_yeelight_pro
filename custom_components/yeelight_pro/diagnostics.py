@@ -79,9 +79,24 @@ def _build_runtime_diagnostics(
     """Build aggregate runtime diagnostics without raw device payloads."""
     coordinator = runtime.get("coordinator")
     if coordinator is None:
+        capabilities = _client_capabilities_for_entry(entry)
+        capabilities.update(
+            {
+                "cloud_http_polling": False,
+                "private_http_polling": False,
+                "lan_direct_control": False,
+                "scan_login_runtime": False,
+                "websocket_transport_runtime": False,
+                "push_connection": False,
+                "websocket_subscription": False,
+                "websocket_event_notifications": False,
+                "local_gateway_control": False,
+                "lan_control": False,
+            }
+        )
         return {
             "loaded": False,
-            "client_capabilities": _client_capabilities_for_entry(entry),
+            "client_capabilities": capabilities,
             "options": _options_diagnostics(entry),
             "option_status": option_status_diagnostics(entry, runtime, None),
             "iot_registry": _iot_registry_diagnostics(),
@@ -332,7 +347,9 @@ def _runtime_manager_available(manager: Any) -> bool:
         return True
     running = health.get("running")
     connected = health.get("connected")
-    if running is False and connected is False:
+    if running is False:
+        return False
+    if connected is False:
         return False
     return True
 

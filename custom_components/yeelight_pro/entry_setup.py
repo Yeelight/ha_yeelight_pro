@@ -9,10 +9,13 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
 
 from .const import (
     CONF_LAN_GATEWAY_IP,
     CONF_LAN_GATEWAY_PORT,
+    CONF_LAN_GATEWAY_PRODUCT_ID,
+    CONF_LOCAL_GATEWAY_PRODUCT_ID,
     DOMAIN,
     get_enabled_platforms,
 )
@@ -22,6 +25,7 @@ from .entity_lifecycle import async_reconcile_entity_registry
 from .entry_migration import normalize_entry_data
 from .ha_device_registry import async_sync_gateway_devices
 from .lan_runtime import async_start_lan_runtime
+from .lan_runtime_endpoints import endpoint_kind_from_product_id
 from .repair_issues import async_create_topology_changed_issue
 from .runtime_options import (
     async_options_updated,
@@ -98,7 +102,14 @@ async def async_setup_lan_entry(
                     state_ready.set()
                 return result
 
-            runtime = LanGatewayRuntime(host=lan_ip, port=lan_port)
+            runtime = LanGatewayRuntime(
+                host=lan_ip,
+                port=lan_port,
+                endpoint_kind=endpoint_kind_from_product_id(
+                    entry_data.get(CONF_LAN_GATEWAY_PRODUCT_ID)
+                    or entry_options(entry).get(CONF_LOCAL_GATEWAY_PRODUCT_ID)
+                ),
+            )
             await runtime.async_start(_lan_handler_with_topology_wait)
             await runtime.async_get_topology()
 
@@ -143,6 +154,10 @@ async def async_setup_lan_entry(
                 "Yeelight Pro LAN runtime failed to start: %s",
                 safe_error_summary(err),
             )
+            await async_cleanup_failed_setup(hass, entry, runtime_data)
+            raise ConfigEntryNotReady(
+                f"Yeelight Pro LAN gateway unavailable: {safe_error_summary(err)}"
+            ) from err
     else:
         _LOGGER.warning("Yeelight Pro LAN mode: no gateway IP configured")
 

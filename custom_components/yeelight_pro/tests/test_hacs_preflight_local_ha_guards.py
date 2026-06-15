@@ -220,7 +220,7 @@ def test_local_ha_verification_contract_requires_safety_tokens(
         for error in errors
     )
     assert any("runtime inference helper module presence check" in error for error in errors)
-    assert any("options flow helper zip required file guard" in error for error in errors)
+    assert any("shared release component file registry" in error for error in errors)
     assert any(
         "runtime verifier source token registry" in error for error in errors
     )

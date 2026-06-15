@@ -43,6 +43,8 @@ class HACoverProjection:
     available: bool
     current_cover_position: int | None
     target_cover_position: int | None
+    current_cover_tilt_position: int | None
+    target_cover_tilt_position: int | None
     is_closed: bool | None
     is_opening: bool
     is_closing: bool
@@ -50,6 +52,7 @@ class HACoverProjection:
     device_info: dict[str, Any] | None
     icon: str | None = None
     target_position_key: str = "tp"
+    target_tilt_position_key: str | None = None
 
 
 def project_cover(device_payload: Mapping[str, Any], *, domain: str) -> HACoverProjection | None:
@@ -108,6 +111,9 @@ def _project_legacy_cover(
         device_info=project_payload_device_info(device_payload),
         current_position_key="cp",
         target_position_key="tp",
+        current_tilt_key="cra",
+        target_tilt_key="tra",
+        supports_tilt_control="tra" in params,
     )
 
 
@@ -128,6 +134,7 @@ def _project_instance_cover(
         schema_component=product_component,
     )
     unique_id_prefix = payload_entity_unique_id_prefix(device_payload, domain=domain)
+    supports_tilt_control = "tra" in component_prop_ids(component, product_component)
     return _build_cover_projection(
         component_id=component.component_id,
         unique_id=f"{unique_id_prefix}_{instance.device_id}_{component.component_id}",
@@ -137,6 +144,9 @@ def _project_instance_cover(
         device_info=project_payload_device_info(device_payload, instance),
         current_position_key=control_key(instance, component.component_id, "cp"),
         target_position_key=control_key(instance, component.component_id, "tp"),
+        current_tilt_key=control_key(instance, component.component_id, "cra"),
+        target_tilt_key=control_key(instance, component.component_id, "tra"),
+        supports_tilt_control=supports_tilt_control,
     )
 
 
@@ -149,10 +159,15 @@ def _build_cover_projection(
     device_info: dict[str, Any] | None,
     current_position_key: str,
     target_position_key: str,
+    current_tilt_key: str,
+    target_tilt_key: str,
+    supports_tilt_control: bool,
 ) -> HACoverProjection:
     """根据运行时状态构造 Home Assistant cover projection."""
     current_position = _clamp_position(_int(state_value(state, current_position_key)))
     target_position = _clamp_position(_int(state_value(state, target_position_key)))
+    current_tilt = _angle_to_tilt_percent(_int(state_value(state, current_tilt_key)))
+    target_tilt = _angle_to_tilt_percent(_int(state_value(state, target_tilt_key)))
     return HACoverProjection(
         component_id=component_id,
         unique_id=unique_id,
@@ -160,6 +175,8 @@ def _build_cover_projection(
         available=available,
         current_cover_position=current_position,
         target_cover_position=target_position,
+        current_cover_tilt_position=current_tilt,
+        target_cover_tilt_position=target_tilt,
         is_closed=(current_position == 0) if current_position is not None else None,
         is_opening=_is_opening(current_position, target_position),
         is_closing=_is_closing(current_position, target_position),
@@ -167,6 +184,7 @@ def _build_cover_projection(
         device_info=device_info,
         icon=None,
         target_position_key=target_position_key,
+        target_tilt_position_key=target_tilt_key if supports_tilt_control else None,
     )
 
 
@@ -189,6 +207,14 @@ def _clamp_position(value: int | None) -> int | None:
     if value is None:
         return None
     return max(0, min(100, value))
+
+
+def _angle_to_tilt_percent(value: int | None) -> int | None:
+    """将梦幻帘 0-180 度旋转角映射为 HA tilt 百分比."""
+    if value is None:
+        return None
+    angle = max(0, min(180, value))
+    return round(angle * 100 / 180)
 
 
 def _load_instance(device_payload: Mapping[str, Any]) -> HADeviceInstanceModel | None:

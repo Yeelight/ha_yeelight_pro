@@ -23,6 +23,8 @@ LOCAL_HA_SPLIT_CONTRACT_TOKENS = {
         "test_config_flow_entry_creation.py": (
             "config-flow entry creation split test guard"
         ),
+        "test_config_flow_precheck.py": "config-flow precheck split test guard",
+        "test_config_flow_private.py": "private config-flow split test guard",
         "test_config_flow_scan_login.py": "config-flow scan-login split test guard",
         "test_config_flow_scan_login_device.py": (
             "scan-login device id split test guard"
@@ -31,6 +33,7 @@ LOCAL_HA_SPLIT_CONTRACT_TOKENS = {
             "scan-login polling split test guard"
         ),
         "test_config_flow_reauth.py": "config-flow reauth split test guard",
+        "config_flow_precheck.py": "config-flow precheck helper guard",
         "cloud reauth region isolation coverage": (
             "config-flow reauth region isolation guard"
         ),

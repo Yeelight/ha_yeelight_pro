@@ -146,6 +146,12 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         "test_config_flow_entry_creation.py": (
             "config-flow entry creation required release file guard"
         ),
+        "test_config_flow_precheck.py": (
+            "config-flow precheck required release file guard"
+        ),
+        "test_config_flow_private.py": (
+            "private config-flow required release file guard"
+        ),
     },
     "scripts/hacs_preflight_runtime_options.py": {
         "check_automation_contract_tests": "automation contract preflight helper",
@@ -168,55 +174,7 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         "FORBIDDEN_PARTS": "release zip forbidden directory guard",
         "FORBIDDEN_SUFFIXES": "release zip generated suffix guard",
         "REQUIRED_FILES": "release zip required runtime file guard",
-        "entity_category.py": "entity category helper zip required file guard",
-        "platform_contract_data.py": "platform contract data zip required file guard",
-        "client_node_api.py": "Open API node helper zip required file guard",
-        "client_node_base.py": "Open API node base helper zip required file guard",
-        "client_node_lists.py": "Open API node list helper zip required file guard",
-        "client_node_properties.py": (
-            "Open API node property helper zip required file guard"
-        ),
-        "config_flow_options.py": "options flow helper zip required file guard",
-        "runtime_inference_helpers.py": (
-            "runtime inference helper zip required file guard"
-        ),
-        "runtime_property_builder.py": (
-            "runtime property builder zip required file guard"
-        ),
-        "runtime_registry_events.py": (
-            "runtime registry event helper zip required file guard"
-        ),
-        "openapi_properties.py": "OpenAPI property helper zip required file guard",
-        "runtime_template_controls.py": (
-            "runtime control template zip required file guard"
-        ),
-        "runtime_template_sensors.py": (
-            "runtime sensor template zip required file guard"
-        ),
-        "runtime_template_hvac.py": (
-            "runtime HVAC template zip required file guard"
-        ),
-        "runtime_templates.py": "runtime template facade zip required file guard",
-        "runtime_subdevices.py": "OpenAPI sub-device helper zip required file guard",
-        "device_registry_classification.py": (
-            "registry classification helper zip required file guard"
-        ),
-        "device_runtime_constants.py": (
-            "runtime constants helper zip required file guard"
-        ),
-        "scan_login_contract.py": "scan-login contract zip required file guard",
-        "event_identity.py": "event identity helper zip required file guard",
-        "device_select.py": "device select helper zip required file guard",
-        "projector/event_identity_helpers.py": (
-            "event identity projector helper zip required file guard"
-        ),
-        "projector/event_input.py": "event-input identity helper zip required file guard",
-        "projector/event_helpers.py": "event projector helper zip required file guard",
-        "projector/property_control_common.py": (
-            "property control common helper zip required file guard"
-        ),
-        "projector/sensor_helpers.py": "sensor projector helper zip required file guard",
-        "projector/sensor_metadata.py": "sensor metadata helper zip required file guard",
+        "RELEASE_COMPONENT_FILES": "shared release component file registry",
         "name.endswith(\"/\")": "release zip directory entry guard",
         "\"..\" in path.parts": "release zip ZipSlip guard",
         "path.is_absolute()": "release zip absolute path guard",
@@ -378,6 +336,17 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         "test_validate_existing_zip_rejects_unsafe_paths": (
             "release zip unsafe path coverage"
         ),
+        "RELEASE_COMPONENT_FILES <= check_release_zip.REQUIRED_FILES": (
+            "release zip required files mirror shared component registry"
+        ),
+        "core/lan_topology_specs.py": "LAN topology specs zip required file guard",
+        "projector/event_input.py": "event-input identity helper zip required file guard",
+        "projector/event_helpers.py": "event projector helper zip required file guard",
+        "projector/property_control_common.py": (
+            "property control common helper zip required file guard"
+        ),
+        "projector/sensor_helpers.py": "sensor projector helper zip required file guard",
+        "projector/sensor_metadata.py": "sensor metadata helper zip required file guard",
         "test_write_zip_returns_validated_runtime_names": (
             "release zip write/read validation coverage"
         ),

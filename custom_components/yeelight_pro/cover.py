@@ -169,6 +169,14 @@ class YeelightProCover(CoordinatorEntity, CoverEntity):
         return None
 
     @property
+    def current_cover_tilt_position(self) -> int | None:
+        """Return current tilt position of cover."""
+        projection = self._projection
+        if projection is not None:
+            return projection.current_cover_tilt_position
+        return None
+
+    @property
     def is_closed(self) -> bool | None:
         """Return if the cover is closed."""
         projection = self._projection
@@ -196,6 +204,9 @@ class YeelightProCover(CoordinatorEntity, CoverEntity):
     def supported_features(self) -> CoverEntityFeature:
         """Return cover features currently supported by this entry."""
         features = _COVER_BASE_FEATURES
+        projection = self._projection
+        if projection is not None and projection.target_tilt_position_key is not None:
+            features |= CoverEntityFeature.SET_TILT_POSITION
         can_control_action = getattr(
             self.coordinator,
             "can_control_device_action",
@@ -217,6 +228,14 @@ class YeelightProCover(CoordinatorEntity, CoverEntity):
         """Move the cover to a specific position."""
         position = kwargs.get("position", 0)
         await self._async_set_target_position("cover.set_cover_position", position)
+
+    async def async_set_cover_tilt_position(self, **kwargs: Any) -> None:
+        """Set zebra blind rotary angle through HA cover tilt semantics."""
+        tilt = kwargs.get("tilt_position", kwargs.get("position", 0))
+        await self._async_set_target_tilt_position(
+            "cover.set_cover_tilt_position",
+            tilt,
+        )
 
     async def async_stop_cover(self, **kwargs: Any) -> None:
         """Pause cover movement through the documented LAN motor action."""
@@ -265,5 +284,40 @@ class YeelightProCover(CoordinatorEntity, CoverEntity):
         )
         try:
             await self.coordinator.async_control_device(self._device_id, {key: target})
+        except YeelightProError as err:
+            raise_service_error(action, err)
+
+    async def _async_set_target_tilt_position(self, action: str, tilt: Any) -> None:
+        """下发梦幻帘目标旋转角，按 HA tilt 百分比映射到 0-180 度."""
+        projection = self._projection
+        if projection is None or projection.target_tilt_position_key is None:
+            _LOGGER.debug(
+                "Skipping cover tilt control: device_id=%s component_id=%s action=%s "
+                "reason=%s",
+                self._device_id,
+                self._component_id,
+                action,
+                "projection_unavailable",
+            )
+            raise HomeAssistantError(ERROR_COVER_PROJECTION_UNAVAILABLE)
+
+        target_percent = max(0, min(100, int(tilt)))
+        target_angle = round(target_percent * 180 / 100)
+        key = projection.target_tilt_position_key
+        _LOGGER.debug(
+            "Cover tilt control request: device_id=%s component_id=%s action=%s "
+            "control_key=%s target_tilt=%s target_angle=%s",
+            self._device_id,
+            projection.component_id,
+            action,
+            key,
+            target_percent,
+            target_angle,
+        )
+        try:
+            await self.coordinator.async_control_device(
+                self._device_id,
+                {key: target_angle},
+            )
         except YeelightProError as err:
             raise_service_error(action, err)

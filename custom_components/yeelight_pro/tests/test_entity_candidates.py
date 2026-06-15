@@ -259,7 +259,7 @@ def test_entity_candidates_include_registry_metadata_for_major_platforms() -> No
     assert candidates[("light", _uid(_SCOPE_HOUSE_12345, "house", "house_1", "light"))].name == "星河暖居"
     assert candidates[("light", _uid(_SCOPE_HOUSE_12345, "house", "house_1", "light"))].icon == "mdi:home-lightbulb"
     assert candidates[("number", _uid(_SCOPE_HOUSE_12345, "group", "group_1", "brightness"))].name == "客厅灯组 亮度"
-    assert candidates[("select", _uid(_SCOPE_HOUSE_12345, "select", "room"))].name == "当前房间"
+    assert candidates[("select", _uid(_SCOPE_HOUSE_12345, "select", "room"))].name is None
 
 
 def test_house_select_candidates_keep_lan_only_zero_house_id() -> None:

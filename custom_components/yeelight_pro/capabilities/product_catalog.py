@@ -6,19 +6,18 @@ from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 from typing import Any
 
-from ..canonical.models import (
-    BridgeModel,
-    ComponentModel,
-    EventModel,
-    HAProductModel,
-    ProductModel,
-    PropertyModel,
-    ValueItemModel,
-    ValueRangeModel,
-)
+from ..canonical.models import HAProductModel
 from ..utils import to_int
 from .models import IoTComponentSpec, IoTProductSpec
-from .product_catalog_data import IOT_PRODUCT_SPECS
+from .product_catalog_model import (
+    build_product_model,
+    registry_property_model,
+)
+from .product_catalog_data import (
+    IOT_MD_ONLY_COMPONENT_SPECS,
+    IOT_MD_ONLY_PRODUCT_SPECS,
+    IOT_PRODUCT_SPECS,
+)
 
 PROJECTABLE_GLOBAL_COMPONENTS = frozenset({
     "basic",
@@ -32,8 +31,20 @@ PROJECTABLE_GLOBAL_COMPONENTS = frozenset({
 
 @lru_cache(maxsize=1)
 def product_catalog() -> dict[int, IoTProductSpec]:
-    """返回 pid -> 产品构成定义."""
+    """返回 pid -> 产品构成定义，包含 CSV 主表和 LAN 文档补充产品."""
+    return {item.pid: item for item in (*IOT_PRODUCT_SPECS, *IOT_MD_ONLY_PRODUCT_SPECS)}
+
+
+@lru_cache(maxsize=1)
+def csv_product_catalog() -> dict[int, IoTProductSpec]:
+    """返回基础信息_产品构成.csv 固化的 pid -> 产品定义."""
     return {item.pid: item for item in IOT_PRODUCT_SPECS}
+
+
+@lru_cache(maxsize=1)
+def md_only_product_catalog() -> dict[int, IoTProductSpec]:
+    """返回 LAN Markdown 文档补充的 pid -> 产品定义."""
+    return {item.pid: item for item in IOT_MD_ONLY_PRODUCT_SPECS}
 
 
 def product_spec(pid: Any) -> IoTProductSpec | None:
@@ -72,8 +83,9 @@ def product_components(
     if spec is None:
         return ()
     components: list[IoTComponentSpec] = []
+    local_component_map = _product_component_map(component_map)
     for name in _expanded_component_names(spec):
-        component = component_map.get(_component_key(name))
+        component = local_component_map.get(_component_key(name))
         if component is not None:
             components.append(component)
     return tuple(components)
@@ -145,40 +157,11 @@ def product_model_from_catalog(
         return None
     global_components = product_projectable_global_components(spec.pid, component_map)
     catalog_components = (*global_components, *product_components(spec.pid, component_map))
-    duplicate_counts: dict[int, int] = {}
-    for component in catalog_components:
-        duplicate_counts[component.component_id] = duplicate_counts.get(component.component_id, 0) + 1
-
-    occurrence_counts: dict[int, int] = {}
-    components: list[ComponentModel] = []
-    for component in catalog_components:
-        occurrence_counts[component.component_id] = occurrence_counts.get(component.component_id, 0) + 1
-        component_index = (
-            occurrence_counts[component.component_id]
-            if duplicate_counts[component.component_id] > 1
-            else None
-        )
-        components.append(_component_model(component, property_builder, index=component_index))
-    if not components:
-        return None
-    categories = _dedupe(component.category for component in components if component.category)
-    return HAProductModel(
-        schema_version="catalog-v1",
-        product=ProductModel(
-            model_id=f"YL-{spec.pid}",
-            manufacturer="Yeelight",
-            model=spec.name,
-            description="Documented Yeelight IoT product composition",
-            category=categories[0] if len(categories) == 1 else None,
-            categories=categories,
-            bridge=BridgeModel(protocols=list(product_protocols(spec.pid))),
-        ),
-        components=components,
-        device_actions=[],
-        notes=[
-            "This product model is derived from Yeelight IoT product composition.",
-            "Runtime property values must still come from live device payloads.",
-        ],
+    return build_product_model(
+        spec,
+        catalog_components,
+        product_protocols(spec.pid),
+        property_builder,
     )
 
 
@@ -202,35 +185,6 @@ def product_hydration_properties(
             seen.add(prop)
             props.append(prop)
     return tuple(props)
-
-
-def _component_model(
-    component: IoTComponentSpec,
-    property_builder: Any,
-    *,
-    index: int | None = None,
-) -> ComponentModel:
-    properties = [
-        prop_model
-        for prop_id in component.properties
-        if (prop_model := property_builder(prop_id, component.category or "")) is not None
-    ]
-    return ComponentModel(
-        component_id=_catalog_component_id(component, index=index),
-        cid=component.component_id,
-        index=index,
-        name=component.name,
-        desc=component.name,
-        component_type=component.component_type,
-        category=component.category,
-        capabilities=_component_capabilities(component, properties),
-        properties=properties,
-        events=[
-            EventModel(name=event_type, semantic=event_type, params=[])
-            for event_type in component.events
-        ],
-        actions=[],
-    )
 
 
 def _expanded_component_names(spec: IoTProductSpec) -> tuple[str, ...]:
@@ -264,92 +218,9 @@ def _fixed_component_count(spec: IoTProductSpec) -> int | None:
     return count
 
 
-def _catalog_component_id(component: IoTComponentSpec, *, index: int | None) -> str:
-    base = _catalog_component_base(component)
-    component_id = str(base).replace(" ", "_")
-    return f"{component_id}_{index}" if index is not None else component_id
-
-
-def _catalog_component_base(component: IoTComponentSpec) -> str:
-    """Return an IoT-shaped component id instead of a HA helper platform id."""
-    if component.component_type == "global":
-        return component.alias
-    if component.category in {
-        "contact_sensor",
-        "curtain",
-        "gateway",
-        "human_sensor",
-        "knob_switch",
-        "light_sensor",
-        "scene_panel",
-    }:
-        return component.category
-    return component.platform_hint or component.category or component.alias
-
-
 def _projectable_global_component(component: IoTComponentSpec) -> bool:
     """Return true for documented global components with safe HA projections."""
     return is_projectable_global_component(component)
-
-
-def _component_capabilities(
-    component: IoTComponentSpec,
-    properties: list[PropertyModel],
-) -> list[str]:
-    prop_ids = {prop.prop_id for prop in properties}
-    if component.category == "light":
-        capabilities = ["onoff"]
-        if "l" in prop_ids:
-            capabilities.append("brightness")
-        if "ct" in prop_ids:
-            capabilities.append("color_temp")
-        if "c" in prop_ids:
-            capabilities.append("rgb")
-        return capabilities
-    if component.category == "relay_switch":
-        return ["onoff"]
-    if component.category in {"curtain", "temp_control"}:
-        return sorted(prop_ids)
-    if component.category in {"contact_sensor", "human_sensor", "light_sensor", "other"}:
-        return sorted(prop_ids)
-    return []
-
-
-def registry_property_model(prop_id: str, registry: Any) -> PropertyModel | None:
-    """用 registry 属性定义构建 canonical property。"""
-    spec = registry.property_spec(prop_id)
-    if spec is None:
-        return None
-    return PropertyModel(
-        prop_id=spec.prop,
-        name=spec.display_name,
-        desc=spec.description,
-        semantic=spec.full_name,
-        kind="control" if spec.writable else "state",
-        property_type="apply" if spec.category == "application" else "config",
-        format=spec.data_type,
-        unit=spec.unit,
-        access="read_write" if spec.writable else "read_only",
-        value_range=(
-            ValueRangeModel(
-                min=_range_value(spec.value_range[0]),
-                max=_range_value(spec.value_range[1]),
-                step=_range_value(spec.value_range[2]),
-            )
-            if spec.value_range is not None
-            else None
-        ),
-        value_list=[
-            ValueItemModel(code=str(code), desc=str(label))
-            for code, label in spec.value_list.items()
-        ],
-    )
-
-
-def _range_value(value: Any) -> int | None:
-    if value is None:
-        return None
-    return int(value)
 
 
 def _component_key(value: Any) -> str:
@@ -357,20 +228,25 @@ def _component_key(value: Any) -> str:
     return " ".join(text.replace("_", " ").replace("-", " ").split())
 
 
-def _dedupe(values: Any) -> list[str]:
-    seen: set[str] = set()
-    result: list[str] = []
-    for value in values:
-        text = str(value)
-        if not text or text in seen:
-            continue
-        seen.add(text)
-        result.append(text)
-    return result
+def _product_component_map(
+    component_map: dict[str, IoTComponentSpec],
+) -> dict[str, IoTComponentSpec]:
+    """返回包含产品级补充组件的组件索引."""
+    if not IOT_MD_ONLY_COMPONENT_SPECS:
+        return component_map
+    merged = dict(component_map)
+    for component in IOT_MD_ONLY_COMPONENT_SPECS:
+        for key in (component.alias, component.name, component.component_id):
+            merged[_component_key(key)] = component
+    return merged
 
 
 __all__ = [
+    "IOT_MD_ONLY_COMPONENT_SPECS",
+    "IOT_MD_ONLY_PRODUCT_SPECS",
     "IOT_PRODUCT_SPECS",
+    "csv_product_catalog",
+    "md_only_product_catalog",
     "is_projectable_global_component",
     "product_catalog",
     "product_category_candidates",

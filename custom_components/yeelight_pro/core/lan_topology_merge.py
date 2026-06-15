@@ -53,14 +53,13 @@ def _merged_params(first: Any, second: Any) -> dict[str, Any]:
 
 def _merged_category(first: Mapping[str, Any], second: Mapping[str, Any]) -> str:
     """Return the primary category for a mixed LAN physical endpoint."""
-    categories = {
-        to_str(item)
-        for item in (
-            first.get("iot_category") or first.get("category"),
-            second.get("iot_category") or second.get("category"),
-        )
-        if to_str(item)
-    }
+    categories: set[str] = set()
+    for item in (
+        first.get("iot_category") or first.get("category"),
+        second.get("iot_category") or second.get("category"),
+    ):
+        if category := to_str(item):
+            categories.add(category)
     if categories & {"relay_switch", "switch"}:
         return "relay_switch"
     if len(categories) == 1:

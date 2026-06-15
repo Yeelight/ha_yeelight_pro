@@ -41,6 +41,7 @@ from .config_flow_account import (
 from .config_flow_helpers import (
     async_load_house_choices,
     async_validate_auth,
+    async_validate_private_auth,
     cloud_auth_method_schema,
     cloud_auth_schema,
     cloud_houses_schema,
@@ -207,6 +208,21 @@ class YeelightProConfigFlow(
                 self._house_choices,
                 self._house_id,
             )
+            try:
+                await async_validate_auth(
+                    self.hass,
+                    domain=self._domain,
+                    access_token=self._access_token,
+                    client_id=self._open_api_client_id,
+                    house_id=int(self._house_id),
+                )
+            except Exception as err:
+                errors["base"] = flow_error_from_exception("cloud house", err)
+                return self.async_show_form(
+                    step_id="cloud_houses",
+                    data_schema=cloud_houses_schema(self._house_choices),
+                    errors=errors,
+                )
             return await self.async_step_cloud_devices()
 
         try:
@@ -282,10 +298,11 @@ class YeelightProConfigFlow(
                 self._access_token = user_input[CONF_ACCESS_TOKEN]
                 self._house_id = user_input[CONF_HOUSE_ID]
                 self._house_name = ""
-                await async_validate_auth(
+                await async_validate_private_auth(
                     self.hass,
                     domain=self._domain,
                     access_token=self._access_token,
+                    house_id=int(self._house_id),
                 )
                 return await self._create_entry()
             except Exception as err:

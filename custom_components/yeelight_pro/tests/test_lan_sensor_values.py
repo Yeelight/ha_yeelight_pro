@@ -23,6 +23,11 @@ def test_lan_temperature_humidity_preserves_actual_float_temperature() -> None:
     }
 
 
+def test_lan_temperature_humidity_preserves_documented_humidity_percent() -> None:
+    """当前 LAN 文档仅定义 h 为 0..100 湿度百分比，不做无依据缩放。"""
+    assert normalize_lan_device_params({"h": 58}, lan_type=136) == {"h": 58}
+
+
 def test_lan_temperature_humidity_does_not_scale_other_lan_types() -> None:
     """浴霸/温控等其他 LAN type 的 t 不是温湿度传感器缩放语义。"""
     assert normalize_lan_device_params({"t": 26}, lan_type=2049) == {"t": 26}

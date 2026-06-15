@@ -1,5 +1,10 @@
 """utils 工具函数测试."""
 import pytest
+
+from custom_components.yeelight_pro.light_control_helpers import (
+    MAX_TRANSITION_DURATION_MS,
+    transition_duration_ms,
+)
 from custom_components.yeelight_pro.utils import (
     apply_property_scale,
     normalize_scale,
@@ -179,6 +184,33 @@ class TestApplyPropertyScale:
         """测试布尔和非数值属性不缩放."""
         assert apply_property_scale(True, zoom=1, scale=10) is True
         assert apply_property_scale("on", zoom=1, scale=10) == "on"
+
+
+class TestTransitionDuration:
+    """HA light transition 到易来 duration 的转换测试。"""
+
+    def test_missing_transition_returns_none(self):
+        """未传 transition 时不覆盖控制层默认 duration。"""
+        assert transition_duration_ms({}) is None
+
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            (0, 0),
+            (1.25, 1250),
+            ("2", 2000),
+            (-1, 0),
+            (999999, MAX_TRANSITION_DURATION_MS),
+        ],
+    )
+    def test_transition_seconds_to_clamped_milliseconds(self, value, expected):
+        """transition 秒值应转换并钳制为协议允许的毫秒范围。"""
+        assert transition_duration_ms({"transition": value}) == expected
+
+    @pytest.mark.parametrize("value", ["bad", None, float("inf"), float("nan")])
+    def test_invalid_transition_returns_none(self, value):
+        """非法 transition 不应破坏灯光控制调用。"""
+        assert transition_duration_ms({"transition": value}) is None
 
 
 class TestToStrOrEmpty:

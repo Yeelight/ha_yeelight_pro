@@ -209,7 +209,7 @@ def test_gateway_post_messages_are_push_frames(method: str) -> None:
 async def test_lan_contract_diagnostics_include_live_lan_runtime(
     hass: HomeAssistant,
 ) -> None:
-    """诊断应声明 LAN contract 与已接入的 live LAN runtime 边界."""
+    """未加载 entry 时只声明 LAN 静态合同，不误报 live runtime。"""
     entry: MagicMock = build_diagnostics_entry()
     hass.data[DOMAIN] = {}
 
@@ -218,23 +218,23 @@ async def test_lan_contract_diagnostics_include_live_lan_runtime(
     assert data["runtime"]["client_capabilities"] == {
         "connection_mode": CONNECTION_MODE_CLOUD,
         "supported_connection_modes": ["cloud", "private", "lan"],
-        "cloud_http_polling": True,
+        "cloud_http_polling": False,
         "private_http_polling": False,
         "lan_direct_control": False,
         "scan_login_contract": True,
-        "scan_login_runtime": True,
+        "scan_login_runtime": False,
         "push_message_adapter": True,
         "runtime_payload_bridge": True,
         "websocket_message_contract": True,
-        "websocket_transport_runtime": True,
+        "websocket_transport_runtime": False,
         "push_manager_contract": True,
         "lan_discovery_parser": True,
         "lan_message_contract": True,
         "lan_payload_adapter": True,
-        "push_connection": True,
-        "websocket_subscription": True,
-        "websocket_event_notifications": True,
-        "local_gateway_control": True,
-        "lan_control": True,
+        "push_connection": False,
+        "websocket_subscription": False,
+        "websocket_event_notifications": False,
+        "local_gateway_control": False,
+        "lan_control": False,
         "mqtt_subscription": False,
     }

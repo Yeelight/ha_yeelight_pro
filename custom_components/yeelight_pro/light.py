@@ -23,6 +23,7 @@ from .entity_device_id import source_device_id
 from .dynamic_entities import async_track_dynamic_entities
 from .entity_errors import raise_service_error
 from .identity import device_entity_unique_id
+from .light_control_helpers import transition_duration_ms
 from .light_group import YeelightProGroupLight
 from .node_light import YeelightProNodeLight
 from .node_metadata import (
@@ -293,7 +294,15 @@ class YeelightProLight(CoordinatorEntity, LightEntity):
             params[projection.rgb_key if projection is not None else "c"] = color
 
         try:
-            await self.coordinator.async_control_device(self._device_id, params)
+            duration = transition_duration_ms(kwargs)
+            if duration is None:
+                await self.coordinator.async_control_device(self._device_id, params)
+            else:
+                await self.coordinator.async_control_device(
+                    self._device_id,
+                    params,
+                    duration=duration,
+                )
         except YeelightProError as err:
             raise_service_error("light.turn_on", err)
 
@@ -302,9 +311,18 @@ class YeelightProLight(CoordinatorEntity, LightEntity):
         projection = self._projection
         power_key = projection.power_key if projection is not None else "p"
         try:
-            await self.coordinator.async_control_device(
-                self._device_id, {power_key: False}
-            )
+            duration = transition_duration_ms(kwargs)
+            if duration is None:
+                await self.coordinator.async_control_device(
+                    self._device_id,
+                    {power_key: False},
+                )
+            else:
+                await self.coordinator.async_control_device(
+                    self._device_id,
+                    {power_key: False},
+                    duration=duration,
+                )
         except YeelightProError as err:
             raise_service_error("light.turn_off", err)
 

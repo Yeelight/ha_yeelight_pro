@@ -1,7 +1,7 @@
 """平台实体测试."""
 import pytest
 
-from homeassistant.components.light import LightEntity
+from homeassistant.components.light import ATTR_TRANSITION, LightEntity
 from homeassistant.components.fan import FanEntity
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.components.switch import SwitchEntity
@@ -99,6 +99,48 @@ class TestYeelightProLight:
         mock_coordinator.async_control_device.assert_awaited_once_with(
             12345,
             {"p": True, "ct": 6500},
+        )
+
+    @pytest.mark.asyncio
+    async def test_turn_on_passes_transition_duration(self, mock_coordinator):
+        """HA light.turn_on transition 应转换成易来 duration 毫秒。"""
+        payload = projection_payload(
+            device_id="12345",
+            category="light",
+            component_id="main_light",
+            component_category="color temperature light",
+            state={"p": False, "l": 60, "ct": 3000},
+        )
+        mock_coordinator.get_device.return_value = payload
+        light = YeelightProLight(mock_coordinator, 12345)
+
+        await light.async_turn_on(**{ATTR_TRANSITION: 2.5})
+
+        mock_coordinator.async_control_device.assert_awaited_once_with(
+            12345,
+            {"p": True},
+            duration=2500,
+        )
+
+    @pytest.mark.asyncio
+    async def test_turn_off_passes_transition_duration(self, mock_coordinator):
+        """HA light.turn_off transition 应复用相同 duration 语义。"""
+        payload = projection_payload(
+            device_id="12345",
+            category="light",
+            component_id="main_light",
+            component_category="color temperature light",
+            state={"p": True, "l": 60, "ct": 3000},
+        )
+        mock_coordinator.get_device.return_value = payload
+        light = YeelightProLight(mock_coordinator, 12345)
+
+        await light.async_turn_off(**{ATTR_TRANSITION: 1})
+
+        mock_coordinator.async_control_device.assert_awaited_once_with(
+            12345,
+            {"p": False},
+            duration=1000,
         )
 
 

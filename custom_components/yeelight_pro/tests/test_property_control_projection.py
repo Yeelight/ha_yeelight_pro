@@ -21,12 +21,14 @@ def _property_control_payload() -> dict:
         state={
             "tp": 40,
             "tra": 120,
+            "rg": 4,
             "li": 1,
             "rd": "0",
         },
         params={
             "1-tp": 40,
             "1-tra": 120,
+            "1-rg": 4,
             "1-li": 1,
             "1-rd": "0",
         },
@@ -48,6 +50,13 @@ def _property_control_payload() -> dict:
             "property_type": "int",
             "value_range": {"min": 0, "max": 180, "step": 1},
             "unit": "°",
+        },
+        {
+            "prop_id": "rg",
+            "name": "旋转档位",
+            "access": "read_write",
+            "property_type": "int",
+            "value_range": {"min": 1, "max": 10, "step": 1},
         },
         {
             "prop_id": "li",
@@ -75,16 +84,15 @@ def test_writable_value_range_projects_device_number_control() -> None:
 
     assert len(projections) == 1
     projection = projections[0]
-    assert projection.unique_id == "yeelight_pro_curtain-1_curtain_1_tra_number"
-    assert projection.component_id == "curtain_1_tra_number"
-    assert projection.name == "按键 1 目标旋转角度"
-    assert projection.value == 120
-    assert projection.native_range.min == 0
-    assert projection.native_range.max == 180
+    assert projection.unique_id == "yeelight_pro_curtain-1_curtain_1_rg_number"
+    assert projection.component_id == "curtain_1_rg_number"
+    assert projection.name == "按键 1 旋转档位"
+    assert projection.value == 4
+    assert projection.native_range.min == 1
+    assert projection.native_range.max == 10
     assert projection.native_range.step == 1
-    assert projection.unit == "°"
-    assert projection.control_key == "1-tra"
-    assert projection.entity_category is None
+    assert projection.control_key == "1-rg"
+    assert projection.entity_category == "config"
 
 
 def test_indicator_switch_projects_device_switch_not_number() -> None:
@@ -94,7 +102,7 @@ def test_indicator_switch_projects_device_switch_not_number() -> None:
     numbers = project_number_controls(payload, domain=DOMAIN)
     switches = project_switch_controls(payload, domain=DOMAIN)
 
-    assert {item.prop_id for item in numbers} == {"tra"}
+    assert {item.prop_id for item in numbers} == {"rg"}
     assert len(switches) == 1
     projection = switches[0]
     assert projection.unique_id == "yeelight_pro_curtain-1_curtain_1_li_switch"
@@ -115,14 +123,14 @@ def test_numeric_component_id_projects_friendly_control_name() -> None:
     component["name"] = "1"
     payload["ha_product_model"]["components"][0]["component_id"] = "1"
     payload["ha_device_instance"]["extensions"] = {
-        "component_state_keys": {"1": {"tra": "1-tra"}}
+        "component_state_keys": {"1": {"rg": "1-rg", "tra": "1-tra"}}
     }
 
     projection = project_number_controls(payload, domain=DOMAIN)[0]
 
-    assert projection.component_id == "1_tra_number"
-    assert projection.name == "按键 1 目标旋转角度"
-    assert projection.control_key == "1-tra"
+    assert projection.component_id == "1_rg_number"
+    assert projection.name == "按键 1 旋转档位"
+    assert projection.control_key == "1-rg"
 
 
 def test_writable_value_list_projects_device_select_control() -> None:
@@ -219,7 +227,7 @@ def test_main_entity_properties_are_not_projected_as_duplicate_controls() -> Non
     numbers = project_number_controls(_property_control_payload(), domain=DOMAIN)
     selects = project_select_controls(_property_control_payload(), domain=DOMAIN)
 
-    assert {item.prop_id for item in numbers} == {"tra"}
+    assert {item.prop_id for item in numbers} == {"rg"}
     assert {item.prop_id for item in selects} == {"rd"}
 
 

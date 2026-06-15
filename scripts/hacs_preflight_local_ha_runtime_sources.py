@@ -16,6 +16,9 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "custom_components/yeelight_pro/core/lan_topology_payload.py": (
             "LAN topology payload source token coverage"
         ),
+        "custom_components/yeelight_pro/core/lan_topology_specs.py": (
+            "LAN topology type registry source token coverage"
+        ),
         "custom_components/yeelight_pro/core/firmware_metadata.py": (
             "firmware metadata source token coverage"
         ),
@@ -79,12 +82,14 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
     },
     "custom_components/yeelight_pro/core/lan_topology_payload.py": {
         "build_lan_topology_payloads": "LAN topology normalization facade",
-        "_LAN_TYPE_SPECS": "documented LAN type to IoT category registry",
         "builder.normalize(payload, {})": "DevicePayloadBuilder normalization boundary",
         "builder.attach_canonical_models_if_available": (
             "canonical runtime device rebuild boundary"
         ),
         "platform_candidates_for_payload": "HA platform candidate metadata boundary",
+    },
+    "custom_components/yeelight_pro/core/lan_topology_specs.py": {
+        "LAN_TYPE_SPECS": "documented LAN type to IoT category registry",
         "NODE_TYPE_DEVICE = 2": "documented LAN Mesh sub-device node type",
         "NODE_TYPE_SCENE = 6": "documented LAN scene node type",
     },
@@ -356,12 +361,20 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "product_hydration_properties": "product catalog hydration property list",
         "registry_property_model": "registry-backed catalog property builder",
     },
+    "custom_components/yeelight_pro/capabilities/product_catalog_model.py": {
+        "build_product_model": "product catalog canonical model helper",
+        "_catalog_component_base": "IoT-shaped product component identity",
+        "registry_property_model": "registry-backed catalog property builder",
+    },
     "custom_components/yeelight_pro/capabilities/product_catalog_data.py": {
         "IOT_PRODUCT_SPECS": "embedded Yeelight product composition registry",
         "Yeelight Pro S21 智能墙壁开关-双键": (
             "documented S21 switch product row"
         ),
         "DALI网关": "documented DALI gateway product row",
+        "IOT_MD_ONLY_PRODUCT_SPECS": "LAN Markdown-only product supplement",
+        "G60 Pro青空灯": "LAN documented G60 Pro sky light product",
+        "极致吊灯": "LAN documented chandelier product",
     },
     "custom_components/yeelight_pro/converter/runtime_subdevices.py": {
         "infer_subdevice_components": "OpenAPI sub-device component builder",

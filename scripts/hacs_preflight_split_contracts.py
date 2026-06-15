@@ -127,6 +127,9 @@ _SPLIT_CONFIG_FLOW_CONTRACT_TEST_TOKENS = {
         "test_cloud_houses_user_selection_opens_real_device_picker": (
             "cloud house to real device picker coverage"
         ),
+        "test_cloud_houses_user_selection_precheck_failure_stays_on_form": (
+            "cloud house Open API precheck failure coverage"
+        ),
     },
     "tests/test_config_flow_cloud_devices.py": {
         "test_cloud_devices_loads_real_devices_and_defaults_to_all": (
@@ -262,6 +265,29 @@ _SPLIT_CONFIG_FLOW_CONTRACT_TEST_TOKENS = {
         ),
         "secret-token": "sensitive token log redaction marker",
     },
+    "tests/test_config_flow_precheck.py": {
+        "test_cloud_precheck_success": "cloud network precheck success coverage",
+        "test_private_precheck_classifies_auth_failure": (
+            "private network precheck auth classification coverage"
+        ),
+        "test_cloud_precheck_classifies_network_failure": (
+            "cloud network precheck network classification coverage"
+        ),
+        "test_private_precheck_classifies_house_read_network_failure": (
+            "private house read precheck coverage"
+        ),
+        "test_lan_precheck_classifies_connection_failure": (
+            "LAN precheck network classification coverage"
+        ),
+    },
+    "tests/test_config_flow_private.py": {
+        "test_private_config_runs_house_precheck_before_create_entry": (
+            "private config house precheck coverage"
+        ),
+        "test_private_config_network_failure_stays_on_form": (
+            "private config precheck failure mapping coverage"
+        ),
+    },
     "tests/test_config_flow_reauth_identity.py": {
         "test_cloud_reauth_rejects_different_token_without_account_metadata": "metadata-less token mismatch rejection coverage",
         "test_cloud_reauth_ignores_blank_stored_user_id_for_identity": "blank stored user id reauth rejection coverage",
@@ -275,6 +301,13 @@ _SPLIT_CONFIG_FLOW_CONTRACT_TEST_TOKENS = {
         "_same_reauth_region": "cloud reauth region isolation guard",
         "scan_login_token_matches_region": "shared scan-login region guard",
         "async_step_reauth_confirm": "private manual token reauth boundary",
+    },
+    "config_flow_precheck.py": {
+        "NetworkPrecheckResult": "sanitized network precheck result",
+        "async_precheck_cloud_connection": "cloud network precheck helper",
+        "async_precheck_private_connection": "private network precheck helper",
+        "async_precheck_lan_connection": "LAN network precheck helper",
+        "get_house_snapshot": "house Open API read precheck",
     },
     "config_flow_scan_login_helpers.py": {
         "ScanLoginFlowState": "scan-login flow state helper split",

@@ -147,7 +147,7 @@ def test_light_and_ac_registry_config_properties_project_controls() -> None:
 
 
 def test_curtain_and_zebra_blind_registry_properties_project_controls() -> None:
-    """窗帘/梦幻帘扩展属性应生成配置控件和旋转角度 number."""
+    """窗帘/梦幻帘扩展属性应生成配置控件，tra 由 cover tilt 独占."""
     payload = _payload_with_props(
         category="curtain",
         state={
@@ -163,8 +163,7 @@ def test_curtain_and_zebra_blind_registry_properties_project_controls() -> None:
     numbers = {item.prop_id: item for item in project_number_controls(payload, domain=DOMAIN)}
     selects = {item.prop_id: item for item in project_select_controls(payload, domain=DOMAIN)}
 
-    assert numbers["tra"].unit == "°"
-    assert numbers["tra"].native_range.max == 180
+    assert "tra" not in numbers
     assert numbers["rg"].native_range.max == 10
     assert numbers["run_speed"].native_range.max == 100
     assert set(selects) == {"open_type", "rrd"}

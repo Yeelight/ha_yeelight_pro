@@ -188,15 +188,15 @@ def test_property_controls_read_component_scoped_state_keys() -> None:
         category="curtain",
         component_id="curtain_1",
         component_category="zebra blinds",
-        params={"1-tra": 120, "1-rd": "1", "1-li": 1},
-        prop_ids=("tra", "rd", "li"),
-        key_map={"tra": "1-tra", "rd": "1-rd", "li": "1-li"},
+        params={"1-rg": 4, "1-rd": "1", "1-li": 1},
+        prop_ids=("rg", "rd", "li"),
+        key_map={"rg": "1-rg", "rd": "1-rd", "li": "1-li"},
     )
     props = device["ha_product_model"]["components"][0]["properties"]
     props[0].update({
-        "name": "目标旋转角度",
+        "name": "旋转档位",
         "property_type": "int",
-        "value_range": {"min": 0, "max": 180, "step": 1},
+        "value_range": {"min": 1, "max": 10, "step": 1},
     })
     props[1].update({
         "name": "电机方向",
@@ -212,8 +212,8 @@ def test_property_controls_read_component_scoped_state_keys() -> None:
     [select] = project_select_controls(device, domain=DOMAIN)
     [switch] = project_switch_controls(device, domain=DOMAIN)
 
-    assert number.value == 120
-    assert number.control_key == "1-tra"
+    assert number.value == 4
+    assert number.control_key == "1-rg"
     assert select.value == "1"
     assert select.control_key == "1-rd"
     assert switch.is_on is True

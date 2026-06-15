@@ -285,3 +285,40 @@ async def test_lan_gateway_runtime_records_connection_error_type() -> None:
     }
     assert "192.168.1.20" not in str(runtime.health.as_dict())
     assert "token-secret" not in str(runtime.health.as_dict())
+
+
+@pytest.mark.asyncio
+async def test_lan_gateway_runtime_read_loop_logs_only_error_type(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """读取循环异常日志不能泄漏异常消息里的 IP、token 或 payload 片段。"""
+
+    class ExplodingReader:
+        async def read(self, size: int) -> bytes:
+            raise OSError("192.168.1.20 token-secret")
+
+    async def _open_connection(
+        host: str,
+        port: int,
+    ) -> tuple[ExplodingReader, FakeLanWriter]:
+        return ExplodingReader(), FakeLanWriter()
+
+    runtime = LanGatewayRuntime(
+        host="192.168.1.20",
+        open_connection=_open_connection,
+    )
+    with caplog.at_level("WARNING"):
+        await runtime.async_start(AsyncMock())
+        await asyncio.wait_for(_wait_until_disconnected(runtime), timeout=1)
+        await runtime.async_stop()
+
+    messages = "\n".join(record.getMessage() for record in caplog.records)
+    assert "LAN read loop error: OSError" in messages
+    assert "192.168.1.20" not in messages
+    assert "token-secret" not in messages
+
+
+async def _wait_until_disconnected(runtime: LanGatewayRuntime) -> None:
+    """Wait until the reader task records its disconnect state."""
+    while runtime.health.connected:
+        await asyncio.sleep(0)

@@ -31,9 +31,6 @@ _LOGGER = logging.getLogger(__name__)
 ICON_ROOM = "mdi:floor-plan"
 ICON_GROUP = "mdi:lightbulb-group"
 ICON_SCENE = "mdi:palette"
-NAME_ROOM = "当前房间"
-NAME_GROUP = "当前灯组"
-NAME_SCENE = "当前场景"
 
 # 空选项占位
 EMPTY_OPTION = "无可用选项"
@@ -122,7 +119,6 @@ class YeelightProRoomSelect(CoordinatorEntity, SelectEntity):
         """初始化房间选择器."""
         super().__init__(coordinator)
         self._attr_unique_id = entity_unique_id(coordinator, "select", "room")
-        self._attr_name = NAME_ROOM
         self._selected: str | None = None
 
         # 设置默认选中第一个房间
@@ -177,7 +173,6 @@ class YeelightProGroupSelect(CoordinatorEntity, SelectEntity):
         """初始化灯组选择器."""
         super().__init__(coordinator)
         self._attr_unique_id = entity_unique_id(coordinator, "select", "group")
-        self._attr_name = NAME_GROUP
         self._selected: str | None = None
 
         # 设置默认选中第一个灯组
@@ -232,7 +227,6 @@ class YeelightProSceneSelect(CoordinatorEntity, SelectEntity):
         """初始化场景选择器."""
         super().__init__(coordinator)
         self._attr_unique_id = entity_unique_id(coordinator, "select", "scene")
-        self._attr_name = NAME_SCENE
         self._last_executed: str | None = None
 
     @property

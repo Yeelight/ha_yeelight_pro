@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from .models import IoTProductSpec
+from .models import IoTComponentSpec, IoTProductSpec
 
 
 IOT_PRODUCT_SPECS: tuple[IoTProductSpec, ...] = (
@@ -124,5 +124,42 @@ IOT_PRODUCT_SPECS: tuple[IoTProductSpec, ...] = (
     IoTProductSpec(17000007, "6.9寸智慧屏", ("基础组件", "wifi组件", "以太网组件", "米家组件", "全景屏组件"), ("网关", "音乐组件", "开关"), "4", "直连", ("mesh协议", "matter协议"), normal_component_counts=(("开关", 2),)),
 )
 
+IOT_MD_ONLY_PRODUCT_SPECS: tuple[IoTProductSpec, ...] = (
+    IoTProductSpec(
+        17000012,
+        "G60 Pro青空灯",
+        (),
+        ("色温灯", "人在传感器"),
+        None,
+        None,
+    ),
+    IoTProductSpec(
+        17000013,
+        "极致吊灯",
+        (),
+        ("色温灯", "彩光灯", "TOF传感器"),
+        None,
+        None,
+    ),
+)
 
-__all__ = ["IOT_PRODUCT_SPECS"]
+IOT_MD_ONLY_COMPONENT_SPECS = (
+    # LAN protocol 2.14/2.18 documents TOF as a split LAN topology node.
+    # It is not in 基础信息_组件列表.csv, so keep it scoped to product fallback.
+    IoTComponentSpec(
+        2052,
+        "tof sensor",
+        "TOF传感器",
+        "other",
+        "normal",
+        "event",
+        (),
+        ("handwave",),
+    ),
+)
+
+__all__ = [
+    "IOT_MD_ONLY_COMPONENT_SPECS",
+    "IOT_MD_ONLY_PRODUCT_SPECS",
+    "IOT_PRODUCT_SPECS",
+]

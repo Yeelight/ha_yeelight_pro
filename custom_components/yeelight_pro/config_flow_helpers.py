@@ -18,6 +18,7 @@ from .const import (
     CONF_HOUSE_ID,
     CONF_LAN_GATEWAY_IP,
     CONF_LAN_GATEWAY_PORT,
+    CONF_LAN_GATEWAY_PRODUCT_ID,
     CONF_PRIVATE_DOMAIN,
     CLOUD_AUTH_METHOD_ACCESS_TOKEN,
     CLOUD_AUTH_METHOD_SCAN_LOGIN,
@@ -28,6 +29,8 @@ from .const import (
     DEFAULT_CLOUD_REGION,
     DEFAULT_LAN_GATEWAY_PORT,
     DEFAULT_PRIVATE_DOMAIN,
+    LAN_GATEWAY_PRODUCT_ID_GATEWAY,
+    LAN_GATEWAY_PRODUCT_IDS,
 )
 from .config_flow_options import (
     entry_options as entry_options,
@@ -38,6 +41,11 @@ from .config_flow_options import (
 )
 from .core.client import YeelightProClient
 from .core.exceptions import AuthenticationError, ConnectionError
+from .config_flow_precheck import (
+    async_precheck_cloud_connection,
+    async_precheck_private_connection,
+    precheck_error_code,
+)
 from .scan_login_contract import iot_base_url
 from .house_metadata import house_name_from_choice
 from .house_metadata import friendly_house_name
@@ -173,15 +181,50 @@ async def async_validate_auth(
     domain: str,
     access_token: str,
     client_id: str | None = None,
+    house_id: int | None = None,
 ) -> None:
     """对配置的 Yeelight 端点执行认证校验."""
-    client = _client(
+    result = await async_precheck_cloud_connection(
         hass,
         domain=domain,
         access_token=access_token,
         client_id=client_id,
+        house_id=house_id,
+        client_factory=_client,
     )
-    await client.validate_auth()
+    if result.ok:
+        return
+    if result.error_code == "invalid_auth":
+        raise AuthenticationError(result.error_summary or "Authentication failed")
+    if result.error_code == "cannot_connect":
+        raise ConnectionError(result.error_summary or "Connection failed")
+    raise RuntimeError(result.error_summary or precheck_error_code(result) or "unknown")
+
+
+async def async_validate_private_auth(
+    hass: HomeAssistant,
+    *,
+    domain: str,
+    access_token: str,
+    client_id: str | None = None,
+    house_id: int | None = None,
+) -> None:
+    """对私有部署端点执行认证和连通性预检."""
+    result = await async_precheck_private_connection(
+        hass,
+        domain=domain,
+        access_token=access_token,
+        client_id=client_id,
+        house_id=house_id,
+        client_factory=_client,
+    )
+    if result.ok:
+        return
+    if result.error_code == "invalid_auth":
+        raise AuthenticationError(result.error_summary or "Authentication failed")
+    if result.error_code == "cannot_connect":
+        raise ConnectionError(result.error_summary or "Connection failed")
+    raise RuntimeError(result.error_summary or precheck_error_code(result) or "unknown")
 
 
 async def async_load_house_choices(
@@ -235,6 +278,16 @@ def lan_config_schema(discovered_ip: str | None = None) -> vol.Schema:
             CONF_LAN_GATEWAY_PORT,
             default=DEFAULT_LAN_GATEWAY_PORT,
         ): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
+        vol.Optional(
+            CONF_LAN_GATEWAY_PRODUCT_ID,
+            default=str(LAN_GATEWAY_PRODUCT_ID_GATEWAY),
+        ): selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=[str(pid) for pid in LAN_GATEWAY_PRODUCT_IDS],
+                mode=selector.SelectSelectorMode.DROPDOWN,
+                translation_key="lan_gateway_product_id",
+            )
+        ),
     })
 
 

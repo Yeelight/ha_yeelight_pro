@@ -71,7 +71,8 @@
         "description": "Enter the local network address of your Yeelight Pro gateway.\n\nNote: The gateway must have LAN control enabled in the Yeelight APP.",
         "data": {
           "lan_gateway_ip": "Gateway IP Address",
-          "lan_gateway_port": "Gateway Port"
+          "lan_gateway_port": "Gateway Port",
+          "lan_gateway_product_id": "Gateway type"
         }
       },
       "cloud_scan_login": {
@@ -188,6 +189,12 @@
         "sg": "Singapore",
         "us": "United States",
         "de": "Europe"
+      }
+    },
+    "lan_gateway_product_id": {
+      "options": {
+        "1": "Yeelight Pro gateway",
+        "2": "Yeelight WiFi full-screen switch"
       }
     }
   },

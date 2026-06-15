@@ -19,6 +19,16 @@ def _official_two_key_property_control_payload() -> dict:
     """Build a payload whose channel layout comes from official product evidence."""
     payload = _property_control_payload()
     payload["pid"] = 854018
+    payload["ha_device_instance"]["extensions"] = {
+        "component_state_keys": {
+            "curtain_1": {
+                "li": "1-li",
+                "rd": "1-rd",
+                "rg": "1-rg",
+                "tra": "1-tra",
+            }
+        }
+    }
     return payload
 
 
@@ -30,10 +40,10 @@ def test_device_number_suggests_friendly_object_id(mock_coordinator) -> None:
     number = YeelightProDeviceNumber(
         mock_coordinator,
         "curtain-1",
-        component_id="curtain_1_tra_number",
+        component_id="curtain_1_rg_number",
     )
 
-    assert number.suggested_object_id == "厨房双键开关 左键 目标旋转角度"
+    assert number.suggested_object_id == "厨房双键开关 左键 旋转档位"
 
 
 def test_device_select_suggests_friendly_object_id(mock_coordinator) -> None:
@@ -58,18 +68,18 @@ async def test_device_number_write_sends_indexed_control_key(mock_coordinator) -
     number = YeelightProDeviceNumber(
         mock_coordinator,
         12345,
-        component_id="curtain_1_tra_number",
+        component_id="curtain_1_rg_number",
     )
 
-    assert number.name == "左键 目标旋转角度"
-    assert number.native_value == 120
-    assert number.entity_category is None
+    assert number.name == "左键 旋转档位"
+    assert number.native_value == 4
+    assert number.entity_category == EntityCategory.CONFIG
 
     await number.async_set_native_value(90)
 
     mock_coordinator.async_control_device.assert_awaited_once_with(
         12345,
-        {"1-tra": 90},
+        {"1-rg": 90},
     )
 
 

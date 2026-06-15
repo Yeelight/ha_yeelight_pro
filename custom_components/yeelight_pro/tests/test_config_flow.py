@@ -8,6 +8,7 @@ from custom_components.yeelight_pro.config_flow_helpers import house_choices
 from custom_components.yeelight_pro.config_flow_helpers import (
     cloud_auth_method_schema,
     cloud_region_schema,
+    lan_config_schema,
     user_schema,
 )
 from custom_components.yeelight_pro.const import (
@@ -19,7 +20,10 @@ from custom_components.yeelight_pro.const import (
     CONNECTION_MODE_LAN,
     CONNECTION_MODE_PRIVATE,
     CONF_CONNECTION_MODE,
+    CONF_LAN_GATEWAY_PRODUCT_ID,
     DEFAULT_CLOUD_REGION,
+    LAN_GATEWAY_PRODUCT_ID_GATEWAY,
+    LAN_GATEWAY_PRODUCT_ID_WIFI_PANEL,
 )
 
 
@@ -75,6 +79,20 @@ def test_user_schema_uses_localized_connection_mode_selector() -> None:
         CONNECTION_MODE_CLOUD,
         CONNECTION_MODE_PRIVATE,
         CONNECTION_MODE_LAN,
+    ]
+
+
+def test_lan_manual_schema_uses_localized_gateway_product_selector() -> None:
+    """手动 LAN 配置应允许用户选择普通网关或 WiFi 全面屏方法族。"""
+    schema = lan_config_schema()
+    fields = {field.schema: (field, value) for field, value in schema.schema.items()}
+    field, product_selector = fields[CONF_LAN_GATEWAY_PRODUCT_ID]
+
+    assert field.default() == str(LAN_GATEWAY_PRODUCT_ID_GATEWAY)
+    assert product_selector.config["translation_key"] == "lan_gateway_product_id"
+    assert product_selector.config["options"] == [
+        str(LAN_GATEWAY_PRODUCT_ID_GATEWAY),
+        str(LAN_GATEWAY_PRODUCT_ID_WIFI_PANEL),
     ]
 
 

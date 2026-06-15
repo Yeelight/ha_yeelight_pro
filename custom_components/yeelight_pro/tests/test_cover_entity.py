@@ -22,14 +22,23 @@ def _cover_payload(
     *,
     device_id: str = "12345",
     state: dict | None = None,
+    component_category: str = "curtain",
 ) -> dict:
     """构造 schema-aware curtain payload."""
     return projection_payload(
         device_id=device_id,
         category="curtain",
         component_id="curtain",
-        component_category="curtain",
+        component_category=component_category,
         state=state or {"cp": 20, "tp": 80},
+    )
+
+
+def _zebra_blind_payload() -> dict:
+    """构造带旋转角的梦幻帘 payload."""
+    return _cover_payload(
+        state={"cp": 20, "tp": 80, "cra": 90, "tra": 135},
+        component_category="zebra blinds",
     )
 
 
@@ -64,6 +73,15 @@ def test_cover_reads_projection_state(mock_coordinator) -> None:
     assert cover.is_closed is False
     assert cover.device_info is not None
     assert (DOMAIN, "12345") in cover.device_info["identifiers"]
+
+
+def test_zebra_blind_reads_cover_tilt_state(mock_coordinator) -> None:
+    """梦幻帘旋转角应映射为 HA cover tilt 百分比."""
+    mock_coordinator.get_device.return_value = _zebra_blind_payload()
+    cover = YeelightProCover(mock_coordinator, 12345)
+
+    assert cover.current_cover_tilt_position == 50
+    assert cover.supported_features & CoverEntityFeature.SET_TILT_POSITION
 
 
 def test_cover_handles_missing_device_payload(mock_coordinator) -> None:
@@ -167,6 +185,65 @@ async def test_multi_component_cover_sends_component_target_key(mock_coordinator
     mock_coordinator.async_control_device.assert_awaited_once_with(
         "curtain-dual-1",
         {"2-tp": 55},
+    )
+
+
+@pytest.mark.asyncio
+async def test_zebra_blind_tilt_sends_target_angle(mock_coordinator) -> None:
+    """HA tilt 百分比应转换为 Yeelight tra 旋转角."""
+    mock_coordinator.get_device.return_value = _zebra_blind_payload()
+    cover = YeelightProCover(mock_coordinator, 12345)
+
+    await cover.async_set_cover_tilt_position(tilt_position=75)
+
+    mock_coordinator.async_control_device.assert_awaited_once_with(
+        12345,
+        {"tra": 135},
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("requested", "expected"),
+    [
+        (150, 180),
+        (-10, 0),
+    ],
+)
+async def test_zebra_blind_tilt_clamps_target_angle(
+    mock_coordinator,
+    requested: int,
+    expected: int,
+) -> None:
+    """Tilt 写入应先钳制 HA 百分比，再映射为 Yeelight 角度."""
+    mock_coordinator.get_device.return_value = _zebra_blind_payload()
+    cover = YeelightProCover(mock_coordinator, 12345)
+
+    await cover.async_set_cover_tilt_position(tilt_position=requested)
+
+    mock_coordinator.async_control_device.assert_awaited_once_with(
+        12345,
+        {"tra": expected},
+    )
+
+
+@pytest.mark.asyncio
+async def test_multi_component_zebra_blind_tilt_sends_component_key(
+    mock_coordinator,
+) -> None:
+    """多组件梦幻帘 tilt 控制应写入对应组件的 tra key."""
+    mock_coordinator.get_device.return_value = multi_curtain_payload()
+    cover = YeelightProCover(
+        mock_coordinator,
+        "curtain-dual-1",
+        component_id="curtain_2",
+    )
+
+    await cover.async_set_cover_tilt_position(tilt_position=75)
+
+    mock_coordinator.async_control_device.assert_awaited_once_with(
+        "curtain-dual-1",
+        {"2-tra": 135},
     )
 
 

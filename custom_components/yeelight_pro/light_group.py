@@ -18,6 +18,7 @@ from .device_display import suggested_entity_object_id
 from .entity_errors import raise_service_error
 from .house_metadata import house_device_info
 from .identity import entity_unique_id
+from .light_control_helpers import transition_duration_ms
 from .projector.light_helpers import (
     DEFAULT_MAX_COLOR_TEMP_KELVIN,
     DEFAULT_MIN_COLOR_TEMP_KELVIN,
@@ -144,14 +145,30 @@ class YeelightProGroupLight(CoordinatorEntity, LightEntity):
             r, g, b = kwargs[ATTR_RGB_COLOR]
             params["c"] = (r << 16) | (g << 8) | b
         try:
-            await self.coordinator.async_control_group(self._group_id, params)
+            duration = transition_duration_ms(kwargs)
+            if duration is None:
+                await self.coordinator.async_control_group(self._group_id, params)
+            else:
+                await self.coordinator.async_control_group(
+                    self._group_id,
+                    params,
+                    duration=duration,
+                )
         except YeelightProError as err:
             raise_service_error("light.turn_on", err)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """关闭灯组。"""
         try:
-            await self.coordinator.async_control_group(self._group_id, {"p": False})
+            duration = transition_duration_ms(kwargs)
+            if duration is None:
+                await self.coordinator.async_control_group(self._group_id, {"p": False})
+            else:
+                await self.coordinator.async_control_group(
+                    self._group_id,
+                    {"p": False},
+                    duration=duration,
+                )
         except YeelightProError as err:
             raise_service_error("light.turn_off", err)
 

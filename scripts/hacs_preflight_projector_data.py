@@ -67,10 +67,14 @@ PROJECTOR_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         "test_multi_curtain_projection_reads_component_scoped_state_keys": (
             "multi-curtain component scoped state-key coverage"
         ),
+        "test_zebra_blind_schema_exposes_tilt_without_current_state": (
+            "zebra blind schema-declared tilt coverage"
+        ),
         "multi_curtain_payload": (
             "multi-curtain component fixture coverage"
         ),
         '"2-cp"': "component-scoped cover current-position key coverage",
+        '"2-tra"': "component-scoped cover tilt target key coverage",
     },
     "test_climate_multi_component_projection.py": {
         "test_multi_climate_components_create_climate_candidates": (
@@ -127,6 +131,10 @@ PROJECTOR_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         "test_multi_component_cover_sends_component_target_key": (
             "multi-curtain component control-key coverage"
         ),
+        "test_multi_component_zebra_blind_tilt_sends_component_key": (
+            "multi-curtain component tilt control-key coverage"
+        ),
         '"2-tp"': "component-scoped cover target key coverage",
+        '"2-tra"': "component-scoped cover tilt target key coverage",
     },
 }

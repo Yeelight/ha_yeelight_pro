@@ -2,33 +2,17 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
-
-import pytest
-
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr, entity_registry as er
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from homeassistant.components.climate import ClimateEntityFeature, HVACMode
 
 from custom_components.yeelight_pro.const import (
-    CONF_CONNECTION_MODE,
-    CONF_LAN_GATEWAY_IP,
-    CONF_LAN_GATEWAY_PORT,
-    CONNECTION_MODE_LAN,
     DOMAIN,
 )
-from custom_components.yeelight_pro.core.coordinator import YeelightProCoordinator
 from custom_components.yeelight_pro.core.device_payload import DevicePayloadBuilder
 from custom_components.yeelight_pro.core.lan_topology_payload import (
     build_lan_topology_payloads,
 )
 from custom_components.yeelight_pro.entity_candidates import iter_device_entity_candidates
-from custom_components.yeelight_pro.ha_device_registry import async_sync_gateway_devices
-from custom_components.yeelight_pro.identity import (
-    entry_identity_scope,
-    scoped_device_identifier,
-    scoped_entity_unique_id,
-)
+from custom_components.yeelight_pro.projector.climate import project_climates
 from custom_components.yeelight_pro.projector.sensor import project_sensors
 from custom_components.yeelight_pro.projector.event import project_events
 from custom_components.yeelight_pro.projector.property_controls import project_select_controls
@@ -216,171 +200,111 @@ def test_lan_tof_sensor_projects_only_documented_handwave_event() -> None:
     assert events[0].event_types == ["handwave"]
 
 
-@pytest.mark.asyncio
-async def test_lan_topology_syncs_source_devices_and_relinks_entities(
-    hass: HomeAssistant,
-) -> None:
-    """LAN-only 拓扑设备也必须进入 HA device registry 并回链既有实体。"""
-    entry = MockConfigEntry(domain=DOMAIN, entry_id="entry-lan")
-    entry.add_to_hass(hass)
-    entity_registry = er.async_get(hass)
-    lan_entry_data = {
-        CONF_CONNECTION_MODE: CONNECTION_MODE_LAN,
-        CONF_LAN_GATEWAY_IP: "127.0.0.1",
-        CONF_LAN_GATEWAY_PORT: 65443,
+def test_lan_meray_human_sensor_projects_documented_approach_events() -> None:
+    """LAN type=138 迈睿人体传感器应包含 approach.true/false 事件。"""
+    device = _build([
+        {"id": 1012, "nt": 2, "type": 138, "n": "玄关迈睿人体"},
+    ])[1012]
+
+    events = project_events(device, domain=DOMAIN)
+
+    assert device["events"] == [
+        {"name": "motion_detected"},
+        {"name": "motion_undetected"},
+        {"name": "human_enter"},
+        {"name": "human_leave"},
+    ]
+    assert len(events) == 1
+    assert events[0].event_types == [
+        "motion_detected",
+        "motion_undetected",
+        "human_enter",
+        "human_leave",
+    ]
+
+
+def test_lan_single_ac_controller_projects_mode_and_fan_controls() -> None:
+    """LAN type=15 一对一空调控制器应暴露文档定义的模式和风速控制。"""
+    device = _build([
+        {"id": 1010, "nt": 2, "type": 15, "n": "主卧空调"},
+    ])[1010]
+
+    climates = project_climates(device, domain=DOMAIN)
+
+    assert device["device_info"]["model"] == "空调控制器"
+    assert device["params"] == {
+        "acp": False,
+        "acm": 1,
+        "actt": 26,
+        "acct": 26,
+        "acf": 4,
     }
-    lan_scope = entry_identity_scope(lan_entry_data, 0)
-    entity_entry = entity_registry.async_get_or_create(
-        "light",
-        DOMAIN,
-        scoped_entity_unique_id(lan_scope, "device", 1001, "light"),
-        config_entry=entry,
-    )
-    coordinator = YeelightProCoordinator(
-        hass=hass,
-        client=None,
-        house_id=0,
-        entry_data=lan_entry_data,
-    )
-
-    await coordinator.async_handle_lan_payload(
-        {
-            "id": 13812,
-            "method": "gateway_post.topology",
-            "nodes": [
-                {"id": 201, "nt": 1, "n": "客厅"},
-                {"id": 1001, "nt": 2, "type": 3, "n": "客厅灯", "roomid": 201},
-            ],
-        }
-    )
-    await async_sync_gateway_devices(hass, entry, coordinator)
-
-    device = dr.async_get(hass).async_get_device(
-        identifiers={(DOMAIN, scoped_device_identifier(lan_scope, 1001))}
-    )
-    linked_entity = entity_registry.async_get(entity_entry.entity_id)
-
-    assert device is not None
-    assert device.name == "客厅灯"
-    assert device.model == "色温灯"
-    assert linked_entity is not None
-    assert linked_entity.device_id == device.id
-    await coordinator.async_shutdown()
-
-
-@pytest.mark.asyncio
-async def test_coordinator_applies_lan_areas_groups_scenes(
-    hass: HomeAssistant,
-) -> None:
-    """LAN nt=1/3/4/6 应分别进入房间、区域、组和情景缓存。"""
-    coordinator = YeelightProCoordinator(
-        hass=hass,
-        client=None,
-        house_id=12345,
-    )
-    listener = MagicMock()
-    remove_listener = coordinator.async_add_listener(listener)
-
-    events = await coordinator.async_handle_lan_payload(
-        {
-            "id": 13813,
-            "method": "gateway_post.topology",
-            "nodes": [
-                {"id": 201, "nt": 1, "n": "客厅", "o": True, "params": {"p": True}},
-                {"id": 301, "nt": 3, "n": "一楼", "o": False, "params": {"p": False}},
-                {"id": 5001, "nt": 5, "n": "绿地中央公园"},
-                {"id": 1001, "nt": 2, "type": 3, "n": "客厅灯", "roomid": 201},
-                {
-                    "id": 3001,
-                    "nt": 4,
-                    "type": 1,
-                    "n": "客厅灯组",
-                    "o": True,
-                    "params": {"p": True, "l": 80, "ct": 4000},
-                },
-                {"id": 4001, "nt": 6, "n": "回家", "params": {"state": "inactive"}},
-            ],
-        }
-    )
-
-    assert events == []
-    assert coordinator.data == coordinator.devices
-    assert list(coordinator.devices) == [1001]
-    assert coordinator.rooms == [
-        {
-            "id": 201,
-            "name": "客厅",
-            "type": None,
-            "node_type": 1,
-            "online": True,
-            "params": {"p": True},
-        }
+    assert len(climates) == 1
+    climate = climates[0]
+    assert climate.component_id == "temp_control"
+    assert climate.hvac_mode == HVACMode.OFF
+    assert climate.hvac_modes == [
+        HVACMode.OFF,
+        HVACMode.AUTO,
+        HVACMode.COOL,
+        HVACMode.FAN_ONLY,
+        HVACMode.HEAT,
     ]
-    assert coordinator.areas == [
-        {
-            "id": 301,
-            "name": "一楼",
-            "type": None,
-            "node_type": 3,
-            "online": False,
-            "params": {"p": False},
-        }
-    ]
-    assert coordinator.groups == [
-        {
-            "id": 3001,
-            "name": "客厅灯组",
-            "type": 1,
-            "node_type": 4,
-            "online": True,
-            "params": {"p": True, "l": 80, "ct": 4000},
-        }
-    ]
-    assert coordinator.houses == [
-        {"id": 5001, "name": "绿地中央公园", "type": None, "node_type": 5}
-    ]
-    assert coordinator.scenes == [
-        {"id": 4001, "name": "回家", "params": {"state": "inactive"}, "state": "inactive"}
-    ]
-    assert coordinator.topology_generation == 1
-    listener.assert_called_once()
-    remove_listener()
-    await coordinator.async_shutdown()
-
-
-@pytest.mark.asyncio
-async def test_coordinator_merges_lan_scene_state_push(
-    hass: HomeAssistant,
-) -> None:
-    """LAN prop 场景状态推送应合并进现有场景缓存并通知监听器。"""
-    coordinator = YeelightProCoordinator(
-        hass=hass,
-        client=None,
-        house_id=12345,
-    )
-    coordinator.scenes = [{"id": 4001, "name": "回家"}]
-    listener = MagicMock()
-    remove_listener = coordinator.async_add_listener(listener)
-
-    events = await coordinator.async_handle_lan_payload(
-        {
-            "id": 13814,
-            "method": "gateway_post.prop",
-            "nodes": [
-                {"id": 1001, "nt": 2, "params": {"p": True}},
-            ],
-            "scenes": [
-                {"id": 4001, "n": "回家", "params": {"state": "active"}},
-                {"id": 4002, "n": "离家", "params": {"state": "inactive"}},
-            ],
-        }
+    assert climate.mode_key == "acm"
+    assert climate.fan_mode_key == "acf"
+    assert climate.fan_mode == "低"
+    assert climate.fan_modes == ["高", "中", "低"]
+    assert climate.supported_features & (
+        ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.FAN_MODE
     )
 
-    assert events == []
-    assert coordinator.scenes == [
-        {"id": 4001, "name": "回家", "state": "active", "params": {"state": "active"}},
-        {"id": 4002, "name": "离家", "state": "inactive", "params": {"state": "inactive"}},
+
+def test_lan_multi_ac_gateway_projects_indexed_climate_channels() -> None:
+    """LAN type=10 空调网关应按 ch_num 拆成多路 indexed climate。"""
+    device = _build([
+        {
+            "id": 1011,
+            "nt": 2,
+            "type": 10,
+            "n": "VRF 空调网关",
+            "ch_num": 2,
+            "cids": [101, 102],
+        },
+    ])[1011]
+
+    climates = project_climates(device, domain=DOMAIN)
+    candidates = [
+        item
+        for item in iter_device_entity_candidates(device)
+        if item.platform == "climate"
     ]
-    listener.assert_called_once()
-    remove_listener()
-    await coordinator.async_shutdown()
+
+    assert device["device_info"]["model"] == "空调网关"
+    assert device["params"] == {
+        "1-acp": False,
+        "1-acm": 1,
+        "1-actt": 26,
+        "1-acct": 26,
+        "1-acf": 4,
+        "2-acp": False,
+        "2-acm": 1,
+        "2-actt": 26,
+        "2-acct": 26,
+        "2-acf": 4,
+    }
+    assert [item.component_id for item in climates] == [
+        "air_conditioner_1",
+        "air_conditioner_2",
+    ]
+    assert [item.power_key for item in climates] == ["1-acp", "2-acp"]
+    assert [item.mode_key for item in climates] == ["1-acm", "2-acm"]
+    assert [item.target_temperature_key for item in climates] == [
+        "1-actt",
+        "2-actt",
+    ]
+    assert [item.fan_mode_key for item in climates] == ["1-acf", "2-acf"]
+    assert [item.fan_mode for item in climates] == ["低", "低"]
+    assert [item.component_id for item in candidates] == [
+        "air_conditioner_1",
+        "air_conditioner_2",
+    ]

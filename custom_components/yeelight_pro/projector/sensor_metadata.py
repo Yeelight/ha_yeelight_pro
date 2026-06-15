@@ -159,9 +159,11 @@ def sensor_native_value(prop: str, value: object) -> object:
     """Return the HA-facing native value for documented sensor units."""
     if prop not in DECIVOLT_SENSOR_PROPS or isinstance(value, bool):
         return value
+    if not isinstance(value, (int, float, str)):
+        return value
     try:
         return float(value) / 10
-    except (TypeError, ValueError):
+    except ValueError:
         return value
 
 

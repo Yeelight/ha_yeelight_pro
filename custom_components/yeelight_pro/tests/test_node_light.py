@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from homeassistant.components.light import ColorMode
+from homeassistant.components.light import ATTR_TRANSITION, ColorMode
 
 from custom_components.yeelight_pro.identity import entry_identity_scope, scoped_entity_unique_id
 from custom_components.yeelight_pro.node_light import YeelightProNodeLight
@@ -100,6 +100,25 @@ async def test_node_light_turn_off_controls_power(mock_coordinator) -> None:
         "area_1",
         {"p": False},
     )
+
+
+@pytest.mark.asyncio
+async def test_node_light_passes_transition_duration(mock_coordinator) -> None:
+    """拓扑节点 light 应把 HA transition 透传为易来 duration。"""
+    mock_coordinator.rooms = [
+        {"id": "room_1", "name": "客厅", "online": True, "params": {"p": False}}
+    ]
+    entity = YeelightProNodeLight(mock_coordinator, "room", "room_1")
+
+    await entity.async_turn_on(**{ATTR_TRANSITION: 1.25})
+    await entity.async_turn_off(**{ATTR_TRANSITION: 0.5})
+
+    assert mock_coordinator.async_control_node.await_args_list[0].kwargs == {
+        "duration": 1250
+    }
+    assert mock_coordinator.async_control_node.await_args_list[1].kwargs == {
+        "duration": 500
+    }
 
 
 def test_node_light_unavailable_when_node_missing(mock_coordinator) -> None:

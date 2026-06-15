@@ -93,7 +93,10 @@ def test_iot_registry_contract_check_requires_coverage_tokens(
     assert any("HA projection uses scaled runtime state coverage" in error for error in errors)
     assert any("approach event component-scope coverage" in error for error in errors)
     assert any("panel event component-scope coverage" in error for error in errors)
-    assert any("unassigned release-after-hold event boundary" in error for error in errors)
+    assert any(
+        "LAN-documented release-after-hold event component-scope coverage" in error
+        for error in errors
+    )
     assert any("DALI knob event conservative boundary" in error for error in errors)
     assert any("Open API node type coverage" in error for error in errors)
     assert any("documented Open API node type boundary" in error for error in errors)
@@ -183,6 +186,8 @@ def test_split_contract_check_requires_coverage_tokens(
     _write_test_file(tests_root / "test_config_flow_cloud_devices.py", "")
     _write_test_file(tests_root / "test_config_flow_device_picker.py", "")
     _write_test_file(tests_root / "test_config_flow_entry_creation.py", "")
+    _write_test_file(tests_root / "test_config_flow_precheck.py", "")
+    _write_test_file(tests_root / "test_config_flow_private.py", "")
     _write_test_file(tests_root / "test_config_flow_scan_login.py", "")
     _write_test_file(tests_root / "test_config_flow_reauth.py", "")
     _write_test_file(tests_root / "test_config_flow_reauth_identity.py", "")
@@ -200,6 +205,7 @@ def test_split_contract_check_requires_coverage_tokens(
     _write_test_file(tests_root / "test_translation_runtime_contract.py", "")
     _write_test_file(component_root / "config_flow_device_picker.py", "")
     _write_test_file(component_root / "config_flow_account.py", "")
+    _write_test_file(component_root / "config_flow_precheck.py", "")
 
     errors = hacs_preflight._check_split_contract_tests()
 
@@ -315,6 +321,7 @@ def test_lifecycle_contract_check_requires_coverage_tokens(
     _write_test_file(tests_root / "test_repair_issue_cleanup.py", "")
     _write_test_file(tests_root / "test_repair_issues.py", "")
     _write_test_file(tests_root / "test_config_entry_lifecycle.py", "")
+    _write_test_file(tests_root / "test_config_entry_setup_runtime.py", "")
 
     errors = hacs_preflight._check_lifecycle_contract_tests()
 

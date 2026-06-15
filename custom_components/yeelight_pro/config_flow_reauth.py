@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 
 from .config_flow_account import account_identity
 from .config_flow_helpers import (
-    async_validate_auth,
+    async_validate_private_auth,
     flow_error_from_exception,
     reauth_confirm_schema,
 )
@@ -22,6 +22,7 @@ from .const import (
     CONF_CLOUD_DOMAIN,
     CONF_CLOUD_REGION,
     CONF_CONNECTION_MODE,
+    CONF_HOUSE_ID,
     CONF_OPEN_API_CLIENT_ID,
     CONF_OPEN_API_CLIENT_SECRET,
     CONF_PRIVATE_DOMAIN,
@@ -129,11 +130,12 @@ class ReauthConfigFlowMixin:
         if user_input is not None:
             new_token = user_input[CONF_ACCESS_TOKEN]
             try:
-                await async_validate_auth(
+                await async_validate_private_auth(
                     flow.hass,
                     domain=flow._domain or "",
                     access_token=new_token,
                     client_id=flow._reauth_entry_data.get(CONF_OPEN_API_CLIENT_ID, ""),
+                    house_id=flow._reauth_entry_data.get(CONF_HOUSE_ID),
                 )
             except Exception as err:
                 errors["base"] = flow_error_from_exception("reauth", err)
