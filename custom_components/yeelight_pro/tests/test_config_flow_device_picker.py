@@ -42,15 +42,15 @@ def test_device_choices_use_friendly_type_labels() -> None:
             "id": "dev-2",
             "name": "客厅主灯",
             "category": "light",
-            "productName": "E20 射灯",
+            "productName": "公开测试灯具",
             "roomName": "客厅",
         },
     ])
 
     labels = {item.device_id: item.label for item in choices}
     assert labels == {
-        "dev-1": "三键智能开关 (Yeelight Pro S21 智能墙壁开关-三键 / 玄关)",
-        "dev-2": "客厅主灯 (E20 射灯 / 客厅)",
+        "dev-1": "三键智能开关 (公开产品（无线开关通道） / 玄关)",
+        "dev-2": "客厅主灯 (公开测试灯具 / 客厅)",
     }
     assert "relay_switch" not in " ".join(labels.values())
     assert "(light" not in " ".join(labels.values()).lower()

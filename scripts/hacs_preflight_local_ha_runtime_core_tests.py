@@ -110,7 +110,7 @@ LOCAL_HA_RUNTIME_CORE_TEST_TOKENS = {
         "test_runtime_payloads_normalize_scientific_product_pid_for_catalog_metadata": (
             "scientific product pid runtime metadata coverage"
         ),
-        "Yeelight Pro S21 智能墙壁开关-双键": (
+        "公开产品（无线开关通道）": (
             "documented product model metadata assertion"
         ),
     },

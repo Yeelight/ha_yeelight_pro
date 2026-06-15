@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
 from inspect import isawaitable
 from typing import Any
 
+from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
@@ -38,6 +40,20 @@ _LAN_TOPOLOGY_READY_TIMEOUT = 10.0
 _LAN_INITIAL_STATE_READY_TIMEOUT = 1.0
 
 
+@contextmanager
+def config_entry_context(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+) -> Iterator[None]:
+    """在直接调用 setup 的测试路径中显式绑定当前 config entry。"""
+    context_entry = hass.config_entries.async_get_entry(entry.entry_id) or entry
+    token = config_entries.current_entry.set(context_entry)
+    try:
+        yield
+    finally:
+        config_entries.current_entry.reset(token)
+
+
 async def async_setup_lan_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -48,18 +64,19 @@ async def async_setup_lan_entry(
     from .lan_runtime import LanGatewayRuntime, lan_runtime_options
 
     entry_data = normalize_entry_data(entry.data)
-    coordinator = YeelightProCoordinator(
-        hass=hass,
-        client=None,
-        house_id=0,
-        options=entry_options(entry),
-        entry_data=entry_data,
-    )
+    with config_entry_context(hass, entry):
+        coordinator = YeelightProCoordinator(
+            hass=hass,
+            client=None,
+            house_id=0,
+            options=entry_options(entry),
+            entry_data=entry_data,
+        )
+        await coordinator.async_config_entry_first_refresh()
     coordinator.data = {}
     coordinator.scenes = []
     coordinator.analytics_enabled = False
     coordinator.analytics_data = None
-    await coordinator.async_config_entry_first_refresh()
 
     platforms = get_enabled_platforms(entry_options(entry))
     runtime_data: dict[str, Any] = {

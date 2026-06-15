@@ -23,8 +23,8 @@ def test_device_type_label_prefers_specific_product_model() -> None:
     assert device_type_label({
         "category": "light",
         "model": "light",
-        "productName": "E20 射灯",
-    }) == "E20 射灯"
+        "productName": "公开测试射灯",
+    }) == "公开测试射灯"
 
 
 def test_device_type_label_replaces_broad_categories() -> None:
@@ -369,11 +369,9 @@ def test_switch_channel_count_hint_uses_official_product_evidence_not_user_name(
         "name": "厨房双键开关",
         "params": {"1-p": True, "2-p": False, "3-p": True},
     }) is None
-    assert switch_channel_count_hint({
-        "productName": "Yeelight Pro S21 智能墙壁开关-三键"
-    }) == 3
+    assert switch_channel_count_hint({"pid": 854019}) == 3
     assert switch_channel_count_hint({"productName": "三键智能开关"}) is None
     assert switch_channel_count_hint({"pid": 8390656, "name": "走廊面板"}) == 8
-    assert switch_channel_count_hint({"model": "S系列情景开关"}) is None
+    assert switch_channel_count_hint({"model": "公开测试情景开关"}) is None
     assert switch_channel_count_hint({"pid": 1509378, "name": "走廊面板"}) == 4
     assert switch_channel_count_hint({"name": "普通继电器"}) is None

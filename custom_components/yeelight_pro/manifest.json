@@ -1,13 +1,15 @@
 {
   "domain": "yeelight_pro",
   "name": "Yeelight Pro",
-  "codeowners": ["@yeelight"],
+  "codeowners": [
+    "@yeelight"
+  ],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/yeelight/ha_yeelight_pro",
-  "issue_tracker": "https://github.com/yeelight/ha_yeelight_pro/issues",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/yeelight/ha_yeelight_pro/issues",
   "requirements": [],
   "version": "1.0.0"
 }

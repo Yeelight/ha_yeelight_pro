@@ -280,7 +280,7 @@ def test_runtime_builder_uses_product_catalog_when_only_pid_is_available() -> No
     assert product is not None
     assert product.schema_version == "catalog-v1"
     assert product.product.model_id == "YL-854018"
-    assert product.product.model == "Yeelight Pro S21 智能墙壁开关-双键"
+    assert product.product.model == "公开产品（无线开关通道）"
     assert product.product.category == "relay_switch"
     assert [component.component_id for component in product.components[:2]] == [
         "basic",

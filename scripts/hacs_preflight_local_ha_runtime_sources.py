@@ -368,13 +368,13 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
     },
     "custom_components/yeelight_pro/capabilities/product_catalog_data.py": {
         "IOT_PRODUCT_SPECS": "embedded Yeelight product composition registry",
-        "Yeelight Pro S21 智能墙壁开关-双键": (
+        "公开产品（无线开关通道）": (
             "documented S21 switch product row"
         ),
-        "DALI网关": "documented DALI gateway product row",
+        "公开产品（网关）": "documented DALI gateway product row",
         "IOT_MD_ONLY_PRODUCT_SPECS": "LAN Markdown-only product supplement",
-        "G60 Pro青空灯": "LAN documented G60 Pro sky light product",
-        "极致吊灯": "LAN documented chandelier product",
+        "公开产品（色温灯、人在传感器）": "LAN documented light and presence product",
+        "公开产品（色温灯、彩光灯、TOF传感器）": "LAN documented multi-light product",
     },
     "custom_components/yeelight_pro/converter/runtime_subdevices.py": {
         "infer_subdevice_components": "OpenAPI sub-device component builder",

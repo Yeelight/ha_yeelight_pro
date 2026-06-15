@@ -210,6 +210,7 @@ async def test_lan_entry_waits_for_property_ready_without_fixed_sleep(
     assert runtime.host == "192.168.1.20"
     assert hass.data[DOMAIN][entry.entry_id]["lan_runtime"] is runtime
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    assert coordinator.config_entry.entry_id == entry.entry_id
     await coordinator.async_shutdown()
 
 

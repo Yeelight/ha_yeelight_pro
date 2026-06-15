@@ -44,6 +44,7 @@ from .entry_setup import (
     async_setup_lan_entry as _async_setup_lan_entry,
     async_start_optional_lan_runtime as _async_start_optional_lan_runtime,
     async_stop_loaded_runtime as _async_stop_loaded_runtime,
+    config_entry_context as _config_entry_context,
     setup_topology_listener as _setup_topology_listener,
 )
 from .entry_migration import (
@@ -152,33 +153,35 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             f"Connection failed: {safe_error_summary(err)}"
         ) from None
 
-    # 创建协调器
-    coordinator = YeelightProCoordinator(
-        hass=hass,
-        client=client,
-        house_id=house_id,
-        options=_entry_options(entry),
-        entry_data=entry_data,
-    )
+    with _config_entry_context(hass, entry):
+        # 创建协调器
+        coordinator = YeelightProCoordinator(
+            hass=hass,
+            client=client,
+            house_id=house_id,
+            options=_entry_options(entry),
+            entry_data=entry_data,
+        )
 
-    # 首次数据更新
-    await coordinator.async_config_entry_first_refresh()
+        # 首次数据更新
+        await coordinator.async_config_entry_first_refresh()
 
     await _async_run_registry_maintenance(hass, entry, coordinator)
 
-    analytics_coordinator = YeelightProAnalyticsCoordinator(
-        hass,
-        client,
-        house_id,
-        entry_data=coordinator.entry_data,
-    )
-    try:
-        await analytics_coordinator.async_config_entry_first_refresh()
-    except Exception as err:
-        _LOGGER.warning(
-            "Yeelight Pro analytics setup degraded, exposing unavailable sensors: %s",
-            safe_error_summary(err),
+    with _config_entry_context(hass, entry):
+        analytics_coordinator = YeelightProAnalyticsCoordinator(
+            hass,
+            client,
+            house_id,
+            entry_data=coordinator.entry_data,
         )
+        try:
+            await analytics_coordinator.async_config_entry_first_refresh()
+        except Exception as err:
+            _LOGGER.warning(
+                "Yeelight Pro analytics setup degraded, exposing unavailable sensors: %s",
+                safe_error_summary(err),
+            )
     coordinator.analytics_enabled = True
     coordinator.analytics_data = analytics_coordinator.data
     analytics_coordinator.bind_runtime_coordinator(coordinator, entry=entry)

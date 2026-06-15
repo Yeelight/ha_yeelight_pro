@@ -126,6 +126,9 @@ def check_json(root: Path) -> list[str]:
         manifest_version
     ):
         errors.append("manifest.json version must use semantic versioning")
+    manifest_keys = list(manifest)
+    if manifest_keys != ["domain", "name", *sorted(manifest_keys[2:])]:
+        errors.append("manifest.json keys must be ordered as domain, name, then alphabetical")
 
     hacs = _read_json(root, "hacs.json")
     missing_hacs = REQUIRED_HACS_FIELDS - set(hacs)
@@ -136,7 +139,6 @@ def check_json(root: Path) -> list[str]:
     if hacs.get("filename") != "yeelight_pro.zip":
         errors.append("hacs.json filename must be yeelight_pro.zip")
     return errors
-
 
 def check_platform_constants(component_root: Path) -> list[str]:
     """Check release platform claims against const.py."""

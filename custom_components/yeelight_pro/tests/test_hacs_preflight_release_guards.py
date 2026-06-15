@@ -165,6 +165,38 @@ def test_json_guard_accepts_semantic_manifest_version(
     assert hacs_preflight._check_json() == []
 
 
+def test_json_guard_rejects_unsorted_manifest_keys(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """preflight 应提前拦截 hassfest 的 manifest key 顺序要求."""
+    root = tmp_path
+    _write_minimal_json_release_files(root, manifest_version="1.0.0")
+    _write_json_file(
+        root / "custom_components" / "yeelight_pro" / "manifest.json",
+        {
+            "domain": "yeelight_pro",
+            "name": "Yeelight Pro",
+            "codeowners": ["@yeelight"],
+            "config_flow": True,
+            "documentation": "https://github.com/yeelight/ha_yeelight_pro",
+            "issue_tracker": "https://github.com/yeelight/ha_yeelight_pro/issues",
+            "integration_type": "hub",
+            "iot_class": "cloud_polling",
+            "requirements": [],
+            "dependencies": [],
+            "version": "1.0.0",
+        },
+    )
+    monkeypatch.setattr(hacs_preflight, "ROOT", root)
+
+    errors = hacs_preflight._check_json()
+
+    assert errors == [
+        "manifest.json keys must be ordered as domain, name, then alphabetical"
+    ]
+
+
 def test_user_visible_error_redaction_guard_rejects_dynamic_error_text(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -303,8 +335,11 @@ def _write_minimal_json_release_files(root: Path, *, manifest_version: str) -> N
             "name": "Yeelight Pro",
             "codeowners": ["@yeelight"],
             "config_flow": True,
+            "dependencies": [],
             "documentation": "https://github.com/yeelight/ha_yeelight_pro",
+            "integration_type": "hub",
             "iot_class": "cloud_polling",
+            "requirements": [],
             "version": manifest_version,
         },
     )

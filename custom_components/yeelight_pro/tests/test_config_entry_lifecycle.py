@@ -174,6 +174,7 @@ async def test_setup_entry_binds_analytics_without_private_injection(
     ]
     assert not hasattr(analytics_coordinator, "_main_coordinator")
     assert not hasattr(analytics_coordinator, "_config_entry")
+    assert analytics_coordinator.config_entry.entry_id == mock_config_entry.entry_id
     assert coordinator.analytics_data is analytics_coordinator.data
     await analytics_coordinator.async_shutdown()
 

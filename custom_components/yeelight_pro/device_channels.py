@@ -6,7 +6,6 @@ from collections.abc import Iterable, Mapping
 import re
 from typing import Any
 
-from .capabilities.product_catalog import product_catalog
 from .capabilities.registry import product_spec
 from .device_channel_generated_names import (
     generated_channel_name_index,
@@ -59,12 +58,6 @@ _POSITIONAL_CHANNEL_LABELS = {
     },
 }
 _CHANNEL_NAME_KEYS = ("desc", "componentName", "component_name", "name")
-_MODEL_NAME_KEYS = (
-    "productName",
-    "product_name",
-    "modelName",
-    "model_name",
-)
 _COMPONENT_INDEX_SUFFIX_RE = re.compile(r"_(?P<index>\d+)$")
 
 def channel_name_label(
@@ -111,8 +104,6 @@ def switch_channel_count_hint(payload: Mapping[str, Any]) -> int | None:
     """Return switch channel count from official product or runtime capability evidence."""
     if count := _product_catalog_channel_count(payload):
         return count
-    if count := _official_product_text_channel_count(payload):
-        return count
     if count := _runtime_switch_channel_count(payload):
         return count
     return None
@@ -130,27 +121,6 @@ def _product_catalog_channel_count(payload: Mapping[str, Any]) -> int | None:
     if not _is_channel_component(spec.normal_components[0]):
         return None
     return _safe_channel_count(spec.normal_component_count)
-
-
-def _official_product_text_channel_count(payload: Mapping[str, Any]) -> int | None:
-    """Return channel count only when product text exactly matches the catalog."""
-    names = {
-        value.strip()
-        for value in (_first_text(payload, _MODEL_NAME_KEYS), _schema_text(payload))
-        if value and value.strip()
-    }
-    if not names:
-        return None
-    for spec in product_catalog().values():
-        if spec.name in names:
-            if count := _product_component_channel_count(spec):
-                return count
-            if len(spec.normal_components) == 1 and _is_channel_component(
-                spec.normal_components[0]
-            ):
-                return _safe_channel_count(spec.normal_component_count)
-            return None
-    return None
 
 
 def _product_component_channel_count(spec: Any) -> int | None:

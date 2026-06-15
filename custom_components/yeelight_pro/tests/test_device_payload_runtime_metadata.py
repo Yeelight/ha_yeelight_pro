@@ -155,7 +155,7 @@ def test_runtime_metadata_replaces_generic_cloud_model_labels() -> None:
         devices=[
             {
                 "id": 304784337,
-                "name": "E20射灯1",
+                "name": "公开测试射灯1",
                 "category": "light",
                 "model": "light",
                 "pid": 202,
@@ -215,4 +215,3 @@ def test_runtime_metadata_does_not_expose_internal_runtime_model_id() -> None:
     assert data[304784339]["ha_product_model"]["product"]["model_id"] == "runtime-light"
     assert device_info["model"] == "亮度灯"
     assert "model_id" not in device_info
-

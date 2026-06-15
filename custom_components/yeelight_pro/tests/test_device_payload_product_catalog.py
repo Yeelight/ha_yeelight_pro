@@ -31,7 +31,7 @@ def test_runtime_payloads_use_product_catalog_for_pid_only_device_metadata() -> 
     assert device["iot_category"] == "relay_switch"
     assert device["model_id"] == "YL-854018"
     assert device_info["name"] == "双键开关"
-    assert device_info["model"] == "Yeelight Pro S21 智能墙壁开关-双键"
+    assert device_info["model"] == "公开产品（无线开关通道）"
     assert device_info["model_id"] == "YL-854018"
     assert device_info["suggested_area"] == "客厅"
     components = device["ha_device_instance"]["components"]
@@ -87,7 +87,7 @@ def test_runtime_payloads_normalize_scientific_product_pid_for_catalog_metadata(
         devices=[
             {
                 "id": 1700000101,
-                "name": "DALI网关",
+                "name": "公开产品（网关）",
                 "category": "light",
                 "pid": "1.7000001e+07",
             }
@@ -101,7 +101,7 @@ def test_runtime_payloads_normalize_scientific_product_pid_for_catalog_metadata(
     device_info = device["ha_device_instance"]["device_info"]
     assert device["pid"] == 17000001
     assert device["model_id"] == "YL-17000001"
-    assert device_info["model"] == "DALI网关"
+    assert device_info["model"] == "公开产品（网关）"
     assert device_info["model_id"] == "YL-17000001"
 
 
@@ -113,7 +113,7 @@ def test_runtime_payloads_project_mixed_catalog_components_from_pid() -> None:
         devices=[
             {
                 "id": 150937801,
-                "name": "S系列情景开关",
+                "name": "公开测试情景开关",
                 "category": "light",
                 "pid": 1509378,
                 "roomId": 397,
@@ -187,7 +187,7 @@ def test_pid_only_contact_sensor_projects_one_official_entity_set() -> None:
     }
 
     assert device["iot_category"] == "contact_sensor"
-    assert device["device_info"]["model"] == "Yeelight Pro S20 门窗传感器"
+    assert device["device_info"]["model"] == "公开产品（接触式传感器）"
     assert [
         component["component_id"]
         for component in device["ha_device_instance"]["components"]

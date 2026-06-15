@@ -35,11 +35,11 @@ def test_registry_product_catalog_matches_iot_product_csv() -> None:
     assert set(registry.product_catalog) == set(expected) | {17000012, 17000013}
     assert len(registry.product_catalog) == 114
 
-    s21_switch = registry.product_spec(854018)
-    assert s21_switch is not None
-    assert s21_switch.name == "Yeelight Pro S21 智能墙壁开关-双键"
-    assert s21_switch.normal_components == ("无线开关通道",)
-    assert s21_switch.normal_component_count == "2"
+    public_switch = registry.product_spec(854018)
+    assert public_switch is not None
+    assert public_switch.name == "公开产品（无线开关通道）"
+    assert public_switch.normal_components == ("无线开关通道",)
+    assert public_switch.normal_component_count == "2"
 
     dali_gateway = registry.product_spec("1.7000001e+07")
     assert dali_gateway is not None
@@ -53,16 +53,31 @@ def test_registry_product_catalog_includes_lan_markdown_only_products() -> None:
 
     sky_light = registry.product_spec(17000012)
     assert sky_light is not None
-    assert sky_light.name == "G60 Pro青空灯"
+    assert sky_light.name == "公开产品（色温灯、人在传感器）"
     assert sky_light.normal_components == ("色温灯", "人在传感器")
 
     chandelier = registry.product_spec(17000013)
     assert chandelier is not None
-    assert chandelier.name == "极致吊灯"
+    assert chandelier.name == "公开产品（色温灯、彩光灯、TOF传感器）"
     assert chandelier.normal_components == ("色温灯", "彩光灯", "TOF传感器")
 
     assert 17000012 not in csv_product_catalog()
     assert 17000013 not in csv_product_catalog()
+
+
+def test_registry_product_catalog_uses_public_sanitized_names() -> None:
+    """公开目录只保留组件/品类级名称，不能携带商业备注."""
+    registry = iot_registry()
+
+    for row in _csv_rows("基础信息_产品构成.csv"):
+        pid = _product_pid(row["pid"])
+        if pid is None:
+            continue
+        product = registry.product_spec(pid)
+        assert product is not None
+        assert product.name == row["产品名称"]
+        assert product.name.startswith("公开产品（")
+        assert row["备注"] == ""
 
 
 def test_registry_product_catalog_components_and_protocols_are_documented() -> None:

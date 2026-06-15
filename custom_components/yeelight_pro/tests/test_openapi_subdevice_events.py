@@ -110,7 +110,7 @@ def test_openapi_eight_key_scene_panel_uses_friendly_event_names() -> None:
     device = _build_device(
         {
             "id": 9008,
-            "name": "Yeelight Pro S20系列8键情景开关",
+            "name": "公开测试八键情景开关",
             "category": "scene_panel",
             "subDeviceList": [
                 {
