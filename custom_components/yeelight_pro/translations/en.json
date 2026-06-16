@@ -9,15 +9,15 @@
         }
       },
       "cloud_auth": {
-        "title": "Cloud Authentication",
+        "title": "Access Token authentication",
         "description": "Please enter the Access Token for Yeelight Pro.\n\nDomain: {domain}",
         "data": {
           "access_token": "Access Token"
         }
       },
       "cloud_auth_method": {
-        "title": "Cloud authentication method",
-        "description": "Select how to authenticate with Yeelight cloud.",
+        "title": "Select authentication method",
+        "description": "Select how to authenticate with Yeelight.",
         "data": {
           "cloud_auth_method": "Authentication method"
         }
@@ -37,12 +37,10 @@
         }
       },
       "private_config": {
-        "title": "Private Deployment Configuration",
-        "description": "Please enter the configuration for the private deployment server.",
+        "title": "Private Deployment URL",
+        "description": "Enter the private deployment root URL, for example https://private.example. The integration derives the Open API and Account API URLs automatically; authentication method, scan login, house selection, and device selection then follow the same flow as cloud setup.",
         "data": {
-          "private_domain": "Server Address",
-          "access_token": "Access Token",
-          "house_id": "House ID"
+          "private_domain": "Service root URL"
         }
       },
       "reauth_confirm": {
@@ -90,6 +88,7 @@
     "error": {
       "cannot_connect": "Failed to connect to server",
       "invalid_auth": "Authentication failed, please check Access Token",
+      "required": "This field is required",
       "scan_login_expired": "The QR code has expired. Select refresh QR code and try again.",
       "unknown": "Unknown error"
     },

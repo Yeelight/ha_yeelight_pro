@@ -56,6 +56,7 @@ def test_release_zip_required_files_include_runtime_contracts() -> None:
         "custom_components/yeelight_pro/core/scan_login.py",
         "custom_components/yeelight_pro/core/runtime_bridge.py",
         "custom_components/yeelight_pro/debug_service.py",
+        "custom_components/yeelight_pro/deployment_urls.py",
         "custom_components/yeelight_pro/diagnostics.py",
         "custom_components/yeelight_pro/entity_candidate_logging.py",
         "custom_components/yeelight_pro/entry_title.py",

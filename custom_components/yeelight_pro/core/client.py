@@ -122,6 +122,7 @@ class YeelightProClient(YeelightProNodeApiMixin):
         *,
         region: str,
         device: str,
+        base_url: str | None = None,
     ) -> YeelightScanLoginQrCode:
         """Create a Yeelight APP scan-login QR code state."""
         return await _create_scan_login_qrcode(
@@ -129,6 +130,7 @@ class YeelightProClient(YeelightProNodeApiMixin):
             self.timeout,
             region=region,
             device=device,
+            base_url=base_url,
         )
 
     async def check_scan_login_qrcode(
@@ -136,6 +138,7 @@ class YeelightProClient(YeelightProNodeApiMixin):
         *,
         region: str,
         qr_code_id: str,
+        base_url: str | None = None,
     ) -> YeelightScanLoginQrCode:
         """Poll a Yeelight APP scan-login QR code state."""
         return await _check_scan_login_qrcode(
@@ -143,6 +146,7 @@ class YeelightProClient(YeelightProNodeApiMixin):
             self.timeout,
             region=region,
             qr_code_id=qr_code_id,
+            base_url=base_url,
         )
 
     async def check_health(self) -> bool:

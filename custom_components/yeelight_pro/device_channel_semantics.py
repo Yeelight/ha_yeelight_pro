@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import re
 from typing import Any
 
 from .utils import to_str
@@ -14,22 +15,27 @@ OUTPUT_COMPONENT_KEYS = {
     "switch control",
     "relay switch",
     "relay_switch",
-    "wireless switch channel",
     "开关",
-    "无线开关通道",
 }
 EVENT_INPUT_COMPONENT_KEYS = {
     "button",
     "key",
     "knob switch",
     "scene button",
+    "scene_button",
     "scene control button",
+    "scene_control_button",
     "dali scene control button",
+    "dali_scene_control_button",
+    "wireless switch channel",
+    "wireless_switch_channel",
     "情景按键",
+    "无线开关通道",
     "旋钮开关",
 }
 OUTPUT_IO_TYPES = {"output", "out", "输出"}
 INPUT_IO_TYPES = {"input", "in", "输入"}
+COMPONENT_INDEX_SUFFIX_RE = re.compile(r"_(?P<index>\d+)$")
 
 
 def uses_output_channel_label(
@@ -42,6 +48,11 @@ def uses_output_channel_label(
         return False
     if io_type in OUTPUT_IO_TYPES:
         return True
+    component_key = _component_identity_key(component)
+    if component_key in EVENT_INPUT_COMPONENT_KEYS:
+        return False
+    if component_key in OUTPUT_COMPONENT_KEYS:
+        return True
     component_category = _category_from_component(component)
     if component_category in EVENT_INPUT_CATEGORIES:
         return False
@@ -52,9 +63,6 @@ def uses_output_channel_label(
         return True
     if payload_category in OUTPUT_CHANNEL_CATEGORIES:
         return True
-    component_key = _component_identity_key(component)
-    if component_key in EVENT_INPUT_COMPONENT_KEYS:
-        return False
     return component_key in OUTPUT_COMPONENT_KEYS
 
 
@@ -102,7 +110,7 @@ def _category_from_payload(payload: Mapping[str, Any] | None) -> str | None:
 
 
 def _component_identity_key(component: Any | None) -> str:
-    return component_name_key(
+    key = component_name_key(
         component_text(
             component,
             (
@@ -116,6 +124,12 @@ def _component_identity_key(component: Any | None) -> str:
             ),
         )
     )
+    if key in EVENT_INPUT_COMPONENT_KEYS or key in OUTPUT_COMPONENT_KEYS:
+        return key
+    without_suffix = COMPONENT_INDEX_SUFFIX_RE.sub("", key)
+    if without_suffix in EVENT_INPUT_COMPONENT_KEYS:
+        return without_suffix
+    return key
 
 
 def _io_type(component: Any | None) -> str | None:

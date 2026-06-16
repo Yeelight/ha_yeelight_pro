@@ -94,7 +94,7 @@ LAN_GATEWAY_PRODUCT_IDS = [
 
 # 默认域名
 DEFAULT_CLOUD_DOMAIN = "https://api.yeelight.com/apis/iot"
-DEFAULT_PRIVATE_DOMAIN = "192.168.1.100:8080"
+DEFAULT_PRIVATE_DOMAIN = "https://private.example"
 DEFAULT_HOUSE_NAME = "易来家庭"
 
 # 默认配置

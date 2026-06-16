@@ -199,7 +199,7 @@ async def test_create_entry_private_title_includes_endpoint_and_house(
 ) -> None:
     """私有部署 entry 标题应可在 HA 集成详情页区分服务器和家庭."""
     config_flow._connection_mode = CONNECTION_MODE_PRIVATE
-    config_flow._domain = "10.0.0.10:8080"
+    config_flow._domain = "https://private.example"
     config_flow._access_token = "private-token"
     config_flow._house_id = 1001
 
@@ -214,8 +214,10 @@ async def test_create_entry_private_title_includes_endpoint_and_house(
         result = await config_flow._create_entry()
 
     assert result["type"] == FlowResultType.CREATE_ENTRY
-    assert result["title"] == "Yeelight Pro Private (10.0.0.10:8080 · 易来家庭)"
-    assert result["data"][CONF_PRIVATE_DOMAIN] == "10.0.0.10:8080"
+    assert result["title"] == (
+        "Yeelight Pro Private (https://private.example · 易来家庭)"
+    )
+    assert result["data"][CONF_PRIVATE_DOMAIN] == "https://private.example"
 
 
 def test_config_entry_title_does_not_expose_token_fingerprint() -> None:

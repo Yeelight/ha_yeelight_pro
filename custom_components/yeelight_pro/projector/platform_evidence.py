@@ -140,7 +140,10 @@ def component_has_cover_evidence(
     """Return true when official category or properties identify a curtain."""
     platform = component_platform(component, product_component)
     props = component_prop_ids(component, product_component)
-    return platform == "cover" and bool(props & _COVER_POSITION_PROPS)
+    category = component_category(component, product_component)
+    return (platform == "cover" or category == "curtain") and bool(
+        props & _COVER_POSITION_PROPS
+    )
 
 
 def component_has_climate_evidence(

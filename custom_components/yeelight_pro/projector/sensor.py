@@ -95,7 +95,12 @@ def project_sensors(
 
     projections: list[HASensorProjection] = []
     specs = sensor_specs(params)
-    occurrences = _sensor_property_occurrences(instance, product_model, params)
+    occurrences = _sensor_property_occurrences(
+        device_payload,
+        instance,
+        product_model,
+        params,
+    )
     product_components = _product_component_map(product_model)
     if not occurrences:
         _log_sensor_missing_evidence(device_payload, instance, product_model, params)
@@ -156,6 +161,7 @@ def project_sensors(
 
 
 def _sensor_property_occurrences(
+    device_payload: Mapping[str, Any],
     instance: HADeviceInstanceModel | None,
     product_model: HAProductModel | None,
     params: Mapping[str, Any],
@@ -179,8 +185,9 @@ def _sensor_property_occurrences(
             )
         for key in sensor_spec_keys_for_instance(None, None, component_keys):
             seen.add((component.component_id, key))
+            value = component_property_value(params, instance, component, key)
             occurrences.append(
-                (key, component, component_property_value(params, instance, component, key))
+                (key, component, _sensor_occurrence_value(key, value, device_payload, instance))
             )
 
     scoped_keys = {key for _component_id, key in seen}
@@ -188,6 +195,20 @@ def _sensor_property_occurrences(
         if key not in scoped_keys:
             occurrences.append((key, None, params.get(key)))
     return occurrences
+
+
+def _sensor_occurrence_value(
+    key: str,
+    value: Any,
+    device_payload: Mapping[str, Any],
+    instance: HADeviceInstanceModel | None,
+) -> Any:
+    """Use device-level availability as the online sensor fallback."""
+    if key != "o" or value is not None:
+        return value
+    if "online" in device_payload:
+        return device_payload.get("online")
+    return None if instance is None else instance.online
 
 
 def _product_component_map(

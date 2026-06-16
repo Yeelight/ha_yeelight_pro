@@ -282,6 +282,30 @@ def test_channel_name_label_infers_positions_from_openapi_subdevices() -> None:
     ) == "右键"
 
 
+def test_channel_name_label_uses_openapi_wireless_switch_channel_evidence() -> None:
+    """OpenAPI 无 pid 但子设备声明无线开关通道时，应显示按键语义."""
+    payload = {
+        "name": "四键",
+        "category": "relay_switch",
+        "subDeviceList": [
+            {"index": index, "name": "wireless switch channel", "category": "relay_switch"}
+            for index in range(1, 5)
+        ],
+    }
+
+    assert switch_channel_count_hint(payload) == 4
+    assert channel_name_label(
+        index=1,
+        component={"name": "wireless switch channel", "category": "relay_switch"},
+        device_payload=payload,
+    ) == "按键 1"
+    assert channel_name_label(
+        index=4,
+        component={"name": "wireless switch channel", "category": "relay_switch"},
+        device_payload=payload,
+    ) == "按键 4"
+
+
 def test_channel_name_label_does_not_position_generic_relays() -> None:
     """纯多路继电器没有物理左右语义时，按输出组件显示回路语义."""
     payload = {

@@ -22,6 +22,9 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "custom_components/yeelight_pro/core/firmware_metadata.py": (
             "firmware metadata source token coverage"
         ),
+        "custom_components/yeelight_pro/deployment_urls.py": (
+            "deployment root URL endpoint derivation coverage"
+        ),
         "custom_components/yeelight_pro/projector/event_identity_helpers.py": (
             "event identity helper source token coverage"
         ),
@@ -117,6 +120,13 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "firmware_version": "official fv firmware metadata helper",
         "_FIRMWARE_VERSION_KEYS": "top-level firmware metadata aliases",
         "parse_component_property_key": "indexed fv property key parsing",
+    },
+    "custom_components/yeelight_pro/deployment_urls.py": {
+        "deployment_root_url": "private deployment root URL normalizer",
+        "deployment_iot_base_url": "private deployment IoT API derivation",
+        "deployment_account_base_url": "private deployment Account API derivation",
+        "/apis/iot": "legacy IoT API prefix compatibility",
+        "/apis/account": "Account API endpoint suffix",
     },
     "custom_components/yeelight_pro/core/property_hydration_summary.py": {
         "PropertyHydrationDiagnostics": (

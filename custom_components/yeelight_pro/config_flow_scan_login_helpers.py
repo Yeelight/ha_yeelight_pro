@@ -143,6 +143,7 @@ async def async_poll_scan_login_until_login(
     region: str,
     qr_code: YeelightScanLoginQrCode,
     state: ScanLoginFlowState,
+    base_url: str | None = None,
     poll_interval_seconds: float = SCAN_LOGIN_POLL_INTERVAL_SECONDS,
     sleep: Any = asyncio.sleep,
 ) -> YeelightScanLoginQrCode:
@@ -151,9 +152,14 @@ async def async_poll_scan_login_until_login(
     while current.pollable:
         await sleep(poll_interval_seconds)
         state.poll_count += 1
+        kwargs = {
+            "region": region,
+            "qr_code_id": current.qr_code_id,
+        }
+        if base_url is not None:
+            kwargs["base_url"] = base_url
         current = await client.check_scan_login_qrcode(
-            region=region,
-            qr_code_id=current.qr_code_id,
+            **kwargs,
         )
         state.qr_code = current
         if current.status == ScanLoginStatus.LOGIN:

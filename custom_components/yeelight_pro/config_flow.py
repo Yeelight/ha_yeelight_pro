@@ -64,6 +64,7 @@ from .config_flow_scan_login import (
 )
 from .config_flow_lan import LanConfigFlowMixin
 from .config_flow_reauth import ReauthConfigFlowMixin
+from .deployment_urls import deployment_iot_base_url, deployment_root_url
 from .entry_migration import (
     ENTRY_MINOR_VERSION,
     ENTRY_VERSION,
@@ -177,11 +178,7 @@ class YeelightProConfigFlow(
         if user_input is not None:
             try:
                 self._access_token = user_input[CONF_ACCESS_TOKEN]
-                await async_validate_auth(
-                    self.hass,
-                    domain=self._domain,
-                    access_token=self._access_token,
-                )
+                await self._async_validate_endpoint_auth()
                 return await self.async_step_cloud_houses()
             except Exception as err:
                 errors["base"] = flow_error_from_exception("cloud auth", err)
@@ -209,13 +206,7 @@ class YeelightProConfigFlow(
                 self._house_id,
             )
             try:
-                await async_validate_auth(
-                    self.hass,
-                    domain=self._domain,
-                    access_token=self._access_token,
-                    client_id=self._open_api_client_id,
-                    house_id=int(self._house_id),
-                )
+                await self._async_validate_endpoint_auth(house_id=int(self._house_id))
             except Exception as err:
                 errors["base"] = flow_error_from_exception("cloud house", err)
                 return self.async_show_form(
@@ -228,7 +219,7 @@ class YeelightProConfigFlow(
         try:
             house_choices = await async_load_house_choices(
                 self.hass,
-                domain=self._domain,
+                domain=self._endpoint_domain(),
                 access_token=self._access_token,
                 client_id=self._open_api_client_id,
             )
@@ -263,7 +254,7 @@ class YeelightProConfigFlow(
         try:
             self._device_choices = await async_load_device_choices(
                 self.hass,
-                domain=self._domain,
+                domain=self._endpoint_domain(),
                 access_token=self._access_token,
                 house_id=self._house_id,
                 client_id=self._open_api_client_id,
@@ -289,29 +280,43 @@ class YeelightProConfigFlow(
         self,
         user_input: dict[str, Any] | None = None,
     ) -> FlowResult:
-        """私有部署配置步骤."""
+        """私有部署 URL 配置步骤."""
         errors = {}
 
         if user_input is not None:
-            try:
-                self._domain = user_input[CONF_PRIVATE_DOMAIN]
-                self._access_token = user_input[CONF_ACCESS_TOKEN]
-                self._house_id = user_input[CONF_HOUSE_ID]
-                self._house_name = ""
-                await async_validate_private_auth(
-                    self.hass,
-                    domain=self._domain,
-                    access_token=self._access_token,
-                    house_id=int(self._house_id),
-                )
-                return await self._create_entry()
-            except Exception as err:
-                errors["base"] = flow_error_from_exception("private config", err)
+            domain = str(user_input.get(CONF_PRIVATE_DOMAIN, "")).strip()
+            if not domain:
+                errors[CONF_PRIVATE_DOMAIN] = "required"
+            else:
+                try:
+                    self._domain = deployment_root_url(domain)
+                    return await self.async_step_cloud_auth_method()
+                except Exception as err:
+                    errors["base"] = flow_error_from_exception("private config", err)
 
         return self.async_show_form(
             step_id="private_config",
             data_schema=private_config_schema(),
             errors=errors,
+        )
+
+    async def _async_validate_endpoint_auth(
+        self,
+        *,
+        house_id: int | None = None,
+    ) -> None:
+        """Validate the configured Open API endpoint for cloud or private mode."""
+        validator = (
+            async_validate_private_auth
+            if self._connection_mode == CONNECTION_MODE_PRIVATE
+            else async_validate_auth
+        )
+        await validator(
+            self.hass,
+            domain=self._validation_domain(),
+            access_token=self._access_token,
+            client_id=self._open_api_client_id,
+            house_id=house_id,
         )
 
     async def _create_entry(self) -> FlowResult:
@@ -355,7 +360,10 @@ class YeelightProConfigFlow(
 
     def _entry_options(self) -> dict[str, Any]:
         """返回创建 entry 时需要初始化的 options."""
-        if self._connection_mode != CONNECTION_MODE_CLOUD:
+        if self._connection_mode not in {
+            CONNECTION_MODE_CLOUD,
+            CONNECTION_MODE_PRIVATE,
+        }:
             return {}
         return {
             CONF_DEVICE_IMPORT_FILTER: device_import_filter_for_selected_devices(
@@ -363,6 +371,19 @@ class YeelightProConfigFlow(
                 self._device_choices,
             )
         }
+
+    def _endpoint_domain(self) -> str:
+        """Return the concrete IoT API URL used by Open API calls."""
+        if (
+            self._connection_mode == CONNECTION_MODE_PRIVATE
+            and self._domain is not None
+        ):
+            return deployment_iot_base_url(self._domain)
+        return self._domain
+
+    def _validation_domain(self) -> str:
+        """Return the domain shape expected by the selected auth validator."""
+        return self._domain
 
     def _cloud_account_key(self) -> str:
         """返回不泄露 token 的云端账号隔离片段。"""

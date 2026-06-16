@@ -45,7 +45,7 @@ class FakeEntityRegistry:
             update_kwargs["new_entity_id"] = new_entity_id
         update_kwargs["disabled_by"] = disabled_by
         self.updated_entities.append((entity_id, update_kwargs))
-        for entry in self.entries:
+        for entry in self.entities.values():
             if entry.entity_id == entity_id:
                 for key, value in update_kwargs.items():
                     if key == "new_entity_id":
@@ -85,6 +85,7 @@ def reconcile_diagnostics(
     registry_entries: int,
     stale: int,
     pending_stale: int,
+    disabled: int = 0,
     restored: int = 0,
     metadata_updated: int = 0,
 ) -> dict[str, int]:
@@ -94,7 +95,7 @@ def reconcile_diagnostics(
         "registry_entries": registry_entries,
         "stale": stale,
         "pending_stale": pending_stale,
-        "disabled": 0,
+        "disabled": disabled,
         "restored": restored,
         "metadata_updated": metadata_updated,
     }
@@ -105,6 +106,7 @@ def registry_entry(
     unique_id: str,
     entity_id: str,
     domain: str,
+    config_entry_id: str | None = "entry_1",
     disabled_by: object | None = None,
     original_name: str | None = None,
     original_icon: str | None = None,
@@ -118,6 +120,7 @@ def registry_entry(
         unique_id=unique_id,
         entity_id=entity_id,
         domain=domain,
+        config_entry_id=config_entry_id,
         disabled_by=disabled_by,
         original_name=original_name,
         original_icon=original_icon,

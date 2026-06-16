@@ -1,0 +1,38 @@
+"""Deployment URL derivation tests."""
+from __future__ import annotations
+
+from custom_components.yeelight_pro.deployment_urls import (
+    deployment_account_base_url,
+    deployment_iot_base_url,
+    deployment_root_url,
+)
+
+
+def test_deployment_root_url_accepts_root_and_adds_default_scheme() -> None:
+    """私有部署用户输入根 URL 时应规范化为带协议的根地址."""
+    assert deployment_root_url("private.example") == "https://private.example"
+    assert deployment_root_url(" http://private.example/ ") == "http://private.example"
+
+
+def test_deployment_root_url_accepts_legacy_api_prefixes() -> None:
+    """旧版 /apis/iot 或 /apis/account 前缀应剥离为部署根 URL."""
+    assert (
+        deployment_root_url("http://private.example/apis/iot/")
+        == "http://private.example"
+    )
+    assert (
+        deployment_root_url("https://private.example/apis/account")
+        == "https://private.example"
+    )
+
+
+def test_deployment_api_base_urls_are_derived_from_root() -> None:
+    """Open API 和 Account API 应从同一个部署根 URL 派生."""
+    assert (
+        deployment_iot_base_url("https://private.example")
+        == "https://private.example/apis/iot"
+    )
+    assert (
+        deployment_account_base_url("https://private.example/apis/iot")
+        == "https://private.example/apis/account"
+    )

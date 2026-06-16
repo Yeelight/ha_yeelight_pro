@@ -20,10 +20,12 @@ from .const import (
     CONF_CONNECTION_MODE,
     CONF_OPEN_API_CLIENT_ID,
     CONF_OPEN_API_CLIENT_SECRET,
+    CONF_PRIVATE_DOMAIN,
     CONF_REFRESH_TOKEN,
     CONF_SCAN_LOGIN_DEVICE,
     CONF_TOKEN_EXPIRES_IN,
     CONNECTION_MODE_CLOUD,
+    CONNECTION_MODE_PRIVATE,
     DEFAULT_CLOUD_REGION,
     DEFAULT_REQUEST_TIMEOUT,
     DOMAIN,
@@ -31,6 +33,7 @@ from .const import (
 from .core.client import YeelightProClient
 from .core.exceptions import AuthenticationError
 from .core.oauth import refresh_access_token
+from .deployment_urls import deployment_account_base_url
 from .entry_migration import normalize_entry_data
 from .scan_login_contract import YeelightAccountToken
 
@@ -81,6 +84,7 @@ async def async_refresh_entry_token(
             client_id=data[CONF_OPEN_API_CLIENT_ID],
             client_secret=data[CONF_OPEN_API_CLIENT_SECRET],
             refresh_token=data[CONF_REFRESH_TOKEN],
+            base_url=_refresh_account_base_url(data),
         )
         _guard_same_account(data, token)
         new_data = normalize_entry_data({
@@ -114,11 +118,21 @@ async def async_request_with_token_refresh(
 def _can_refresh(data: Mapping[str, Any]) -> bool:
     """Return whether the entry carries the documented refresh parameters."""
     return (
-        data.get(CONF_CONNECTION_MODE) == CONNECTION_MODE_CLOUD
+        data.get(CONF_CONNECTION_MODE) in {
+            CONNECTION_MODE_CLOUD,
+            CONNECTION_MODE_PRIVATE,
+        }
         and bool(_string(data.get(CONF_REFRESH_TOKEN)))
         and bool(_string(data.get(CONF_OPEN_API_CLIENT_ID)))
         and bool(_string(data.get(CONF_OPEN_API_CLIENT_SECRET)))
     )
+
+
+def _refresh_account_base_url(data: Mapping[str, Any]) -> str | None:
+    """Return a private Account API base URL override when needed."""
+    if data.get(CONF_CONNECTION_MODE) != CONNECTION_MODE_PRIVATE:
+        return None
+    return deployment_account_base_url(data.get(CONF_PRIVATE_DOMAIN))
 
 
 def _token_needs_refresh(data: Mapping[str, Any]) -> bool:

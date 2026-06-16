@@ -6,6 +6,7 @@ from custom_components.yeelight_pro.canonical.models import (
     ComponentInstanceModel,
     HADeviceInstanceModel,
 )
+from custom_components.yeelight_pro.core.device_payload import DevicePayloadBuilder
 from custom_components.yeelight_pro.projector.binary_sensor import project_binary_sensors
 from custom_components.yeelight_pro.projector.climate import project_climate
 from custom_components.yeelight_pro.projector.cover import project_cover
@@ -291,6 +292,57 @@ def test_schema_payload_null_online_defaults_available_across_platforms() -> Non
     assert climate is not None
     assert climate.available is True
     assert fan.available is True
+
+
+def test_online_status_sensor_uses_device_online_when_o_value_is_missing() -> None:
+    """产品 schema 声明 o 但本轮读值缺失时，在线 sensor 应使用设备级 online."""
+    cover_device = projection_payload(
+        device_id="s21-cover-online",
+        category="curtain",
+        component_id="curtain",
+        state={},
+        component_category="curtain",
+        properties=("o", "cp", "tp"),
+        online=True,
+    )
+    cover_device["ha_device_instance"]["components"][0]["available"] = False
+
+    sensors = {
+        projection.component_id: projection
+        for projection in project_sensors(cover_device, domain=DOMAIN)
+    }
+
+    assert sensors["online_status"].available is True
+    assert sensors["online_status"].native_value is True
+
+
+def test_openapi_online_property_is_retained_for_online_status_sensor() -> None:
+    """OpenAPI properties 里的 o 应同时驱动 available 和在线状态 sensor."""
+    builder = DevicePayloadBuilder()
+    payload = builder.normalize(
+        {
+            "id": 40266263,
+            "name": "S21窗帘",
+            "category": "curtain",
+            "properties": [
+                {"propId": "o", "value": True},
+                {"propId": "cp", "value": 75},
+                {"propId": "tp", "value": 75},
+            ],
+        },
+        {},
+    )
+    builder.attach_canonical_models_if_available(payload)
+
+    assert payload["online"] is True
+    assert payload["params"]["o"] is True
+
+    sensors = {
+        projection.component_id: projection
+        for projection in project_sensors(payload, domain=DOMAIN)
+    }
+    assert sensors["online_status"].native_value is True
+    assert sensors["online_status"].available is True
 
 
 def test_legacy_payload_explicit_offline_stays_unavailable() -> None:

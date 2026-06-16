@@ -37,6 +37,7 @@ from .core.analytics_coordinator import YeelightProAnalyticsCoordinator
 from .core.coordinator import YeelightProCoordinator
 from .core.exceptions import AuthenticationError, ConnectionError, safe_error_summary
 from .debug_service import async_register_debug_event_service
+from .deployment_urls import deployment_iot_base_url
 from .entry_setup import (
     async_post_manual_refresh as _async_post_manual_refresh,
     async_cleanup_failed_setup as _async_cleanup_failed_setup,
@@ -117,7 +118,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if connection_mode == CONNECTION_MODE_CLOUD:
         domain = entry_data[CONF_CLOUD_DOMAIN]
     else:
-        domain = entry_data[CONF_PRIVATE_DOMAIN]
+        domain = deployment_iot_base_url(entry_data[CONF_PRIVATE_DOMAIN])
 
     # 创建客户端
     session = async_get_clientsession(hass)
@@ -176,7 +177,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             entry_data=coordinator.entry_data,
         )
         try:
-            await analytics_coordinator.async_refresh()
+            await analytics_coordinator.async_soft_initial_refresh()
         except Exception as err:
             _LOGGER.warning(
                 "Yeelight Pro analytics setup degraded, exposing unavailable sensors: %s",

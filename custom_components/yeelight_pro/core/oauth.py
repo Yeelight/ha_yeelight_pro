@@ -32,6 +32,7 @@ async def refresh_access_token(
     client_id: str,
     client_secret: str,
     refresh_token: str,
+    base_url: str | None = None,
 ) -> YeelightAccountToken:
     """Refresh an OAuth access token using the documented account API."""
     data = {
@@ -40,9 +41,10 @@ async def refresh_access_token(
         "client_secret": _required_text(client_secret, "client_secret"),
         "refresh_token": _required_text(refresh_token, "refresh_token"),
     }
+    endpoint = (base_url or account_base_url(region)).rstrip("/")
     try:
         async with session.post(
-            f"{account_base_url(region)}/oauth/token",
+            f"{endpoint}/oauth/token",
             data=data,
             headers=_OAUTH_HEADERS,
             timeout=timeout,

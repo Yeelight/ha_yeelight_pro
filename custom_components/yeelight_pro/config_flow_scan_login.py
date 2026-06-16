@@ -17,6 +17,7 @@ from .const import (
     CONF_SCAN_LOGIN_REFRESH,
     CONF_TOKEN_EXPIRES_IN,
     CONF_TOKEN_TYPE,
+    CONNECTION_MODE_PRIVATE,
 )
 from .config_flow_helpers import cloud_domain_for_region, flow_error_from_exception
 from .config_flow_scan_login_helpers import (
@@ -33,6 +34,7 @@ from .config_flow_scan_login_helpers import (
     scan_login_needs_refresh,
 )
 from .config_flow_scan_login_region import scan_login_token_matches_region
+from .deployment_urls import deployment_account_base_url, deployment_iot_base_url
 from .scan_login_contract import ScanLoginStatus, YeelightScanLoginQrCode
 
 
@@ -44,6 +46,7 @@ class _ScanLoginFlowProtocol(Protocol):
     _account_user_id: int | None
     _account_username: str
     _cloud_region: str
+    _connection_mode: str | None
     _domain: str | None
     _open_api_client_id: str
     _open_api_client_secret: str
@@ -149,7 +152,13 @@ class ScanLoginConfigFlowMixin:
 
         flow._scan_login_state.qr_code = qr_code
         if qr_code.status == ScanLoginStatus.LOGIN:
-            if not scan_login_token_matches_region(qr_code.token, flow._cloud_region):
+            if (
+                flow._connection_mode != CONNECTION_MODE_PRIVATE
+                and not scan_login_token_matches_region(
+                    qr_code.token,
+                    flow._cloud_region,
+                )
+            ):
                 _reset_scan_login_with_invalid_auth(flow)
                 return flow.async_show_progress_done(next_step_id="cloud_scan_login")
             self._store_scan_login_token(qr_code.token)
@@ -164,11 +173,15 @@ class ScanLoginConfigFlowMixin:
         if refresh:
             self._cancel_scan_login_poll_task()
         if refresh or scan_login_needs_refresh(flow._scan_login_state.qr_code):
+            kwargs = {
+                "region": flow._cloud_region,
+                "device": flow._scan_login_device,
+            }
+            base_url = self._scan_login_base_url()
+            if base_url is not None:
+                kwargs["base_url"] = base_url
             flow._scan_login_state.qr_code = (
-                await self._scan_login_client().create_scan_login_qrcode(
-                    region=flow._cloud_region,
-                    device=flow._scan_login_device,
-                )
+                await self._scan_login_client().create_scan_login_qrcode(**kwargs)
             )
             flow._scan_login_state.poll_count = 0
 
@@ -190,6 +203,7 @@ class ScanLoginConfigFlowMixin:
             region=flow._cloud_region,
             qr_code=qr_code,
             state=flow._scan_login_state,
+            base_url=self._scan_login_base_url(),
             poll_interval_seconds=flow._scan_login_poll_interval_seconds,
         )
         task = _async_create_task(flow.hass, coro)
@@ -212,10 +226,21 @@ class ScanLoginConfigFlowMixin:
         from .core.client import YeelightProClient
 
         return YeelightProClient(
-            domain=flow._domain or cloud_domain_for_region(flow._cloud_region),
+            domain=(
+                deployment_iot_base_url(flow._domain)
+                if flow._connection_mode == CONNECTION_MODE_PRIVATE and flow._domain
+                else flow._domain or cloud_domain_for_region(flow._cloud_region)
+            ),
             access_token="",
             session=async_get_clientsession(flow.hass),
         )
+
+    def _scan_login_base_url(self) -> str | None:
+        """Return the account API base URL override for private deployments."""
+        flow = self._scan_login_flow()
+        if flow._connection_mode != CONNECTION_MODE_PRIVATE or not flow._domain:
+            return None
+        return _private_account_base_url(flow._domain)
 
     def _scan_login_qrcode_content(self) -> str:
         """Return QR content for Home Assistant's native QR selector."""
@@ -248,6 +273,11 @@ def _reset_scan_login_with_invalid_auth(flow: _ScanLoginFlowProtocol) -> None:
     flow._scan_login_state.qr_code = None
     flow._scan_login_state.poll_count = 0
     flow._scan_login_state.last_error = "invalid_auth"
+
+
+def _private_account_base_url(domain: str) -> str:
+    """Map a private deployment root or legacy API prefix to the account URL."""
+    return deployment_account_base_url(domain)
 
 
 __all__ = [

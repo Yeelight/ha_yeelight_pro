@@ -106,7 +106,7 @@ def _project_instance_switches(
     key_map = _component_state_key_map(instance)
     projections: list[HASwitchProjection] = []
 
-    for component in instance.components:
+    for component_position, component in enumerate(instance.components, start=1):
         schema_component = product_component(product_model, component.component_id)
         if not _looks_like_switch_component(component, schema_component):
             _log_switch_component_skip(
@@ -155,6 +155,12 @@ def _project_instance_switches(
             params=params,
             key_map=key_map,
         )
+        control_key = _resolve_schema_component_control_key(
+            control_key,
+            prop,
+            component_index=component_position,
+            params=params,
+        )
         projections.append(
             HASwitchProjection(
                 component_id=component.component_id,
@@ -201,6 +207,20 @@ def _schema_switch_prop(product_model: Any | None, component_id: str) -> str | N
         if prop in prop_ids:
             return prop
     return None
+
+
+def _resolve_schema_component_control_key(
+    control_key: str,
+    prop: str,
+    *,
+    component_index: int,
+    params: Mapping[str, Any],
+) -> str:
+    """Map repeated schema switch components to indexed runtime control keys."""
+    if control_key != prop or prop != "sp":
+        return control_key
+    indexed_key = f"{component_index}-{prop}"
+    return indexed_key if indexed_key in params else control_key
 
 
 # ---------------------------------------------------------------------------

@@ -38,6 +38,7 @@ def looks_like_generated_channel_name(
         "开关",
         "按键",
         "情景按键",
+        "无线开关通道",
     }
     if positional_context:
         generated.update({"wireless_switch_channel", "无线开关通道"})

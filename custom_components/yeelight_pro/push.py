@@ -33,12 +33,13 @@ class YeelightPushPropertyUpdate:
 
 def push_property_updates(payload: Mapping[str, Any]) -> list[YeelightPushPropertyUpdate]:
     """Normalize a Yeelight WebSocket ``prop`` payload into state updates."""
+    payload = _data_payload(payload)
     if payload.get("type") != PUSH_TYPE_PROP:
         return []
     updates: list[YeelightPushPropertyUpdate] = []
     for node in _iter_nodes(payload):
-        node_id = to_int(node.get("id"))
-        params = node.get("params")
+        node_id = _node_id(node)
+        params = _node_params(node)
         if node_id is None or not isinstance(params, Mapping):
             continue
         updates.append(
@@ -53,12 +54,13 @@ def push_property_updates(payload: Mapping[str, Any]) -> list[YeelightPushProper
 
 def push_event_payloads(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
     """Normalize Yeelight WebSocket ``event`` payload nodes for runtime dispatch."""
+    payload = _data_payload(payload)
     if payload.get("type") != PUSH_TYPE_EVENT:
         return []
     events: list[dict[str, Any]] = []
     message_meta = _message_meta(payload)
     for node in _iter_nodes(payload):
-        node_id = to_int(node.get("id"))
+        node_id = _node_id(node)
         event_id = node.get("event")
         if node_id is None or event_id in (None, ""):
             continue
@@ -82,11 +84,68 @@ def push_event_payloads(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
 def _iter_nodes(payload: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     """Yield mapping nodes from a push payload."""
     nodes = payload.get("nodes")
+    if nodes is None and _looks_like_single_node(payload):
+        nodes = [payload]
     if not isinstance(nodes, list):
         raise HomeAssistantError("Invalid Yeelight Pro push payload nodes")
     if not all(isinstance(node, Mapping) for node in nodes):
         raise HomeAssistantError("Invalid Yeelight Pro push payload node")
     return list(nodes)
+
+
+def _data_payload(payload: Mapping[str, Any]) -> Mapping[str, Any]:
+    """Return the WebSocket data object when transports wrap the documented frame."""
+    data = payload.get("data")
+    return data if isinstance(data, Mapping) else payload
+
+
+def _looks_like_single_node(payload: Mapping[str, Any]) -> bool:
+    """Return true for a documented data frame collapsed into one node object."""
+    return payload.get("type") in {PUSH_TYPE_PROP, PUSH_TYPE_EVENT} and any(
+        key in payload for key in ("id", "nodeId", "resId", "deviceId")
+    )
+
+
+def _node_id(node: Mapping[str, Any]) -> int | None:
+    """Return node id from documented and Open API read/control aliases."""
+    for key in ("id", "nodeId", "node_id", "resId", "res_id", "deviceId", "device_id"):
+        node_id = to_int(node.get(key))
+        if node_id is not None:
+            return node_id
+    return None
+
+
+def _node_params(node: Mapping[str, Any]) -> Mapping[str, Any] | None:
+    """Return property params from documented and read-property result shapes."""
+    params = node.get("params")
+    if isinstance(params, Mapping):
+        normalized = dict(params)
+        if "o" not in normalized and "o" in node:
+            normalized["o"] = node.get("o")
+        return normalized
+    properties = node.get("properties") or node.get("props")
+    if isinstance(properties, list):
+        normalized = _params_from_properties(properties)
+        if normalized is not None and "o" not in normalized and "o" in node:
+            normalized["o"] = node.get("o")
+        return normalized
+    prop_id = node.get("propId") or node.get("propName")
+    if prop_id not in (None, "") and "value" in node:
+        return {str(prop_id): node.get("value")}
+    return None
+
+
+def _params_from_properties(properties: list[Any]) -> dict[str, Any] | None:
+    """Convert property rows into Yeelight runtime params."""
+    params: dict[str, Any] = {}
+    for prop in properties:
+        if not isinstance(prop, Mapping):
+            return None
+        prop_id = prop.get("propId") or prop.get("propName")
+        if prop_id in (None, "") or "value" not in prop:
+            continue
+        params[str(prop_id)] = prop.get("value")
+    return params
 
 
 def _message_meta(payload: Mapping[str, Any]) -> dict[str, Any]:

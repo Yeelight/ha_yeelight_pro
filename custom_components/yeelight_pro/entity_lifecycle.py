@@ -31,6 +31,7 @@ from .entity_lifecycle_entity_id import (
     all_registry_entity_ids,
     safe_entity_id_migration,
 )
+from .identity import coordinator_identity_scope, entry_identity_alias_scopes
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -140,9 +141,10 @@ async def async_reconcile_entity_registry(
     """Record stale integration registry entries without mutating user registries."""
     active_entity_candidates = collect_entity_candidates(coordinator)
     active_entity_keys = set(active_entity_candidates)
-    registry_entries, stale_entries = _collect_registry_entries(
+    registry_entries, stale_entries, legacy_alias_stale_entries = _collect_registry_entries(
         hass,
         entry,
+        coordinator,
         active_entity_keys,
     )
     stale_keys = set(stale_entries)
@@ -159,6 +161,8 @@ async def async_reconcile_entity_registry(
         registry_entries,
         active_entity_candidates,
     )
+    disabled = _disable_stale_entries(hass, legacy_alias_stale_entries)
+    pending_stale_keys.difference_update(legacy_alias_stale_entries)
 
     setattr(
         coordinator,
@@ -168,20 +172,21 @@ async def async_reconcile_entity_registry(
             registry_entries=len(registry_entries),
             stale=len(stale_keys),
             pending_stale=len(pending_stale_keys),
-            disabled=0,
+            disabled=disabled,
             restored=restored,
             metadata_updated=metadata_updated,
         ),
     )
     _LOGGER.info(
         "Reconciled Yeelight Pro entity registry for entry %s: active=%s "
-        "pending_stale=%s stale=%s restored=%s metadata_updated=%s",
+        "pending_stale=%s stale=%s restored=%s metadata_updated=%s disabled=%s",
         entry.entry_id,
         len(active_entity_keys),
         len(pending_stale_keys),
         len(stale_keys),
         restored,
         metadata_updated,
+        disabled,
     )
     _LOGGER.debug(
         "Yeelight Pro entity registry reconcile detail for entry %s: "
@@ -201,13 +206,24 @@ async def async_reconcile_entity_registry(
 def _collect_registry_entries(
     hass: HomeAssistant,
     entry: ConfigEntry,
+    coordinator: EntityLifecycleCoordinator,
     active_entity_keys: set[EntityKey],
-) -> tuple[list[er.RegistryEntry], dict[EntityKey, er.RegistryEntry]]:
+) -> tuple[
+    list[er.RegistryEntry],
+    dict[EntityKey, er.RegistryEntry],
+    dict[EntityKey, er.RegistryEntry],
+]:
     """Collect owned registry entries and stale candidates."""
     entity_registry = er.async_get(hass)
+    alias_prefixes = _legacy_unique_id_prefixes(coordinator)
     registry_entries: list[er.RegistryEntry] = []
     stale_entries: dict[EntityKey, er.RegistryEntry] = {}
-    for registry_entry in er.async_entries_for_config_entry(entity_registry, entry.entry_id):
+    legacy_alias_stale_entries: dict[EntityKey, er.RegistryEntry] = {}
+    for registry_entry in _iter_reconcile_registry_entries(
+        entity_registry,
+        entry,
+        alias_prefixes,
+    ):
         registry_domain = _registry_entry_domain(registry_entry)
         if (
             registry_domain is None
@@ -223,7 +239,66 @@ def _collect_registry_entries(
             if _registry_entry_disabled_by_user(registry_entry):
                 continue
             stale_entries[registry_key] = registry_entry
-    return (registry_entries, stale_entries)
+            if _is_legacy_alias_entry(registry_entry, entry, alias_prefixes):
+                legacy_alias_stale_entries[registry_key] = registry_entry
+    return (registry_entries, stale_entries, legacy_alias_stale_entries)
+
+
+def _iter_reconcile_registry_entries(
+    entity_registry: er.EntityRegistry,
+    entry: ConfigEntry,
+    alias_prefixes: set[str],
+) -> list[er.RegistryEntry]:
+    """Return entry-owned registry rows plus legacy scope aliases for migration."""
+    entries = list(er.async_entries_for_config_entry(entity_registry, entry.entry_id))
+    if not alias_prefixes:
+        return entries
+
+    seen_entity_ids = {registry_entry.entity_id for registry_entry in entries}
+    for registry_entry in _all_registry_entries(entity_registry):
+        if registry_entry.entity_id in seen_entity_ids:
+            continue
+        if not _is_legacy_alias_entry(registry_entry, entry, alias_prefixes):
+            continue
+        entries.append(registry_entry)
+        seen_entity_ids.add(registry_entry.entity_id)
+    return entries
+
+
+def _all_registry_entries(entity_registry: er.EntityRegistry) -> list[er.RegistryEntry]:
+    """Return all HA registry rows when the runtime exposes a global index."""
+    entries = getattr(entity_registry, "entities", None)
+    values = getattr(entries, "values", None)
+    if callable(values):
+        return list(values())
+    return []
+
+
+def _legacy_unique_id_prefixes(coordinator: EntityLifecycleCoordinator) -> set[str]:
+    """Return unique-id prefixes for private endpoint aliases superseded by this entry."""
+    aliases = entry_identity_alias_scopes(
+        getattr(coordinator, "entry_data", None),
+        getattr(coordinator, "house_id", None),
+    )
+    aliases.discard(coordinator_identity_scope(coordinator))
+    return {f"{DOMAIN}_{alias}_" for alias in aliases}
+
+
+def _is_legacy_alias_entry(
+    registry_entry: er.RegistryEntry,
+    entry: ConfigEntry,
+    alias_prefixes: set[str],
+) -> bool:
+    """Return true when a registry entry belongs to a legacy private endpoint scope."""
+    if registry_entry.platform != DOMAIN:
+        return False
+    owner_entry_id = getattr(registry_entry, "config_entry_id", None)
+    if isinstance(owner_entry_id, str) and owner_entry_id and owner_entry_id != entry.entry_id:
+        return False
+    unique_id = getattr(registry_entry, "unique_id", "")
+    return isinstance(unique_id, str) and any(
+        unique_id.startswith(prefix) for prefix in alias_prefixes
+    )
 
 
 def _pending_stale_entity_keys(coordinator: Any) -> set[EntityKey]:

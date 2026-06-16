@@ -5,6 +5,7 @@ from collections import OrderedDict
 from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from hashlib import blake2b
+import logging
 from typing import Any
 
 from homeassistant.core import HomeAssistant
@@ -29,6 +30,7 @@ CanonicalRebuilder = Callable[[dict[str, Any]], None]
 DeviceLookup = Callable[[int], Mapping[str, Any] | None]
 RuntimeEventDedupeKey = str
 MAX_RUNTIME_EVENT_DEDUPE_KEYS = 256
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,11 +72,15 @@ class RuntimePayloadBridge:
     ) -> bool:
         """合并属性更新，返回是否实际写入过运行时状态。"""
         changed = False
+        applied = 0
+        unknown = 0
+        group_updates = 0
         for update in updates:
             if not update.params:
                 continue
             params = self._normalized_params(update)
             if _is_group_update(update):
+                group_updates += 1
                 changed = (
                     self._groups is not None
                     and merge_runtime_state_into_group_payloads(
@@ -84,7 +90,20 @@ class RuntimePayloadBridge:
                     )
                 ) or changed
                 continue
+            if self._loaded_payload(update.node_id) is None:
+                unknown += 1
+                self._runtime_state.store_update(
+                    update.node_id,
+                    params,
+                    devices=self._devices,
+                    gateways=self._gateways,
+                    data=self._data,
+                    rebuild_canonical=self._rebuild_canonical,
+                    groups=self._groups,
+                )
+                continue
             changed = True
+            applied += 1
             self._runtime_state.store_update(
                 update.node_id,
                 params,
@@ -93,6 +112,14 @@ class RuntimePayloadBridge:
                 data=self._data,
                 rebuild_canonical=self._rebuild_canonical,
                 groups=self._groups,
+            )
+        if applied or unknown or group_updates:
+            _LOGGER.debug(
+                "Applied Yeelight Pro runtime property updates: "
+                "applied=%s unknown_nodes=%s group_updates=%s",
+                applied,
+                unknown,
+                group_updates,
             )
         return changed
 

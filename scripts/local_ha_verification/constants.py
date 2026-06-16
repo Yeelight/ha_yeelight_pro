@@ -155,6 +155,7 @@ REQUIRED_RUNTIME_MODULES = (
     "custom_components.yeelight_pro.ha_house_registry",
     "custom_components.yeelight_pro.repair_issues",
     "custom_components.yeelight_pro.debug_service",
+    "custom_components.yeelight_pro.deployment_urls",
     "custom_components.yeelight_pro.registry_cleanup_service",
 )
 SENSITIVE_CACHE_MARKERS = {

@@ -22,11 +22,13 @@ from custom_components.yeelight_pro.const import (
     CONF_CONNECTION_MODE,
     CONF_OPEN_API_CLIENT_ID,
     CONF_OPEN_API_CLIENT_SECRET,
+    CONF_PRIVATE_DOMAIN,
     CONF_REFRESH_TOKEN,
     CONF_SCAN_LOGIN_DEVICE,
     CONF_TOKEN_EXPIRES_IN,
     CONF_TOKEN_TYPE,
     CONNECTION_MODE_CLOUD,
+    CONNECTION_MODE_PRIVATE,
     DOMAIN,
 )
 from custom_components.yeelight_pro.core.client import YeelightProClient
@@ -217,6 +219,24 @@ async def test_refresh_access_token_posts_form_to_region_account_api() -> None:
 
 
 @pytest.mark.asyncio
+async def test_refresh_access_token_accepts_private_account_base_url() -> None:
+    """私有部署 OAuth refresh 应允许显式 Account API base URL。"""
+    session = _FakeOAuthSession()
+
+    await refresh_access_token(
+        cast(ClientSession, session),
+        _client(session).timeout,
+        region="cn",
+        client_id="client-old",
+        client_secret="secret-old",
+        refresh_token="refresh-old",
+        base_url="http://private.example/apis/account",
+    )
+
+    assert session.calls[0]["url"] == "http://private.example/apis/account/oauth/token"
+
+
+@pytest.mark.asyncio
 async def test_refresh_access_token_400_requires_reauth_without_secret_leak() -> None:
     """refresh token 失效通常返回 400，应归类为鉴权失败且不泄露 secret。"""
     session = _FakeOAuthSession(
@@ -327,6 +347,35 @@ async def test_async_refresh_entry_token_rejects_account_mismatch(
 
     hass.config_entries.async_update_entry.assert_not_called()
     assert client.access_token == "access-old"
+
+
+@pytest.mark.asyncio
+async def test_async_refresh_entry_token_private_mode_uses_private_account_api(
+    hass: HomeAssistant,
+) -> None:
+    """私有部署扫码 token 刷新必须发往私有 Account API，而不是公有云区域。"""
+    hass.data.setdefault(DOMAIN, {})
+    entry = _entry(_entry_data(
+        **{
+            CONF_CONNECTION_MODE: CONNECTION_MODE_PRIVATE,
+            CONF_PRIVATE_DOMAIN: "http://private.example/apis/iot",
+        }
+    ))
+    session = _FakeOAuthSession(payload=_oauth_token_payload())
+    client = _client(session)
+
+    result = await async_refresh_entry_token(
+        hass,
+        entry,
+        client,
+        force=True,
+        update_entry=False,
+        session=cast(ClientSession, session),
+    )
+
+    assert result.refreshed is True
+    assert result.entry_data[CONF_PRIVATE_DOMAIN] == "http://private.example"
+    assert session.calls[0]["url"] == "http://private.example/apis/account/oauth/token"
 
 
 @pytest.mark.asyncio

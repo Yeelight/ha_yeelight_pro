@@ -74,6 +74,28 @@ async def test_client_polls_scan_login_qrcode_and_parses_login_token() -> None:
 
 
 @pytest.mark.asyncio
+async def test_client_scan_login_can_use_private_account_url() -> None:
+    """私有部署扫码登录应使用用户提供的账号 API URL 前缀。"""
+    session = FakeScanLoginSession()
+    client = YeelightProClient(
+        domain="https://private.example/apis/iot",
+        access_token="manual-token",
+        session=cast(ClientSession, session),
+    )
+
+    await client.create_scan_login_qrcode(
+        region="cn",
+        device="ha-device-1",
+        base_url="https://private.example/apis/account",
+    )
+
+    assert session.calls[0]["url"] == (
+        "https://private.example/apis/account"
+        "/user/scan-login/query/qrcode/ha-device-1"
+    )
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("status", "payload", "expected_error"),
     [

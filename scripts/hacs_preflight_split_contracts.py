@@ -281,11 +281,17 @@ _SPLIT_CONFIG_FLOW_CONTRACT_TEST_TOKENS = {
         ),
     },
     "tests/test_config_flow_private.py": {
-        "test_private_config_runs_house_precheck_before_create_entry": (
-            "private config house precheck coverage"
+        "test_private_config_schema_only_requests_private_url": (
+            "private config URL-only form coverage"
         ),
-        "test_private_config_network_failure_stays_on_form": (
-            "private config precheck failure mapping coverage"
+        "test_private_config_routes_to_same_auth_method_flow": (
+            "private config routes to shared auth flow coverage"
+        ),
+        "test_private_house_selection_uses_private_precheck_and_device_picker": (
+            "private house precheck and device picker coverage"
+        ),
+        "test_private_scan_login_uses_private_url_and_skips_region_guard": (
+            "private scan-login URL override coverage"
         ),
     },
     "tests/test_config_flow_reauth_identity.py": {

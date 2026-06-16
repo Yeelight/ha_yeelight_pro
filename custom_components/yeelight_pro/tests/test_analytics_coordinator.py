@@ -124,6 +124,29 @@ async def test_analytics_coordinator_first_refresh_reports_unavailable(hass) -> 
 
 
 @pytest.mark.asyncio
+async def test_analytics_soft_initial_refresh_does_not_raise(hass, caplog) -> None:
+    """Setup 阶段 analytics 可选端点不可用时应软降级而不是抛错。"""
+    client = AsyncMock(spec=YeelightProClient)
+    client.get_alarm_analysis.side_effect = ConnectionError("HTTP 404 request failed")
+    coordinator = YeelightProAnalyticsCoordinator(hass, client, 12345)
+    main_coordinator = MagicMock()
+    main_coordinator.analytics_data = object()
+    main_coordinator.entry_data = {}
+    main_coordinator.houses = []
+    coordinator.bind_runtime_coordinator(main_coordinator)
+
+    with caplog.at_level("WARNING"):
+        refreshed = await coordinator.async_soft_initial_refresh()
+
+    assert refreshed is False
+    assert coordinator.data is None
+    assert main_coordinator.analytics_data is None
+    assert coordinator.last_update_success is False
+    assert isinstance(coordinator.last_exception, UpdateFailed)
+    assert "HTTP 404" not in caplog.text
+
+
+@pytest.mark.asyncio
 async def test_analytics_coordinator_keeps_last_snapshot_on_soft_failure(hass) -> None:
     """后续刷新失败时保留上次成功 snapshot，避免诊断实体抖动为 unavailable。"""
     client = AsyncMock(spec=YeelightProClient)

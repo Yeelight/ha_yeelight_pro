@@ -70,6 +70,106 @@ def test_push_property_updates_do_not_fold_message_meta_into_state() -> None:
     assert "Room Secret" not in str(updates[0].params)
 
 
+def test_push_property_updates_accept_wrapped_data_payload() -> None:
+    """部分 WebSocket transport 会把文档帧包在 data 内，状态仍应落地."""
+    updates = push_property_updates(
+        {
+            "method": "message",
+            "data": {
+                "type": "prop",
+                "msgId": "message-2",
+                "nodes": [
+                    {
+                        "id": 228215,
+                        "nt": 2,
+                        "params": {"p": False},
+                    }
+                ],
+            },
+        }
+    )
+
+    assert len(updates) == 1
+    assert updates[0].node_id == 228215
+    assert updates[0].params == {"p": False}
+
+
+def test_push_property_updates_accept_property_rows_and_top_level_online() -> None:
+    """兼容属性列表形态和节点级 o，避免在线状态推送被丢弃."""
+    updates = push_property_updates(
+        {
+            "type": "prop",
+            "nodes": [
+                {
+                    "id": 228216,
+                    "nt": 2,
+                    "o": True,
+                    "properties": [
+                        {"propId": "cp", "value": 66},
+                        {"propName": "tp", "value": 80},
+                    ],
+                },
+                {
+                    "id": 228217,
+                    "nt": 2,
+                    "params": {"p": True},
+                    "o": False,
+                },
+            ],
+        }
+    )
+
+    assert [update.node_id for update in updates] == [228216, 228217]
+    assert updates[0].params == {"cp": 66, "tp": 80, "o": True}
+    assert updates[1].params == {"p": True, "o": False}
+
+
+def test_push_property_updates_accept_single_node_data_frame() -> None:
+    """单节点 data frame 不应因缺少 nodes 数组导致 push manager 吞错误."""
+    updates = push_property_updates(
+        {
+            "type": "prop",
+            "id": 228218,
+            "nt": 2,
+            "propId": "p",
+            "value": True,
+        }
+    )
+
+    assert len(updates) == 1
+    assert updates[0].node_id == 228218
+    assert updates[0].params == {"p": True}
+
+
+def test_push_property_updates_accept_node_id_aliases() -> None:
+    """私有部署/读属性形态使用节点 ID 别名时也应更新目标设备."""
+    updates = push_property_updates(
+        {
+            "type": "prop",
+            "nodes": [
+                {
+                    "nodeId": "228219",
+                    "params": {"p": True},
+                },
+                {
+                    "resId": "228220",
+                    "properties": [{"propId": "cp", "value": 55}],
+                },
+                {
+                    "deviceId": "228221",
+                    "propName": "o",
+                    "value": False,
+                },
+            ],
+        }
+    )
+
+    assert [update.node_id for update in updates] == [228219, 228220, 228221]
+    assert updates[0].params == {"p": True}
+    assert updates[1].params == {"cp": 55}
+    assert updates[2].params == {"o": False}
+
+
 def test_push_event_payloads_normalize_open_platform_payload() -> None:
     """WebSocket event payload 应转换为现有 runtime event 入口格式."""
     events = push_event_payloads(

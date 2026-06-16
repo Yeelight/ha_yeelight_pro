@@ -308,7 +308,10 @@ def _json_payload_from_message(message: Any) -> dict[str, Any] | None:
 
 def _is_push_data_payload(payload: dict[str, Any]) -> bool:
     """Return whether a WebSocket object is a documented prop/event payload."""
-    return payload.get("type") in PUSH_DATA_TYPES
+    if payload.get("type") in PUSH_DATA_TYPES:
+        return True
+    data = payload.get("data")
+    return isinstance(data, Mapping) and data.get("type") in PUSH_DATA_TYPES
 
 
 def _raise_for_control_error_frame(payload: dict[str, Any]) -> None:

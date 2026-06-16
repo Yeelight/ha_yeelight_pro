@@ -9,15 +9,15 @@
         }
       },
       "cloud_auth": {
-        "title": "云端认证",
+        "title": "Access Token 认证",
         "description": "请输入 Yeelight Pro 的 Access Token。\n\n域名：{domain}",
         "data": {
           "access_token": "Access Token"
         }
       },
       "cloud_auth_method": {
-        "title": "云端认证方式",
-        "description": "请选择易来云端认证方式。",
+        "title": "选择认证方式",
+        "description": "请选择易来认证方式。",
         "data": {
           "cloud_auth_method": "认证方式"
         }
@@ -37,12 +37,10 @@
         }
       },
       "private_config": {
-        "title": "私有部署配置",
-        "description": "请输入私有部署服务器的配置信息。",
+        "title": "私有部署服务 URL",
+        "description": "请输入私有部署的服务根 URL，例如 https://private.example。系统会自动派生 Open API 与账号 API 地址；后续认证方式、扫码登录、家庭选择和设备选择与云端连接流程一致。",
         "data": {
-          "private_domain": "服务器地址",
-          "access_token": "Access Token",
-          "house_id": "家庭 ID"
+          "private_domain": "服务根 URL"
         }
       },
       "reauth_confirm": {
@@ -90,6 +88,7 @@
     "error": {
       "cannot_connect": "无法连接到服务器",
       "invalid_auth": "认证失败，请检查 Access Token",
+      "required": "此字段必填",
       "scan_login_expired": "二维码已过期，请勾选刷新二维码后重试",
       "unknown": "未知错误"
     },

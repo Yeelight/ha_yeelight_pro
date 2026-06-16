@@ -70,7 +70,7 @@ class DevicePayloadBuilder:
             value = _property_value(prop)
             if prop_id == "o":
                 online = to_bool(value, default=online)
-            elif prop_id and value is not None:
+            if prop_id and value is not None:
                 params[str(prop_id)] = value
 
         for subdevice in _subdevices(normalized.get("subDeviceList")):

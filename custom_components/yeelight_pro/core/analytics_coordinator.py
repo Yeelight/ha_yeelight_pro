@@ -78,6 +78,34 @@ class YeelightProAnalyticsCoordinator(DataUpdateCoordinator[AnalyticsSnapshot]):
         super().async_set_updated_data(data)
         self._sync_bound_runtime_snapshot(data)
 
+    async def async_soft_initial_refresh(self) -> bool:
+        """Fetch the first snapshot without logging HA coordinator setup errors.
+
+        Some private deployments do not expose the optional analytics endpoints.
+        The main integration should still load; analytics sensors remain registered
+        but unavailable until a later refresh succeeds.
+        """
+        try:
+            snapshot = await self._async_update_data()
+        except AuthenticationError:
+            raise
+        except Exception as err:
+            self.last_update_success = False
+            self.last_exception = (
+                err if isinstance(err, UpdateFailed) else UpdateFailed(
+                    f"Failed to refresh Yeelight Pro analytics: {safe_error_summary(err)}"
+                )
+            )
+            _LOGGER.warning(
+                "Yeelight Pro analytics unavailable; diagnostic sensors will stay "
+                "unavailable until the endpoint succeeds: %s",
+                type(err).__name__,
+            )
+            self._sync_bound_runtime_snapshot(None)
+            return False
+        self.async_set_updated_data(snapshot)
+        return True
+
     def sync_runtime_metadata(self, coordinator: Any) -> None:
         """从主 coordinator 同步 analytics sensor 需要的稳定 metadata。"""
         entry_data = getattr(coordinator, "entry_data", None)

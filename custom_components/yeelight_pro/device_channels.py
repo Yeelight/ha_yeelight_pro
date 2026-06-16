@@ -87,15 +87,12 @@ def channel_name_label(
         return explicit
     if inferred_index is None:
         return None
+    uses_output_label = _uses_output_channel_label(component, device_payload)
     if count is not None:
         label = _POSITIONAL_CHANNEL_LABELS.get(count, {}).get(inferred_index)
         if label is not None:
             return label
-    labels = (
-        _OUTPUT_CHANNEL_LABELS
-        if uses_output_channel_label(component, device_payload)
-        else _CHANNEL_LABELS
-    )
+    labels = _OUTPUT_CHANNEL_LABELS if uses_output_label else _CHANNEL_LABELS
     prefix = "回路" if labels is _OUTPUT_CHANNEL_LABELS else "按键"
     return labels.get(inferred_index, f"{prefix} {inferred_index}")
 
@@ -111,9 +108,58 @@ def switch_channel_count_hint(payload: Mapping[str, Any]) -> int | None:
 
 def _product_catalog_channel_count(payload: Mapping[str, Any]) -> int | None:
     """Return documented component count from Yeelight product composition."""
-    spec = product_spec(payload.get("pid") or payload.get("productId") or payload.get("product_id"))
+    spec = _payload_product_spec(payload)
     if spec is None:
         return None
+    if count := _product_component_channel_count(spec):
+        return count
+    if len(spec.normal_components) != 1:
+        return None
+    if not _is_channel_component(spec.normal_components[0]):
+        return None
+    return _safe_channel_count(spec.normal_component_count)
+
+
+def _uses_output_channel_label(
+    component: Any | None,
+    payload: Mapping[str, Any] | None,
+) -> bool:
+    """Resolve input-vs-output naming with product catalog evidence first."""
+    if payload is not None and _product_catalog_prefers_input_channels(payload):
+        return False
+    return uses_output_channel_label(component, payload)
+
+
+def _product_catalog_prefers_input_channels(payload: Mapping[str, Any]) -> bool:
+    """Return true when official composition identifies channels as input keys."""
+    spec = _payload_product_spec(payload)
+    if spec is None:
+        return False
+    count = _product_channel_count(spec)
+    if count is not None and count < 4:
+        return False
+    components = tuple(spec.normal_components)
+    counted_components = tuple(name for name, _count in spec.normal_component_counts)
+    if counted_components:
+        components = (*components, *counted_components)
+    channel_components = [
+        component
+        for component in components
+        if _is_channel_component(component)
+    ]
+    return bool(channel_components) and all(
+        _is_input_channel_component(component)
+        for component in channel_components
+    )
+
+
+def _payload_product_spec(payload: Mapping[str, Any]) -> Any | None:
+    """Return catalog product spec for the payload PID aliases."""
+    return product_spec(payload.get("pid") or payload.get("productId") or payload.get("product_id"))
+
+
+def _product_channel_count(spec: Any) -> int | None:
+    """Return documented channel count from counted or single channel components."""
     if count := _product_component_channel_count(spec):
         return count
     if len(spec.normal_components) != 1:
@@ -151,6 +197,18 @@ def _is_switch_channel_component(value: Any) -> bool:
         "wireless switch channel",
         "开关",
         "无线开关通道",
+    }
+
+
+def _is_input_channel_component(value: Any) -> bool:
+    text = component_name_key(value)
+    return text in {
+        "wireless switch channel",
+        "scene control button",
+        "dali scene control button",
+        "无线开关通道",
+        "情景按键",
+        "dali情景按键",
     }
 
 
@@ -200,6 +258,8 @@ def _subdevice_indexes(value: Any) -> set[int]:
     """Return Open API sub-device indexes when present."""
     indexes: set[int] = set()
     for item in _iter_mappings(value):
+        if not _is_documented_channel_component(item):
+            continue
         index = item.get("index")
         if isinstance(index, int) and index > 0:
             indexes.add(index)

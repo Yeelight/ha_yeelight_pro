@@ -322,6 +322,7 @@ def test_required_modules_include_protocol_contract_modules() -> None:
         "custom_components.yeelight_pro.push_manager",
         "custom_components.yeelight_pro.push_transport",
         "custom_components.yeelight_pro.core.runtime_bridge",
+        "custom_components.yeelight_pro.deployment_urls",
         "custom_components.yeelight_pro.lan_contract",
         "custom_components.yeelight_pro.lan_methods",
         "custom_components.yeelight_pro.lan_payload",

@@ -46,7 +46,7 @@ async def test_reauth_normalizes_legacy_private_entry_data(config_flow) -> None:
     assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "reauth_confirm"
     assert config_flow._connection_mode == CONNECTION_MODE_PRIVATE
-    assert config_flow._domain == "10.0.0.10:8080"
+    assert config_flow._domain == "https://10.0.0.10:8080"
 
 
 @pytest.mark.asyncio
@@ -236,10 +236,10 @@ async def test_reauth_update_normalizes_entry_data_and_preserves_client_id(
     mock_get_session.return_value = MagicMock()
     config_flow.hass = MagicMock()
     config_flow._connection_mode = CONNECTION_MODE_PRIVATE
-    config_flow._domain = "10.0.0.10:8080"
+    config_flow._domain = "https://10.0.0.10:8080"
     config_flow._reauth_entry_data = {
         CONF_CONNECTION_MODE: CONNECTION_MODE_PRIVATE,
-        CONF_PRIVATE_DOMAIN: "10.0.0.10:8080",
+        CONF_PRIVATE_DOMAIN: "https://10.0.0.10:8080",
         CONF_ACCESS_TOKEN: "old-token",
         CONF_HOUSE_ID: 1001,
         CONF_OPEN_API_CLIENT_ID: expected_client_id,
@@ -265,7 +265,7 @@ async def test_reauth_update_normalizes_entry_data_and_preserves_client_id(
     new_data = update_reload.call_args.kwargs["data"]
     assert new_data[CONF_ACCESS_TOKEN] == "new-token"
     assert new_data[CONF_CONNECTION_MODE] == CONNECTION_MODE_PRIVATE
-    assert new_data[CONF_PRIVATE_DOMAIN] == "10.0.0.10:8080"
+    assert new_data[CONF_PRIVATE_DOMAIN] == "https://10.0.0.10:8080"
     assert new_data[CONF_HOUSE_ID] == 1001
     assert new_data[CONF_OPEN_API_CLIENT_ID] == expected_client_id
     mock_client_class.assert_called_once()
@@ -275,7 +275,7 @@ async def test_reauth_update_normalizes_entry_data_and_preserves_client_id(
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "stage",
-    ["cloud_auth", "cloud_houses", "private_config", "reauth"],
+    ["cloud_auth", "cloud_houses", "private_auth", "reauth"],
 )
 @patch("custom_components.yeelight_pro.config_flow_helpers.async_get_clientsession")
 @patch("custom_components.yeelight_pro.config_flow_helpers.YeelightProClient")
@@ -307,15 +307,12 @@ async def test_config_flow_unknown_errors_log_only_exception_type(
         elif stage == "cloud_houses":
             prepare_cloud_flow(config_flow)
             result = await config_flow.async_step_cloud_houses()
-        elif stage == "private_config":
+        elif stage == "private_auth":
             config_flow._connection_mode = CONNECTION_MODE_PRIVATE
-            result = await config_flow.async_step_private_config(
-                {
-                    CONF_PRIVATE_DOMAIN: "https://private.example",
-                    CONF_ACCESS_TOKEN: "secret-token",
-                    CONF_HOUSE_ID: 12345,
-                }
-            )
+            config_flow._domain = "https://private.example"
+            result = await config_flow.async_step_cloud_auth({
+                CONF_ACCESS_TOKEN: "secret-token",
+            })
         else:
             config_flow._connection_mode = CONNECTION_MODE_CLOUD
             config_flow._domain = "api.yeelight.com"

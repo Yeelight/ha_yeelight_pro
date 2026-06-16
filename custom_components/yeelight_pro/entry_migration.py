@@ -58,11 +58,12 @@ from .device_filter_options import (
     stored_device_import_filter_options,
     stored_or_legacy_device_import_filter_options,
 )
+from .deployment_urls import deployment_root_url
 from .entry_title import config_entry_title
 from .house_metadata import friendly_house_name
 
 ENTRY_VERSION = 1
-ENTRY_MINOR_VERSION = 8
+ENTRY_MINOR_VERSION = 9
 
 
 async def async_migrate_config_entry(
@@ -148,7 +149,7 @@ def normalize_entry_data(value: Mapping[str, Any]) -> dict[str, Any]:
             else domain or DEFAULT_CLOUD_DOMAIN
         ),
         CONF_PRIVATE_DOMAIN: (
-            domain or DEFAULT_PRIVATE_DOMAIN
+            _private_root_url(domain) or DEFAULT_PRIVATE_DOMAIN
             if connection_mode == CONNECTION_MODE_PRIVATE
             else private_domain or ""
         ),
@@ -303,6 +304,13 @@ def _cloud_region(value: Mapping[str, Any], cloud_domain: str) -> str:
     if "api-de.yeelight.com" in domain:
         return "de"
     return DEFAULT_CLOUD_REGION
+
+
+def _private_root_url(value: Any) -> str:
+    text = _string(value)
+    if not text:
+        return ""
+    return deployment_root_url(text)
 
 
 def _mapping_or_empty(value: Any) -> dict[str, Any]:

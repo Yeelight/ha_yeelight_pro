@@ -34,11 +34,13 @@ async def request_scan_login_state(
     *,
     region: str,
     path: str,
+    base_url: str | None = None,
 ) -> YeelightScanLoginQrCode:
     """Send one scan-login request without leaking QR code or token payloads."""
+    endpoint = (base_url or account_base_url(region)).rstrip("/")
     try:
         async with session.post(
-            f"{account_base_url(region)}{path}",
+            f"{endpoint}{path}",
             data={},
             headers=_SCAN_LOGIN_HEADERS,
             timeout=timeout,
@@ -76,6 +78,7 @@ async def create_scan_login_qrcode(
     *,
     region: str,
     device: str,
+    base_url: str | None = None,
 ) -> YeelightScanLoginQrCode:
     """Create a 5-minute Yeelight APP scan-login QR code state."""
     return await request_scan_login_state(
@@ -83,6 +86,7 @@ async def create_scan_login_qrcode(
         timeout,
         region=region,
         path=build_scan_login_qrcode_path(device),
+        base_url=base_url,
     )
 
 
@@ -92,6 +96,7 @@ async def check_scan_login_qrcode(
     *,
     region: str,
     qr_code_id: str,
+    base_url: str | None = None,
 ) -> YeelightScanLoginQrCode:
     """Poll a Yeelight APP scan-login QR code state."""
     return await request_scan_login_state(
@@ -99,6 +104,7 @@ async def check_scan_login_qrcode(
         timeout,
         region=region,
         path=build_scan_login_status_path(qr_code_id),
+        base_url=base_url,
     )
 
 

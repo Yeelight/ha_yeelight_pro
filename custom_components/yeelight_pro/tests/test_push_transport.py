@@ -33,6 +33,13 @@ async def test_push_transport_connects_subscribes_and_dispatches_json_objects() 
             FakeMessage(WSMsgType.TEXT, '{"method":"subscribe","code":"200"}'),
             FakeMessage(WSMsgType.TEXT, '{"method":"heartbeat","success":true}'),
             FakeMessage(WSMsgType.TEXT, '{"type":"prop","nodes":[{"id":1}]}'),
+            FakeMessage(
+                WSMsgType.TEXT,
+                (
+                    '{"method":"message","data":{"type":"prop",'
+                    '"nodes":[{"id":2,"params":{"p":true}}]}}'
+                ),
+            ),
             FakeMessage(WSMsgType.TEXT, '["not-object"]'),
             FakeMessage(WSMsgType.TEXT, "not-json"),
             FakeMessage(WSMsgType.TEXT, '{"type":"unknown","nodes":[]}'),
@@ -65,8 +72,12 @@ async def test_push_transport_connects_subscribes_and_dispatches_json_objects() 
         "type": "prop",
         "nodes": [{"id": 1}],
     }
-    assert callback.await_args_list[1].args[0] == {"type": "event", "nodes": []}
-    assert callback.await_count == 2
+    assert callback.await_args_list[1].args[0] == {
+        "method": "message",
+        "data": {"type": "prop", "nodes": [{"id": 2, "params": {"p": True}}]},
+    }
+    assert callback.await_args_list[2].args[0] == {"type": "event", "nodes": []}
+    assert callback.await_count == 3
 
     await transport.async_stop()
 

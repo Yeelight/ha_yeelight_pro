@@ -22,6 +22,7 @@ from .const import (
     DEFAULT_LAN_GATEWAY_PORT,
     DOMAIN,
 )
+from .deployment_urls import deployment_iot_base_url, deployment_root_url
 from .utils import to_str
 
 IDENTITY_SCOPE_KEY = "_yeelight_identity_scope"
@@ -49,7 +50,7 @@ def entry_identity_scope(entry_data: Mapping[str, Any] | None, house_id: Any = N
         gateway = _fingerprint(f"{host}:{port}")
         return f"{CONNECTION_MODE_LAN}_gateway_{gateway}_house_{house_part}"
 
-    endpoint = to_str(data.get(CONF_PRIVATE_DOMAIN)) or "endpoint"
+    endpoint = _private_identity_endpoint(data.get(CONF_PRIVATE_DOMAIN))
     endpoint_key = _fingerprint(endpoint)
     mode_part = CONNECTION_MODE_PRIVATE if mode == CONNECTION_MODE_PRIVATE else mode
     return f"{mode_part}_endpoint_{endpoint_key}_house_{house_part}"
@@ -61,6 +62,38 @@ def coordinator_identity_scope(coordinator: Any) -> str:
         getattr(coordinator, "entry_data", None),
         getattr(coordinator, "house_id", None),
     )
+
+
+def entry_identity_alias_scopes(
+    entry_data: Mapping[str, Any] | None,
+    house_id: Any = None,
+) -> set[str]:
+    """Return legacy identity scopes superseded by the current entry scope."""
+    data = entry_data if isinstance(entry_data, Mapping) else {}
+    if data.get(CONF_CONNECTION_MODE) != CONNECTION_MODE_PRIVATE:
+        return set()
+
+    text = to_str(data.get(CONF_PRIVATE_DOMAIN))
+    if not text:
+        return set()
+
+    resolved_house_id = to_str(
+        house_id if house_id not in (None, "") else data.get(CONF_HOUSE_ID)
+    )
+    house_part = _safe_part(resolved_house_id or "0")
+    current = entry_identity_scope(data, house_id)
+    try:
+        root = deployment_root_url(text)
+    except ValueError:
+        return set()
+
+    endpoints = {root, deployment_iot_base_url(root)}
+    aliases = {
+        f"{CONNECTION_MODE_PRIVATE}_endpoint_{_fingerprint(endpoint)}_house_{house_part}"
+        for endpoint in endpoints
+    }
+    aliases.discard(current)
+    return aliases
 
 
 def entity_unique_id_prefix(coordinator: Any) -> str:
@@ -197,6 +230,17 @@ def _fingerprint(value: Any) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
 
+def _private_identity_endpoint(value: Any) -> str:
+    """Return the stable private endpoint used for registry identity scopes."""
+    text = to_str(value)
+    if not text:
+        return "endpoint"
+    try:
+        return deployment_iot_base_url(text)
+    except ValueError:
+        return text
+
+
 def _safe_part(value: Any) -> str:
     text = to_str(value) or ""
     text = _ID_PART_RE.sub("_", text.strip()).strip("_").lower()
@@ -211,6 +255,7 @@ __all__ = [
     "device_entity_unique_id",
     "entity_unique_id",
     "entity_unique_id_prefix",
+    "entry_identity_alias_scopes",
     "entry_identity_scope",
     "payload_entity_unique_id_prefix",
     "scoped_device_identifier",

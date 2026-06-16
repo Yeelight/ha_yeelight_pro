@@ -187,7 +187,7 @@ async def test_migrate_private_entry_fills_domains_and_default_options(
         CONF_ACCESS_TOKEN: "token-2",
         "home_id": "1001",
         CONF_CLOUD_DOMAIN: "",
-        CONF_PRIVATE_DOMAIN: "10.0.0.10:8080",
+        CONF_PRIVATE_DOMAIN: "https://10.0.0.10:8080",
         CONF_REFRESH_TOKEN: "",
         CONF_TOKEN_EXPIRES_IN: None,
         CONF_TOKEN_TYPE: "",
@@ -202,9 +202,9 @@ async def test_migrate_private_entry_fills_domains_and_default_options(
     }
     assert update["options"] == _expected_default_options()
     assert update["title"] == (
-        f"Yeelight Pro Private (10.0.0.10:8080 · {DEFAULT_HOUSE_NAME})"
+        f"Yeelight Pro Private (https://10.0.0.10:8080 · {DEFAULT_HOUSE_NAME})"
     )
-    assert update["unique_id"] == "private:10.0.0.10:8080:1001"
+    assert update["unique_id"] == "private:https://10.0.0.10:8080:1001"
     assert update["version"] == ENTRY_VERSION
     assert update["minor_version"] == ENTRY_MINOR_VERSION
 
@@ -291,6 +291,24 @@ def test_normalize_entry_data_uses_mode_defaults() -> None:
     assert cloud[CONF_PRIVATE_DOMAIN] == ""
     assert private[CONF_CLOUD_DOMAIN] == ""
     assert private[CONF_PRIVATE_DOMAIN] == DEFAULT_PRIVATE_DOMAIN
+
+
+def test_normalize_entry_data_private_domain_is_deployment_root_url() -> None:
+    """私有部署 entry 应存根 URL，兼容旧 /apis/iot 和 /apis/account 前缀."""
+    iot = normalize_entry_data({
+        CONF_CONNECTION_MODE: CONNECTION_MODE_PRIVATE,
+        CONF_PRIVATE_DOMAIN: "http://private.example/apis/iot",
+        CONF_HOUSE_ID: "1",
+    })
+    account = normalize_entry_data({
+        CONF_CONNECTION_MODE: CONNECTION_MODE_PRIVATE,
+        CONF_PRIVATE_DOMAIN: "https://private.example/apis/account/",
+        CONF_HOUSE_ID: "1",
+    })
+
+    assert iot[CONF_PRIVATE_DOMAIN] == "http://private.example"
+    assert account[CONF_PRIVATE_DOMAIN] == "https://private.example"
+    assert config_entry_unique_id(iot) == "private:http://private.example:1"
 
 
 def test_config_entry_unique_id_separates_cloud_region_account_and_house() -> None:

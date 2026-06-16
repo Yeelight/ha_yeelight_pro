@@ -28,7 +28,6 @@ from .const import (
     CONNECTION_MODE_PRIVATE,
     DEFAULT_CLOUD_REGION,
     DEFAULT_LAN_GATEWAY_PORT,
-    DEFAULT_PRIVATE_DOMAIN,
     LAN_GATEWAY_PRODUCT_ID_GATEWAY,
     LAN_GATEWAY_PRODUCT_IDS,
 )
@@ -43,9 +42,9 @@ from .core.client import YeelightProClient
 from .core.exceptions import AuthenticationError, ConnectionError
 from .config_flow_precheck import (
     async_precheck_cloud_connection,
-    async_precheck_private_connection,
     precheck_error_code,
 )
+from .deployment_urls import deployment_iot_base_url
 from .scan_login_contract import iot_base_url
 from .house_metadata import house_name_from_choice
 from .house_metadata import friendly_house_name
@@ -110,7 +109,7 @@ def user_schema() -> vol.Schema:
 
 
 def cloud_auth_method_schema() -> vol.Schema:
-    """返回云端认证方式选择表单 schema."""
+    """返回认证方式选择表单 schema."""
     return vol.Schema({
         vol.Required(
             CONF_CLOUD_AUTH_METHOD,
@@ -149,24 +148,19 @@ def cloud_domain_for_region(region: str) -> str:
 
 
 def cloud_auth_schema() -> vol.Schema:
-    """返回云端 token 认证表单 schema."""
+    """返回 token 认证表单 schema."""
     return vol.Schema({vol.Required(CONF_ACCESS_TOKEN): str})
 
 
 def cloud_houses_schema(choices: Mapping[Any, str]) -> vol.Schema:
-    """返回云端家庭选择表单 schema."""
+    """返回家庭选择表单 schema."""
     return vol.Schema({vol.Required(CONF_HOUSE_ID): vol.In(dict(choices))})
 
 
 def private_config_schema() -> vol.Schema:
-    """返回私有部署配置表单 schema."""
+    """返回私有部署 URL 配置表单 schema."""
     return vol.Schema({
-        vol.Required(CONF_PRIVATE_DOMAIN, default=DEFAULT_PRIVATE_DOMAIN): str,
-        vol.Required(CONF_ACCESS_TOKEN): str,
-        vol.Required(CONF_HOUSE_ID, default=1): vol.All(
-            vol.Coerce(int),
-            vol.Range(min=1),
-        ),
+        vol.Required(CONF_PRIVATE_DOMAIN, default=""): str,
     })
 
 
@@ -210,9 +204,9 @@ async def async_validate_private_auth(
     house_id: int | None = None,
 ) -> None:
     """对私有部署端点执行认证和连通性预检."""
-    result = await async_precheck_private_connection(
+    result = await async_precheck_cloud_connection(
         hass,
-        domain=domain,
+        domain=deployment_iot_base_url(domain),
         access_token=access_token,
         client_id=client_id,
         house_id=house_id,
@@ -259,12 +253,6 @@ def _client(
         session=async_get_clientsession(hass),
     )
 
-
-def _required_text(value: Any) -> str:
-    """返回去首尾空白后的非空文本."""
-    if not isinstance(value, str) or not value.strip():
-        raise vol.Invalid("required")
-    return value.strip()
 
 
 def lan_config_schema(discovered_ip: str | None = None) -> vol.Schema:

@@ -110,11 +110,9 @@ def translation_payload() -> dict[str, Any]:
                 },
                 "private_config": {
                     "title": "Private",
-                    "description": "Enter private config.",
+                    "description": "Enter private Open API URL.",
                     "data": {
                         "private_domain": "Domain",
-                        "access_token": "Access token",
-                        "house_id": "House ID",
                     },
                 },
                 "reauth_confirm": {
