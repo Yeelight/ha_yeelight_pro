@@ -17,6 +17,20 @@ PUSH_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
         "PushMessageBuilder": "monotonic message id builder",
         "PushReconnectPolicy": "bounded reconnect policy helper",
     },
+    "const.py": {
+        "CLOUD_REGION_PUSH_BASE_URLS": "regional WebSocket push endpoint map",
+        "push-sg.yeelight.com": "Singapore WebSocket push endpoint",
+        "push-us.yeelight.com": "US WebSocket push endpoint",
+        "push-de.yeelight.com": "EU WebSocket push endpoint",
+        "CONF_PRIVATE_PUSH_DOMAIN": "private deployment independent push endpoint key",
+    },
+    "live_runtime.py": {
+        "CLOUD_REGION_PUSH_BASE_URLS": "regional WebSocket push endpoint selection",
+        "CONF_PRIVATE_PUSH_DOMAIN": "private deployment independent push endpoint selection",
+        "deployment_push_base_url(private_push_domain)": (
+            "private push endpoint has priority over API host fallback"
+        ),
+    },
     "push_manager.py": {
         "PushTransport": "injected transport protocol",
         "PushManager": "no-network push lifecycle manager",
@@ -28,6 +42,7 @@ PUSH_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
     },
     "push_transport.py": {
         "YeelightPushWebSocketTransport": "websocket runtime transport",
+        "base_url": "private deployment push endpoint override",
         "last_start_error_type": "recoverable initial-connect error diagnostics",
         "last_runtime_error_type": "background WebSocket error diagnostics",
         "PushWebSocketSession": "session protocol seam",
@@ -67,6 +82,9 @@ PUSH_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
     },
     "tests/test_push_contract.py": {
         "Bearer fake-token": "Bearer prefix regression coverage",
+        "test_build_push_url_accepts_private_http_websocket_endpoint": (
+            "private deployment ws endpoint coverage"
+        ),
         "build_subscribe_message": "subscribe frame coverage",
         "build_heartbeat_message": "heartbeat frame coverage",
         "test_push_heartbeat_timing_constants_match_open_platform_contract": (
@@ -124,6 +142,9 @@ PUSH_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
     },
     "tests/test_push_transport.py": {
         "push_transport_helpers": "shared transport helper import coverage",
+        "test_push_transport_uses_private_base_url_override": (
+            "private deployment push endpoint transport coverage"
+        ),
         "test_push_transport_connects_subscribes_and_dispatches_json_objects": (
             "connect subscribe dispatch coverage"
         ),
@@ -200,6 +221,19 @@ PUSH_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
         ),
     },
     "tests/test_live_runtime.py": {
+        "test_live_runtime_uses_private_deployment_push_endpoint": (
+            "private deployment live push endpoint coverage"
+        ),
+        "test_live_runtime_uses_region_push_endpoint_for_cloud_entries": (
+            "regional cloud push endpoint coverage"
+        ),
+        "test_live_runtime_falls_back_to_private_api_host_for_legacy_entries": (
+            "legacy private entry push fallback coverage"
+        ),
+        "ws-dev.yeedev.com": "private push endpoint example coverage",
+        "push-sg.yeelight.com": "Singapore push endpoint test coverage",
+        "push-us.yeelight.com": "US push endpoint test coverage",
+        "push-de.yeelight.com": "EU push endpoint test coverage",
         "test_live_runtime_routes_only_websocket_prop_and_event_to_coordinator": (
             "live WebSocket end-to-end coordinator dispatch coverage"
         ),

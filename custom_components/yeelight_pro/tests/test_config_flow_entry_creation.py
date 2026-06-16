@@ -19,6 +19,7 @@ from custom_components.yeelight_pro.const import (
     CONF_HOUSE_NAME,
     CONF_OPEN_API_CLIENT_ID,
     CONF_PRIVATE_DOMAIN,
+    CONF_PRIVATE_PUSH_DOMAIN,
     CONF_REFRESH_TOKEN,
     CONF_SCAN_LOGIN_DEVICE,
     CONF_TOKEN_TYPE,
@@ -200,6 +201,7 @@ async def test_create_entry_private_title_includes_endpoint_and_house(
     """私有部署 entry 标题应可在 HA 集成详情页区分服务器和家庭."""
     config_flow._connection_mode = CONNECTION_MODE_PRIVATE
     config_flow._domain = "https://private.example"
+    config_flow._private_push_domain = "wss://ws-dev.private.example/ws"
     config_flow._access_token = "private-token"
     config_flow._house_id = 1001
 
@@ -218,6 +220,7 @@ async def test_create_entry_private_title_includes_endpoint_and_house(
         "Yeelight Pro Private (https://private.example · 易来家庭)"
     )
     assert result["data"][CONF_PRIVATE_DOMAIN] == "https://private.example"
+    assert result["data"][CONF_PRIVATE_PUSH_DOMAIN] == "wss://ws-dev.private.example/ws"
 
 
 def test_config_entry_title_does_not_expose_token_fingerprint() -> None:

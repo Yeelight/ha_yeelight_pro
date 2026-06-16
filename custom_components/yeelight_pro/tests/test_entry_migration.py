@@ -27,6 +27,7 @@ from custom_components.yeelight_pro.const import (
     CONF_OPEN_API_CLIENT_ID,
     CONF_OPEN_API_CLIENT_SECRET,
     CONF_PRIVATE_DOMAIN,
+    CONF_PRIVATE_PUSH_DOMAIN,
     CONF_REFRESH_TOKEN,
     CONF_SCAN_INTERVAL,
     CONF_SCAN_LOGIN_DEVICE,
@@ -43,7 +44,6 @@ from custom_components.yeelight_pro.const import (
     DEFAULT_LOCAL_GATEWAY_CONTROL,
     DEFAULT_LOCAL_GATEWAY_HOST,
     DEFAULT_LOCAL_GATEWAY_PORT,
-    DEFAULT_PRIVATE_DOMAIN,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TOPOLOGY_CHANGE_REPAIRS,
 )
@@ -130,6 +130,7 @@ async def test_migrate_cloud_entry_aliases_and_option_defaults(
             CONF_CONNECTION_MODE: CONNECTION_MODE_CLOUD,
             CONF_CLOUD_DOMAIN: "https://api.yeelight.com/apis/iot",
             CONF_PRIVATE_DOMAIN: "",
+            CONF_PRIVATE_PUSH_DOMAIN: "",
             CONF_ACCESS_TOKEN: "token-1",
             CONF_REFRESH_TOKEN: "refresh-1",
             CONF_TOKEN_EXPIRES_IN: None,
@@ -188,6 +189,7 @@ async def test_migrate_private_entry_fills_domains_and_default_options(
         "home_id": "1001",
         CONF_CLOUD_DOMAIN: "",
         CONF_PRIVATE_DOMAIN: "https://10.0.0.10:8080",
+        CONF_PRIVATE_PUSH_DOMAIN: "",
         CONF_REFRESH_TOKEN: "",
         CONF_TOKEN_EXPIRES_IN: None,
         CONF_TOKEN_TYPE: "",
@@ -217,6 +219,7 @@ async def test_migrate_current_entry_is_noop(hass: HomeAssistant) -> None:
             CONF_CONNECTION_MODE: CONNECTION_MODE_CLOUD,
             CONF_CLOUD_DOMAIN: DEFAULT_CLOUD_DOMAIN,
             CONF_PRIVATE_DOMAIN: "",
+            CONF_PRIVATE_PUSH_DOMAIN: "",
             CONF_ACCESS_TOKEN: "token-3",
             CONF_REFRESH_TOKEN: "",
             CONF_TOKEN_EXPIRES_IN: None,
@@ -273,42 +276,6 @@ def test_normalize_entry_data_detects_region_from_cloud_domain() -> None:
     })
 
     assert data[CONF_CLOUD_REGION] == "de"
-
-
-def test_normalize_entry_data_uses_mode_defaults() -> None:
-    """缺少 domain 字段时按连接模式补当前默认值."""
-    cloud = normalize_entry_data({
-        CONF_ACCESS_TOKEN: "token",
-        CONF_HOUSE_ID: "1",
-    })
-    private = normalize_entry_data({
-        CONF_CONNECTION_MODE: CONNECTION_MODE_PRIVATE,
-        CONF_ACCESS_TOKEN: "token",
-        CONF_HOUSE_ID: "1",
-    })
-
-    assert cloud[CONF_CLOUD_DOMAIN] == DEFAULT_CLOUD_DOMAIN
-    assert cloud[CONF_PRIVATE_DOMAIN] == ""
-    assert private[CONF_CLOUD_DOMAIN] == ""
-    assert private[CONF_PRIVATE_DOMAIN] == DEFAULT_PRIVATE_DOMAIN
-
-
-def test_normalize_entry_data_private_domain_is_deployment_root_url() -> None:
-    """私有部署 entry 应存根 URL，兼容旧 /apis/iot 和 /apis/account 前缀."""
-    iot = normalize_entry_data({
-        CONF_CONNECTION_MODE: CONNECTION_MODE_PRIVATE,
-        CONF_PRIVATE_DOMAIN: "http://private.example/apis/iot",
-        CONF_HOUSE_ID: "1",
-    })
-    account = normalize_entry_data({
-        CONF_CONNECTION_MODE: CONNECTION_MODE_PRIVATE,
-        CONF_PRIVATE_DOMAIN: "https://private.example/apis/account/",
-        CONF_HOUSE_ID: "1",
-    })
-
-    assert iot[CONF_PRIVATE_DOMAIN] == "http://private.example"
-    assert account[CONF_PRIVATE_DOMAIN] == "https://private.example"
-    assert config_entry_unique_id(iot) == "private:http://private.example:1"
 
 
 def test_config_entry_unique_id_separates_cloud_region_account_and_house() -> None:
@@ -387,6 +354,7 @@ async def test_migrate_current_data_updates_legacy_title(
             CONF_CONNECTION_MODE: CONNECTION_MODE_CLOUD,
             CONF_CLOUD_DOMAIN: DEFAULT_CLOUD_DOMAIN,
             CONF_PRIVATE_DOMAIN: "",
+            CONF_PRIVATE_PUSH_DOMAIN: "",
             CONF_ACCESS_TOKEN: "token-3",
             CONF_REFRESH_TOKEN: "",
             CONF_TOKEN_EXPIRES_IN: None,

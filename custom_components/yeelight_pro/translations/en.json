@@ -38,9 +38,10 @@
       },
       "private_config": {
         "title": "Private Deployment URL",
-        "description": "Enter the private deployment root URL, for example https://private.example. The integration derives the Open API and Account API URLs automatically; authentication method, scan login, house selection, and device selection then follow the same flow as cloud setup.",
+        "description": "Enter the private deployment service root URL, for example https://private.example.com. The integration derives the Open API and Account API URLs automatically; authentication method, scan login, house selection, and device selection then follow the same flow as cloud setup. If WebSocket push uses a different host, enter the push URL too, for example wss://ws-private.example/ws.",
         "data": {
-          "private_domain": "Service root URL"
+          "private_domain": "Service root URL",
+          "private_push_domain": "WebSocket push URL"
         }
       },
       "reauth_confirm": {
@@ -118,6 +119,7 @@
           "hide_unknown_entities": "Hide unknown capability entities",
           "topology_change_repairs": "Create Repairs on topology changes",
           "live_updates": "Enable WebSocket event notifications",
+          "private_push_domain": "Private deployment WebSocket push URL",
           "local_gateway_control": "Enable local gateway control",
           "local_gateway_host": "Local gateway address",
           "local_gateway_port": "Local gateway port"

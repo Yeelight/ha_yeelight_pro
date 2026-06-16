@@ -42,7 +42,7 @@ def test_normalize_maps_open_api_properties_to_params_and_online() -> None:
     assert normalized["ha_platform"] == "light"
     assert normalized["ha_platform_candidates"] == ["light", "sensor"]
     assert normalized["online"] is False
-    assert normalized["params"] == {"p": True, "l": 80}
+    assert normalized["params"] == {"o": False, "p": True, "l": 80}
 
 
 def test_normalize_accepts_read_property_response_shape() -> None:

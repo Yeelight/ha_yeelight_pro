@@ -50,6 +50,7 @@ _RELEASE_SCRIPT_FILES = {
     "scripts/hacs_preflight_local_ha_runtime.py",
     "scripts/hacs_preflight_local_ha_runtime_capability_sources.py",
     "scripts/hacs_preflight_local_ha_runtime_core_tests.py",
+    "scripts/hacs_preflight_local_ha_runtime_source_tokens.py",
     "scripts/hacs_preflight_local_ha_runtime_sources.py",
     "scripts/hacs_preflight_local_ha_runtime_tests.py",
     "scripts/hacs_preflight_local_ha_runtime_verifier_sources.py",

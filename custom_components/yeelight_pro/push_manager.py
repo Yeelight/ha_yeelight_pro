@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
+import logging
+from time import time
 from typing import Any, Protocol
 
 PushPayloadCallback = Callable[[Mapping[str, Any]], Awaitable[object]]
+_LOGGER = logging.getLogger(__name__)
 
 
 class PushTransport(Protocol):
@@ -36,6 +39,8 @@ class PushHealth:
     stopped_count: int = 0
     handled_payloads: int = 0
     last_error_type: str | None = None
+    last_payload_type: str | None = None
+    last_payload_at: float | None = None
 
     def as_dict(self) -> dict[str, Any]:
         """Return an aggregate-only diagnostics payload."""
@@ -45,6 +50,8 @@ class PushHealth:
             "stopped_count": self.stopped_count,
             "handled_payloads": self.handled_payloads,
             "last_error_type": self.last_error_type,
+            "last_payload_type": self.last_payload_type,
+            "last_payload_at": self.last_payload_at,
         }
 
 
@@ -82,6 +89,10 @@ class PushManager:
         if transport_start_error is not None:
             self._health.last_error_type = transport_start_error
         self._sync_transport_runtime_error()
+        _LOGGER.info(
+            "Started Yeelight Pro WebSocket push runtime: recoverable_start_error=%s",
+            self._health.last_error_type,
+        )
 
     async def async_stop(self) -> None:
         """Stop the injected transport once."""
@@ -113,7 +124,14 @@ class PushManager:
             self._health.last_error_type = type(err).__name__
             return None
         self._health.handled_payloads += 1
+        self._health.last_payload_type = _payload_type(payload)
+        self._health.last_payload_at = time()
         self._health.last_error_type = None
+        _LOGGER.debug(
+            "Handled Yeelight Pro WebSocket push payload: type=%s count=%s",
+            self._health.last_payload_type,
+            self._health.handled_payloads,
+        )
         return result
 
     def _sync_transport_runtime_error(self) -> None:
@@ -121,6 +139,19 @@ class PushManager:
         transport_error = getattr(self._transport, "last_runtime_error_type", None)
         if isinstance(transport_error, str) and transport_error:
             self._health.last_error_type = transport_error
+
+
+def _payload_type(payload: Mapping[str, Any]) -> str | None:
+    """Return a documented aggregate payload type without raw payload data."""
+    value = payload.get("type")
+    if isinstance(value, str) and value:
+        return value
+    data = payload.get("data")
+    if isinstance(data, Mapping):
+        nested = data.get("type")
+        if isinstance(nested, str) and nested:
+            return nested
+    return None
 
 
 __all__ = [

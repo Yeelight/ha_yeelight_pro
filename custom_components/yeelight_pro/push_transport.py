@@ -51,6 +51,7 @@ class YeelightPushWebSocketTransport:
         *,
         session: PushWebSocketSession,
         token: str,
+        base_url: str | None = None,
         message_builder: PushMessageBuilder | None = None,
         heartbeat_interval_seconds: float = PUSH_HEARTBEAT_INTERVAL_SECONDS,
         sleep: PushSleep = asyncio.sleep,
@@ -61,6 +62,7 @@ class YeelightPushWebSocketTransport:
         """Initialize a transport without opening a network connection."""
         self._session = session
         self._token = token
+        self._base_url = base_url
         self._message_builder = message_builder or PushMessageBuilder()
         self._heartbeat_interval_seconds = heartbeat_interval_seconds
         self._sleep = sleep
@@ -115,7 +117,12 @@ class YeelightPushWebSocketTransport:
     async def _connect_once(self, callback: PushTransportPayloadCallback) -> None:
         """Open one websocket session and start its background tasks."""
         try:
-            websocket = await self._session.ws_connect(build_push_url(self._token))
+            websocket = await self._session.ws_connect(
+                build_push_url(
+                    self._token,
+                    **({"base_url": self._base_url} if self._base_url else {}),
+                )
+            )
         except Exception:
             self._last_failure_was_connect = True
             raise

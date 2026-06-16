@@ -242,7 +242,7 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
             "low-frequency diagnostics aggregate-only coverage"
         ),
     },
-    "test_projection_boundaries.py": {
+    "test_projection_unknown_boundaries.py": {
         "test_unknown_bool_value_does_not_project_generic_writable_or_binary_entity": (
             "unknown bool projection boundary coverage"
         ),
@@ -258,6 +258,8 @@ IOT_REGISTRY_CONTRACT_TEST_TOKENS: dict[str, dict[str, str]] = {
         "test_bridge_protocol_metadata_does_not_enable_unknown_fallback_sensor": (
             "bridge protocol metadata projection boundary coverage"
         ),
+    },
+    "test_projection_boundaries.py": {
         "test_unsupported_outlet_on_payload_does_not_project_switch": (
             "unsupported outlet/on switch fallback rejection coverage"
         ),

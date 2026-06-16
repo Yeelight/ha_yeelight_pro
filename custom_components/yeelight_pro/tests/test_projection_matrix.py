@@ -8,6 +8,7 @@ from homeassistant.components.light import ColorMode
 from custom_components.yeelight_pro.projector.climate import project_climate
 from custom_components.yeelight_pro.projector.cover import project_cover, project_covers
 from custom_components.yeelight_pro.projector.light import project_light
+from custom_components.yeelight_pro.projector.light import project_lights
 from custom_components.yeelight_pro.projector.switch import project_switches
 
 from .projection_helpers import DOMAIN, projection_payload
@@ -162,6 +163,50 @@ def test_switch_light_component_projects_as_light() -> None:
     assert project_switches(device, domain=DOMAIN) == []
 
 
+def test_multi_switch_light_components_use_channel_names_not_generic_names() -> None:
+    """私有部署缺 product schema 时，多路开关灯不能都显示为“开关灯”."""
+    device = projection_payload(
+        device_id="panel-light-1",
+        category="light",
+        component_id="light_1",
+        state={"p": True},
+        params={"1-p": True, "2-p": False},
+        component_category="switch light",
+        properties=("p",),
+    )
+    device["ha_device_instance"]["components"][0]["name"] = "switch light"
+    device["ha_device_instance"]["components"].append({
+        "component_id": "light_2",
+        "name": "switch light",
+        "desc": "开关灯",
+        "category": "switch light",
+        "available": True,
+        "state": {"p": False},
+    })
+    device["ha_product_model"]["components"][0]["name"] = "switch light"
+    device["ha_product_model"]["components"].append({
+        "component_id": "light_2",
+        "name": "switch light",
+        "desc": "开关灯",
+        "category": "switch light",
+        "properties": [{"prop_id": "p", "access": "read_write"}],
+        "events": [],
+    })
+    device["ha_device_instance"]["extensions"] = {
+        "component_state_keys": {
+            "light_1": {"p": "1-p"},
+            "light_2": {"p": "2-p"},
+        }
+    }
+
+    projections = project_lights(device, domain=DOMAIN)
+
+    assert [(item.component_id, item.name, item.power_key) for item in projections] == [
+        ("light_1", "回路 1", "1-p"),
+        ("light_2", "回路 2", "2-p"),
+    ]
+
+
 def test_curtain_projects_cover() -> None:
     """窗帘类应投影为 cover。"""
     device = projection_payload(
@@ -292,3 +337,48 @@ def test_relay_switch_projects_switch() -> None:
     assert projections[0].component_id == "switch_control"
     assert projections[0].control_key == "p"
     assert projections[0].is_on is True
+
+
+def test_multi_switch_control_components_use_channel_names_not_generic_names() -> None:
+    """多路开关组件不能都显示为泛化“开关组件”."""
+    device = projection_payload(
+        device_id="panel-switch-1",
+        category="relay_switch",
+        component_id="switch_1",
+        state={"p": True},
+        params={"1-p": True, "2-p": False},
+        component_category="switch control",
+        properties=("p",),
+    )
+    device["ha_device_instance"]["components"][0]["name"] = "switch control"
+    device["ha_device_instance"]["components"].append({
+        "component_id": "switch_2",
+        "name": "switch control",
+        "desc": "开关组件",
+        "category": "switch control",
+        "available": True,
+        "state": {"p": False},
+    })
+    device["ha_product_model"]["components"][0]["name"] = "switch control"
+    device["ha_product_model"]["schema_version"] = "runtime-v1"
+    device["ha_product_model"]["components"].append({
+        "component_id": "switch_2",
+        "name": "switch control",
+        "desc": "开关组件",
+        "category": "switch control",
+        "properties": [{"prop_id": "p", "access": "read_write"}],
+        "events": [],
+    })
+    device["ha_device_instance"]["extensions"] = {
+        "component_state_keys": {
+            "switch_1": {"p": "1-p"},
+            "switch_2": {"p": "2-p"},
+        }
+    }
+
+    projections = project_switches(device, domain=DOMAIN)
+
+    assert [(item.component_id, item.name, item.control_key) for item in projections] == [
+        ("switch_1", "回路 1", "1-p"),
+        ("switch_2", "回路 2", "2-p"),
+    ]

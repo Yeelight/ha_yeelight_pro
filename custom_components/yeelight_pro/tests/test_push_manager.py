@@ -61,6 +61,8 @@ async def test_push_manager_start_stop_are_idempotent() -> None:
         "stopped_count": 1,
         "handled_payloads": 0,
         "last_error_type": None,
+        "last_payload_type": None,
+        "last_payload_at": None,
     }
 
 
@@ -80,6 +82,8 @@ async def test_push_manager_forwards_payload_only_to_coordinator() -> None:
     coordinator.async_handle_push_payload.assert_awaited_once_with(payload)
     assert manager.health.handled_payloads == 1
     assert manager.health.last_error_type is None
+    assert manager.health.last_payload_type == "prop"
+    assert manager.health.last_payload_at is not None
 
 
 @pytest.mark.asyncio
@@ -108,7 +112,10 @@ async def test_push_manager_accepts_payload_emitted_during_transport_start() -> 
         "stopped_count": 0,
         "handled_payloads": 1,
         "last_error_type": None,
+        "last_payload_type": "prop",
+        "last_payload_at": manager.health.last_payload_at,
     }
+    assert manager.health.last_payload_at is not None
 
 
 @pytest.mark.asyncio
@@ -134,6 +141,8 @@ async def test_push_manager_preserves_start_time_payload_error_type() -> None:
         "stopped_count": 0,
         "handled_payloads": 0,
         "last_error_type": "ValueError",
+        "last_payload_type": None,
+        "last_payload_at": None,
     }
     assert "token-secret" not in str(manager.health.as_dict())
     assert "device-secret" not in str(manager.health.as_dict())
@@ -177,6 +186,8 @@ async def test_push_manager_records_error_type_without_payload_details() -> None
         "stopped_count": 0,
         "handled_payloads": 0,
         "last_error_type": "RuntimeError",
+        "last_payload_type": None,
+        "last_payload_at": None,
     }
     assert "token-secret" not in str(manager.health.as_dict())
     assert "device-secret" not in str(manager.health.as_dict())
@@ -201,6 +212,8 @@ async def test_push_manager_records_transport_start_error_type() -> None:
         "stopped_count": 0,
         "handled_payloads": 0,
         "last_error_type": "ConnectionError",
+        "last_payload_type": None,
+        "last_payload_at": None,
     }
 
 
@@ -223,6 +236,8 @@ async def test_push_manager_preserves_recoverable_start_error_type() -> None:
         "stopped_count": 0,
         "handled_payloads": 0,
         "last_error_type": "OSError",
+        "last_payload_type": None,
+        "last_payload_at": None,
     }
 
 
@@ -242,6 +257,8 @@ async def test_push_manager_reports_transport_runtime_error_type() -> None:
         "stopped_count": 0,
         "handled_payloads": 0,
         "last_error_type": "PushControlFrameError",
+        "last_payload_type": None,
+        "last_payload_at": None,
     }
     assert "token-secret" not in str(manager.health.as_dict())
 
@@ -281,6 +298,8 @@ async def test_push_manager_stop_failure_blocks_payloads_and_allows_retry() -> N
         "stopped_count": 0,
         "handled_payloads": 0,
         "last_error_type": "OSError",
+        "last_payload_type": None,
+        "last_payload_at": None,
     }
     assert "token-secret" not in str(manager.health.as_dict())
     assert "device-secret" not in str(manager.health.as_dict())
@@ -295,4 +314,6 @@ async def test_push_manager_stop_failure_blocks_payloads_and_allows_retry() -> N
         "stopped_count": 1,
         "handled_payloads": 0,
         "last_error_type": None,
+        "last_payload_type": None,
+        "last_payload_at": None,
     }

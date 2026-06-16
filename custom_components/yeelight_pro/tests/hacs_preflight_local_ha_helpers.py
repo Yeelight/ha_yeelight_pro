@@ -160,7 +160,15 @@ def _write_local_ha_contract_fixture(
     _write_test_file(tests_root.parent / "entry_migration.py", "")
     _write_test_file(tests_root.parent / "device_filter.py", "")
     _write_test_file(tests_root.parent / "config_flow_helpers.py", "")
-    _write_test_file(tests_root.parent / "config_flow_options.py", "")
+    _write_test_file(
+        tests_root.parent / "config_flow_options.py",
+        (
+            "merge_options visible_option_change_count "
+            "device_filter_schema_fields merge_device_import_filter "
+            "CONF_PRIVATE_PUSH_DOMAIN merge_private_entry_data "
+            "visible_entry_data_change_count deployment_push_base_url"
+        ),
+    )
     (tests_root.parent / "core").mkdir()
     _write_test_file(tests_root.parent / "core" / "schema_cache.py", "")
     _write_test_file(tests_root / "test_entry_migration.py", "")

@@ -25,7 +25,7 @@ from .common import (
     product_component,
     schema_backed_component_available,
 )
-from .platform_evidence import component_platform
+from .platform_evidence import component_has_climate_evidence, component_platform
 
 MAIN_ENTITY_PROPS = frozenset({
     "p",
@@ -180,17 +180,25 @@ def _is_main_entity_property(
     if component is None:
         return prop_id in MAIN_ENTITY_PROPS
 
-    platform = _component_platform(component)
+    platform = component_platform(component)
     if platform in MAIN_ENTITY_PROPS_BY_PLATFORM:
         return prop_id in MAIN_ENTITY_PROPS_BY_PLATFORM[platform]
+    category = (component.category or "").lower().replace("-", "_").replace(" ", "_")
+    component_id = component.component_id.lower()
+    if platform is None and (
+        component_id.startswith("fresh_air")
+        or (category == "temp_control" and prop_id in MAIN_ENTITY_PROPS_BY_PLATFORM["fan"])
+    ):
+        return prop_id in MAIN_ENTITY_PROPS_BY_PLATFORM["fan"]
+    if platform is None and (
+        component_has_climate_evidence(component)
+        or category in {"air_conditioner", "temp_control"}
+        or component_id.startswith(("air_conditioner", "climate"))
+    ):
+        return prop_id in MAIN_ENTITY_PROPS_BY_PLATFORM["climate"]
     if platform is None and _looks_like_relay_switch_component(component):
         return prop_id in MAIN_ENTITY_PROPS_BY_PLATFORM["switch"]
     return prop_id in MAIN_ENTITY_PROPS
-
-
-def _component_platform(component: ComponentInstanceModel) -> str | None:
-    """Return documented HA platform for a component without using labels."""
-    return component_platform(component)
 
 
 def _looks_like_relay_switch_component(component: ComponentInstanceModel) -> bool:
@@ -255,17 +263,12 @@ def switch_command_values(prop: PropertyModel) -> tuple[Any, Any]:
 
 def _range_value(value: Any) -> int | None:
     """Return the integer range value supported by canonical ValueRangeModel."""
-    if value is None:
-        return None
-    return int(value)
+    return None if value is None else int(value)
 
 
 def _access_allows_write(value: str | None) -> bool:
     """Return true for normalized or documented writable access text."""
-    if value is None:
-        return False
-    access = value.lower()
-    return "write" in access or "写" in value
+    return False if value is None else "write" in value.lower() or "写" in value
 
 
 def control_key(
@@ -366,7 +369,7 @@ def switch_icon(prop: PropertyModel) -> str | None:
     return "mdi:toggle-switch"
 
 
-__all__ = [
+__all__ = (
     "control_available",
     "control_key",
     "control_name",
@@ -385,4 +388,4 @@ __all__ = [
     "switch_command_values",
     "switch_icon",
     "writable_control_value_list",
-]
+)

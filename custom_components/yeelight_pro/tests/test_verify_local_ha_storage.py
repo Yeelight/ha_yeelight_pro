@@ -42,7 +42,7 @@ def test_verify_storage_checks_counts_without_raw_ids(tmp_path: Path) -> None:
         f"entity registry retained entries: {expected_total}" in fact
         for fact in report.facts
     )
-    assert any("config entry versions: 1.8 x 1" in fact for fact in report.facts)
+    assert any("config entry versions: 1.10 x 1" in fact for fact in report.facts)
     assert any("config entry titles" in fact for fact in report.facts)
     assert any("config entry unique_id isolation" in fact for fact in report.facts)
     assert any("config entry required data keys present" in fact for fact in report.facts)

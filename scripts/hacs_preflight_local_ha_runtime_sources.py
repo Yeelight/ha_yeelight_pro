@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from scripts.hacs_preflight_local_ha_runtime_source_tokens import LOCAL_HA_RUNTIME_ADDITIONAL_SOURCE_TOKENS
+
 LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
     "scripts/hacs_preflight_local_ha_runtime_sources.py": {
         "LOCAL_HA_RUNTIME_SOURCE_TOKENS": "runtime component source token registry",
@@ -120,13 +122,6 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "firmware_version": "official fv firmware metadata helper",
         "_FIRMWARE_VERSION_KEYS": "top-level firmware metadata aliases",
         "parse_component_property_key": "indexed fv property key parsing",
-    },
-    "custom_components/yeelight_pro/deployment_urls.py": {
-        "deployment_root_url": "private deployment root URL normalizer",
-        "deployment_iot_base_url": "private deployment IoT API derivation",
-        "deployment_account_base_url": "private deployment Account API derivation",
-        "/apis/iot": "legacy IoT API prefix compatibility",
-        "/apis/account": "Account API endpoint suffix",
     },
     "custom_components/yeelight_pro/core/property_hydration_summary.py": {
         "PropertyHydrationDiagnostics": (
@@ -401,3 +396,5 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "LIGHT_SENSOR_CONFIG_PROPS": "runtime light-sensor config evidence constants",
     },
 }
+for path, tokens in LOCAL_HA_RUNTIME_ADDITIONAL_SOURCE_TOKENS.items():
+    LOCAL_HA_RUNTIME_SOURCE_TOKENS.setdefault(path, {}).update(tokens)

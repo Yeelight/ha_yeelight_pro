@@ -28,6 +28,7 @@ from .const import (
     CONF_OPEN_API_CLIENT_ID,
     CONF_OPEN_API_CLIENT_SECRET,
     CONF_PRIVATE_DOMAIN,
+    CONF_PRIVATE_PUSH_DOMAIN,
     CONF_REFRESH_TOKEN,
     CONF_SCAN_INTERVAL,
     CONF_SCAN_LOGIN_DEVICE,
@@ -58,12 +59,12 @@ from .device_filter_options import (
     stored_device_import_filter_options,
     stored_or_legacy_device_import_filter_options,
 )
-from .deployment_urls import deployment_root_url
+from .deployment_urls import deployment_push_base_url, deployment_root_url
 from .entry_title import config_entry_title
 from .house_metadata import friendly_house_name
 
 ENTRY_VERSION = 1
-ENTRY_MINOR_VERSION = 9
+ENTRY_MINOR_VERSION = 10
 
 
 async def async_migrate_config_entry(
@@ -107,6 +108,16 @@ def normalize_entry_data(value: Mapping[str, Any]) -> dict[str, Any]:
     private_domain = _string(
         _first_value(source, CONF_PRIVATE_DOMAIN, "privateDomain", "server")
     )
+    private_push_domain = _string(
+        _first_value(
+            source,
+            CONF_PRIVATE_PUSH_DOMAIN,
+            "privatePushDomain",
+            "pushDomain",
+            "websocketDomain",
+            "websocket_url",
+        )
+    )
 
     # LAN 模式：不依赖云端域名和认证信息
     if connection_mode == CONNECTION_MODE_LAN:
@@ -115,6 +126,7 @@ def normalize_entry_data(value: Mapping[str, Any]) -> dict[str, Any]:
             CONF_CONNECTION_MODE: connection_mode,
             CONF_CLOUD_DOMAIN: "",
             CONF_PRIVATE_DOMAIN: "",
+            CONF_PRIVATE_PUSH_DOMAIN: "",
             CONF_ACCESS_TOKEN: "",
             CONF_REFRESH_TOKEN: "",
             CONF_TOKEN_EXPIRES_IN: None,
@@ -127,9 +139,7 @@ def normalize_entry_data(value: Mapping[str, Any]) -> dict[str, Any]:
             CONF_ACCOUNT_USER_ID: None,
             CONF_ACCOUNT_USERNAME: "",
             CONF_SCAN_LOGIN_DEVICE: "",
-            CONF_LAN_GATEWAY_IP: _string(
-                source.get(CONF_LAN_GATEWAY_IP)
-            ).strip(),
+            CONF_LAN_GATEWAY_IP: _string(source.get(CONF_LAN_GATEWAY_IP)).strip(),
             CONF_LAN_GATEWAY_PORT: _coerce_int(
                 source.get(CONF_LAN_GATEWAY_PORT),
                 default=DEFAULT_LAN_GATEWAY_PORT,
@@ -138,7 +148,9 @@ def normalize_entry_data(value: Mapping[str, Any]) -> dict[str, Any]:
             ),
         }
 
-    domain = private_domain if connection_mode == CONNECTION_MODE_PRIVATE else cloud_domain
+    domain = (
+        private_domain if connection_mode == CONNECTION_MODE_PRIVATE else cloud_domain
+    )
 
     return {
         **source,
@@ -152,6 +164,11 @@ def normalize_entry_data(value: Mapping[str, Any]) -> dict[str, Any]:
             _private_root_url(domain) or DEFAULT_PRIVATE_DOMAIN
             if connection_mode == CONNECTION_MODE_PRIVATE
             else private_domain or ""
+        ),
+        CONF_PRIVATE_PUSH_DOMAIN: (
+            _private_push_url(private_push_domain)
+            if connection_mode == CONNECTION_MODE_PRIVATE
+            else ""
         ),
         CONF_ACCESS_TOKEN: _string(
             _first_value(source, CONF_ACCESS_TOKEN, "accessToken", "token")
@@ -311,6 +328,11 @@ def _private_root_url(value: Any) -> str:
     if not text:
         return ""
     return deployment_root_url(text)
+
+
+def _private_push_url(value: Any) -> str:
+    text = _string(value)
+    return deployment_push_base_url(text) if text else ""
 
 
 def _mapping_or_empty(value: Any) -> dict[str, Any]:

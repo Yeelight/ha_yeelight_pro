@@ -43,7 +43,7 @@ async def test_options_flow_shows_defaults(mock_config_entry) -> None:
     assert defaults[CONF_DEBUG_MODE] is False
     assert defaults[CONF_HIDE_UNKNOWN_ENTITIES] is True
     assert defaults[CONF_TOPOLOGY_CHANGE_REPAIRS] is True
-    assert defaults[CONF_LIVE_UPDATES] is False
+    assert defaults[CONF_LIVE_UPDATES] is DEFAULT_LIVE_UPDATES
     assert CONF_LOCAL_GATEWAY_CONTROL not in defaults
     assert CONF_LOCAL_GATEWAY_HOST not in defaults
     assert CONF_LOCAL_GATEWAY_PORT not in defaults

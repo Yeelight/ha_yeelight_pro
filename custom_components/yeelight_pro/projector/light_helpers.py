@@ -7,6 +7,7 @@ from typing import Any, Mapping
 from homeassistant.components.light import ColorMode
 
 from ..canonical.models import ComponentInstanceModel, ComponentModel
+from ..device_channel_generated_names import looks_like_generated_channel_name
 from ..device_display import channel_name_label
 from ..utils import to_category, to_int, to_str
 from .common import NumericRange, component_index, humanize_component_id
@@ -314,13 +315,19 @@ def _indexed_channel_name(index: int | None, *, total: int) -> str | None:
 
 def _friendly_component_name(component: ComponentInstanceModel) -> str | None:
     """返回来自产品 schema 的组件友好名称，过滤技术占位名。"""
+    index = component_index(component.component_id)
     for value in (getattr(component, "desc", None), getattr(component, "name", None)):
         text = to_str(value)
         if not text:
             continue
         friendly = text.removesuffix("组件").strip()
-        if friendly and friendly.lower() not in {"light", "main", "main_light"}:
-            return friendly
+        if not friendly:
+            continue
+        if friendly.lower() in {"light", "main", "main_light"}:
+            continue
+        if looks_like_generated_channel_name(friendly, index):
+            continue
+        return friendly
     return None
 
 

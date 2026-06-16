@@ -14,6 +14,7 @@ CONF_CONNECTION_MODE = "connection_mode"
 CONF_CLOUD_DOMAIN = "cloud_domain"
 CONF_CLOUD_REGION = "cloud_region"
 CONF_PRIVATE_DOMAIN = "private_domain"
+CONF_PRIVATE_PUSH_DOMAIN = "private_push_domain"
 CONF_ACCESS_TOKEN = "access_token"
 CONF_REFRESH_TOKEN = "refresh_token"
 CONF_TOKEN_EXPIRES_IN = "token_expires_in"
@@ -48,6 +49,12 @@ CLOUD_REGION_BASE_DOMAINS = {
     CLOUD_REGION_SG: "https://api-sg.yeelight.com",
     CLOUD_REGION_US: "https://api-us.yeelight.com",
     CLOUD_REGION_EU: "https://api-de.yeelight.com",
+}
+CLOUD_REGION_PUSH_BASE_URLS = {
+    CLOUD_REGION_CN: "wss://push.yeelight.com/ws",
+    CLOUD_REGION_SG: "wss://push-sg.yeelight.com/ws",
+    CLOUD_REGION_US: "wss://push-us.yeelight.com/ws",
+    CLOUD_REGION_EU: "wss://push-de.yeelight.com/ws",
 }
 
 # 选项键
@@ -104,7 +111,7 @@ MAX_SCAN_INTERVAL = 300
 DEFAULT_DEBUG_MODE = False
 DEFAULT_HIDE_UNKNOWN_ENTITIES = True
 DEFAULT_TOPOLOGY_CHANGE_REPAIRS = True
-DEFAULT_LIVE_UPDATES = False
+DEFAULT_LIVE_UPDATES = True
 DEFAULT_LOCAL_GATEWAY_CONTROL = False
 DEFAULT_LOCAL_GATEWAY_HOST = ""
 DEFAULT_LOCAL_GATEWAY_PORT = 65443

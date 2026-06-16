@@ -10,6 +10,7 @@ import pytest
 from homeassistant.core import HomeAssistant
 
 from custom_components.yeelight_pro.const import (
+    CONF_CONNECTION_MODE,
     CONF_DEBUG_MODE,
     CONF_DEVICE_IMPORT_FILTER,
     CONF_HIDE_UNKNOWN_ENTITIES,
@@ -17,8 +18,11 @@ from custom_components.yeelight_pro.const import (
     CONF_LOCAL_GATEWAY_CONTROL,
     CONF_LOCAL_GATEWAY_HOST,
     CONF_LOCAL_GATEWAY_PORT,
+    CONF_PRIVATE_DOMAIN,
+    CONF_PRIVATE_PUSH_DOMAIN,
     CONF_SCAN_INTERVAL,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
+    CONNECTION_MODE_PRIVATE,
     DEFAULT_LIVE_UPDATES,
     DEFAULT_LOCAL_GATEWAY_CONTROL,
     DEFAULT_LOCAL_GATEWAY_HOST,
@@ -63,6 +67,7 @@ def _install_runtime(
         entry.entry_id: {
             "coordinator": coordinator,
             "entry": entry,
+            "entry_data": dict(entry.data),
         }
     }
 
@@ -156,7 +161,7 @@ async def test_options_update_reloads_when_entity_projection_changes(
 @pytest.mark.parametrize(
     ("option_key", "changed_value"),
     [
-        pytest.param(CONF_LIVE_UPDATES, True, id="live_updates_websocket"),
+        pytest.param(CONF_LIVE_UPDATES, False, id="live_updates_websocket"),
         pytest.param(CONF_LOCAL_GATEWAY_CONTROL, True, id="local_gateway_control"),
         pytest.param(CONF_LOCAL_GATEWAY_HOST, "192.168.1.20", id="local_gateway_host"),
         pytest.param(CONF_LOCAL_GATEWAY_PORT, 65444, id="local_gateway_port"),
@@ -176,6 +181,29 @@ async def test_options_update_reloads_when_background_runtime_option_changes(
         **coordinator.options,
         option_key: changed_value,
     }
+    hass.config_entries.async_reload = AsyncMock()
+
+    await async_options_updated(hass, mock_config_entry)
+
+    hass.config_entries.async_reload.assert_awaited_once_with(mock_config_entry.entry_id)
+    coordinator.apply_options.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_options_update_reloads_when_private_push_entry_data_changes(
+    hass: HomeAssistant,
+    mock_config_entry,
+) -> None:
+    """Private WebSocket endpoint data changes must rebuild the push transport."""
+    mock_config_entry.data.update({
+        CONF_CONNECTION_MODE: CONNECTION_MODE_PRIVATE,
+        CONF_PRIVATE_DOMAIN: "http://api-test.yeedev.com",
+        CONF_PRIVATE_PUSH_DOMAIN: "",
+    })
+    coordinator = _runtime_coordinator(apply_options=MagicMock())
+    _install_runtime(hass, mock_config_entry, coordinator)
+    mock_config_entry.data[CONF_PRIVATE_PUSH_DOMAIN] = "ws://ws-test.yeedev.com/ws"
+    mock_config_entry.options = dict(coordinator.options)
     hass.config_entries.async_reload = AsyncMock()
 
     await async_options_updated(hass, mock_config_entry)

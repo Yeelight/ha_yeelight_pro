@@ -13,7 +13,14 @@ from custom_components.yeelight_pro.const import (
     ATTR_COMPONENT_ID,
     ATTR_EVENT_TYPE,
     DEVICE_EVENT_TYPE,
+    CONF_CONNECTION_MODE,
+    CONF_CLOUD_REGION,
     CONF_LIVE_UPDATES,
+    CONF_PRIVATE_DOMAIN,
+    CONF_PRIVATE_PUSH_DOMAIN,
+    CONNECTION_MODE_CLOUD,
+    CONNECTION_MODE_LAN,
+    CONNECTION_MODE_PRIVATE,
 )
 from custom_components.yeelight_pro.core.coordinator import YeelightProCoordinator
 from custom_components.yeelight_pro.live_runtime import (
@@ -25,9 +32,20 @@ from .config_entry_lifecycle_helpers import make_config_entry
 from .push_transport_helpers import FakeMessage, FakeSession, FakeWebSocket, OpenFakeWebSocket
 
 
-def test_live_updates_enabled_reads_entry_options() -> None:
-    """live runtime 只能由显式 options 开关启用."""
+def _make_live_entry():
+    """Build an entry without the lifecycle-test live-updates override."""
     entry = make_config_entry()
+    entry.options = {}
+    return entry
+
+
+def test_live_updates_enabled_reads_entry_options() -> None:
+    """云端/私有部署 live runtime 默认启用，并尊重显式关闭."""
+    entry = _make_live_entry()
+
+    assert live_updates_enabled(entry) is True
+
+    entry.options = {CONF_LIVE_UPDATES: False}
 
     assert live_updates_enabled(entry) is False
 
@@ -36,14 +54,24 @@ def test_live_updates_enabled_reads_entry_options() -> None:
     assert live_updates_enabled(entry) is True
 
 
+def test_live_updates_disabled_for_lan_only_entries() -> None:
+    """LAN-only entry 没有云端 push token 订阅上下文，不能默认启动 WebSocket."""
+    entry = _make_live_entry()
+    entry.data["connection_mode"] = CONNECTION_MODE_LAN
+    entry.options = {CONF_LIVE_UPDATES: True}
+
+    assert live_updates_enabled(entry) is False
+
+
 @pytest.mark.asyncio
-async def test_live_runtime_stays_disabled_by_default(
+async def test_live_runtime_starts_by_default_for_cloud_entries(
     hass: HomeAssistant,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """默认配置不应创建 WebSocket session 或 push manager."""
-    entry = make_config_entry()
-    session = FakeSession(OpenFakeWebSocket())
+    """默认云端配置应创建 WebSocket push manager."""
+    entry = _make_live_entry()
+    websocket = OpenFakeWebSocket()
+    session = FakeSession(websocket)
     monkeypatch.setattr(
         "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
         lambda _hass: session,
@@ -51,8 +79,119 @@ async def test_live_runtime_stays_disabled_by_default(
 
     manager = await async_start_live_runtime(hass, entry, AsyncMock())
 
-    assert manager is None
-    assert session.connected_urls == []
+    assert manager is not None
+    assert session.connected_urls == ["wss://push.yeelight.com/ws/test_token"]
+
+    await manager.async_stop()
+
+
+@pytest.mark.parametrize(
+    ("region", "expected_url"),
+    [
+        ("sg", "wss://push-sg.yeelight.com/ws/test_token"),
+        ("us", "wss://push-us.yeelight.com/ws/test_token"),
+        ("de", "wss://push-de.yeelight.com/ws/test_token"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_live_runtime_uses_region_push_endpoint_for_cloud_entries(
+    hass: HomeAssistant,
+    monkeypatch: pytest.MonkeyPatch,
+    region: str,
+    expected_url: str,
+) -> None:
+    """不同云端区域应连接各自的 WebSocket push endpoint."""
+    entry = _make_live_entry()
+    entry.data[CONF_CONNECTION_MODE] = CONNECTION_MODE_CLOUD
+    entry.data[CONF_CLOUD_REGION] = region
+    websocket = OpenFakeWebSocket()
+    session = FakeSession(websocket)
+    monkeypatch.setattr(
+        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
+        lambda _hass: session,
+    )
+
+    manager = await async_start_live_runtime(hass, entry, AsyncMock())
+
+    assert manager is not None
+    assert session.connected_urls == [expected_url]
+
+    await manager.async_stop()
+
+
+@pytest.mark.asyncio
+async def test_live_runtime_uses_private_deployment_push_endpoint(
+    hass: HomeAssistant,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """私有部署实时通知应优先连接用户填写的 WebSocket endpoint."""
+    entry = _make_live_entry()
+    entry.data[CONF_CONNECTION_MODE] = CONNECTION_MODE_PRIVATE
+    entry.data[CONF_PRIVATE_DOMAIN] = "https://api-dev.yeedev.com"
+    entry.data[CONF_PRIVATE_PUSH_DOMAIN] = "ws-dev.yeedev.com"
+    websocket = OpenFakeWebSocket()
+    session = FakeSession(websocket)
+    monkeypatch.setattr(
+        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
+        lambda _hass: session,
+    )
+
+    manager = await async_start_live_runtime(hass, entry, AsyncMock())
+
+    assert manager is not None
+    assert session.connected_urls == ["wss://ws-dev.yeedev.com/ws/test_token"]
+
+    await manager.async_stop()
+
+
+@pytest.mark.asyncio
+async def test_live_runtime_falls_back_to_private_api_host_for_legacy_entries(
+    hass: HomeAssistant,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """旧私有 entry 缺少 push URL 时才从 API host 派生兼容 endpoint."""
+    entry = _make_live_entry()
+    entry.data[CONF_CONNECTION_MODE] = CONNECTION_MODE_PRIVATE
+    entry.data[CONF_PRIVATE_DOMAIN] = "https://api-dev.yeedev.com"
+    entry.data[CONF_PRIVATE_PUSH_DOMAIN] = ""
+    websocket = OpenFakeWebSocket()
+    session = FakeSession(websocket)
+    monkeypatch.setattr(
+        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
+        lambda _hass: session,
+    )
+
+    manager = await async_start_live_runtime(hass, entry, AsyncMock())
+
+    assert manager is not None
+    assert session.connected_urls == ["wss://api-dev.yeedev.com/ws/test_token"]
+
+    await manager.async_stop()
+
+
+@pytest.mark.asyncio
+async def test_live_runtime_falls_back_to_private_test_push_host(
+    hass: HomeAssistant,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """api-test.yeedev.com currently uses the separate ws-test push endpoint."""
+    entry = _make_live_entry()
+    entry.data[CONF_CONNECTION_MODE] = CONNECTION_MODE_PRIVATE
+    entry.data[CONF_PRIVATE_DOMAIN] = "http://api-test.yeedev.com"
+    entry.data[CONF_PRIVATE_PUSH_DOMAIN] = ""
+    websocket = OpenFakeWebSocket()
+    session = FakeSession(websocket)
+    monkeypatch.setattr(
+        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
+        lambda _hass: session,
+    )
+
+    manager = await async_start_live_runtime(hass, entry, AsyncMock())
+
+    assert manager is not None
+    assert session.connected_urls == ["ws://ws-test.yeedev.com/ws/test_token"]
+
+    await manager.async_stop()
 
 
 @pytest.mark.asyncio
@@ -80,6 +219,8 @@ async def test_live_runtime_starts_websocket_transport_when_enabled(
         "stopped_count": 0,
         "handled_payloads": 0,
         "last_error_type": None,
+        "last_payload_type": None,
+        "last_payload_at": None,
     }
     assert session.connected_urls == ["wss://push.yeelight.com/ws/test_token"]
     assert websocket.sent_json[0]["method"] == "subscribe"
@@ -114,6 +255,8 @@ async def test_live_runtime_recovers_after_initial_websocket_connect_failure(
         "stopped_count": 0,
         "handled_payloads": 0,
         "last_error_type": "OSError",
+        "last_payload_type": None,
+        "last_payload_at": None,
     }
 
     await manager.async_stop()

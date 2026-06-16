@@ -124,6 +124,33 @@ async def test_analytics_coordinator_first_refresh_reports_unavailable(hass) -> 
 
 
 @pytest.mark.asyncio
+async def test_analytics_coordinator_keeps_partial_snapshot_when_endpoint_fails(
+    hass,
+) -> None:
+    """单个可选 analytics endpoint 失败时，不应拖垮其它已成功的统计。"""
+    client = AsyncMock(spec=YeelightProClient)
+    client.get_alarm_analysis.return_value = {
+        "data": {"statInfo": {"alarmNum": "3"}}
+    }
+    client.get_alarm_top.side_effect = ConnectionError("optional endpoint unavailable")
+    client.get_alarm_trend.return_value = {"data": []}
+    client.get_energy_analysis.return_value = {"data": {"used": {"usedCnt": 12.5}}}
+    client.get_energy_trend.return_value = {"data": []}
+    client.get_daily_user_actions.return_value = {"data": {"summary": {"pOnNum": 1}}}
+    client.get_monthly_user_actions.return_value = {"data": {}}
+    client.get_yearly_user_actions.return_value = {"data": {}}
+    coordinator = YeelightProAnalyticsCoordinator(hass, client, 12345)
+
+    await coordinator.async_config_entry_first_refresh()
+
+    assert coordinator.data is not None
+    assert coordinator.data.alarm_analysis["statInfo"]["alarmNum"] == "3"
+    assert coordinator.data.energy_analysis["used"]["usedCnt"] == 12.5
+    assert coordinator.data.alarm_top == []
+    assert coordinator.data.endpoint_errors == {"alarm_top": "ConnectionError"}
+
+
+@pytest.mark.asyncio
 async def test_analytics_soft_initial_refresh_does_not_raise(hass, caplog) -> None:
     """Setup 阶段 analytics 可选端点不可用时应软降级而不是抛错。"""
     client = AsyncMock(spec=YeelightProClient)
@@ -162,7 +189,17 @@ async def test_analytics_coordinator_keeps_last_snapshot_on_soft_failure(hass) -
 
     await coordinator.async_config_entry_first_refresh()
     first_snapshot = coordinator.data
-    client.get_alarm_analysis.side_effect = ConnectionError("temporary")
+    for method_name in (
+        "get_alarm_analysis",
+        "get_alarm_top",
+        "get_alarm_trend",
+        "get_energy_analysis",
+        "get_energy_trend",
+        "get_daily_user_actions",
+        "get_monthly_user_actions",
+        "get_yearly_user_actions",
+    ):
+        getattr(client, method_name).side_effect = ConnectionError("temporary")
 
     await coordinator.async_refresh()
 

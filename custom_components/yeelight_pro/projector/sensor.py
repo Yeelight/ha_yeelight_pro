@@ -25,6 +25,7 @@ from .common import (
     payload_available,
 )
 from .device import project_payload_device_info
+from .platform_evidence import component_has_climate_evidence
 from .sensor_helpers import (
     device_payload_category,
     device_payload_id,
@@ -137,6 +138,14 @@ def project_sensors(
         )
         scoped = component is not None and occurrence_counts.get(key, 0) > 1
         component_id = _scoped_component_id(spec.component_id, component, scoped=scoped)
+        if _is_climate_main_sensor_property(key, component, schema_component):
+            _log_sensor_skip(
+                device_payload,
+                prop_id=key,
+                component=component,
+                reason="owned_by_climate_main_entity",
+            )
+            continue
         projections.append(
             HASensorProjection(
                 component_id=component_id,
@@ -184,6 +193,9 @@ def _sensor_property_occurrences(
                 {prop.prop_id: None for prop in schema_component.properties}
             )
         for key in sensor_spec_keys_for_instance(None, None, component_keys):
+            if _is_climate_main_sensor_property(key, component, schema_component):
+                seen.add((component.component_id, key))
+                continue
             seen.add((component.component_id, key))
             value = component_property_value(params, instance, component, key)
             occurrences.append(
@@ -209,6 +221,19 @@ def _sensor_occurrence_value(
     if "online" in device_payload:
         return device_payload.get("online")
     return None if instance is None else instance.online
+
+
+def _is_climate_main_sensor_property(
+    key: str,
+    component: ComponentInstanceModel | None,
+    schema_component: ComponentModel | None,
+) -> bool:
+    """Skip telemetry already represented by a climate main entity."""
+    if component is None:
+        return False
+    if not component_has_climate_evidence(component, schema_component):
+        return False
+    return key in {"acf", "acm", "acp", "actt", "acct", "o"}
 
 
 def _product_component_map(

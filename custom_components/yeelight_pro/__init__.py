@@ -193,6 +193,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "client": client,
         "coordinator": coordinator,
         "entry": entry,
+        "entry_data": dict(entry_data),
         "platforms": platforms,
         "analytics_coordinator": analytics_coordinator,
     }

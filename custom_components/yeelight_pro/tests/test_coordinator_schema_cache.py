@@ -103,7 +103,7 @@ async def test_runtime_overrides_update_schema_aware_canonical_state(
     data = await coordinator._async_update_data()
     device = data[1]
 
-    assert device["params"] == {"p": True, "l": 80}
+    assert device["params"] == {"o": True, "p": True, "l": 80}
     assert device["ha_device_instance"]["components"][0]["state"] == {
         "p": True,
         "l": 80,

@@ -43,6 +43,7 @@ ANALYTICS_SENSOR_DESCRIPTIONS: tuple[AnalyticsSensorDescription, ...] = (
             "stat_info": snapshot.alarm_analysis.get("statInfo"),
             "device_info": snapshot.alarm_analysis.get("deviceInfo"),
             "trend": _sanitized_points(snapshot.alarm_trend),
+            "endpoint_errors": snapshot.endpoint_errors,
         },
     ),
     AnalyticsSensorDescription(
@@ -53,6 +54,7 @@ ANALYTICS_SENSOR_DESCRIPTIONS: tuple[AnalyticsSensorDescription, ...] = (
         attributes=lambda snapshot: {
             "date_code": snapshot.date_code,
             "top_devices": _sanitized_points(snapshot.alarm_top),
+            "endpoint_errors": snapshot.endpoint_errors,
         },
     ),
     AnalyticsSensorDescription(
@@ -69,6 +71,7 @@ ANALYTICS_SENSOR_DESCRIPTIONS: tuple[AnalyticsSensorDescription, ...] = (
             "carbon_emission_saved": snapshot.energy_analysis.get("carbonEmissionSaved"),
             "saved_rate": snapshot.energy_analysis.get("savedRate"),
             "trend": _sanitized_points(snapshot.energy_trend),
+            "endpoint_errors": snapshot.endpoint_errors,
         },
         device_class=SensorDeviceClass.ENERGY,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
@@ -84,6 +87,7 @@ ANALYTICS_SENSOR_DESCRIPTIONS: tuple[AnalyticsSensorDescription, ...] = (
             "details": _sanitized_points(_list_value(snapshot.user_actions.get("details"))),
             "monthly": _sanitized_action_stats(snapshot.monthly_user_actions),
             "yearly": _sanitized_action_stats(snapshot.yearly_user_actions),
+            "endpoint_errors": snapshot.endpoint_errors,
         },
     ),
 )

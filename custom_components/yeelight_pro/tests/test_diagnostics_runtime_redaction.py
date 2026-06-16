@@ -10,6 +10,7 @@ import pytest
 from homeassistant.core import HomeAssistant
 
 from custom_components.yeelight_pro.const import DOMAIN
+from custom_components.yeelight_pro.core.analytics_coordinator import AnalyticsSnapshot
 from custom_components.yeelight_pro.diagnostics import async_get_config_entry_diagnostics
 from custom_components.yeelight_pro.entry_setup import OptionalRuntimeStartupFailure
 from .diagnostics_helpers import (
@@ -143,9 +144,54 @@ async def test_diagnostics_reports_analytics_soft_failure_without_details(
         "last_update_success": False,
         "last_exception_type": "UpdateFailed",
         "has_snapshot": False,
+        "endpoint_errors": {},
     }
     dumped = json.dumps(data, ensure_ascii=False)
     assert "UpdateFailed" in dumped
+    assert "api.yeelight.com/apis/iot/house/429392" not in dumped
+    assert "token-secret" not in dumped
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_reports_analytics_endpoint_errors_without_details(
+    hass: HomeAssistant,
+    diagnostics_entry: MagicMock,
+) -> None:
+    """analytics 部分失败时只暴露 endpoint 和错误类型，不导出原始响应."""
+    coordinator = build_empty_diagnostics_coordinator()
+    analytics_coordinator = MagicMock()
+    analytics_coordinator.last_update_success = True
+    analytics_coordinator.last_exception = None
+    analytics_coordinator.data = AnalyticsSnapshot(
+        date_code="2024-08",
+        day_code="2024-08-08",
+        trend_start_date="2024-08-02",
+        trend_end_date="2024-08-08",
+        endpoint_errors={
+            "alarm_trend": "ConnectionError",
+            "energy_trend": "InvalidResponse",
+        },
+    )
+    install_runtime_entry(hass, diagnostics_entry, coordinator, platforms=["sensor"])
+    hass.data[DOMAIN][diagnostics_entry.entry_id]["analytics_coordinator"] = (
+        analytics_coordinator
+    )
+
+    data = await async_get_config_entry_diagnostics(hass, diagnostics_entry)
+
+    assert data["runtime"]["analytics"] == {
+        "enabled": True,
+        "last_update_success": True,
+        "last_exception_type": None,
+        "has_snapshot": True,
+        "endpoint_errors": {
+            "alarm_trend": "ConnectionError",
+            "energy_trend": "InvalidResponse",
+        },
+    }
+    dumped = json.dumps(data, ensure_ascii=False)
+    assert "alarm_trend" in dumped
+    assert "energy_trend" in dumped
     assert "api.yeelight.com/apis/iot/house/429392" not in dumped
     assert "token-secret" not in dumped
 

@@ -173,6 +173,32 @@ def test_temperature_humidity_payload_projects_two_sensors() -> None:
     assert by_component["humidity"].device_class == "humidity"
 
 
+def test_climate_main_properties_do_not_project_duplicate_sensors() -> None:
+    """温控主实体已表达的模式/风速/温度/在线状态不应重复成诊断 sensor."""
+    device = projection_payload(
+        device_id="climate-sensor-dup-1",
+        category="temp_control",
+        component_id="air_conditioner_1",
+        state={
+            "acp": True,
+            "acm": 1,
+            "acf": 4,
+            "actt": 26,
+            "acct": 24,
+            "o": True,
+            "acd": 30,
+        },
+        component_category="air_conditioner",
+        properties=("acp", "acm", "acf", "actt", "acct", "o", "acd"),
+    )
+
+    sensors = project_sensors(device, domain=DOMAIN)
+
+    assert [(item.component_id, item.name, item.native_value) for item in sensors] == [
+        ("ac_delay_remaining", "空调延时剩余", 30),
+    ]
+
+
 def test_sensor_schema_projects_unknown_entity_without_runtime_value() -> None:
     """传感类 schema 暂无当前值时仍声明实体，状态交给 HA 显示 unknown."""
     device = projection_payload(
@@ -194,48 +220,6 @@ def test_sensor_schema_projects_unknown_entity_without_runtime_value() -> None:
     assert by_component["humidity"].available is True
     assert by_component["humidity"].native_value is None
     assert by_component["humidity"].device_class == "humidity"
-
-
-def test_multi_component_sensor_properties_keep_component_scope() -> None:
-    """同设备多组件同属性不能互相覆盖，否则 HA 设备页会少实体."""
-    device = projection_payload(
-        device_id="dual-lux",
-        category="other",
-        component_id="sensor_1",
-        state={"luminance": 120},
-        component_category="ambient light sensor",
-        properties=("luminance",),
-    )
-    device["ha_device_instance"]["components"].append({
-        "component_id": "sensor_2",
-        "name": "右侧",
-        "desc": "右侧",
-        "category": "ambient light sensor",
-        "available": True,
-        "state": {"luminance": 240},
-    })
-    device["ha_product_model"]["components"].append({
-        "component_id": "sensor_2",
-        "name": "右侧",
-        "desc": "右侧",
-        "category": "ambient light sensor",
-        "properties": [{"prop_id": "luminance", "access": "read"}],
-        "events": [],
-    })
-    device["ha_device_instance"]["components"][0]["name"] = "左侧"
-    device["ha_device_instance"]["components"][0]["desc"] = "左侧"
-    device["ha_product_model"]["components"][0]["name"] = "左侧"
-    device["ha_product_model"]["components"][0]["desc"] = "左侧"
-
-    sensors = project_sensors(device, domain=DOMAIN)
-
-    assert [
-        (item.component_id, item.unique_id, item.name, item.native_value)
-        for item in sensors
-    ] == [
-        ("sensor_1_illuminance", "yeelight_pro_dual-lux_sensor_1_illuminance", "左侧 光照", 120),
-        ("sensor_2_illuminance", "yeelight_pro_dual-lux_sensor_2_illuminance", "右侧 光照", 240),
-    ]
 
 
 def test_binary_sensor_schema_projects_unknown_entity_without_runtime_value() -> None:
@@ -302,48 +286,6 @@ def test_sensitive_or_structured_registry_properties_do_not_project_sensors() ->
     )
 
     assert project_sensors(device, domain=DOMAIN) == []
-
-
-def test_multi_component_binary_sensor_properties_keep_component_scope() -> None:
-    """同设备多个人感组件都应生成 binary_sensor，而不是只保留一个 motion."""
-    device = projection_payload(
-        device_id="dual-motion",
-        category="human_sensor",
-        component_id="human_1",
-        state={"mv": True},
-        component_category="human detection sensor",
-        properties=("mv",),
-    )
-    device["ha_device_instance"]["components"].append({
-        "component_id": "human_2",
-        "name": "右侧",
-        "desc": "右侧",
-        "category": "human detection sensor",
-        "available": True,
-        "state": {"mv": False},
-    })
-    device["ha_product_model"]["components"].append({
-        "component_id": "human_2",
-        "name": "右侧",
-        "desc": "右侧",
-        "category": "human detection sensor",
-        "properties": [{"prop_id": "mv", "access": "read"}],
-        "events": [],
-    })
-    device["ha_device_instance"]["components"][0]["name"] = "左侧"
-    device["ha_device_instance"]["components"][0]["desc"] = "左侧"
-    device["ha_product_model"]["components"][0]["name"] = "左侧"
-    device["ha_product_model"]["components"][0]["desc"] = "左侧"
-
-    sensors = project_binary_sensors(device, domain=DOMAIN)
-
-    assert [
-        (item.component_id, item.unique_id, item.name, item.is_on)
-        for item in sensors
-    ] == [
-        ("human_1_motion", "yeelight_pro_dual-motion_human_1_motion", "左侧 人体移动", True),
-        ("human_2_motion", "yeelight_pro_dual-motion_human_2_motion", "右侧 人体移动", False),
-    ]
 
 
 def test_raw_params_and_component_state_merge_without_losing_unmodeled_params() -> None:

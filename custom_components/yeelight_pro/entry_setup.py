@@ -83,6 +83,7 @@ async def async_setup_lan_entry(
         "client": None,
         "coordinator": coordinator,
         "entry": entry,
+        "entry_data": dict(entry_data),
         "platforms": platforms,
     }
     hass.data[DOMAIN][entry.entry_id] = runtime_data

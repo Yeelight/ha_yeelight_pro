@@ -83,6 +83,23 @@ async def test_push_transport_connects_subscribes_and_dispatches_json_objects() 
 
 
 @pytest.mark.asyncio
+async def test_push_transport_uses_private_base_url_override() -> None:
+    """私有部署 transport 应连接派生出的私有 WebSocket endpoint."""
+    websocket = OpenFakeWebSocket()
+    session = FakeSession(websocket)
+    transport = YeelightPushWebSocketTransport(
+        session=session,
+        token="fake-token",
+        base_url="wss://private.example/ws",
+    )
+
+    await transport.async_start(AsyncMock())
+    await transport.async_stop()
+
+    assert session.connected_urls == ["wss://private.example/ws/fake-token"]
+
+
+@pytest.mark.asyncio
 async def test_push_transport_sends_heartbeat_until_stopped() -> None:
     """transport 订阅后按文档间隔发送 heartbeat，stop 后取消心跳任务."""
     sleep = ControlledSleep()

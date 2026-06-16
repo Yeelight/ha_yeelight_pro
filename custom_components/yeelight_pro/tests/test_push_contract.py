@@ -55,9 +55,17 @@ def test_build_push_url_uses_custom_base_url_without_trailing_slash() -> None:
     ],
 )
 def test_build_push_url_rejects_non_websocket_event_endpoints(base_url: str) -> None:
-    """易来事件通知只有 WebSocket，push endpoint 必须是 wss://。"""
-    with pytest.raises(ValueError, match="require a wss:// URL"):
+    """易来事件通知只有 WebSocket，push endpoint 必须是 ws:// 或 wss://。"""
+    with pytest.raises(ValueError, match="require a WebSocket URL"):
         build_push_url("fake-token", base_url=base_url)
+
+
+def test_build_push_url_accepts_private_http_websocket_endpoint() -> None:
+    """私有部署开发环境可能是 http 根 URL，对应 ws:// push endpoint."""
+    assert (
+        build_push_url("fake-token", base_url="ws://private.example/ws")
+        == "ws://private.example/ws/fake-token"
+    )
 
 
 @pytest.mark.parametrize("token", ["", "   ", "Bearer", "Bearer   "])

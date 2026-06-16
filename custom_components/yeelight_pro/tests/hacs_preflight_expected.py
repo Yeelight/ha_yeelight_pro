@@ -1,7 +1,5 @@
 """Expected release files for HACS preflight contract tests."""
-
 from __future__ import annotations
-
 EXPECTED_SCRIPT_FILES = {
     "docs/IOT_SPEC_REGISTRY.md",
     "docs/GOAL_COMPLETION_AUDIT.md",
@@ -31,6 +29,7 @@ EXPECTED_SCRIPT_FILES = {
     "scripts/hacs_preflight_manual_tests.py",
     "scripts/hacs_preflight_local_ha_runtime_capability_sources.py",
     "scripts/hacs_preflight_local_ha_runtime_core_tests.py",
+    "scripts/hacs_preflight_local_ha_runtime_source_tokens.py",
     "scripts/hacs_preflight_local_ha_runtime_sources.py",
     "scripts/hacs_preflight_local_ha_runtime_tests.py",
     "scripts/hacs_preflight_local_ha_runtime_verifier_sources.py",
@@ -156,6 +155,7 @@ EXPECTED_COMPONENT_FILES = {
     "entity_device_id.py",
     "entity_lifecycle_cleanup.py",
     "entity_lifecycle_entity_id.py",
+    "entity_lifecycle_metadata.py",
     "entry_setup.py",
     "event_identity.py",
     "ha_device_registry.py",
@@ -240,6 +240,7 @@ EXPECTED_TEST_FILES = {
     "test_cover_multi_component_projection.py",
     "test_debug_service.py",
     "test_device_display.py",
+    "test_device_display_channels.py",
     "test_device_filter_runtime.py",
     "test_device_payload_empty_values.py",
     "test_device_payload_firmware_metadata.py",
@@ -263,10 +264,12 @@ EXPECTED_TEST_FILES = {
     "test_entity_lifecycle.py",
     "test_entity_lifecycle_reconcile.py",
     "test_entity_lifecycle_reconcile_display.py",
+    "test_entity_lifecycle_reconcile_display_entity_id.py",
     "test_entity_lifecycle_reconcile_entity_id.py",
     "test_entity_lifecycle_reconcile_metadata.py",
     "test_entity_lifecycle_reconcile_property_entity_id.py",
     "test_entry_migration.py",
+    "test_entry_migration_private_push.py",
     "test_entry_options_migration.py",
     "test_group_number_controls.py",
     "test_ha_device_registry.py",
@@ -307,6 +310,7 @@ EXPECTED_TEST_FILES = {
     "test_live_runtime.py",
     "test_node_light.py",
     "test_oauth_refresh.py",
+    "test_oauth_refresh_client_retry.py",
     "test_openapi_broad_category_projection.py",
     "test_openapi_broad_schema_conflicts.py",
     "test_openapi_component_category_conflicts.py",
@@ -315,6 +319,7 @@ EXPECTED_TEST_FILES = {
     "test_openapi_top_level_properties_projection.py",
     "test_options_flow_contract.py",
     "test_options_flow_device_picker.py",
+    "test_options_flow_private_push.py",
     "test_p0_client_contracts.py",
     "test_p0_control_auth.py",
     "test_platform_mapping_contract.py",
@@ -328,10 +333,14 @@ EXPECTED_TEST_FILES = {
     "test_projection_entity_categories.py",
     "test_projection_event_topology.py",
     "test_projection_matrix.py",
+    "test_projection_multi_component_sensors.py",
     "test_projection_scaled_state.py",
     "test_projection_state_sensors.py",
+    "test_projection_switch_channels.py",
+    "test_projection_unknown_boundaries.py",
     "test_projector_skip_logging.py",
     "test_property_control_entities.py",
+    "test_property_control_bool_projection.py",
     "test_property_control_projection.py",
     "test_property_control_projection_boundaries.py",
     "test_property_control_registry_extensions.py",
@@ -385,14 +394,6 @@ EXPECTED_TEST_FILES = {
     "test_verify_push_websocket.py",
     "test_verify_scan_login.py",
 }
-EXPECTED_RELEASE_FILES = (
-    EXPECTED_SCRIPT_FILES
-    | {
-        f"custom_components/yeelight_pro/{path}"
-        for path in EXPECTED_COMPONENT_FILES
-    }
-    | {
-        f"custom_components/yeelight_pro/tests/{path}"
-        for path in EXPECTED_TEST_FILES
-    }
-)
+EXPECTED_RELEASE_FILES = EXPECTED_SCRIPT_FILES | {
+    f"custom_components/yeelight_pro/{path}" for path in EXPECTED_COMPONENT_FILES
+} | {f"custom_components/yeelight_pro/tests/{path}" for path in EXPECTED_TEST_FILES}

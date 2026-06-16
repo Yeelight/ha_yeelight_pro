@@ -147,8 +147,8 @@ def _normalize_push_token(token: str) -> str:
 def _normalize_push_base_url(base_url: str) -> str:
     """Reject non-WebSocket endpoints for Yeelight event notifications."""
     raw_base_url = str(base_url).strip().rstrip("/")
-    if not raw_base_url.casefold().startswith("wss://"):
-        raise ValueError("Yeelight Pro event notifications require a wss:// URL")
+    if not raw_base_url.casefold().startswith(("wss://", "ws://")):
+        raise ValueError("Yeelight Pro event notifications require a WebSocket URL")
     return raw_base_url
 
 

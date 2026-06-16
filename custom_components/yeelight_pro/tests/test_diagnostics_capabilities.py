@@ -168,6 +168,8 @@ async def test_diagnostics_does_not_treat_stopped_push_manager_as_live_runtime(
         "started_count": 1,
         "stopped_count": 1,
         "handled_payloads": 0,
+        "last_payload_type": None,
+        "last_payload_at": None,
         "last_error_type": None,
     }
     assert capabilities["websocket_transport_runtime"] is False
@@ -198,6 +200,8 @@ async def test_diagnostics_does_not_treat_failed_stop_push_manager_as_live_runti
         "started_count": 1,
         "stopped_count": 0,
         "handled_payloads": 0,
+        "last_payload_type": None,
+        "last_payload_at": None,
         "last_error_type": "OSError",
     }
     assert capabilities["websocket_transport_runtime"] is False

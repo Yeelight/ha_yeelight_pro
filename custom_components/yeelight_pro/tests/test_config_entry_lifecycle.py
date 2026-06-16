@@ -89,7 +89,7 @@ async def test_setup_entry_normalizes_legacy_cloud_entry(
         "accessToken": "legacy-token",
         "houseId": "429392",
     }
-    entry.options = {}
+    entry.options = {CONF_LIVE_UPDATES: False}
     entry.async_on_unload = MagicMock()
     entry.add_update_listener = MagicMock(return_value=MagicMock())
     register_config_entry(hass, entry)
@@ -201,7 +201,7 @@ async def test_setup_entry_normalizes_legacy_open_api_client_id_alias(
         "cloud_domain": "api.yeelight.com",
         "clientId": "client-from-alias",
     }
-    entry.options = {}
+    entry.options = {CONF_LIVE_UPDATES: False}
     entry.async_on_unload = MagicMock()
     entry.add_update_listener = MagicMock(return_value=MagicMock())
     register_config_entry(hass, entry)
@@ -283,7 +283,10 @@ async def test_setup_entry_respects_disabled_topology_repairs_option(
 ) -> None:
     """Disabled topology Repairs should still allow registry maintenance."""
     hass.data.setdefault(DOMAIN, {})
-    mock_config_entry.options = {CONF_TOPOLOGY_CHANGE_REPAIRS: False}
+    mock_config_entry.options = {
+        CONF_LIVE_UPDATES: False,
+        CONF_TOPOLOGY_CHANGE_REPAIRS: False,
+    }
 
     with patch(
         "custom_components.yeelight_pro.YeelightProClient",

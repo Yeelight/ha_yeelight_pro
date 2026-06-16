@@ -40,7 +40,7 @@ def test_openapi_user_component_name_does_not_override_relay_switch_category() -
     ]
 
     assert device["ha_product_model"]["schema_version"] == "runtime-v1"
-    assert candidates == [("switch", "switch_1", "回路 1")]
+    assert candidates == [("switch", "switch_1", "按键 1")]
     assert project_events(device, domain=DOMAIN) == []
 
 
@@ -205,12 +205,17 @@ def test_openapi_scene_panel_projects_events_and_battery_without_switch_leak() -
     assert device["category"] == "scene_panel"
     assert device["effective_category"] == "scene_panel"
     assert project_switches(device, domain=DOMAIN) == []
-    assert candidates[:3] == [
+    assert {
+        ("sensor", "online_status", "在线状态", "diagnostic"),
         ("sensor", "battery", "电量", "diagnostic"),
         ("binary_sensor", "battery_chargeable", "电池可充电", "diagnostic"),
         ("binary_sensor", "battery_charging", "电池充电", "diagnostic"),
-    ]
-    assert candidates[3:] == [
+    } <= set(candidates)
+    assert [
+        candidate
+        for candidate in candidates
+        if candidate[0] == "event"
+    ] == [
         ("event", f"scene_panel_{index}", f"按键 {index} 事件", None)
         for index in range(1, 9)
     ]

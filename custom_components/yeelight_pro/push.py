@@ -119,16 +119,16 @@ def _node_params(node: Mapping[str, Any]) -> Mapping[str, Any] | None:
     """Return property params from documented and read-property result shapes."""
     params = node.get("params")
     if isinstance(params, Mapping):
-        normalized = dict(params)
-        if "o" not in normalized and "o" in node:
-            normalized["o"] = node.get("o")
-        return normalized
+        param_values = dict(params)
+        if "o" not in param_values and "o" in node:
+            param_values["o"] = node.get("o")
+        return param_values
     properties = node.get("properties") or node.get("props")
     if isinstance(properties, list):
-        normalized = _params_from_properties(properties)
-        if normalized is not None and "o" not in normalized and "o" in node:
-            normalized["o"] = node.get("o")
-        return normalized
+        property_values = _params_from_properties(properties)
+        if property_values is not None and "o" not in property_values and "o" in node:
+            property_values["o"] = node.get("o")
+        return property_values
     prop_id = node.get("propId") or node.get("propName")
     if prop_id not in (None, "") and "value" in node:
         return {str(prop_id): node.get("value")}

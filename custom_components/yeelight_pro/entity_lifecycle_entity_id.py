@@ -12,6 +12,14 @@ from .const import DOMAIN
 from .entity_candidates import EntityCandidate
 
 _HELPER_ENTITY_TAILS = frozenset({"number", "select", "switch"})
+_LEGACY_GENERATED_COMPONENT_SLUGS = frozenset(
+    {
+        "kai_guan_deng",
+        "kai_guan_zu_jian",
+        "liang_du_deng",
+        "se_wen_deng",
+    }
+)
 
 
 def safe_entity_id_migration(
@@ -87,6 +95,8 @@ def _can_migrate_entity_id(
         return True
     if _has_legacy_property_marker(registry_entry, candidate):
         return True
+    if _has_legacy_generated_component_slug(registry_entry, candidate):
+        return True
     return f"{DOMAIN}_{DOMAIN}_" in object_id
 
 
@@ -148,6 +158,25 @@ def _has_legacy_property_marker(
         if normalized and any(marker in normalized for marker in markers):
             return True
     return False
+
+
+def _has_legacy_generated_component_slug(
+    registry_entry: er.RegistryEntry,
+    candidate: EntityCandidate,
+) -> bool:
+    """Return true for old entity ids based on generic component labels."""
+    if not candidate.suggested_object_id:
+        return False
+    entity_id = getattr(registry_entry, "entity_id", None)
+    if not isinstance(entity_id, str) or "." not in entity_id:
+        return False
+    object_id = entity_id.split(".", 1)[1]
+    suggested = candidate.suggested_object_id.strip().lower()
+    if not suggested or object_id == suggested:
+        return False
+    return any(
+        f"_{slug}" in f"_{object_id}_" for slug in _LEGACY_GENERATED_COMPONENT_SLUGS
+    )
 
 
 def _property_from_helper_unique_id(unique_id: object) -> tuple[str, str] | None:

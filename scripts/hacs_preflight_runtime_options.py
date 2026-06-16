@@ -109,6 +109,9 @@ def check_runtime_options_contract_tests(component_root: Path) -> list[str]:
     options_flow_picker_test = (
         component_root / "tests" / "test_options_flow_device_picker.py"
     )
+    options_flow_private_push_test = (
+        component_root / "tests" / "test_options_flow_private_push.py"
+    )
     debug_service = component_root / "debug_service.py"
     debug_service_test = component_root / "tests" / "test_debug_service.py"
     if not runtime_options.exists():
@@ -125,6 +128,11 @@ def check_runtime_options_contract_tests(component_root: Path) -> list[str]:
     if not options_flow_picker_test.exists():
         errors.append(
             "runtime options require tests/test_options_flow_device_picker.py"
+        )
+        return errors
+    if not options_flow_private_push_test.exists():
+        errors.append(
+            "runtime options require tests/test_options_flow_private_push.py"
         )
         return errors
     if not debug_service.exists():
@@ -144,6 +152,7 @@ def check_runtime_options_contract_tests(component_root: Path) -> list[str]:
             "CONF_LOCAL_GATEWAY_CONTROL": "reload on local gateway runtime toggle",
             "CONF_LOCAL_GATEWAY_HOST": "reload on local gateway host changes",
             "CONF_LOCAL_GATEWAY_PORT": "reload on local gateway port changes",
+            "entry_data_requires_reload": "reload on private push endpoint data changes",
             "apply_options": "runtime-only options apply without reload",
             "async_delete_topology_changed_issues": "clears disabled Repairs issues",
             "async_reload": "falls back to Home Assistant entry reload",
@@ -164,6 +173,7 @@ def check_runtime_options_contract_tests(component_root: Path) -> list[str]:
             "local_gateway_control": "local gateway runtime toggle reload case",
             "local_gateway_host": "local gateway host reload case",
             "local_gateway_port": "local gateway port reload case",
+            "private_push_entry_data": "private push endpoint data reload case",
         },
         "test_runtime_options.py",
     ))
@@ -180,6 +190,18 @@ def check_runtime_options_contract_tests(component_root: Path) -> list[str]:
             "confirm_reload": "reload confirmation step is asserted",
         },
         "test_options_flow_contract.py",
+    ))
+    errors.extend(_missing_tokens(
+        options_flow_private_push_test.read_text(encoding="utf-8"),
+        {
+            "test_options_flow_private_entry_shows_push_url": (
+                "private entries expose push endpoint maintenance"
+            ),
+            "CONF_PRIVATE_PUSH_DOMAIN": "private push endpoint field is tested",
+            "async_update_entry": "options flow updates config-entry data",
+            "ws://ws-test.yeedev.com/ws": "test deployment WebSocket normalization",
+        },
+        "test_options_flow_private_push.py",
     ))
     errors.extend(_missing_tokens(
         options_flow_picker_test.read_text(encoding="utf-8"),

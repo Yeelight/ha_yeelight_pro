@@ -12,6 +12,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.yeelight_pro.const import (
     CONF_CONNECTION_MODE,
     CONF_HOUSE_ID,
+    CONF_LIVE_UPDATES,
     CONF_OPEN_API_CLIENT_ID,
     CONNECTION_MODE_CLOUD,
     DOMAIN,
@@ -32,7 +33,7 @@ def make_config_entry() -> MagicMock:
         CONF_OPEN_API_CLIENT_ID: "client-1",
         "cloud_domain": "api.yeelight.com",
     }
-    entry.options = {}
+    entry.options = {CONF_LIVE_UPDATES: False}
     return entry
 
 

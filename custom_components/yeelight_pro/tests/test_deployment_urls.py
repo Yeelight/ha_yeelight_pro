@@ -4,6 +4,7 @@ from __future__ import annotations
 from custom_components.yeelight_pro.deployment_urls import (
     deployment_account_base_url,
     deployment_iot_base_url,
+    deployment_push_base_url,
     deployment_root_url,
 )
 
@@ -35,4 +36,36 @@ def test_deployment_api_base_urls_are_derived_from_root() -> None:
     assert (
         deployment_account_base_url("https://private.example/apis/iot")
         == "https://private.example/apis/account"
+    )
+
+
+def test_deployment_push_base_url_is_derived_from_root() -> None:
+    """私有部署 WebSocket push endpoint 应规范化为 ws path."""
+    assert (
+        deployment_push_base_url("ws-dev.yeedev.com")
+        == "wss://ws-dev.yeedev.com/ws"
+    )
+    assert (
+        deployment_push_base_url("https://ws-dev.yeedev.com")
+        == "wss://ws-dev.yeedev.com/ws"
+    )
+    assert (
+        deployment_push_base_url("wss://ws-dev.yeedev.com/ws")
+        == "wss://ws-dev.yeedev.com/ws"
+    )
+    assert (
+        deployment_push_base_url("http://ws-dev.yeedev.com/apis/iot")
+        == "ws://ws-dev.yeedev.com/ws"
+    )
+
+
+def test_deployment_push_base_url_uses_known_private_test_host() -> None:
+    """Current private test API host uses a separate ws-test push endpoint."""
+    assert (
+        deployment_push_base_url("api-test.yeedev.com")
+        == "ws://ws-test.yeedev.com/ws"
+    )
+    assert (
+        deployment_push_base_url("http://api-test.yeedev.com/apis/iot")
+        == "ws://ws-test.yeedev.com/ws"
     )

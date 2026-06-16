@@ -23,6 +23,7 @@ REQUIRED_CONFIG_ENTRY_DATA_KEYS = {
     "house_id",
     "house_name",
     "private_domain",
+    "private_push_domain",
 }
 OPTIONAL_CONFIG_ENTRY_DATA_KEYS = {
     "account_user_id",

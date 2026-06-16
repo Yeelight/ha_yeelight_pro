@@ -14,6 +14,7 @@ from .const import (
     CONF_LOCAL_GATEWAY_CONTROL,
     CONF_LOCAL_GATEWAY_HOST,
     CONF_LOCAL_GATEWAY_PORT,
+    CONF_PRIVATE_PUSH_DOMAIN,
     CONF_SCAN_INTERVAL,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
     CONNECTION_MODE_CLOUD,
@@ -34,6 +35,7 @@ from .device_filter_options import (
     build_filter_config,
     filter_dimension_schema,
 )
+from .deployment_urls import deployment_push_base_url
 from .entry_migration import normalize_entry_options
 
 _BASE_OPTION_FORM_KEYS = (
@@ -53,6 +55,7 @@ _OPTION_FORM_KEYS = (
     *_CLOUD_OPTION_FORM_KEYS,
     *_LAN_OPTION_FORM_KEYS,
 )
+_PRIVATE_ENTRY_DATA_FORM_KEYS = (CONF_PRIVATE_PUSH_DOMAIN,)
 
 
 def entry_options(entry: object) -> dict[str, Any]:
@@ -100,6 +103,11 @@ def options_schema(options: Mapping[str, Any], entry: object | None = None) -> v
             CONF_LIVE_UPDATES,
             default=normalized.get(CONF_LIVE_UPDATES, DEFAULT_LIVE_UPDATES),
         )] = bool
+        if connection_mode == CONNECTION_MODE_PRIVATE:
+            fields[vol.Optional(
+                CONF_PRIVATE_PUSH_DOMAIN,
+                default=_entry_private_push_domain(entry),
+            )] = str
 
     if connection_mode == CONNECTION_MODE_LAN:
         # 局域网模式才暴露本地网关运行时参数，避免云端 entry 出现无关配置。
@@ -159,6 +167,20 @@ def visible_option_change_count(
     return count
 
 
+def visible_entry_data_change_count(
+    current_data: Mapping[str, Any],
+    pending_data: Mapping[str, Any] | None,
+    entry: object | None = None,
+) -> int:
+    """Return visible config-entry data changes handled by options flow."""
+    if pending_data is None or _entry_connection_mode(entry) != CONNECTION_MODE_PRIVATE:
+        return 0
+    return sum(
+        str(current_data.get(key) or "") != str(pending_data.get(key) or "")
+        for key in _PRIVATE_ENTRY_DATA_FORM_KEYS
+    )
+
+
 def merge_options(
     current_options: Mapping[str, Any],
     user_input: Mapping[str, Any],
@@ -177,6 +199,22 @@ def merge_options(
     if CONF_DEVICE_IMPORT_FILTER in normalized:
         data[CONF_DEVICE_IMPORT_FILTER] = normalized[CONF_DEVICE_IMPORT_FILTER]
     return data
+
+
+def merge_private_entry_data(
+    current_data: Mapping[str, Any],
+    user_input: Mapping[str, Any],
+    entry: object | None = None,
+) -> dict[str, Any] | None:
+    """Return updated private config-entry data when private push URL changes."""
+    if _entry_connection_mode(entry) != CONNECTION_MODE_PRIVATE:
+        return None
+    normalized_push = _normalize_optional_private_push(
+        user_input.get(CONF_PRIVATE_PUSH_DOMAIN)
+    )
+    if normalized_push == str(current_data.get(CONF_PRIVATE_PUSH_DOMAIN) or ""):
+        return None
+    return {**dict(current_data), CONF_PRIVATE_PUSH_DOMAIN: normalized_push}
 
 
 def device_filter_schema_fields(
@@ -209,6 +247,18 @@ def _entry_connection_mode(entry: object | None) -> str:
         if mode in {CONNECTION_MODE_CLOUD, CONNECTION_MODE_PRIVATE, CONNECTION_MODE_LAN}:
             return str(mode)
     return CONNECTION_MODE_CLOUD
+
+
+def _entry_private_push_domain(entry: object | None) -> str:
+    data = getattr(entry, "data", None) if entry is not None else None
+    if isinstance(data, Mapping):
+        return str(data.get(CONF_PRIVATE_PUSH_DOMAIN) or "")
+    return ""
+
+
+def _normalize_optional_private_push(value: Any) -> str:
+    text = "" if value is None else str(value).strip()
+    return deployment_push_base_url(text) if text else ""
 
 
 def _option_form_keys_for_entry(entry: object | None) -> tuple[str, ...]:

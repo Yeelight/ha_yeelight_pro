@@ -64,6 +64,7 @@ REQUIRED_I18N_LEAF_PATHS: set[tuple[str, ...]] = {
         "device_import_filter_include_devices",
     ),
     ("config", "step", "private_config", "data", "private_domain"),
+    ("config", "step", "private_config", "data", "private_push_domain"),
     ("config", "step", "reauth_confirm", "data", "access_token"),
     ("options", "step", "init", "menu_options", "general"),
     ("options", "step", "init", "menu_options", "cloud_devices"),

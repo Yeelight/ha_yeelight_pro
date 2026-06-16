@@ -200,6 +200,8 @@ def _analytics_diagnostics(runtime: Mapping[str, Any]) -> dict[str, Any]:
             "last_exception_type": None,
             "has_snapshot": False,
         }
+    snapshot = getattr(coordinator, "data", None)
+    endpoint_errors = getattr(snapshot, "endpoint_errors", None)
     return {
         "enabled": True,
         "last_update_success": _safe_bool_or_none(
@@ -208,7 +210,12 @@ def _analytics_diagnostics(runtime: Mapping[str, Any]) -> dict[str, Any]:
         "last_exception_type": _exception_type_name(
             getattr(coordinator, "last_exception", None),
         ),
-        "has_snapshot": getattr(coordinator, "data", None) is not None,
+        "has_snapshot": snapshot is not None,
+        "endpoint_errors": {
+            key: value
+            for key, value in (endpoint_errors or {}).items()
+            if isinstance(key, str) and isinstance(value, str)
+        },
     }
 
 

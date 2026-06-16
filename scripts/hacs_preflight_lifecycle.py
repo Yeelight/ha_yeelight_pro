@@ -31,11 +31,17 @@ LIFECYCLE_CONTRACT_TOKENS = {
     "entity_lifecycle.py": {
         "async_reconcile_entity_registry": "entity registry reconcile hook",
         "entity_lifecycle_cleanup": "cleanup helper facade imports",
-        "entity_lifecycle_entity_id": "safe entity-id helper facade import",
+        "entity_lifecycle_metadata": "metadata helper facade import",
         "_registry_entry_disabled_by_user": "user-disabled entity preservation",
-        "_restore_active_integration_entries": "active integration-disabled entity restoration",
         "EntityRegistryReconcileSummary": "aggregate diagnostics summary",
         "collect_entity_candidate_keys": "filtered candidate lifecycle source",
+    },
+    "entity_lifecycle_metadata.py": {
+        "restore_active_integration_entries": (
+            "active integration-disabled entity restoration"
+        ),
+        "sync_active_registry_metadata": "active registry metadata sync helper",
+        "safe_entity_id_migration": "safe entity-id helper use",
     },
     "entity_lifecycle_entity_id.py": {
         "safe_entity_id_migration": "safe legacy entity-id migration helper",

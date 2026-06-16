@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import timedelta
 import logging
-from typing import Any
+from typing import Any, Callable, Awaitable
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -36,6 +36,7 @@ class AnalyticsSnapshot:
     user_actions: dict[str, Any] = field(default_factory=dict)
     monthly_user_actions: dict[str, Any] = field(default_factory=dict)
     yearly_user_actions: dict[str, Any] = field(default_factory=dict)
+    endpoint_errors: dict[str, str] = field(default_factory=dict)
 
 
 class YeelightProAnalyticsCoordinator(DataUpdateCoordinator[AnalyticsSnapshot]):
@@ -132,54 +133,18 @@ class YeelightProAnalyticsCoordinator(DataUpdateCoordinator[AnalyticsSnapshot]):
     async def _async_update_data(self) -> AnalyticsSnapshot:
         """Fetch one low-frequency analytics snapshot."""
         period = _analytics_period()
-
-        try:
-            alarm_analysis = await self.client.get_alarm_analysis(
-                self.house_id,
-                date_code=period.month_code,
-            )
-            alarm_top = await self.client.get_alarm_top(
-                self.house_id,
-                date_code=period.month_code,
-            )
-            alarm_trend = await self.client.get_alarm_trend(
-                self.house_id,
-                start_date=period.trend_start_date,
-                end_date=period.day_code,
-            )
-            energy_analysis = await self.client.get_energy_analysis(
-                self.house_id,
-                date_code=period.month_code,
-            )
-            energy_trend = await self.client.get_energy_trend(
-                self.house_id,
-                start_date=period.trend_start_date,
-                end_date=period.day_code,
-            )
-            user_actions = await self.client.get_daily_user_actions(
-                self.house_id,
-                date_code=period.day_code,
-            )
-            monthly_user_actions = await self.client.get_monthly_user_actions(
-                self.house_id,
-                date_code=period.month_code,
-            )
-            yearly_user_actions = await self.client.get_yearly_user_actions(
-                self.house_id,
-                date_code=period.year_code,
-            )
-        except AuthenticationError:
-            raise
-        except Exception as err:
+        responses, endpoint_errors = await self._fetch_endpoint_responses(period)
+        if not responses:
             if self.data is not None:
                 _LOGGER.warning(
-                    "Failed to refresh Yeelight Pro analytics, keeping last snapshot: %s",
-                    safe_error_summary(err),
+                    "Failed to refresh all Yeelight Pro analytics endpoints, "
+                    "keeping last snapshot: %s",
+                    sorted(endpoint_errors),
                 )
                 self._sync_bound_runtime_snapshot(self.data)
                 return self.data
             raise UpdateFailed(
-                f"Failed to refresh Yeelight Pro analytics: {safe_error_summary(err)}"
+                "Failed to refresh Yeelight Pro analytics: all_endpoints_failed"
             ) from None
 
         snapshot = AnalyticsSnapshot(
@@ -187,17 +152,83 @@ class YeelightProAnalyticsCoordinator(DataUpdateCoordinator[AnalyticsSnapshot]):
             day_code=period.day_code,
             trend_start_date=period.trend_start_date,
             trend_end_date=period.day_code,
-            alarm_analysis=_response_dict(alarm_analysis),
-            alarm_top=_response_list(alarm_top),
-            alarm_trend=_response_list(alarm_trend),
-            energy_analysis=_response_dict(energy_analysis),
-            energy_trend=_response_list(energy_trend),
-            user_actions=_response_dict(user_actions),
-            monthly_user_actions=_response_dict(monthly_user_actions),
-            yearly_user_actions=_response_dict(yearly_user_actions),
+            alarm_analysis=_response_dict(responses.get("alarm_analysis")),
+            alarm_top=_response_list(responses.get("alarm_top")),
+            alarm_trend=_response_list(responses.get("alarm_trend")),
+            energy_analysis=_response_dict(responses.get("energy_analysis")),
+            energy_trend=_response_list(responses.get("energy_trend")),
+            user_actions=_response_dict(responses.get("user_actions")),
+            monthly_user_actions=_response_dict(
+                responses.get("monthly_user_actions")
+            ),
+            yearly_user_actions=_response_dict(responses.get("yearly_user_actions")),
+            endpoint_errors=endpoint_errors,
         )
         self._sync_bound_runtime_snapshot(snapshot)
         return snapshot
+
+    async def _fetch_endpoint_responses(
+        self,
+        period: _AnalyticsPeriod,
+    ) -> tuple[dict[str, Any], dict[str, str]]:
+        """Fetch analytics endpoints independently so optional failures stay local."""
+        calls: dict[str, Callable[[], Awaitable[Any]]] = {
+            "alarm_analysis": lambda: self.client.get_alarm_analysis(
+                self.house_id,
+                date_code=period.month_code,
+            ),
+            "alarm_top": lambda: self.client.get_alarm_top(
+                self.house_id,
+                date_code=period.month_code,
+            ),
+            "alarm_trend": lambda: self.client.get_alarm_trend(
+                self.house_id,
+                start_date=period.trend_start_date,
+                end_date=period.day_code,
+            ),
+            "energy_analysis": lambda: self.client.get_energy_analysis(
+                self.house_id,
+                date_code=period.month_code,
+            ),
+            "energy_trend": lambda: self.client.get_energy_trend(
+                self.house_id,
+                start_date=period.trend_start_date,
+                end_date=period.day_code,
+            ),
+            "user_actions": lambda: self.client.get_daily_user_actions(
+                self.house_id,
+                date_code=period.day_code,
+            ),
+            "monthly_user_actions": lambda: self.client.get_monthly_user_actions(
+                self.house_id,
+                date_code=period.month_code,
+            ),
+            "yearly_user_actions": lambda: self.client.get_yearly_user_actions(
+                self.house_id,
+                date_code=period.year_code,
+            ),
+        }
+        responses: dict[str, Any] = {}
+        endpoint_errors: dict[str, str] = {}
+        for name, call in calls.items():
+            try:
+                response = await call()
+                if _is_analytics_response(response):
+                    responses[name] = response
+                else:
+                    endpoint_errors[name] = "InvalidResponse"
+            except AuthenticationError:
+                raise
+            except Exception as err:
+                endpoint_errors[name] = type(err).__name__
+                _LOGGER.debug(
+                    "Skipping unavailable Yeelight Pro analytics endpoint: "
+                    "endpoint=%s error_type=%s summary=%s",
+                    name,
+                    type(err).__name__,
+                    safe_error_summary(err),
+                )
+        return responses, endpoint_errors
 
 
 @dataclass(frozen=True, slots=True)
@@ -238,6 +269,11 @@ def _response_list(response: Any) -> list[dict[str, Any]]:
     if not isinstance(data, list):
         return []
     return [_safe_mapping(item) for item in data if isinstance(item, Mapping)]
+
+
+def _is_analytics_response(response: Any) -> bool:
+    """Return true only for Open API response mappings."""
+    return isinstance(response, dict)
 
 
 def _safe_mapping(value: Mapping[Any, Any]) -> dict[str, Any]:

@@ -86,6 +86,7 @@ def test_runtime_options_contract_requires_debug_service_gate(
         "CONF_HIDE_UNKNOWN_ENTITIES "
         "CONF_LIVE_UPDATES CONF_LOCAL_GATEWAY_CONTROL CONF_LOCAL_GATEWAY_HOST "
         "CONF_LOCAL_GATEWAY_PORT apply_options "
+        "entry_data_requires_reload "
         "async_delete_topology_changed_issues async_reload",
     )
     _write_test_file(
@@ -94,7 +95,7 @@ def test_runtime_options_contract_requires_debug_service_gate(
         "clears_topology_repairs "
         "test_options_update_reloads_when_background_runtime_option_changes "
         "live_updates_websocket local_gateway_control local_gateway_host "
-        "local_gateway_port",
+        "local_gateway_port private_push_entry_data",
     )
     _write_test_file(
         tests_root / "test_options_flow_contract.py",
@@ -103,6 +104,7 @@ def test_runtime_options_contract_requires_debug_service_gate(
         "CONF_LOCAL_GATEWAY_PORT confirm_reload",
     )
     _write_complete_options_picker_test(tests_root)
+    _write_complete_private_push_test(tests_root)
     _write_test_file(
         component_root / "debug_service.py",
         "async_register_admin_service coordinator.debug_mode async_handle_runtime_event",
@@ -134,6 +136,7 @@ def test_runtime_options_contract_requires_background_runtime_reload_coverage(
     )
     _write_test_file(tests_root / "test_options_flow_contract.py", "confirm_reload")
     _write_complete_options_picker_test(tests_root)
+    _write_complete_private_push_test(tests_root)
     _write_test_file(
         component_root / "debug_service.py",
         "async_register_admin_service coordinator.debug_mode async_handle_runtime_event",
@@ -163,6 +166,7 @@ def test_runtime_options_contract_requires_options_device_picker_coverage(
         "CONF_HIDE_UNKNOWN_ENTITIES "
         "CONF_LIVE_UPDATES CONF_LOCAL_GATEWAY_CONTROL CONF_LOCAL_GATEWAY_HOST "
         "CONF_LOCAL_GATEWAY_PORT apply_options "
+        "entry_data_requires_reload "
         "async_delete_topology_changed_issues async_reload",
     )
     _write_test_file(
@@ -171,7 +175,7 @@ def test_runtime_options_contract_requires_options_device_picker_coverage(
         "clears_topology_repairs "
         "test_options_update_reloads_when_background_runtime_option_changes "
         "live_updates_websocket local_gateway_control local_gateway_host "
-        "local_gateway_port",
+        "local_gateway_port private_push_entry_data",
     )
     _write_test_file(
         tests_root / "test_options_flow_contract.py",
@@ -184,6 +188,7 @@ def test_runtime_options_contract_requires_options_device_picker_coverage(
         "test_options_flow_real_device_picker_loads_current_cloud_devices "
         "CONF_DEVICE_IMPORT_FILTER_PICKER",
     )
+    _write_complete_private_push_test(tests_root)
     _write_test_file(
         component_root / "debug_service.py",
         "async_register_admin_service coordinator.debug_mode async_handle_runtime_event",
@@ -217,4 +222,13 @@ def _write_complete_options_picker_test(tests_root: Path) -> None:
         "test_options_flow_real_device_picker_selection_requires_reload "
         "test_options_flow_real_device_picker_load_error_is_redacted "
         "CONF_DEVICE_IMPORT_FILTER_PICKER Kitchen Secret 开关控制器",
+    )
+
+
+def _write_complete_private_push_test(tests_root: Path) -> None:
+    """写入满足 private push options preflight 的 synthetic test 文件."""
+    _write_test_file(
+        tests_root / "test_options_flow_private_push.py",
+        "test_options_flow_private_entry_shows_push_url "
+        "CONF_PRIVATE_PUSH_DOMAIN async_update_entry ws://ws-test.yeedev.com/ws",
     )

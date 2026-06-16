@@ -7,11 +7,14 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .const import (
+    CONF_CONNECTION_MODE,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_LIVE_UPDATES,
     CONF_LOCAL_GATEWAY_CONTROL,
     CONF_LOCAL_GATEWAY_HOST,
     CONF_LOCAL_GATEWAY_PORT,
+    CONF_PRIVATE_DOMAIN,
+    CONF_PRIVATE_PUSH_DOMAIN,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
     DEFAULT_TOPOLOGY_CHANGE_REPAIRS,
     DOMAIN,
@@ -55,6 +58,21 @@ def options_require_reload(
     return device_import_filter_changed(old, new)
 
 
+def entry_data_requires_reload(
+    old_data: Mapping[str, Any] | None,
+    new_data: Mapping[str, Any],
+) -> bool:
+    """Return whether config-entry data changes affect background transports."""
+    if old_data is None:
+        return False
+    reload_keys = {
+        CONF_CONNECTION_MODE,
+        CONF_PRIVATE_DOMAIN,
+        CONF_PRIVATE_PUSH_DOMAIN,
+    }
+    return any(old_data.get(key) != new_data.get(key) for key in reload_keys)
+
+
 def _runtime_options_coordinator(value: Any) -> Any | None:
     """Return a coordinator-like object that can apply runtime options."""
     if hasattr(value, "options") and callable(getattr(value, "apply_options", None)):
@@ -76,6 +94,13 @@ async def async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None
         return
 
     new_options = entry_options(entry)
+    loaded_data = loaded.get("entry_data") if isinstance(loaded, Mapping) else None
+    if not isinstance(loaded_data, Mapping):
+        loaded_data = None
+    if entry_data_requires_reload(loaded_data, getattr(entry, "data", {})):
+        await hass.config_entries.async_reload(entry.entry_id)
+        return
+
     if options_require_reload(coordinator.options, new_options):
         await hass.config_entries.async_reload(entry.entry_id)
         return
@@ -84,3 +109,4 @@ async def async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None
     runtime = hass.data.get(DOMAIN, {}).get(entry.entry_id)
     if isinstance(runtime, dict):
         runtime["entry"] = entry
+        runtime["entry_data"] = dict(getattr(entry, "data", {}))

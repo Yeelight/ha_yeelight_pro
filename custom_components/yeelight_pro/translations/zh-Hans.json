@@ -38,9 +38,10 @@
       },
       "private_config": {
         "title": "私有部署服务 URL",
-        "description": "请输入私有部署的服务根 URL，例如 https://private.example。系统会自动派生 Open API 与账号 API 地址；后续认证方式、扫码登录、家庭选择和设备选择与云端连接流程一致。",
+        "description": "请输入私有部署的服务根 URL，例如 https://private.example.com。系统会自动派生 Open API 与账号 API 地址；后续认证方式、扫码登录、家庭选择和设备选择与云端连接流程一致。如 WebSocket 推送服务使用不同域名，可填写推送 URL，例如 wss://ws-private.example.com/ws。",
         "data": {
-          "private_domain": "服务根 URL"
+          "private_domain": "服务根 URL",
+          "private_push_domain": "WebSocket 推送 URL"
         }
       },
       "reauth_confirm": {
@@ -118,6 +119,7 @@
           "hide_unknown_entities": "隐藏未知能力实体",
           "topology_change_repairs": "设备拓扑变化时创建 Repairs 提示",
           "live_updates": "启用 WebSocket 事件通知",
+          "private_push_domain": "私有部署 WebSocket 推送 URL",
           "local_gateway_control": "启用本地网关控制",
           "local_gateway_host": "本地网关地址",
           "local_gateway_port": "本地网关端口"

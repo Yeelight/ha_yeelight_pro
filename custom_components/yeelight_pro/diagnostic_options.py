@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from .const import (
+    CONF_CONNECTION_MODE,
     CONF_DEBUG_MODE,
     CONF_DEVICE_IMPORT_FILTER,
     CONF_HIDE_UNKNOWN_ENTITIES,
@@ -12,6 +13,8 @@ from .const import (
     CONF_LOCAL_GATEWAY_CONTROL,
     CONF_SCAN_INTERVAL,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
+    CONNECTION_MODE_CLOUD,
+    CONNECTION_MODE_PRIVATE,
     DEFAULT_DEBUG_MODE,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TOPOLOGY_CHANGE_REPAIRS,
@@ -73,8 +76,9 @@ def option_status_diagnostics(
                 DEFAULT_TOPOLOGY_CHANGE_REPAIRS,
             )
         ),
-        "live_updates_enabled": bool(
-            normalized_entry_options.get(CONF_LIVE_UPDATES, False)
+        "live_updates_enabled": _live_updates_enabled_for_entry(
+            entry,
+            normalized_entry_options,
         ),
         "local_gateway_control_enabled": bool(
             normalized_entry_options.get(CONF_LOCAL_GATEWAY_CONTROL, False)
@@ -89,3 +93,15 @@ def _entry_options(entry: Any) -> dict[str, Any]:
     """安全读取配置条目 options，兼容 HA runtime 和测试替身."""
     options = getattr(entry, "options", None)
     return dict(options) if isinstance(options, Mapping) else {}
+
+
+def _live_updates_enabled_for_entry(
+    entry: Any,
+    normalized_entry_options: Mapping[str, Any],
+) -> bool:
+    """Return live-update intent only for cloud/private entries."""
+    data = getattr(entry, "data", None)
+    mode = data.get(CONF_CONNECTION_MODE) if isinstance(data, Mapping) else None
+    if mode not in {CONNECTION_MODE_CLOUD, CONNECTION_MODE_PRIVATE}:
+        return False
+    return bool(normalized_entry_options.get(CONF_LIVE_UPDATES, False))

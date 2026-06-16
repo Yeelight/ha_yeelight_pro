@@ -84,7 +84,7 @@ async def test_diagnostics_reports_aggregate_runtime_data(
         "scan_interval_seconds": 15,
         "hide_unknown_entities": False,
         "topology_change_repairs": False,
-        "live_updates_enabled": False,
+        "live_updates_enabled": True,
         "local_gateway_control_enabled": False,
         "import_filter_active": True,
         "import_filter_rule_count": 2,

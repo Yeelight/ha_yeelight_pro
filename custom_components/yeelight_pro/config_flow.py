@@ -21,6 +21,7 @@ from .const import (
     CONF_OPEN_API_CLIENT_ID,
     CONF_OPEN_API_CLIENT_SECRET,
     CONF_PRIVATE_DOMAIN,
+    CONF_PRIVATE_PUSH_DOMAIN,
     CONF_REFRESH_TOKEN,
     CONF_SCAN_LOGIN_DEVICE,
     CONF_TOKEN_EXPIRES_IN,
@@ -48,7 +49,6 @@ from .config_flow_helpers import (
     cloud_domain_for_region,
     cloud_region_schema,
     flow_error_from_exception,
-    private_config_schema,
     user_schema,
 )
 from .config_flow_device_picker import (
@@ -63,8 +63,11 @@ from .config_flow_scan_login import (
     ScanLoginFlowState,
 )
 from .config_flow_lan import LanConfigFlowMixin
+from .config_flow_private import PrivateConfigFlowMixin
 from .config_flow_reauth import ReauthConfigFlowMixin
-from .deployment_urls import deployment_iot_base_url, deployment_root_url
+from .deployment_urls import (
+    deployment_iot_base_url,
+)
 from .entry_migration import (
     ENTRY_MINOR_VERSION,
     ENTRY_VERSION,
@@ -78,6 +81,7 @@ class YeelightProConfigFlow(
     ReauthConfigFlowMixin,
     ScanLoginConfigFlowMixin,
     LanConfigFlowMixin,
+    PrivateConfigFlowMixin,
     config_entries.ConfigFlow,
     domain=DOMAIN,
 ):  # type: ignore[call-arg]
@@ -106,6 +110,7 @@ class YeelightProConfigFlow(
         self._scan_login_account_key = UNKNOWN_ACCOUNT_KEY
         self._open_api_client_id = ""
         self._open_api_client_secret = ""
+        self._private_push_domain = ""
         self._device_choices: tuple[DevicePickerChoice, ...] = ()
         self._house_choices: dict[Any, str] = {}
         self._selected_device_ids: list[str] = []
@@ -276,30 +281,6 @@ class YeelightProConfigFlow(
             errors=errors,
         )
 
-    async def async_step_private_config(
-        self,
-        user_input: dict[str, Any] | None = None,
-    ) -> FlowResult:
-        """私有部署 URL 配置步骤."""
-        errors = {}
-
-        if user_input is not None:
-            domain = str(user_input.get(CONF_PRIVATE_DOMAIN, "")).strip()
-            if not domain:
-                errors[CONF_PRIVATE_DOMAIN] = "required"
-            else:
-                try:
-                    self._domain = deployment_root_url(domain)
-                    return await self.async_step_cloud_auth_method()
-                except Exception as err:
-                    errors["base"] = flow_error_from_exception("private config", err)
-
-        return self.async_show_form(
-            step_id="private_config",
-            data_schema=private_config_schema(),
-            errors=errors,
-        )
-
     async def _async_validate_endpoint_auth(
         self,
         *,
@@ -340,6 +321,11 @@ class YeelightProConfigFlow(
                 else ""
             ),
             CONF_PRIVATE_DOMAIN: self._domain if self._connection_mode == CONNECTION_MODE_PRIVATE else "",
+            CONF_PRIVATE_PUSH_DOMAIN: (
+                self._private_push_domain
+                if self._connection_mode == CONNECTION_MODE_PRIVATE
+                else ""
+            ),
             CONF_ACCESS_TOKEN: self._access_token,
             CONF_REFRESH_TOKEN: self._refresh_token,
             CONF_TOKEN_EXPIRES_IN: self._token_expires_in,

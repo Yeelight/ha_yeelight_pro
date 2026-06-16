@@ -113,6 +113,7 @@ def translation_payload() -> dict[str, Any]:
                     "description": "Enter private Open API URL.",
                     "data": {
                         "private_domain": "Domain",
+                        "private_push_domain": "WebSocket push URL",
                     },
                 },
                 "reauth_confirm": {

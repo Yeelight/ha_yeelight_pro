@@ -22,9 +22,11 @@ from .config_flow_options import (
     menu_options,
     merge_device_import_filter,
     merge_options,
+    merge_private_entry_data,
     options_confirm_schema,
     options_schema,
     options_support_device_filter,
+    visible_entry_data_change_count,
     visible_option_change_count,
 )
 from .config_flow_helpers import flow_error_from_exception
@@ -52,6 +54,7 @@ class YeelightProOptionsFlow(config_entries.OptionsFlow):
         """初始化 options flow."""
         self._config_entry = config_entry
         self._pending_options: dict[str, Any] | None = None
+        self._pending_entry_data: dict[str, Any] | None = None
         self._filter_selections: dict[str, list[str]] = {}
         self._filter_all_choices: dict[str, list[str]] = {}
         self._filter_loaded = False
@@ -80,6 +83,11 @@ class YeelightProOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             self._pending_options = merge_options(
                 entry_options(self._config_entry),
+                user_input,
+                self._config_entry,
+            )
+            self._pending_entry_data = merge_private_entry_data(
+                self._config_entry.data,
                 user_input,
                 self._config_entry,
             )
@@ -255,10 +263,16 @@ class YeelightProOptionsFlow(config_entries.OptionsFlow):
             return await self.async_step_confirm_runtime()
 
         if user_input is not None:
+            if self._pending_entry_data is not None:
+                self.hass.config_entries.async_update_entry(
+                    self._config_entry,
+                    data=self._pending_entry_data,
+                )
             return self.async_create_entry(title="", data=self._pending_options)
 
         current_options = normalize_entry_options(entry_options(self._config_entry))
         pending_options = normalize_entry_options(self._pending_options)
+        current_data = self._config_entry.data
         return self.async_show_form(
             step_id=step_id,
             data_schema=options_confirm_schema(),
@@ -267,6 +281,11 @@ class YeelightProOptionsFlow(config_entries.OptionsFlow):
                     visible_option_change_count(
                         current_options,
                         pending_options,
+                        self._config_entry,
+                    )
+                    + visible_entry_data_change_count(
+                        current_data,
+                        self._pending_entry_data,
                         self._config_entry,
                     )
                 ),
@@ -279,6 +298,8 @@ class YeelightProOptionsFlow(config_entries.OptionsFlow):
         """Return whether the pending options require a config entry reload."""
         if self._pending_options is None:
             return False
+        if self._pending_entry_data is not None:
+            return True
         return options_require_reload(
             normalize_entry_options(entry_options(self._config_entry)),
             normalize_entry_options(self._pending_options),

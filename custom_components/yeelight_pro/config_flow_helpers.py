@@ -20,6 +20,7 @@ from .const import (
     CONF_LAN_GATEWAY_PORT,
     CONF_LAN_GATEWAY_PRODUCT_ID,
     CONF_PRIVATE_DOMAIN,
+    CONF_PRIVATE_PUSH_DOMAIN,
     CLOUD_AUTH_METHOD_ACCESS_TOKEN,
     CLOUD_AUTH_METHOD_SCAN_LOGIN,
     CLOUD_REGIONS,
@@ -161,6 +162,7 @@ def private_config_schema() -> vol.Schema:
     """返回私有部署 URL 配置表单 schema."""
     return vol.Schema({
         vol.Required(CONF_PRIVATE_DOMAIN, default=""): str,
+        vol.Optional(CONF_PRIVATE_PUSH_DOMAIN, default=""): str,
     })
 
 
