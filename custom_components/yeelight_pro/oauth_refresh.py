@@ -85,6 +85,9 @@ async def async_refresh_entry_token(
             client_secret=data[CONF_OPEN_API_CLIENT_SECRET],
             refresh_token=data[CONF_REFRESH_TOKEN],
             base_url=_refresh_account_base_url(data),
+            allow_empty_client_secret=(
+                data.get(CONF_CONNECTION_MODE) == CONNECTION_MODE_PRIVATE
+            ),
         )
         _guard_same_account(data, token)
         new_data = normalize_entry_data({
@@ -117,15 +120,16 @@ async def async_request_with_token_refresh(
 
 def _can_refresh(data: Mapping[str, Any]) -> bool:
     """Return whether the entry carries the documented refresh parameters."""
-    return (
-        data.get(CONF_CONNECTION_MODE) in {
-            CONNECTION_MODE_CLOUD,
-            CONNECTION_MODE_PRIVATE,
-        }
-        and bool(_string(data.get(CONF_REFRESH_TOKEN)))
-        and bool(_string(data.get(CONF_OPEN_API_CLIENT_ID)))
-        and bool(_string(data.get(CONF_OPEN_API_CLIENT_SECRET)))
-    )
+    mode = data.get(CONF_CONNECTION_MODE)
+    if mode not in {CONNECTION_MODE_CLOUD, CONNECTION_MODE_PRIVATE}:
+        return False
+    if not _string(data.get(CONF_REFRESH_TOKEN)):
+        return False
+    if not _string(data.get(CONF_OPEN_API_CLIENT_ID)):
+        return False
+    if mode == CONNECTION_MODE_PRIVATE:
+        return True
+    return bool(_string(data.get(CONF_OPEN_API_CLIENT_SECRET)))
 
 
 def _refresh_account_base_url(data: Mapping[str, Any]) -> str | None:

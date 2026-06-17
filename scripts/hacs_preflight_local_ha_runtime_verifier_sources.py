@@ -133,6 +133,12 @@ LOCAL_HA_RUNTIME_VERIFIER_SOURCE_TOKENS = {
         "last_runtime_error_type": (
             "installed WebSocket runtime error health guard"
         ),
+        "last_handshake_status": (
+            "installed WebSocket handshake status health guard"
+        ),
+        "last_disconnect_reason": (
+            "installed WebSocket disconnect reason health guard"
+        ),
         "_sync_transport_runtime_error": (
             "installed PushManager transport error health sync guard"
         ),

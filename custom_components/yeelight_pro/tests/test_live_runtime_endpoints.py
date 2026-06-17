@@ -13,6 +13,7 @@ from custom_components.yeelight_pro.const import (
     CONF_CLOUD_REGION,
     CONF_PRIVATE_DOMAIN,
     CONF_PRIVATE_PUSH_DOMAIN,
+    CONF_PRIVATE_PUSH_PROXY,
     CONNECTION_MODE_CLOUD,
     CONNECTION_MODE_PRIVATE,
 )
@@ -136,3 +137,109 @@ async def test_live_runtime_falls_back_to_private_test_push_host(
     assert session.connected_urls == ["ws://ws-test.yeedev.com/ws/test_token"]
 
     await manager.async_stop()
+
+
+@pytest.mark.asyncio
+async def test_live_runtime_does_not_override_private_push_heartbeat(
+    hass: HomeAssistant,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """私有部署 runtime 不应偏离开放平台文档建议的 20 秒心跳."""
+    entry = _make_live_entry()
+    entry.data[CONF_CONNECTION_MODE] = CONNECTION_MODE_PRIVATE
+    entry.data[CONF_PRIVATE_DOMAIN] = "http://api-test.yeedev.com"
+    entry.data[CONF_PRIVATE_PUSH_DOMAIN] = "ws://ws-test.yeedev.com/ws"
+    session = FakeSession(OpenFakeWebSocket())
+    captured: dict[str, float] = {}
+    monkeypatch.setattr(
+        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
+        lambda _hass: session,
+    )
+    monkeypatch.setattr(
+        "custom_components.yeelight_pro.live_runtime.YeelightPushWebSocketTransport",
+        _capturing_transport_factory(captured),
+    )
+
+    manager = await async_start_live_runtime(hass, entry, AsyncMock())
+
+    assert manager is not None
+    assert "heartbeat_interval_seconds" not in captured
+
+    await manager.async_stop()
+
+
+@pytest.mark.asyncio
+async def test_live_runtime_passes_private_push_proxy_to_transport(
+    hass: HomeAssistant,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """私有部署 WebSocket 代理应独立传给 transport，不改变 endpoint。"""
+    entry = _make_live_entry()
+    entry.data[CONF_CONNECTION_MODE] = CONNECTION_MODE_PRIVATE
+    entry.data[CONF_PRIVATE_DOMAIN] = "http://api-test.yeedev.com"
+    entry.data[CONF_PRIVATE_PUSH_DOMAIN] = "ws://ws-test.yeedev.com/ws"
+    entry.data[CONF_PRIVATE_PUSH_PROXY] = "http://host.docker.internal:7890"
+    session = FakeSession(OpenFakeWebSocket())
+    captured: dict[str, object] = {}
+    monkeypatch.setattr(
+        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
+        lambda _hass: session,
+    )
+    monkeypatch.setattr(
+        "custom_components.yeelight_pro.live_runtime.YeelightPushWebSocketTransport",
+        _capturing_transport_factory(captured),
+    )
+
+    manager = await async_start_live_runtime(hass, entry, AsyncMock())
+
+    assert manager is not None
+    assert captured["base_url"] == "ws://ws-test.yeedev.com/ws"
+    assert captured["proxy"] == "http://host.docker.internal:7890"
+
+    await manager.async_stop()
+
+
+@pytest.mark.asyncio
+async def test_live_runtime_keeps_documented_cloud_push_heartbeat(
+    hass: HomeAssistant,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """云端 push runtime 继续使用文档建议的 20 秒心跳."""
+    entry = _make_live_entry()
+    entry.data[CONF_CONNECTION_MODE] = CONNECTION_MODE_CLOUD
+    session = FakeSession(OpenFakeWebSocket())
+    captured: dict[str, float] = {}
+    monkeypatch.setattr(
+        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
+        lambda _hass: session,
+    )
+    monkeypatch.setattr(
+        "custom_components.yeelight_pro.live_runtime.YeelightPushWebSocketTransport",
+        _capturing_transport_factory(captured),
+    )
+
+    manager = await async_start_live_runtime(hass, entry, AsyncMock())
+
+    assert manager is not None
+    assert "heartbeat_interval_seconds" not in captured
+
+    await manager.async_stop()
+
+
+def _capturing_transport_factory(captured: dict[str, float]):
+    """Return a fake transport class that records constructor heartbeat args."""
+
+    class _Transport:
+        last_start_error_type = None
+        last_runtime_error_type = None
+
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+        async def async_start(self, callback):
+            self._callback = callback
+
+        async def async_stop(self):
+            return None
+
+    return _Transport

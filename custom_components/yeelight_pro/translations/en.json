@@ -38,10 +38,11 @@
       },
       "private_config": {
         "title": "Private Deployment URL",
-        "description": "Enter the private deployment service root URL, for example https://private.example.com. The integration derives the Open API and Account API URLs automatically; authentication method, scan login, house selection, and device selection then follow the same flow as cloud setup. If WebSocket push uses a different host, enter the push URL too, for example wss://ws-private.example/ws.",
+        "description": "Enter the private deployment service root URL, for example https://private.example.com. The integration derives the Open API and Account API URLs automatically; authentication method, scan login, house selection, and device selection then follow the same flow as cloud setup. If WebSocket push uses a different host, enter the push URL too, for example wss://ws-private.example/ws. If the Home Assistant runtime needs a proxy to reach WebSocket push, enter an HTTP proxy URL used only for WebSocket connections, for example http://host.docker.internal:7890.",
         "data": {
           "private_domain": "Service root URL",
-          "private_push_domain": "WebSocket push URL"
+          "private_push_domain": "WebSocket push URL",
+          "private_push_proxy": "WebSocket HTTP proxy URL"
         }
       },
       "reauth_confirm": {
@@ -91,7 +92,8 @@
       "invalid_auth": "Authentication failed, please check Access Token",
       "required": "This field is required",
       "scan_login_expired": "The QR code has expired. Select refresh QR code and try again.",
-      "unknown": "Unknown error"
+      "unknown": "Unknown error",
+      "invalid_url": "Invalid URL format"
     },
     "abort": {
       "already_configured": "This server is already configured",
@@ -122,7 +124,8 @@
           "private_push_domain": "Private deployment WebSocket push URL",
           "local_gateway_control": "Enable local gateway control",
           "local_gateway_host": "Local gateway address",
-          "local_gateway_port": "Local gateway port"
+          "local_gateway_port": "Local gateway port",
+          "private_push_proxy": "Private deployment WebSocket HTTP proxy URL"
         }
       },
       "filter_categories": {

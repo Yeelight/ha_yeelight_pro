@@ -64,6 +64,7 @@ def _base_health(**overrides: object) -> dict[str, object]:
         "stopped_count": 0,
         "handled_payloads": 0,
         "changed_payloads": 0,
+        "unchanged_payloads": 0,
         "property_updates": 0,
         "applied_property_updates": 0,
         "unknown_property_updates": 0,
@@ -150,6 +151,32 @@ async def test_push_manager_records_aggregate_payload_result() -> None:
         last_property_update_count=3,
         last_dispatched_event_count=2,
         last_payload_changed=True,
+        last_payload_type="prop",
+        last_payload_at=manager.health.last_payload_at,
+    )
+    assert manager.health.last_payload_at is not None
+
+
+@pytest.mark.asyncio
+async def test_push_manager_records_unchanged_payloads() -> None:
+    """收到但未改变状态的推送应可诊断，避免实时链路问题变成黑盒。"""
+    coordinator = AsyncMock()
+    coordinator.last_push_property_summary = RuntimePropertyUpdateSummary(
+        input_updates=0,
+        changed=False,
+    )
+    coordinator.async_handle_push_payload.return_value = []
+    transport = FakeTransport()
+    manager = PushManager(coordinator, transport)
+
+    await manager.async_start()
+    await transport.emit({"type": "prop", "nodes": []})
+
+    assert manager.health.as_dict() == _base_health(
+        running=True,
+        started_count=1,
+        handled_payloads=1,
+        unchanged_payloads=1,
         last_payload_type="prop",
         last_payload_at=manager.health.last_payload_at,
     )

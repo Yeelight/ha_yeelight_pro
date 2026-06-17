@@ -29,6 +29,7 @@ OPTIONAL_CONFIG_ENTRY_DATA_KEYS = {
     "account_user_id",
     "account_username",
     "open_api_client_id",
+    "private_push_proxy",
     "refresh_token",
     "scan_login_device",
     "token_expires_in",

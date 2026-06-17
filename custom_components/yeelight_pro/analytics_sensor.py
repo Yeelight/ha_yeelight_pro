@@ -32,6 +32,23 @@ class AnalyticsSensorDescription(SensorEntityDescription):
 
 ANALYTICS_SENSOR_DESCRIPTIONS: tuple[AnalyticsSensorDescription, ...] = (
     AnalyticsSensorDescription(
+        key="endpoint_success_count",
+        name="数据分析可用端点",
+        icon="mdi:api",
+        value=lambda snapshot: snapshot.successful_endpoint_count,
+        attributes=lambda snapshot: {
+            "date_code": snapshot.date_code,
+            "day_code": snapshot.day_code,
+            "trend_start_date": snapshot.trend_start_date,
+            "trend_end_date": snapshot.trend_end_date,
+            "failed_endpoint_count": max(
+                0,
+                snapshot.endpoint_count - snapshot.successful_endpoint_count,
+            ),
+            **_endpoint_attributes(snapshot),
+        },
+    ),
+    AnalyticsSensorDescription(
         key="alarm_total",
         name="报警总数",
         icon="mdi:alarm-light",
@@ -43,18 +60,22 @@ ANALYTICS_SENSOR_DESCRIPTIONS: tuple[AnalyticsSensorDescription, ...] = (
             "stat_info": snapshot.alarm_analysis.get("statInfo"),
             "device_info": snapshot.alarm_analysis.get("deviceInfo"),
             "trend": _sanitized_points(snapshot.alarm_trend),
-            "endpoint_errors": snapshot.endpoint_errors,
+            **_endpoint_attributes(snapshot),
         },
     ),
     AnalyticsSensorDescription(
         key="alarm_high_risk_count",
         name="高危设备数量",
         icon="mdi:alert-circle",
-        value=lambda snapshot: len(snapshot.alarm_top),
+        value=lambda snapshot: _list_count_or_none(
+            snapshot,
+            "alarm_top",
+            snapshot.alarm_top,
+        ),
         attributes=lambda snapshot: {
             "date_code": snapshot.date_code,
             "top_devices": _sanitized_points(snapshot.alarm_top),
-            "endpoint_errors": snapshot.endpoint_errors,
+            **_endpoint_attributes(snapshot),
         },
     ),
     AnalyticsSensorDescription(
@@ -71,7 +92,7 @@ ANALYTICS_SENSOR_DESCRIPTIONS: tuple[AnalyticsSensorDescription, ...] = (
             "carbon_emission_saved": snapshot.energy_analysis.get("carbonEmissionSaved"),
             "saved_rate": snapshot.energy_analysis.get("savedRate"),
             "trend": _sanitized_points(snapshot.energy_trend),
-            "endpoint_errors": snapshot.endpoint_errors,
+            **_endpoint_attributes(snapshot),
         },
         device_class=SensorDeviceClass.ENERGY,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
@@ -87,7 +108,7 @@ ANALYTICS_SENSOR_DESCRIPTIONS: tuple[AnalyticsSensorDescription, ...] = (
             "details": _sanitized_points(_list_value(snapshot.user_actions.get("details"))),
             "monthly": _sanitized_action_stats(snapshot.monthly_user_actions),
             "yearly": _sanitized_action_stats(snapshot.yearly_user_actions),
-            "endpoint_errors": snapshot.endpoint_errors,
+            **_endpoint_attributes(snapshot),
         },
     ),
 )
@@ -141,6 +162,11 @@ class YeelightProAnalyticsSensor(CoordinatorEntity, SensorEntity):
             entity_name=self.entity_description.name,
             fallback_id=f"house_{self.coordinator.house_id}_analytics_{self.entity_description.key}",
         )
+
+    @property
+    def available(self) -> bool:
+        """Analytics 端点全失败时也保留诊断快照供用户定位原因。"""
+        return self.coordinator.data is not None
 
     @property
     def native_value(self) -> Any:
@@ -215,6 +241,26 @@ def _sanitized_action_stats(value: Any) -> dict[str, Any]:
     if details:
         result["details"] = details
     return result
+
+
+def _endpoint_attributes(snapshot: AnalyticsSnapshot) -> dict[str, Any]:
+    """Return common endpoint diagnostics for every analytics sensor."""
+    return {
+        "endpoint_count": snapshot.endpoint_count,
+        "successful_endpoint_count": snapshot.successful_endpoint_count,
+        "endpoint_errors": snapshot.endpoint_errors,
+    }
+
+
+def _list_count_or_none(
+    snapshot: AnalyticsSnapshot,
+    endpoint: str,
+    values: list[dict[str, Any]],
+) -> int | None:
+    """Return a count only when the endpoint actually returned a list."""
+    if endpoint in snapshot.endpoint_errors and not values:
+        return None
+    return len(values)
 
 
 def _is_safe_attribute_key(key: str) -> bool:

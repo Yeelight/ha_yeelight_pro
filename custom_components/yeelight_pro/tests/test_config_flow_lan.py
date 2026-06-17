@@ -13,6 +13,7 @@ from custom_components.yeelight_pro.const import (
     CONF_LAN_GATEWAY_PORT,
     CONF_LOCAL_GATEWAY_PRODUCT_ID,
     CONF_PRIVATE_PUSH_DOMAIN,
+    CONF_PRIVATE_PUSH_PROXY,
     LAN_GATEWAY_PRODUCT_ID_GATEWAY,
     LAN_GATEWAY_PRODUCT_ID_WIFI_PANEL,
 )
@@ -28,6 +29,7 @@ async def test_create_lan_entry_preserves_discovered_product_id() -> None:
     assert result["type"] == "create_entry"
     assert result["data"][CONF_LAN_GATEWAY_PRODUCT_ID] == 2
     assert result["data"][CONF_PRIVATE_PUSH_DOMAIN] == ""
+    assert result["data"][CONF_PRIVATE_PUSH_PROXY] == ""
     assert result["options"][CONF_LOCAL_GATEWAY_PRODUCT_ID] == 2
 
 

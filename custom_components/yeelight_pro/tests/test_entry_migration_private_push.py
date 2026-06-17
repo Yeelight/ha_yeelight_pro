@@ -9,6 +9,7 @@ from custom_components.yeelight_pro.const import (
     CONF_HOUSE_ID,
     CONF_PRIVATE_DOMAIN,
     CONF_PRIVATE_PUSH_DOMAIN,
+    CONF_PRIVATE_PUSH_PROXY,
     CONNECTION_MODE_PRIVATE,
     DEFAULT_CLOUD_DOMAIN,
     DEFAULT_PRIVATE_DOMAIN,
@@ -52,9 +53,11 @@ def test_normalize_entry_data_uses_mode_defaults() -> None:
     assert cloud[CONF_CLOUD_DOMAIN] == DEFAULT_CLOUD_DOMAIN
     assert cloud[CONF_PRIVATE_DOMAIN] == ""
     assert cloud[CONF_PRIVATE_PUSH_DOMAIN] == ""
+    assert cloud[CONF_PRIVATE_PUSH_PROXY] == ""
     assert private[CONF_CLOUD_DOMAIN] == ""
     assert private[CONF_PRIVATE_DOMAIN] == DEFAULT_PRIVATE_DOMAIN
     assert private[CONF_PRIVATE_PUSH_DOMAIN] == ""
+    assert private[CONF_PRIVATE_PUSH_PROXY] == ""
 
 
 def test_normalize_entry_data_private_push_domain_is_independent_endpoint() -> None:
@@ -81,6 +84,19 @@ def test_normalize_entry_data_private_push_domain_accepts_legacy_alias() -> None
 
     assert data[CONF_PRIVATE_DOMAIN] == "https://api-dev.yeedev.com"
     assert data[CONF_PRIVATE_PUSH_DOMAIN] == "wss://ws-dev.yeedev.com/ws"
+
+
+def test_normalize_entry_data_private_push_proxy_accepts_legacy_alias() -> None:
+    """旧别名中的私有 WebSocket proxy 应迁移到当前字段。"""
+    data = normalize_entry_data({
+        CONF_CONNECTION_MODE: CONNECTION_MODE_PRIVATE,
+        CONF_PRIVATE_DOMAIN: "https://api-dev.yeedev.com/apis/iot",
+        "websocketProxy": "http://host.docker.internal:7890",
+        CONF_HOUSE_ID: "1",
+    })
+
+    assert data[CONF_PRIVATE_DOMAIN] == "https://api-dev.yeedev.com"
+    assert data[CONF_PRIVATE_PUSH_PROXY] == "http://host.docker.internal:7890"
 
 
 def test_normalize_entry_data_private_test_push_host_preserves_ws_path() -> None:

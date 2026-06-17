@@ -143,6 +143,14 @@ def test_parse_account_token_accepts_client_secret_aliases() -> None:
     assert token.refresh_token == "refresh-new"
 
 
+def test_parse_account_token_accepts_data_wrapped_response() -> None:
+    """私有 Account API 可能把 OAuth token 放在 data 包裹内。"""
+    token = parse_account_token({"code": "200", "data": _oauth_token_payload()})
+
+    assert token.access_token == "access-new"
+    assert token.refresh_token == "refresh-new"
+
+
 def test_scan_login_entry_data_persists_client_secret() -> None:
     """扫码登录 entry data 必须保存后续 refresh 所需的 client_secret。"""
     token = YeelightAccountToken(
@@ -204,6 +212,25 @@ async def test_refresh_access_token_posts_form_to_region_account_api() -> None:
         },
         "timeout": _client(session).timeout,
     }]
+
+
+@pytest.mark.asyncio
+async def test_refresh_access_token_allows_empty_private_client_secret() -> None:
+    """私有部署 refresh 可兼容未返回 clientSecret 的扫码 token。"""
+    session = _FakeOAuthSession()
+
+    await refresh_access_token(
+        cast(ClientSession, session),
+        _client(session).timeout,
+        region="cn",
+        client_id="client-old",
+        client_secret="",
+        refresh_token="refresh-old",
+        base_url="http://private.example/apis/account",
+        allow_empty_client_secret=True,
+    )
+
+    assert "client_secret" not in session.calls[0]["data"]
 
 
 @pytest.mark.asyncio
@@ -314,6 +341,37 @@ async def test_async_refresh_entry_token_requires_complete_metadata(
 
 
 @pytest.mark.asyncio
+async def test_async_refresh_entry_token_private_mode_allows_missing_client_secret(
+    hass: HomeAssistant,
+) -> None:
+    """私有部署 entry 缺 client_secret 时仍应尝试私有 Account API refresh。"""
+    hass.data.setdefault(DOMAIN, {})
+    entry = _entry(_entry_data(
+        **{
+            CONF_CONNECTION_MODE: CONNECTION_MODE_PRIVATE,
+            CONF_PRIVATE_DOMAIN: "http://private.example/apis/iot",
+            CONF_OPEN_API_CLIENT_SECRET: "",
+        }
+    ))
+    session = _FakeOAuthSession(payload={"code": "200", "data": _oauth_token_payload()})
+    client = _client(session)
+
+    result = await async_refresh_entry_token(
+        hass,
+        entry,
+        client,
+        force=True,
+        update_entry=False,
+        session=cast(ClientSession, session),
+    )
+
+    assert result.refreshed is True
+    assert result.entry_data[CONF_ACCESS_TOKEN] == "access-new"
+    assert session.calls[0]["url"] == "http://private.example/apis/account/oauth/token"
+    assert "client_secret" not in session.calls[0]["data"]
+
+
+@pytest.mark.asyncio
 async def test_async_refresh_entry_token_rejects_account_mismatch(
     hass: HomeAssistant,
 ) -> None:
@@ -364,4 +422,3 @@ async def test_async_refresh_entry_token_private_mode_uses_private_account_api(
     assert result.refreshed is True
     assert result.entry_data[CONF_PRIVATE_DOMAIN] == "http://private.example"
     assert session.calls[0]["url"] == "http://private.example/apis/account/oauth/token"
-

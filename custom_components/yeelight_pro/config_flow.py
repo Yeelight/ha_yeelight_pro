@@ -23,6 +23,7 @@ from .const import (
     CONF_OPEN_API_CLIENT_SECRET,
     CONF_PRIVATE_DOMAIN,
     CONF_PRIVATE_PUSH_DOMAIN,
+    CONF_PRIVATE_PUSH_PROXY,
     CONF_REFRESH_TOKEN,
     CONF_SCAN_LOGIN_DEVICE,
     CONF_TOKEN_EXPIRES_IN,
@@ -113,6 +114,7 @@ class YeelightProConfigFlow(
         self._open_api_client_id = ""
         self._open_api_client_secret = ""
         self._private_push_domain = ""
+        self._private_push_proxy = ""
         self._device_choices: tuple[DevicePickerChoice, ...] = ()
         self._house_choices: dict[Any, str] = {}
         self._selected_device_ids: list[str] = []
@@ -325,6 +327,11 @@ class YeelightProConfigFlow(
             CONF_PRIVATE_DOMAIN: self._domain if self._connection_mode == CONNECTION_MODE_PRIVATE else "",
             CONF_PRIVATE_PUSH_DOMAIN: (
                 self._private_push_domain
+                if self._connection_mode == CONNECTION_MODE_PRIVATE
+                else ""
+            ),
+            CONF_PRIVATE_PUSH_PROXY: (
+                self._private_push_proxy
                 if self._connection_mode == CONNECTION_MODE_PRIVATE
                 else ""
             ),

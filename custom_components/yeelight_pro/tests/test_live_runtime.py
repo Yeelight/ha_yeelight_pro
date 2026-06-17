@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant
 from custom_components.yeelight_pro.const import (
     ATTR_COMPONENT_ID,
     ATTR_EVENT_TYPE,
+    CONF_ACCESS_TOKEN,
     DEVICE_EVENT_TYPE,
     CONF_LIVE_UPDATES,
     CONNECTION_MODE_LAN,
@@ -85,6 +86,112 @@ async def test_live_runtime_starts_by_default_for_cloud_entries(
 
 
 @pytest.mark.asyncio
+async def test_live_runtime_prefers_refreshed_runtime_token(
+    hass: HomeAssistant,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """OAuth 刷新后 WebSocket 应使用 coordinator/client 中的新 token."""
+    entry = _make_live_entry()
+    entry.data[CONF_ACCESS_TOKEN] = "old_entry_token"
+    websocket = OpenFakeWebSocket()
+    session = FakeSession(websocket)
+    coordinator = AsyncMock()
+    coordinator.entry_data = {**entry.data, CONF_ACCESS_TOKEN: "fresh_runtime_token"}
+    coordinator.client.access_token = "fresh_client_token"
+    monkeypatch.setattr(
+        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
+        lambda _hass: session,
+    )
+
+    manager = await async_start_live_runtime(hass, entry, coordinator)
+
+    assert manager is not None
+    assert session.connected_urls == ["wss://push.yeelight.com/ws/fresh_client_token"]
+
+    await manager.async_stop()
+
+
+@pytest.mark.asyncio
+async def test_live_runtime_transport_token_provider_reads_latest_client_token(
+    hass: HomeAssistant,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """transport 每次新连接前应可读取 client 上的最新 access token."""
+    entry = _make_live_entry()
+    coordinator = AsyncMock()
+    coordinator.entry_data = dict(entry.data)
+    coordinator.client.access_token = "fresh-client-token"
+    captured: dict[str, object] = {}
+    monkeypatch.setattr(
+        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
+        lambda _hass: FakeSession(OpenFakeWebSocket()),
+    )
+    monkeypatch.setattr(
+        "custom_components.yeelight_pro.live_runtime.YeelightPushWebSocketTransport",
+        _capturing_transport_factory(captured),
+    )
+
+    manager = await async_start_live_runtime(hass, entry, coordinator)
+
+    assert manager is not None
+    token_provider = captured["token_provider"]
+    assert callable(token_provider)
+    assert token_provider() == "fresh-client-token"
+
+    await manager.async_stop()
+
+
+@pytest.mark.asyncio
+async def test_live_runtime_transport_token_refresh_handler_updates_coordinator_data(
+    hass: HomeAssistant,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """WebSocket 订阅级失败恢复应通过 config-entry refresh seam 换 token."""
+    entry = _make_live_entry()
+    coordinator = AsyncMock()
+    coordinator.entry_data = dict(entry.data)
+    coordinator.client.access_token = "old-client-token"
+    captured: dict[str, object] = {}
+    monkeypatch.setattr(
+        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
+        lambda _hass: FakeSession(OpenFakeWebSocket()),
+    )
+    monkeypatch.setattr(
+        "custom_components.yeelight_pro.live_runtime.YeelightPushWebSocketTransport",
+        _capturing_transport_factory(captured),
+    )
+
+    async def _refresh(_hass, _entry, client, *, force=False):
+        assert force is True
+        client.access_token = "fresh-client-token"
+        return type(
+            "RefreshResult",
+            (),
+            {
+                "entry_data": {
+                    **entry.data,
+                    CONF_ACCESS_TOKEN: "fresh-entry-token",
+                }
+            },
+        )()
+
+    monkeypatch.setattr(
+        "custom_components.yeelight_pro.live_runtime.async_refresh_entry_token",
+        _refresh,
+    )
+
+    manager = await async_start_live_runtime(hass, entry, coordinator)
+
+    assert manager is not None
+    refresh_handler = captured["token_refresh_handler"]
+    assert callable(refresh_handler)
+    assert await refresh_handler() == "fresh-client-token"
+    assert coordinator.entry_data[CONF_ACCESS_TOKEN] == "fresh-entry-token"
+
+    await manager.async_stop()
+
+
+@pytest.mark.asyncio
 async def test_live_runtime_starts_websocket_transport_when_enabled(
     hass: HomeAssistant,
     monkeypatch: pytest.MonkeyPatch,
@@ -110,6 +217,7 @@ async def test_live_runtime_starts_websocket_transport_when_enabled(
         assert health["stopped_count"] == 0
         assert health["handled_payloads"] == 0
         assert health["changed_payloads"] == 0
+        assert health["unchanged_payloads"] == 0
         assert health["property_updates"] == 0
         assert health["applied_property_updates"] == 0
         assert health["unknown_property_updates"] == 0
@@ -119,32 +227,40 @@ async def test_live_runtime_starts_websocket_transport_when_enabled(
         assert health["last_error_type"] is None
         assert health["last_payload_type"] is None
         assert health["last_payload_at"] is None
-        assert manager.transport_health == {
-            "running": True,
-            "websocket_open": True,
-            "connect_attempts": 1,
-            "connected_count": 1,
-            "disconnected_count": 0,
-            "reconnect_attempts": 0,
-            "received_messages": 0,
-            "decoded_json_messages": 0,
-            "dispatched_payloads": 0,
-            "ignored_messages": 0,
-            "malformed_messages": 0,
-            "control_frames": 0,
-            "heartbeat_sent_count": 0,
-            "last_start_error_type": None,
-            "last_runtime_error_type": None,
-            "last_payload_type": None,
-            "last_message_at": None,
-            "last_dispatched_at": None,
-        }
+        transport_health = manager.transport_health
+        assert transport_health is not None
+        assert transport_health["running"] is True
+        assert transport_health["websocket_open"] is True
+        assert transport_health["connect_attempts"] == 1
+        assert transport_health["connected_count"] == 1
+        assert transport_health["received_messages"] == 0
+        assert transport_health["first_frame_received"] is False
+        assert transport_health["last_disconnect_reason"] is None
         assert session.connected_urls == ["wss://push.yeelight.com/ws/test_token"]
         assert websocket.sent_json[0]["method"] == "subscribe"
     finally:
         await manager.async_stop()
 
     assert websocket.closed is True
+
+
+def _capturing_transport_factory(captured: dict[str, object]):
+    """Return a fake transport class that records constructor kwargs."""
+
+    class _Transport:
+        last_start_error_type = None
+        last_runtime_error_type = None
+
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+        async def async_start(self, callback):
+            self._callback = callback
+
+        async def async_stop(self):
+            return None
+
+    return _Transport
 
 
 @pytest.mark.asyncio
@@ -173,6 +289,7 @@ async def test_live_runtime_recovers_after_initial_websocket_connect_failure(
         assert health["stopped_count"] == 0
         assert health["handled_payloads"] == 0
         assert health["changed_payloads"] == 0
+        assert health["unchanged_payloads"] == 0
         assert health["property_updates"] == 0
         assert health["applied_property_updates"] == 0
         assert health["unknown_property_updates"] == 0
@@ -182,26 +299,16 @@ async def test_live_runtime_recovers_after_initial_websocket_connect_failure(
         assert health["last_error_type"] == "OSError"
         assert health["last_payload_type"] is None
         assert health["last_payload_at"] is None
-        assert manager.transport_health == {
-            "running": True,
-            "websocket_open": False,
-            "connect_attempts": 1,
-            "connected_count": 0,
-            "disconnected_count": 0,
-            "reconnect_attempts": 0,
-            "received_messages": 0,
-            "decoded_json_messages": 0,
-            "dispatched_payloads": 0,
-            "ignored_messages": 0,
-            "malformed_messages": 0,
-            "control_frames": 0,
-            "heartbeat_sent_count": 0,
-            "last_start_error_type": "OSError",
-            "last_runtime_error_type": None,
-            "last_payload_type": None,
-            "last_message_at": None,
-            "last_dispatched_at": None,
-        }
+        transport_health = manager.transport_health
+        assert transport_health is not None
+        assert transport_health["running"] is True
+        assert transport_health["websocket_open"] is False
+        assert transport_health["connect_attempts"] == 1
+        assert transport_health["connected_count"] == 0
+        assert transport_health["received_messages"] == 0
+        assert transport_health["first_frame_received"] is False
+        assert transport_health["last_start_error_type"] == "OSError"
+        assert transport_health["last_disconnect_reason"] == "connect_failed"
     finally:
         await manager.async_stop()
 

@@ -24,6 +24,7 @@ from .const import (
     CONF_OPEN_API_CLIENT_ID,
     CONF_OPEN_API_CLIENT_SECRET,
     CONF_PRIVATE_DOMAIN,
+    CONF_PRIVATE_PUSH_PROXY,
     CONF_REFRESH_TOKEN,
     CONF_SCAN_INTERVAL,
     CONF_SCAN_LOGIN_DEVICE,
@@ -43,6 +44,7 @@ CONFIG_DATA_KEYS = (
     CONF_OPEN_API_CLIENT_ID,
     CONF_OPEN_API_CLIENT_SECRET,
     CONF_PRIVATE_DOMAIN,
+    CONF_PRIVATE_PUSH_PROXY,
     CONF_TOKEN_EXPIRES_IN,
     CONF_TOKEN_TYPE,
     CONF_ACCOUNT_USER_ID,
@@ -67,7 +69,7 @@ SENSITIVE_PAYLOAD_KEYS = frozenset(
     deviceId device_id domain endpoint entry_id groupId group_id host houseId
     house_id id latitude longitude mac message_id nodeId node_id password
     payload privateDomain raw_event response roomId room_id sceneId scene_id
-    source_device_id token unique_id url username
+    source_device_id token unique_id url username proxy
     """.split()
 )
 
@@ -81,6 +83,7 @@ TO_REDACT = {
     CONF_OPEN_API_CLIENT_ID,
     CONF_OPEN_API_CLIENT_SECRET,
     CONF_PRIVATE_DOMAIN,
+    CONF_PRIVATE_PUSH_PROXY,
     CONF_LOCAL_GATEWAY_HOST,
     CONF_ACCOUNT_USER_ID,
     CONF_ACCOUNT_USERNAME,

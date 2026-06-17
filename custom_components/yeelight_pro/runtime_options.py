@@ -15,6 +15,7 @@ from .const import (
     CONF_LOCAL_GATEWAY_PORT,
     CONF_PRIVATE_DOMAIN,
     CONF_PRIVATE_PUSH_DOMAIN,
+    CONF_PRIVATE_PUSH_PROXY,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
     DEFAULT_TOPOLOGY_CHANGE_REPAIRS,
     DOMAIN,
@@ -69,6 +70,7 @@ def entry_data_requires_reload(
         CONF_CONNECTION_MODE,
         CONF_PRIVATE_DOMAIN,
         CONF_PRIVATE_PUSH_DOMAIN,
+        CONF_PRIVATE_PUSH_PROXY,
     }
     return any(old_data.get(key) != new_data.get(key) for key in reload_keys)
 

@@ -37,6 +37,13 @@ class AnalyticsSnapshot:
     monthly_user_actions: dict[str, Any] = field(default_factory=dict)
     yearly_user_actions: dict[str, Any] = field(default_factory=dict)
     endpoint_errors: dict[str, str] = field(default_factory=dict)
+    endpoint_count: int = 0
+    successful_endpoint_count: int = 0
+
+    @property
+    def has_values(self) -> bool:
+        """Return whether at least one analytics endpoint returned usable data."""
+        return self.successful_endpoint_count > 0
 
 
 class YeelightProAnalyticsCoordinator(DataUpdateCoordinator[AnalyticsSnapshot]):
@@ -105,7 +112,7 @@ class YeelightProAnalyticsCoordinator(DataUpdateCoordinator[AnalyticsSnapshot]):
             self._sync_bound_runtime_snapshot(None)
             return False
         self.async_set_updated_data(snapshot)
-        return True
+        return snapshot.has_values
 
     def sync_runtime_metadata(self, coordinator: Any) -> None:
         """从主 coordinator 同步 analytics sensor 需要的稳定 metadata。"""
@@ -143,9 +150,9 @@ class YeelightProAnalyticsCoordinator(DataUpdateCoordinator[AnalyticsSnapshot]):
                 )
                 self._sync_bound_runtime_snapshot(self.data)
                 return self.data
-            raise UpdateFailed(
-                "Failed to refresh Yeelight Pro analytics: all_endpoints_failed"
-            ) from None
+            snapshot = _empty_snapshot(period, endpoint_errors)
+            self._sync_bound_runtime_snapshot(snapshot)
+            return snapshot
 
         snapshot = AnalyticsSnapshot(
             date_code=period.month_code,
@@ -163,6 +170,8 @@ class YeelightProAnalyticsCoordinator(DataUpdateCoordinator[AnalyticsSnapshot]):
             ),
             yearly_user_actions=_response_dict(responses.get("yearly_user_actions")),
             endpoint_errors=endpoint_errors,
+            endpoint_count=len(responses) + len(endpoint_errors),
+            successful_endpoint_count=len(responses),
         )
         self._sync_bound_runtime_snapshot(snapshot)
         return snapshot
@@ -217,10 +226,8 @@ class YeelightProAnalyticsCoordinator(DataUpdateCoordinator[AnalyticsSnapshot]):
                     responses[name] = response
                 else:
                     endpoint_errors[name] = "InvalidResponse"
-            except AuthenticationError:
-                raise
             except Exception as err:
-                endpoint_errors[name] = type(err).__name__
+                endpoint_errors[name] = safe_error_summary(err)
                 _LOGGER.debug(
                     "Skipping unavailable Yeelight Pro analytics endpoint: "
                     "endpoint=%s error_type=%s summary=%s",
@@ -250,6 +257,26 @@ def _analytics_period() -> _AnalyticsPeriod:
         year_code=last_day.strftime("%Y"),
         day_code=last_day.isoformat(),
         trend_start_date=trend_start.isoformat(),
+    )
+
+
+def _empty_snapshot(
+    period: _AnalyticsPeriod,
+    endpoint_errors: Mapping[str, str],
+) -> AnalyticsSnapshot:
+    """Build a diagnostic-only snapshot when optional analytics endpoints fail."""
+    return AnalyticsSnapshot(
+        date_code=period.month_code,
+        day_code=period.day_code,
+        trend_start_date=period.trend_start_date,
+        trend_end_date=period.day_code,
+        endpoint_errors={
+            key: value
+            for key, value in endpoint_errors.items()
+            if isinstance(key, str) and isinstance(value, str)
+        },
+        endpoint_count=len(endpoint_errors),
+        successful_endpoint_count=0,
     )
 
 

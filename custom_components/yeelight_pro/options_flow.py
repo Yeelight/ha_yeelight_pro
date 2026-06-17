@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+import voluptuous as vol
+
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
 
@@ -36,6 +38,7 @@ from .const import (
     CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES,
     CONF_HOUSE_ID,
     CONF_OPEN_API_CLIENT_ID,
+    CONF_PRIVATE_PUSH_PROXY,
     DOMAIN,
 )
 from .device_filter_options import (
@@ -81,16 +84,26 @@ class YeelightProOptionsFlow(config_entries.OptionsFlow):
     ) -> FlowResult:
         """编辑 Yeelight Pro 通用运行时选项."""
         if user_input is not None:
-            self._pending_options = merge_options(
-                entry_options(self._config_entry),
-                user_input,
-                self._config_entry,
-            )
-            self._pending_entry_data = merge_private_entry_data(
-                self._config_entry.data,
-                user_input,
-                self._config_entry,
-            )
+            try:
+                self._pending_options = merge_options(
+                    entry_options(self._config_entry),
+                    user_input,
+                    self._config_entry,
+                )
+                self._pending_entry_data = merge_private_entry_data(
+                    self._config_entry.data,
+                    user_input,
+                    self._config_entry,
+                )
+            except vol.Invalid:
+                return self.async_show_form(
+                    step_id="general",
+                    data_schema=options_schema(
+                        entry_options(self._config_entry),
+                        self._config_entry,
+                    ),
+                    errors={CONF_PRIVATE_PUSH_PROXY: "invalid_url"},
+                )
             if self._pending_options_require_reload():
                 return await self.async_step_confirm_reload()
             return await self.async_step_confirm_runtime()

@@ -80,6 +80,64 @@ async def test_coordinator_applies_indexed_push_data_rows_to_switch_entities(
 
 
 @pytest.mark.asyncio
+async def test_coordinator_applies_gateway_post_prop_push_to_switch_entity(
+    hass: HomeAssistant,
+) -> None:
+    """私有部署 WebSocket 若复用 gateway_post.prop，四键状态也应立即更新。"""
+    coordinator = YeelightProCoordinator(
+        hass=hass,
+        client=MagicMock(),
+        house_id=12345,
+    )
+    coordinator.devices = {
+        228225: {
+            "id": 228225,
+            "device_id": 228225,
+            "name": "四键开关",
+            "category": "relay_switch",
+            "type": "switch",
+            "online": True,
+            "params": {"1-p": True, "2-p": True, "3-p": False, "4-p": False},
+        }
+    }
+    coordinator.data = coordinator.devices
+    first_key = YeelightProSwitch(coordinator, 228225, component_id="switch_1")
+    fourth_key = YeelightProSwitch(coordinator, 228225, component_id="switch_4")
+    updates = 0
+
+    def _listener() -> None:
+        nonlocal updates
+        updates += 1
+
+    remove_listener = coordinator.async_add_listener(_listener)
+
+    events = await coordinator.async_handle_push_payload(
+        {
+            "method": "gateway_post.prop",
+            "nodes": [
+                {
+                    "id": 228225,
+                    "nt": 2,
+                    "params": {"1-p": False, "4-p": True},
+                }
+            ],
+        }
+    )
+
+    try:
+        assert events == []
+        assert updates == 1
+        assert first_key.is_on is False
+        assert fourth_key.is_on is True
+        refreshed = coordinator.get_device(228225)
+        assert refreshed is not None
+        assert refreshed["params"]["1-p"] is False
+        assert refreshed["params"]["4-p"] is True
+    finally:
+        remove_listener()
+
+
+@pytest.mark.asyncio
 async def test_coordinator_routes_component_index_push_update_to_matching_component(
     hass: HomeAssistant,
 ) -> None:

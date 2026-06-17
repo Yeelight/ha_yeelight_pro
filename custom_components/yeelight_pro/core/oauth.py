@@ -33,14 +33,21 @@ async def refresh_access_token(
     client_secret: str,
     refresh_token: str,
     base_url: str | None = None,
+    allow_empty_client_secret: bool = False,
 ) -> YeelightAccountToken:
     """Refresh an OAuth access token using the documented account API."""
+    client_secret_value = _optional_text(client_secret)
     data = {
         "grant_type": "refresh_token",
         "client_id": _required_text(client_id, "client_id"),
-        "client_secret": _required_text(client_secret, "client_secret"),
         "refresh_token": _required_text(refresh_token, "refresh_token"),
     }
+    if client_secret_value or not allow_empty_client_secret:
+        data["client_secret"] = (
+            client_secret_value
+            if allow_empty_client_secret
+            else _required_text(client_secret, "client_secret")
+        )
     endpoint = (base_url or account_base_url(region)).rstrip("/")
     try:
         async with session.post(
@@ -81,6 +88,11 @@ def _required_text(value: Any, field: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise AuthenticationError(f"Yeelight OAuth {field} is required")
     return value.strip()
+
+
+def _optional_text(value: Any) -> str:
+    """Return optional OAuth text without exposing the raw value."""
+    return value.strip() if isinstance(value, str) else ""
 
 
 __all__ = ["refresh_access_token"]

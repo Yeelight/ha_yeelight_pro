@@ -232,6 +232,9 @@ def parse_scan_login_status(payload: Mapping[str, Any]) -> YeelightScanLoginQrCo
 def parse_account_token(payload: Mapping[str, Any]) -> YeelightAccountToken:
     """Parse a documented OAuth token response without raw payload exposure."""
     raise_for_body_error(payload)
+    data = payload.get("data")
+    if isinstance(data, Mapping):
+        return _parse_scan_login_token(data)
     return _parse_scan_login_token(payload)
 
 

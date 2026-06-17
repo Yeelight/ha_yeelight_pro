@@ -37,10 +37,13 @@ PUSH_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
         "push-us.yeelight.com": "US WebSocket push endpoint",
         "push-de.yeelight.com": "EU WebSocket push endpoint",
         "CONF_PRIVATE_PUSH_DOMAIN": "private deployment independent push endpoint key",
+        "CONF_PRIVATE_PUSH_PROXY": "private deployment WebSocket proxy key",
     },
     "live_runtime.py": {
         "CLOUD_REGION_PUSH_BASE_URLS": "regional WebSocket push endpoint selection",
         "CONF_PRIVATE_PUSH_DOMAIN": "private deployment independent push endpoint selection",
+        "CONF_PRIVATE_PUSH_PROXY": "private deployment WebSocket proxy selection",
+        "_push_proxy_for_data": "private deployment WebSocket proxy runtime selection",
         "deployment_push_base_url(private_push_domain)": (
             "private push endpoint has priority over API host fallback"
         ),

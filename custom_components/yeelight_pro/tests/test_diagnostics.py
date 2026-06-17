@@ -20,6 +20,7 @@ from custom_components.yeelight_pro.const import (
     CONF_HOUSE_ID,
     CONF_OPEN_API_CLIENT_ID,
     CONF_OPEN_API_CLIENT_SECRET,
+    CONF_PRIVATE_PUSH_PROXY,
     CONF_SCAN_INTERVAL,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
     CONNECTION_MODE_CLOUD,
@@ -113,6 +114,7 @@ async def test_diagnostics_allowlists_config_entry_data_and_options(
     diagnostics_entry.data[CONF_CLOUD_AUTH_METHOD] = "scan_login"
     diagnostics_entry.data[CONF_OPEN_API_CLIENT_ID] = "client-secret-id"
     diagnostics_entry.data[CONF_OPEN_API_CLIENT_SECRET] = "client-secret-value"
+    diagnostics_entry.data[CONF_PRIVATE_PUSH_PROXY] = "http://proxy-secret:7890"
     diagnostics_entry.options["payload"] = {
         "body": "device-secret-1",
         "url": "https://api.yeelight.com/apis/iot",
@@ -130,9 +132,11 @@ async def test_diagnostics_allowlists_config_entry_data_and_options(
         CONF_CLOUD_DOMAIN,
         CONF_OPEN_API_CLIENT_ID,
         CONF_OPEN_API_CLIENT_SECRET,
+        CONF_PRIVATE_PUSH_PROXY,
     }
     assert data["config_entry"]["data"][CONF_OPEN_API_CLIENT_ID] == "**REDACTED**"
     assert data["config_entry"]["data"][CONF_OPEN_API_CLIENT_SECRET] == "**REDACTED**"
+    assert data["config_entry"]["data"][CONF_PRIVATE_PUSH_PROXY] == "**REDACTED**"
     assert set(data["config_entry"]["options"]) == {
         CONF_SCAN_INTERVAL,
         CONF_DEBUG_MODE,

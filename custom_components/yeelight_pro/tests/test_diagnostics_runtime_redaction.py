@@ -104,6 +104,10 @@ async def test_diagnostics_reports_safe_runtime_health(
         "loaded_platform_count": 11,
         "expected_platform_count": 11,
         "platforms_match_options": True,
+        "live_updates_intended": True,
+        "live_updates_active": False,
+        "polling_fallback_active": False,
+        "polling_fallback_interval_seconds": None,
         "push": None,
         "lan": None,
     }
@@ -112,6 +116,8 @@ async def test_diagnostics_reports_safe_runtime_health(
         "last_update_success": None,
         "last_exception_type": None,
         "has_snapshot": False,
+        "endpoint_count": 0,
+        "successful_endpoint_count": 0,
     }
     dumped = json.dumps(data, ensure_ascii=False)
     assert "RuntimeError" in dumped
@@ -144,6 +150,8 @@ async def test_diagnostics_reports_analytics_soft_failure_without_details(
         "last_update_success": False,
         "last_exception_type": "UpdateFailed",
         "has_snapshot": False,
+        "endpoint_count": 0,
+        "successful_endpoint_count": 0,
         "endpoint_errors": {},
     }
     dumped = json.dumps(data, ensure_ascii=False)
@@ -184,6 +192,8 @@ async def test_diagnostics_reports_analytics_endpoint_errors_without_details(
         "last_update_success": True,
         "last_exception_type": None,
         "has_snapshot": True,
+        "endpoint_count": 0,
+        "successful_endpoint_count": 0,
         "endpoint_errors": {
             "alarm_trend": "ConnectionError",
             "energy_trend": "InvalidResponse",

@@ -39,6 +39,7 @@ class PushHealth:
     stopped_count: int = 0
     handled_payloads: int = 0
     changed_payloads: int = 0
+    unchanged_payloads: int = 0
     property_updates: int = 0
     applied_property_updates: int = 0
     unknown_property_updates: int = 0
@@ -60,6 +61,7 @@ class PushHealth:
             "stopped_count": self.stopped_count,
             "handled_payloads": self.handled_payloads,
             "changed_payloads": self.changed_payloads,
+            "unchanged_payloads": self.unchanged_payloads,
             "property_updates": self.property_updates,
             "applied_property_updates": self.applied_property_updates,
             "unknown_property_updates": self.unknown_property_updates,
@@ -194,6 +196,8 @@ class PushManager:
         self._health.last_payload_changed = changed or event_count > 0
         if self._health.last_payload_changed:
             self._health.changed_payloads += 1
+        else:
+            self._health.unchanged_payloads += 1
 
 
 def _payload_type(payload: Mapping[str, Any]) -> str | None:

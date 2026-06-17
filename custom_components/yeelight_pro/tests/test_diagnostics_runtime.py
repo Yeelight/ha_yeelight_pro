@@ -58,6 +58,10 @@ async def test_diagnostics_reports_aggregate_runtime_data(
         "loaded_platform_count": 2,
         "expected_platform_count": len(PLATFORMS),
         "platforms_match_options": False,
+        "live_updates_intended": True,
+        "live_updates_active": False,
+        "polling_fallback_active": False,
+        "polling_fallback_interval_seconds": None,
         "push": None,
         "lan": None,
     }
@@ -66,6 +70,8 @@ async def test_diagnostics_reports_aggregate_runtime_data(
         "last_update_success": None,
         "last_exception_type": None,
         "has_snapshot": False,
+        "endpoint_count": 0,
+        "successful_endpoint_count": 0,
     }
     assert data["runtime"]["client_capabilities"]["connection_mode"] == CONNECTION_MODE_CLOUD
     assert data["runtime"]["options"] == {

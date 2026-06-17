@@ -119,6 +119,7 @@ def _iter_house_analytics_candidates(
     if house_id is None or not analytics_enabled:
         return
     sensor_names = {
+        "endpoint_success_count": ("数据分析可用端点", "mdi:api"),
         "alarm_total": ("报警总数", "mdi:alarm-light"),
         "alarm_high_risk_count": ("高危设备数量", "mdi:alert-circle"),
         "energy_total": ("用电量", "mdi:lightning-bolt"),

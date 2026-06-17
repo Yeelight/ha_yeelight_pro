@@ -7,9 +7,11 @@ from typing import Any
 
 from .const import (
     CONF_CONNECTION_MODE,
+    CONF_LIVE_UPDATES,
     CONNECTION_MODE_CLOUD,
     CONNECTION_MODE_LAN,
     CONNECTION_MODE_PRIVATE,
+    DEFAULT_LIVE_UPDATES,
     get_enabled_platforms,
 )
 
@@ -89,6 +91,13 @@ def runtime_health(
         if isinstance(platform, str)
     )
     expected_platforms = sorted(get_enabled_platforms(_runtime_entry_options(runtime)))
+    live_updates_intended = _live_updates_intended(runtime)
+    live_updates_active = push_runtime_available(runtime.get("push_manager"))
+    polling_fallback_active = (
+        live_updates_intended
+        and not live_updates_active
+        and runtime.get("client") is not None
+    )
     return {
         "last_update_success": safe_bool_or_none(
             getattr(coordinator, "last_update_success", None),
@@ -99,6 +108,14 @@ def runtime_health(
         "loaded_platform_count": len(loaded_platforms),
         "expected_platform_count": len(expected_platforms),
         "platforms_match_options": loaded_platforms == expected_platforms,
+        "live_updates_intended": live_updates_intended,
+        "live_updates_active": live_updates_active,
+        "polling_fallback_active": polling_fallback_active,
+        "polling_fallback_interval_seconds": (
+            int(getattr(coordinator, "scan_interval", 0) or 0)
+            if polling_fallback_active
+            else None
+        ),
         "push": push_manager_health(runtime.get("push_manager")),
         "lan": manager_health(runtime.get("lan_runtime")),
     }
@@ -174,6 +191,16 @@ def _runtime_entry_options(runtime: Mapping[str, Any]) -> Mapping[str, Any]:
     entry = runtime.get("entry")
     options = getattr(entry, "options", None)
     return options if isinstance(options, Mapping) else {}
+
+
+def _live_updates_intended(runtime: Mapping[str, Any]) -> bool:
+    """Return whether this entry intends to use cloud/private live updates."""
+    entry = runtime.get("entry")
+    data = getattr(entry, "data", None)
+    mode = data.get(CONF_CONNECTION_MODE) if isinstance(data, Mapping) else None
+    if mode not in {CONNECTION_MODE_CLOUD, CONNECTION_MODE_PRIVATE}:
+        return False
+    return bool(_runtime_entry_options(runtime).get(CONF_LIVE_UPDATES, DEFAULT_LIVE_UPDATES))
 
 
 __all__ = [

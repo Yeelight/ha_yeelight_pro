@@ -6,6 +6,7 @@ LOCAL_HA_RUNTIME_ADDITIONAL_SOURCE_TOKENS = {
     "custom_components/yeelight_pro/config_flow_private.py": {
         "PrivateConfigFlowMixin": "private deployment config-flow split mixin",
         "CONF_PRIVATE_PUSH_DOMAIN": "private deployment independent push endpoint field",
+        "CONF_PRIVATE_PUSH_PROXY": "private deployment WebSocket proxy field",
         "deployment_push_base_url": "private deployment push URL normalization",
         "async_step_cloud_auth_method": "shared cloud/private auth flow handoff",
     },
@@ -15,6 +16,7 @@ LOCAL_HA_RUNTIME_ADDITIONAL_SOURCE_TOKENS = {
         "push-us.yeelight.com": "US WebSocket push endpoint",
         "push-de.yeelight.com": "EU WebSocket push endpoint",
         "CONF_PRIVATE_PUSH_DOMAIN": "private deployment independent push endpoint key",
+        "CONF_PRIVATE_PUSH_PROXY": "private deployment WebSocket proxy key",
     },
     "custom_components/yeelight_pro/deployment_urls.py": {
         "deployment_root_url": "private deployment root URL normalizer",
@@ -29,6 +31,7 @@ LOCAL_HA_RUNTIME_ADDITIONAL_SOURCE_TOKENS = {
     },
     "custom_components/yeelight_pro/config_flow_options.py": {
         "CONF_PRIVATE_PUSH_DOMAIN": "private deployment push field in options schema",
+        "CONF_PRIVATE_PUSH_PROXY": "private deployment proxy field in options schema",
         "merge_private_entry_data": "private push endpoint data merge helper",
         "visible_entry_data_change_count": "private data changes are counted in options flow",
         "deployment_push_base_url": "private push options input normalization",
@@ -41,6 +44,8 @@ LOCAL_HA_RUNTIME_ADDITIONAL_SOURCE_TOKENS = {
     "custom_components/yeelight_pro/live_runtime.py": {
         "CLOUD_REGION_PUSH_BASE_URLS": "regional cloud WebSocket push endpoint selection",
         "CONF_PRIVATE_PUSH_DOMAIN": "private deployment independent push endpoint key",
+        "CONF_PRIVATE_PUSH_PROXY": "private deployment WebSocket proxy key",
+        "_push_proxy_for_data": "private deployment WebSocket proxy runtime selection",
         "deployment_push_base_url(private_push_domain)": (
             "private push endpoint priority over API host fallback"
         ),

@@ -24,6 +24,8 @@ class FakeWebSocket:
         self._messages = messages
         self.sent_json: list[dict[str, Any]] = []
         self.closed = False
+        self.close_code: int | None = None
+        self._exception: BaseException | None = None
 
     async def send_json(self, data: dict[str, Any]) -> None:
         """记录发送到 websocket 的 JSON frame。"""
@@ -33,6 +35,18 @@ class FakeWebSocket:
         """标记 websocket 已关闭。"""
         self.closed = True
 
+    async def receive(self, timeout: float | None = None) -> FakeMessage:
+        """Return one message using aiohttp's receive-style API."""
+        try:
+            return await self.__anext__()
+        except StopAsyncIteration:
+            self.closed = True
+            return FakeMessage(WSMsgType.CLOSED, None)
+
+    def exception(self) -> BaseException | None:
+        """Return the stored websocket exception, if any."""
+        return self._exception
+
     def __aiter__(self) -> "FakeWebSocket":
         return self
 
@@ -40,6 +54,19 @@ class FakeWebSocket:
         if not self._messages:
             raise StopAsyncIteration
         return self._messages.pop(0)
+
+
+class ClosedBeforeFirstFrameWebSocket(FakeWebSocket):
+    """Websocket double that closes before delivering a text/binary frame."""
+
+    def __init__(self, *, close_code: int, exception: BaseException | None) -> None:
+        super().__init__([])
+        self.close_code = close_code
+        self._exception = exception
+
+    async def receive(self, timeout: float | None = None) -> FakeMessage:
+        self.closed = True
+        return FakeMessage(WSMsgType.CLOSED, None)
 
 
 class OpenFakeWebSocket(FakeWebSocket):
@@ -133,9 +160,11 @@ class FakeSession:
     ) -> None:
         self._websockets = websocket if isinstance(websocket, list) else [websocket]
         self.connected_urls: list[str] = []
+        self.connected_kwargs: list[dict[str, Any]] = []
 
-    async def ws_connect(self, url: str) -> FakeWebSocket:
+    async def ws_connect(self, url: str, **kwargs: Any) -> FakeWebSocket:
         self.connected_urls.append(url)
+        self.connected_kwargs.append(dict(kwargs))
         if not self._websockets:
             raise AssertionError("no websocket double queued")
         websocket = self._websockets.pop(0)

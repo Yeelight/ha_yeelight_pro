@@ -64,6 +64,28 @@ async def test_push_transport_connects_subscribes_and_dispatches_json_objects() 
                     '"data":[{"propId":"sp","index":1,"value":false}]}}'
                 ),
             ),
+            FakeMessage(
+                WSMsgType.TEXT,
+                (
+                    '{"method":"message","result":{"code":200,"data":'
+                    '{"method":"gateway_post.prop","nodes":[{"id":9,'
+                    '"params":{"1-p":false}}]}}}'
+                ),
+            ),
+            FakeMessage(
+                WSMsgType.TEXT,
+                (
+                    '{"method":"gateway_post.prop",'
+                    '"nodes":[{"id":7,"nt":2,"params":{"p":true}}]}'
+                ),
+            ),
+            FakeMessage(
+                WSMsgType.TEXT,
+                (
+                    '{"method":"device_post.event",'
+                    '"params":{"id":8,"type":"keyClick","params":{"key":1}}}'
+                ),
+            ),
             FakeMessage(WSMsgType.TEXT, '["not-object"]'),
             FakeMessage(WSMsgType.TEXT, "not-json"),
             FakeMessage(WSMsgType.TEXT, '{"type":"unknown","nodes":[]}'),
@@ -122,8 +144,26 @@ async def test_push_transport_connects_subscribes_and_dispatches_json_objects() 
             "data": [{"propId": "sp", "index": 1, "value": False}],
         },
     }
-    assert callback.await_args_list[6].args[0] == {"type": "event", "nodes": []}
-    assert callback.await_count == 7
+    assert callback.await_args_list[6].args[0] == {
+        "method": "message",
+        "result": {
+            "code": 200,
+            "data": {
+                "method": "gateway_post.prop",
+                "nodes": [{"id": 9, "params": {"1-p": False}}],
+            },
+        },
+    }
+    assert callback.await_args_list[7].args[0] == {
+        "method": "gateway_post.prop",
+        "nodes": [{"id": 7, "nt": 2, "params": {"p": True}}],
+    }
+    assert callback.await_args_list[8].args[0] == {
+        "method": "device_post.event",
+        "params": {"id": 8, "type": "keyClick", "params": {"key": 1}},
+    }
+    assert callback.await_args_list[9].args[0] == {"type": "event", "nodes": []}
+    assert callback.await_count == 10
     health = transport.health.as_dict()
     assert health["running"] is True
     assert health["websocket_open"] is False
@@ -131,18 +171,87 @@ async def test_push_transport_connects_subscribes_and_dispatches_json_objects() 
     assert health["connected_count"] == 1
     assert health["disconnected_count"] == 1
     assert health["reconnect_attempts"] == 0
-    assert health["received_messages"] == 13
-    assert health["decoded_json_messages"] == 10
-    assert health["dispatched_payloads"] == 7
+    assert health["received_messages"] == 15
+    assert health["decoded_json_messages"] == 13
+    assert health["dispatched_payloads"] == 10
     assert health["ignored_messages"] == 4
     assert health["malformed_messages"] == 2
     assert health["control_frames"] == 3
     assert health["heartbeat_sent_count"] == 0
     assert health["last_start_error_type"] is None
     assert health["last_runtime_error_type"] is None
+    assert health["last_handshake_status"] is None
+    assert health["last_disconnect_reason"] == "server_closed"
+    assert health["last_close_code"] is None
+    assert health["last_close_exception_type"] is None
+    assert health["first_frame_received"] is True
     assert health["last_payload_type"] == "event"
+    assert health["last_ignored_reason"] is None
+    assert health["last_ignored_payload_type"] is None
     assert health["last_message_at"] is not None
     assert health["last_dispatched_at"] is not None
+
+    await transport.async_stop()
+
+
+@pytest.mark.asyncio
+async def test_push_transport_treats_private_subscribe_snapshot_as_control() -> None:
+    """私有部署 subscribe ACK/快照帧是控制帧，不应分发到 coordinator."""
+    websocket = FakeWebSocket(
+        [
+            FakeMessage(WSMsgType.TEXT, '{"result":"ok","timestamp":1}'),
+            FakeMessage(
+                WSMsgType.TEXT,
+                (
+                    '{"result":"ok","msgId":"redacted","timestamp":1,'
+                    '"data":{"id":1,"method":"subscribe","params":{"type":2},'
+                    '"version":"1.0","devices":[{"id":1}]}}'
+                ),
+            ),
+            FakeMessage(
+                WSMsgType.TEXT,
+                '{"type":"prop","nodes":[{"id":1,"params":{"p":true}}]}',
+            ),
+        ]
+    )
+    session = FakeSession(websocket)
+    callback = AsyncMock()
+    transport = YeelightPushWebSocketTransport(
+        session=session,
+        token="fake-token",
+        auto_reconnect=False,
+    )
+
+    await transport.async_start(callback)
+    await asyncio.sleep(0)
+
+    callback.assert_awaited_once_with(
+        {"type": "prop", "nodes": [{"id": 1, "params": {"p": True}}]}
+    )
+    health = transport.health.as_dict()
+    assert health["control_frames"] == 2
+    assert health["dispatched_payloads"] == 1
+    assert health["last_runtime_error_type"] is None
+
+    await transport.async_stop()
+
+
+@pytest.mark.asyncio
+async def test_push_transport_passes_configured_proxy_to_ws_connect() -> None:
+    """私有部署代理只应作为 aiohttp ws_connect 参数传入。"""
+    websocket = OpenFakeWebSocket()
+    session = FakeSession(websocket)
+    transport = YeelightPushWebSocketTransport(
+        session=session,
+        token="fake-token",
+        proxy=" http://host.docker.internal:7890 ",
+    )
+
+    await transport.async_start(AsyncMock())
+    await websocket.waiting_for_message.wait()
+
+    assert session.connected_kwargs[0]["proxy"] == "http://host.docker.internal:7890"
+    assert transport.health.as_dict()["proxy_configured"] is True
 
     await transport.async_stop()
 

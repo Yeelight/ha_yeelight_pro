@@ -285,6 +285,9 @@ def test_analytics_candidates_are_house_level_diagnostic_sensors() -> None:
     }
 
     alarm_total_uid = _uid(_SCOPE_HOUSE_12345, "analytics", "alarm_total")
+    endpoint_uid = _uid(_SCOPE_HOUSE_12345, "analytics", "endpoint_success_count")
+    assert candidates[("sensor", endpoint_uid)].name == "数据分析可用端点"
+    assert candidates[("sensor", endpoint_uid)].entity_category == "diagnostic"
     assert candidates[("sensor", alarm_total_uid)].name == "报警总数"
     assert candidates[("sensor", alarm_total_uid)].entity_category == "diagnostic"
     assert candidates[("sensor", alarm_total_uid)].suggested_object_id == "易来家庭 报警总数"

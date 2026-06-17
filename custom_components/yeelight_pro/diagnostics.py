@@ -202,6 +202,8 @@ def _analytics_diagnostics(runtime: Mapping[str, Any]) -> dict[str, Any]:
             "last_update_success": None,
             "last_exception_type": None,
             "has_snapshot": False,
+            "endpoint_count": 0,
+            "successful_endpoint_count": 0,
         }
     snapshot = getattr(coordinator, "data", None)
     endpoint_errors = getattr(snapshot, "endpoint_errors", None)
@@ -214,6 +216,16 @@ def _analytics_diagnostics(runtime: Mapping[str, Any]) -> dict[str, Any]:
             getattr(coordinator, "last_exception", None),
         ),
         "has_snapshot": snapshot is not None,
+        "endpoint_count": getattr(snapshot, "endpoint_count", 0)
+        if snapshot is not None
+        else 0,
+        "successful_endpoint_count": getattr(
+            snapshot,
+            "successful_endpoint_count",
+            0,
+        )
+        if snapshot is not None
+        else 0,
         "endpoint_errors": {
             key: value
             for key, value in (endpoint_errors or {}).items()

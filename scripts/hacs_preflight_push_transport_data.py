@@ -9,6 +9,8 @@ PUSH_TRANSPORT_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
         "base_url": "private deployment push endpoint override",
         "last_start_error_type": "recoverable initial-connect error diagnostics",
         "last_runtime_error_type": "background WebSocket error diagnostics",
+        "last_handshake_status": "WebSocket handshake status diagnostics",
+        "last_disconnect_reason": "WebSocket disconnect reason diagnostics",
         "received_messages": "received frame count diagnostics",
         "decoded_json_messages": "decoded JSON frame count diagnostics",
         "dispatched_payloads": "coordinator-dispatched payload count diagnostics",
@@ -16,6 +18,13 @@ PUSH_TRANSPORT_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
         "malformed_messages": "malformed frame count diagnostics",
         "control_frames": "control frame count diagnostics",
         "heartbeat_sent_count": "heartbeat send count diagnostics",
+        "token_refresh_attempts": "WebSocket token refresh attempt diagnostics",
+        "last_token_refresh_error_type": "WebSocket token refresh error diagnostics",
+        "consecutive_pre_first_frame_abnormal_close_count": (
+            "consecutive early abnormal-close diagnostics"
+        ),
+        "reconnect_suspended": "WebSocket reconnect protection pause diagnostics",
+        "next_reconnect_delay": "planned reconnect delay diagnostics",
         "PushWebSocketSession": "session protocol seam",
         "PushWebSocket": "websocket protocol seam",
         "ws_connect": "websocket connect boundary",
@@ -212,6 +221,15 @@ PUSH_TRANSPORT_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
         ),
         "test_push_transport_methodless_result_error_closes_websocket": (
             "method-less result error cleanup coverage"
+        ),
+        "test_push_transport_records_handshake_status_without_endpoint": (
+            "safe WebSocket handshake diagnostics coverage"
+        ),
+        "test_push_transport_suspends_after_repeated_abnormal_close_before_first_frame": (
+            "early abnormal-close reconnect protection coverage"
+        ),
+        "test_push_transport_resets_abnormal_close_streak_after_first_frame": (
+            "early abnormal-close streak reset coverage"
         ),
     },
     "tests/test_live_runtime.py": {

@@ -15,6 +15,7 @@ from .const import (
     CONF_LIVE_UPDATES,
     CONF_PRIVATE_DOMAIN,
     CONF_PRIVATE_PUSH_DOMAIN,
+    CONF_PRIVATE_PUSH_PROXY,
     CLOUD_REGION_PUSH_BASE_URLS,
     DEFAULT_CLOUD_REGION,
     CONNECTION_MODE_CLOUD,
@@ -22,6 +23,8 @@ from .const import (
     DEFAULT_LIVE_UPDATES,
 )
 from .deployment_urls import deployment_push_base_url
+from .entry_migration import normalize_entry_data
+from .oauth_refresh import async_refresh_entry_token
 from .push_manager import PushManager
 from .push_transport import YeelightPushWebSocketTransport
 
@@ -46,16 +49,46 @@ async def async_start_live_runtime(
     """Start the Yeelight WebSocket push runtime when explicitly enabled."""
     if not live_updates_enabled(entry):
         return None
-    access_token = str(entry.data.get(CONF_ACCESS_TOKEN, "")).strip()
-    push_base_url = _push_base_url_for_entry(entry)
+    runtime_data = _runtime_entry_data(entry, coordinator)
+    access_token = _push_access_token(runtime_data, coordinator)
+    push_base_url = _push_base_url_for_data(runtime_data)
     transport = YeelightPushWebSocketTransport(
         session=async_get_clientsession(hass),
         token=access_token,
+        token_provider=lambda: _push_access_token(
+            _runtime_entry_data(entry, coordinator),
+            coordinator,
+        ),
+        token_refresh_handler=lambda: _async_refresh_push_token(
+            hass,
+            entry,
+            coordinator,
+        ),
         base_url=push_base_url,
+        proxy=_push_proxy_for_data(runtime_data),
     )
     manager = PushManager(coordinator, transport)
     await manager.async_start()
     return manager
+
+
+def _runtime_entry_data(entry: ConfigEntry, coordinator: Any) -> dict[str, Any]:
+    """Return the freshest normalized entry data available to live runtime."""
+    entry_data = getattr(entry, "data", None)
+    data = dict(entry_data) if isinstance(entry_data, Mapping) else {}
+    coordinator_data = getattr(coordinator, "entry_data", None)
+    if isinstance(coordinator_data, Mapping):
+        data.update(coordinator_data)
+    return normalize_entry_data(data)
+
+
+def _push_access_token(data: Mapping[str, Any], coordinator: Any) -> str:
+    """Return the current access token used by WebSocket push auth."""
+    client = getattr(coordinator, "client", None)
+    token = getattr(client, "access_token", None)
+    if isinstance(token, str) and token.strip():
+        return token.strip()
+    return str(data.get(CONF_ACCESS_TOKEN, "")).strip()
 
 
 def _push_base_url_for_entry(entry: ConfigEntry) -> str | None:
@@ -63,6 +96,11 @@ def _push_base_url_for_entry(entry: ConfigEntry) -> str | None:
     data = getattr(entry, "data", None)
     if not isinstance(data, Mapping):
         return None
+    return _push_base_url_for_data(data)
+
+
+def _push_base_url_for_data(data: Mapping[str, Any]) -> str | None:
+    """Return a push base URL from normalized config-entry data."""
     mode = data.get(CONF_CONNECTION_MODE)
     if mode == CONNECTION_MODE_CLOUD:
         region = str(data.get(CONF_CLOUD_REGION) or DEFAULT_CLOUD_REGION)
@@ -79,6 +117,33 @@ def _push_base_url_for_entry(entry: ConfigEntry) -> str | None:
     if not isinstance(private_domain, str) or not private_domain.strip():
         return None
     return deployment_push_base_url(private_domain)
+
+
+def _push_proxy_for_data(data: Mapping[str, Any]) -> str | None:
+    """Return an optional HTTP proxy URL for private-deployment WebSocket only."""
+    if data.get(CONF_CONNECTION_MODE) != CONNECTION_MODE_PRIVATE:
+        return None
+    value = data.get(CONF_PRIVATE_PUSH_PROXY)
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    return text or None
+
+
+async def _async_refresh_push_token(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    coordinator: Any,
+) -> str | None:
+    """Refresh the config-entry token for a WebSocket reconnect."""
+    client = getattr(coordinator, "client", None)
+    if client is None:
+        return None
+    result = await async_refresh_entry_token(hass, entry, client, force=True)
+    entry_data = getattr(result, "entry_data", None)
+    if isinstance(entry_data, Mapping):
+        coordinator.entry_data = dict(entry_data)
+    return _push_access_token(_runtime_entry_data(entry, coordinator), coordinator)
 
 
 __all__ = ["async_start_live_runtime", "live_updates_enabled"]

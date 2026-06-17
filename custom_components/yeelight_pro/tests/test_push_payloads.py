@@ -84,6 +84,54 @@ def test_push_property_updates_accept_wrapped_data_payload() -> None:
     assert updates[0].params == {"p": False}
 
 
+def test_push_property_updates_accept_deeply_wrapped_private_payload() -> None:
+    """私有部署多层 message/result/data envelope 不应退回 30 秒轮询."""
+    updates = push_property_updates(
+        {
+            "method": "message",
+            "result": {
+                "code": 200,
+                "data": {
+                    "method": "gateway_post.prop",
+                    "nodes": [
+                        {
+                            "id": 228225,
+                            "nt": 2,
+                            "params": {"1-p": False, "4-p": True},
+                        }
+                    ],
+                },
+            },
+        }
+    )
+
+    assert len(updates) == 1
+    assert updates[0].node_id == 228225
+    assert updates[0].params == {"1-p": False, "4-p": True}
+
+
+def test_push_property_updates_accept_gateway_post_prop_payload() -> None:
+    """WebSocket 私有部署复用 gateway_post.prop 时也应即时更新状态。"""
+    updates = push_property_updates(
+        {
+            "method": "gateway_post.prop",
+            "nodes": [
+                {
+                    "id": 228225,
+                    "nt": 2,
+                    "o": True,
+                    "params": {"1-p": False},
+                }
+            ],
+        }
+    )
+
+    assert len(updates) == 1
+    assert updates[0].node_id == 228225
+    assert updates[0].node_type == 2
+    assert updates[0].params == {"1-p": False, "o": True}
+
+
 @pytest.mark.parametrize("wrapper_key", ["params", "result"])
 def test_push_property_updates_accept_alternate_wrapped_payloads(
     wrapper_key: str,
@@ -202,6 +250,26 @@ def test_push_property_updates_accept_nested_single_data_property() -> None:
 
     assert len(updates) == 1
     assert updates[0].params == {"p": True}
+
+
+def test_push_property_updates_accept_online_only_node() -> None:
+    """只推在线状态 o 的节点也必须刷新 HA 可用性。"""
+    updates = push_property_updates(
+        {
+            "type": "prop",
+            "nodes": [
+                {
+                    "id": 228226,
+                    "nt": 2,
+                    "o": False,
+                }
+            ],
+        }
+    )
+
+    assert len(updates) == 1
+    assert updates[0].node_id == 228226
+    assert updates[0].params == {"o": False}
 
 
 def test_push_property_updates_accept_single_node_data_frame() -> None:

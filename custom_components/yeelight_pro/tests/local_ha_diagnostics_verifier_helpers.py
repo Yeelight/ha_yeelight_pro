@@ -121,6 +121,8 @@ def build_heartbeat_message(message_id): ...
             """
 last_start_error_type = None
 last_runtime_error_type = None
+last_handshake_status = None
+last_disconnect_reason = None
 class PushControlFrameError(Exception): ...
 """
             if include_runtime_health

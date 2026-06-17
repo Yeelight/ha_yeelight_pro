@@ -5,9 +5,6 @@ from __future__ import annotations
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers.update_coordinator import UpdateFailed
-
 import pytest
 
 from custom_components.yeelight_pro.core.analytics_coordinator import (
@@ -15,7 +12,11 @@ from custom_components.yeelight_pro.core.analytics_coordinator import (
     YeelightProAnalyticsCoordinator,
 )
 from custom_components.yeelight_pro.core.client import YeelightProClient
-from custom_components.yeelight_pro.core.exceptions import ConnectionError
+from custom_components.yeelight_pro.core.exceptions import (
+    AuthenticationError,
+    CommandError,
+    ConnectionError,
+)
 
 
 def _client() -> YeelightProClient:
@@ -160,16 +161,27 @@ async def test_analytics_coordinator_accepts_wrapped_and_direct_data(hass) -> No
 
 @pytest.mark.asyncio
 async def test_analytics_coordinator_first_refresh_reports_unavailable(hass) -> None:
-    """初次 analytics API 不可用时应让实体保持注册但状态 unavailable。"""
+    """初次 analytics API 全失败时应保留诊断快照而不伪造统计值。"""
     client = AsyncMock(spec=YeelightProClient)
     client.get_alarm_analysis.side_effect = ConnectionError("HTTP 404 request failed")
     coordinator = YeelightProAnalyticsCoordinator(hass, client, 12345)
 
-    with pytest.raises(ConfigEntryNotReady):
-        await coordinator.async_config_entry_first_refresh()
+    await coordinator.async_config_entry_first_refresh()
 
-    assert coordinator.data is None
-    assert isinstance(coordinator.last_exception, UpdateFailed)
+    assert coordinator.data is not None
+    assert coordinator.data.has_values is False
+    assert coordinator.data.endpoint_count == 8
+    assert coordinator.data.successful_endpoint_count == 0
+    assert set(coordinator.data.endpoint_errors) == {
+        "alarm_analysis",
+        "alarm_top",
+        "alarm_trend",
+        "energy_analysis",
+        "energy_trend",
+        "monthly_user_actions",
+        "user_actions",
+        "yearly_user_actions",
+    }
 
 
 @pytest.mark.asyncio
@@ -197,6 +209,44 @@ async def test_analytics_coordinator_keeps_partial_snapshot_when_endpoint_fails(
     assert coordinator.data.energy_analysis["used"]["usedCnt"] == 12.5
     assert coordinator.data.alarm_top == []
     assert coordinator.data.endpoint_errors == {"alarm_top": "ConnectionError"}
+    assert coordinator.data.endpoint_count == 8
+    assert coordinator.data.successful_endpoint_count == 7
+
+
+@pytest.mark.asyncio
+async def test_analytics_endpoint_auth_errors_are_endpoint_diagnostics(hass) -> None:
+    """统计端点权限失败应软降级，避免私有部署整组诊断实体不可用。"""
+    client = AsyncMock(spec=YeelightProClient)
+    client.get_alarm_analysis.side_effect = AuthenticationError("HTTP 403")
+    coordinator = YeelightProAnalyticsCoordinator(hass, client, 12345)
+
+    await coordinator.async_config_entry_first_refresh()
+
+    assert coordinator.data is not None
+    assert coordinator.data.has_values is False
+    assert coordinator.data.endpoint_count == 8
+    assert coordinator.data.successful_endpoint_count == 0
+    assert coordinator.data.endpoint_errors["alarm_analysis"] == (
+        "AuthenticationError code 403"
+    )
+
+
+@pytest.mark.asyncio
+async def test_analytics_endpoint_errors_preserve_safe_error_code(hass) -> None:
+    """analytics endpoint 失败诊断应保留安全错误码但不泄露原始消息."""
+    client = AsyncMock(spec=YeelightProClient)
+    client.get_alarm_analysis.side_effect = CommandError(
+        "Open API request failed: code 400 token-secret"
+    )
+    coordinator = YeelightProAnalyticsCoordinator(hass, client, 12345)
+
+    await coordinator.async_config_entry_first_refresh()
+
+    assert coordinator.data is not None
+    assert coordinator.data.endpoint_errors["alarm_analysis"] == (
+        "CommandError code 400"
+    )
+    assert "token-secret" not in str(coordinator.data.endpoint_errors)
 
 
 @pytest.mark.asyncio
@@ -215,10 +265,10 @@ async def test_analytics_soft_initial_refresh_does_not_raise(hass, caplog) -> No
         refreshed = await coordinator.async_soft_initial_refresh()
 
     assert refreshed is False
-    assert coordinator.data is None
-    assert main_coordinator.analytics_data is None
-    assert coordinator.last_update_success is False
-    assert isinstance(coordinator.last_exception, UpdateFailed)
+    assert coordinator.data is not None
+    assert coordinator.data.has_values is False
+    assert main_coordinator.analytics_data is coordinator.data
+    assert coordinator.last_update_success is True
     assert "HTTP 404" not in caplog.text
 
 

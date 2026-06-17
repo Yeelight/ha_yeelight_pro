@@ -15,6 +15,7 @@ from .const import (
     ATTR_SOURCE_DEVICE_ID,
 )
 from .event_support import safe_runtime_event_params
+from .lan_payload import lan_event_payloads, lan_property_updates
 from .push_contract import PUSH_DATA_TYPE_EVENT, PUSH_DATA_TYPE_PROP
 from .utils import to_int
 
@@ -34,6 +35,16 @@ class YeelightPushPropertyUpdate:
 def push_property_updates(payload: Mapping[str, Any]) -> list[YeelightPushPropertyUpdate]:
     """Normalize a Yeelight WebSocket ``prop`` payload into state updates."""
     payload = _data_payload(payload)
+    lan_updates = lan_property_updates(payload)
+    if lan_updates:
+        return [
+            YeelightPushPropertyUpdate(
+                node_id=update.node_id,
+                node_type=update.node_type,
+                params=update.params,
+            )
+            for update in lan_updates
+        ]
     if payload.get("type") != PUSH_TYPE_PROP:
         return []
     updates: list[YeelightPushPropertyUpdate] = []
@@ -55,6 +66,9 @@ def push_property_updates(payload: Mapping[str, Any]) -> list[YeelightPushProper
 def push_event_payloads(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
     """Normalize Yeelight WebSocket ``event`` payload nodes for runtime dispatch."""
     payload = _data_payload(payload)
+    lan_events = lan_event_payloads(payload)
+    if lan_events:
+        return lan_events
     if payload.get("type") != PUSH_TYPE_EVENT:
         return []
     events: list[dict[str, Any]] = []
@@ -95,14 +109,37 @@ def _iter_nodes(payload: Mapping[str, Any]) -> list[Mapping[str, Any]]:
 
 def _data_payload(payload: Mapping[str, Any]) -> Mapping[str, Any]:
     """Return the WebSocket data object when transports wrap the documented frame."""
+    if _is_push_data_payload(payload):
+        return payload
+    return _nested_data_payload(payload, depth=0)
+
+
+def _nested_data_payload(payload: Mapping[str, Any], *, depth: int) -> Mapping[str, Any]:
+    """Unwrap nested data/params/result envelopes from private deployments."""
+    if depth >= 4:
+        return payload
     for key in ("data", "params", "result"):
         nested = payload.get(key)
-        if isinstance(nested, Mapping) and nested.get("type") in {
-            PUSH_TYPE_PROP,
-            PUSH_TYPE_EVENT,
-        }:
+        if not isinstance(nested, Mapping):
+            continue
+        if _is_push_data_payload(nested):
             return nested
+        unwrapped = _nested_data_payload(nested, depth=depth + 1)
+        if unwrapped is not nested:
+            return unwrapped
     return payload
+
+
+def _is_push_data_payload(payload: Mapping[str, Any]) -> bool:
+    """Return true for documented push payloads or compatible post frames."""
+    if payload.get("type") in {PUSH_TYPE_PROP, PUSH_TYPE_EVENT}:
+        return True
+    return payload.get("method") in {
+        "gateway_post.prop",
+        "device_post.prop",
+        "gateway_post.event",
+        "device_post.event",
+    }
 
 
 def _looks_like_single_node(payload: Mapping[str, Any]) -> bool:
@@ -158,6 +195,8 @@ def _node_params(node: Mapping[str, Any]) -> Mapping[str, Any] | None:
     prop_id = node.get("propId") or node.get("propName")
     if prop_id not in (None, "") and "value" in node:
         return _scope_params_to_component(node, {str(prop_id): node.get("value")})
+    if "o" in node:
+        return {"o": node.get("o")}
     return None
 
 

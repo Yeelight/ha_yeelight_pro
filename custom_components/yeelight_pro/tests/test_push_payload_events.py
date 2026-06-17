@@ -81,6 +81,35 @@ def test_push_event_payloads_redact_sensitive_event_params() -> None:
     assert "secret-token" not in str(event)
 
 
+def test_push_event_payloads_accept_device_post_event_payload() -> None:
+    """WebSocket 私有部署复用 device_post.event 时也应进入 HA 事件总线。"""
+    events = push_event_payloads(
+        {
+            "method": "device_post.event",
+            "id": 116,
+            "params": {
+                "id": 7919,
+                "type": "keyClick",
+                "params": {"key": 1, "count": 1},
+            },
+        }
+    )
+
+    assert events == [
+        {
+            ATTR_SOURCE_DEVICE_ID: "7919",
+            ATTR_COMPONENT_ID: "wifi_panel",
+            ATTR_EVENT_TYPE: "keyClick",
+            ATTR_EVENT_ATTRIBUTES: {
+                "method": "device_post.event",
+                "message_id": "116",
+                "params": {"key": 1, "count": 1},
+                "raw_event": "keyClick",
+            },
+        }
+    ]
+
+
 @pytest.mark.parametrize("wrapper_key", ["params", "result"])
 def test_push_event_payloads_accept_alternate_wrapped_payloads(
     wrapper_key: str,

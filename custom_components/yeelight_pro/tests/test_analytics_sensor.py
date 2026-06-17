@@ -63,8 +63,11 @@ def test_analytics_sensors_expose_house_level_diagnostics() -> None:
     )
     assert sensors["alarm_total"].unique_id == expected_uid
     assert sensors["alarm_total"].suggested_object_id == "星河暖居 报警总数"
+    assert sensors["endpoint_success_count"].native_value == 0
+    assert sensors["endpoint_success_count"].extra_state_attributes["endpoint_count"] == 0
     assert sensors["alarm_total"].native_value == 4274
     assert sensors["alarm_total"].entity_category == EntityCategory.DIAGNOSTIC
+    assert sensors["alarm_total"].available is True
     assert sensors["alarm_total"].extra_state_attributes["trend"] == [
         {"dateStr": "2024-08-08", "alarmNum": "9"}
     ]
@@ -94,3 +97,96 @@ def test_analytics_sensors_expose_house_level_diagnostics() -> None:
         {"dateStr": "8月", "pOnNum": 2872}
     ]
     assert "secret-device" not in str(sensors["user_action_count"].extra_state_attributes)
+
+
+def test_analytics_sensors_keep_endpoint_error_diagnostics_without_fake_values() -> None:
+    """analytics 端点不可用时实体应可诊断，但不能把失败误显示为 0。"""
+    snapshot = AnalyticsSnapshot(
+        date_code="2024-08",
+        day_code="2024-08-08",
+        trend_start_date="2024-08-02",
+        trend_end_date="2024-08-08",
+        endpoint_errors={
+            "alarm_top": "ConnectionError",
+            "energy_analysis": "InvalidResponse",
+        },
+        endpoint_count=8,
+        successful_endpoint_count=6,
+    )
+    coordinator = SimpleNamespace(
+        data=snapshot,
+        house_id=12345,
+        entry_data={"house_name": "星河暖居"},
+        houses=[],
+    )
+    sensors = {
+        description.key: YeelightProAnalyticsSensor(coordinator, description)
+        for description in ANALYTICS_SENSOR_DESCRIPTIONS
+    }
+
+    assert sensors["alarm_high_risk_count"].available is True
+    assert sensors["endpoint_success_count"].native_value == 6
+    assert sensors["endpoint_success_count"].extra_state_attributes == {
+        "date_code": "2024-08",
+        "day_code": "2024-08-08",
+        "trend_start_date": "2024-08-02",
+        "trend_end_date": "2024-08-08",
+        "failed_endpoint_count": 2,
+        "endpoint_count": 8,
+        "successful_endpoint_count": 6,
+        "endpoint_errors": {
+            "alarm_top": "ConnectionError",
+            "energy_analysis": "InvalidResponse",
+        },
+    }
+    assert sensors["alarm_high_risk_count"].native_value is None
+    assert sensors["energy_total"].native_value is None
+    assert sensors["alarm_high_risk_count"].extra_state_attributes == {
+        "date_code": "2024-08",
+        "endpoint_count": 8,
+        "successful_endpoint_count": 6,
+        "endpoint_errors": {
+            "alarm_top": "ConnectionError",
+            "energy_analysis": "InvalidResponse",
+        },
+    }
+
+
+def test_analytics_endpoint_health_reports_zero_without_fake_business_values() -> None:
+    """所有 analytics 端点失败时只健康实体显示 0，业务指标仍保持 unknown。"""
+    snapshot = AnalyticsSnapshot(
+        date_code="2024-08",
+        day_code="2024-08-08",
+        trend_start_date="2024-08-02",
+        trend_end_date="2024-08-08",
+        endpoint_errors={
+            "alarm_analysis": "CommandError",
+            "alarm_top": "CommandError",
+            "alarm_trend": "CommandError",
+            "energy_analysis": "CommandError",
+            "energy_trend": "CommandError",
+            "user_actions": "CommandError",
+            "monthly_user_actions": "CommandError",
+            "yearly_user_actions": "CommandError",
+        },
+        endpoint_count=8,
+        successful_endpoint_count=0,
+    )
+    coordinator = SimpleNamespace(
+        data=snapshot,
+        house_id=12345,
+        entry_data={"house_name": "星河暖居"},
+        houses=[],
+    )
+    sensors = {
+        description.key: YeelightProAnalyticsSensor(coordinator, description)
+        for description in ANALYTICS_SENSOR_DESCRIPTIONS
+    }
+
+    assert sensors["endpoint_success_count"].native_value == 0
+    assert sensors["endpoint_success_count"].extra_state_attributes[
+        "failed_endpoint_count"
+    ] == 8
+    assert sensors["alarm_total"].native_value is None
+    assert sensors["energy_total"].native_value is None
+    assert sensors["user_action_count"].native_value is None

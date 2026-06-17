@@ -29,6 +29,7 @@ from .const import (
     CONF_OPEN_API_CLIENT_SECRET,
     CONF_PRIVATE_DOMAIN,
     CONF_PRIVATE_PUSH_DOMAIN,
+    CONF_PRIVATE_PUSH_PROXY,
     CONF_REFRESH_TOKEN,
     CONF_SCAN_INTERVAL,
     CONF_SCAN_LOGIN_DEVICE,
@@ -118,6 +119,15 @@ def normalize_entry_data(value: Mapping[str, Any]) -> dict[str, Any]:
             "websocket_url",
         )
     )
+    private_push_proxy = _string(
+        _first_value(
+            source,
+            CONF_PRIVATE_PUSH_PROXY,
+            "privatePushProxy",
+            "pushProxy",
+            "websocketProxy",
+        )
+    )
 
     # LAN 模式：不依赖云端域名和认证信息
     if connection_mode == CONNECTION_MODE_LAN:
@@ -127,6 +137,7 @@ def normalize_entry_data(value: Mapping[str, Any]) -> dict[str, Any]:
             CONF_CLOUD_DOMAIN: "",
             CONF_PRIVATE_DOMAIN: "",
             CONF_PRIVATE_PUSH_DOMAIN: "",
+            CONF_PRIVATE_PUSH_PROXY: "",
             CONF_ACCESS_TOKEN: "",
             CONF_REFRESH_TOKEN: "",
             CONF_TOKEN_EXPIRES_IN: None,
@@ -167,6 +178,11 @@ def normalize_entry_data(value: Mapping[str, Any]) -> dict[str, Any]:
         ),
         CONF_PRIVATE_PUSH_DOMAIN: (
             _private_push_url(private_push_domain)
+            if connection_mode == CONNECTION_MODE_PRIVATE
+            else ""
+        ),
+        CONF_PRIVATE_PUSH_PROXY: (
+            _private_push_proxy_url(private_push_proxy)
             if connection_mode == CONNECTION_MODE_PRIVATE
             else ""
         ),
@@ -333,6 +349,13 @@ def _private_root_url(value: Any) -> str:
 def _private_push_url(value: Any) -> str:
     text = _string(value)
     return deployment_push_base_url(text) if text else ""
+
+
+def _private_push_proxy_url(value: Any) -> str:
+    text = _string(value).strip()
+    if not text:
+        return ""
+    return text if text.startswith(("http://", "https://")) else ""
 
 
 def _mapping_or_empty(value: Any) -> dict[str, Any]:

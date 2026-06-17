@@ -50,6 +50,7 @@ async def test_push_transport_passes_bounded_connect_timeout() -> None:
             url: str,
             *,
             timeout: float | None = None,
+            proxy: str | None = None,
         ) -> OpenFakeWebSocket:
             self.calls.append((url, timeout))
             return OpenFakeWebSocket()
@@ -125,6 +126,39 @@ async def test_push_transport_reconnects_after_reader_finishes() -> None:
 
 
 @pytest.mark.asyncio
+async def test_push_transport_uses_fresh_token_provider_on_reconnect() -> None:
+    """OAuth 刷新后，WebSocket 重连应使用 token provider 返回的新 token。"""
+    reconnect_sleep = ControlledSleep()
+    first_websocket = FakeWebSocket([])
+    second_websocket = OpenFakeWebSocket()
+    tokens = ["initial-token", "fresh-token"]
+
+    def token_provider() -> str:
+        return tokens[0]
+
+    session = FakeSession([first_websocket, second_websocket])
+    transport = YeelightPushWebSocketTransport(
+        session=session,
+        token="fallback-token",
+        token_provider=token_provider,
+        reconnect_sleep=reconnect_sleep,
+    )
+
+    await transport.async_start(AsyncMock())
+    await asyncio.sleep(0)
+    tokens[0] = "fresh-token"
+    await wait_for_sleep_calls(reconnect_sleep, 1)
+    reconnect_sleep.release.set()
+    await second_websocket.waiting_for_message.wait()
+    await transport.async_stop()
+
+    assert session.connected_urls == [
+        "wss://push.yeelight.com/ws/initial-token",
+        "wss://push.yeelight.com/ws/fresh-token",
+    ]
+
+
+@pytest.mark.asyncio
 async def test_push_transport_reconnect_backoff_retries_until_success() -> None:
     """重连失败时应继续退避重试，成功后重新发送 subscribe frame."""
     reconnect_sleep = ControlledSleep()
@@ -160,7 +194,37 @@ async def test_push_transport_reconnect_backoff_retries_until_success() -> None:
         "subscribe"
     ]
     assert second_websocket.sent_json[0]["id"] == 2
-    assert transport.last_runtime_error_type == "OSError"
+    assert transport.last_runtime_error_type is None
+
+
+@pytest.mark.asyncio
+async def test_push_transport_keeps_backoff_after_unstable_short_connections() -> None:
+    """短连断开且未收到任何帧时不应重置退避，避免故障端点重连过密。"""
+    reconnect_sleep = ControlledSleep()
+    first_websocket = FakeWebSocket([])
+    second_websocket = FakeWebSocket([])
+    third_websocket = OpenFakeWebSocket()
+    session = FakeSession([first_websocket, second_websocket, third_websocket])
+    transport = YeelightPushWebSocketTransport(
+        session=session,
+        token="fake-token",
+        reconnect_sleep=reconnect_sleep,
+    )
+
+    await transport.async_start(AsyncMock())
+    await asyncio.sleep(0)
+    await wait_for_sleep_calls(reconnect_sleep, 1)
+    reconnect_sleep.release.set()
+    await wait_for_sleep_calls(reconnect_sleep, 2)
+    reconnect_sleep.release.set()
+    await third_websocket.waiting_for_message.wait()
+    await transport.async_stop()
+
+    assert reconnect_sleep.delays == [1.0, 2.0]
+    assert len(session.connected_urls) == 3
+    assert [message["method"] for message in third_websocket.sent_json] == [
+        "subscribe"
+    ]
 
 
 @pytest.mark.asyncio

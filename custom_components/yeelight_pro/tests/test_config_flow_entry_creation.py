@@ -21,6 +21,7 @@ from custom_components.yeelight_pro.const import (
     CONF_OPEN_API_CLIENT_ID,
     CONF_PRIVATE_DOMAIN,
     CONF_PRIVATE_PUSH_DOMAIN,
+    CONF_PRIVATE_PUSH_PROXY,
     CONF_REFRESH_TOKEN,
     CONF_SCAN_LOGIN_DEVICE,
     CONF_TOKEN_TYPE,
@@ -204,6 +205,7 @@ async def test_create_entry_private_title_includes_endpoint_and_house(
     config_flow._connection_mode = CONNECTION_MODE_PRIVATE
     config_flow._domain = "https://private.example"
     config_flow._private_push_domain = "wss://ws-dev.private.example/ws"
+    config_flow._private_push_proxy = "http://host.docker.internal:7890"
     config_flow._access_token = "private-token"
     config_flow._house_id = 1001
 
@@ -223,6 +225,7 @@ async def test_create_entry_private_title_includes_endpoint_and_house(
     )
     assert result["data"][CONF_PRIVATE_DOMAIN] == "https://private.example"
     assert result["data"][CONF_PRIVATE_PUSH_DOMAIN] == "wss://ws-dev.private.example/ws"
+    assert result["data"][CONF_PRIVATE_PUSH_PROXY] == "http://host.docker.internal:7890"
     assert result["options"][CONF_LIVE_UPDATES] is True
 
 
