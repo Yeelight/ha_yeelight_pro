@@ -9,6 +9,10 @@ from homeassistant.components.climate import ClimateEntityFeature, HVACMode
 from custom_components.yeelight_pro.climate import YeelightProClimate
 from custom_components.yeelight_pro.entity_candidates import iter_device_entity_candidates
 from custom_components.yeelight_pro.projector.climate import project_climate, project_climates
+from custom_components.yeelight_pro.projector.property_controls import (
+    project_number_controls,
+)
+from custom_components.yeelight_pro.projector.sensor import project_sensors
 
 from .projection_helpers import DOMAIN, projection_payload
 
@@ -67,6 +71,7 @@ def test_multi_climate_components_project_multiple_climates() -> None:
     """多温控组件应拆成多个 climate，而不是只保留第一个."""
     projections = project_climates(multi_climate_payload(), domain=DOMAIN)
 
+    assert [item.name for item in projections] == ["空调控制器", "空调控制器"]
     assert [(item.component_id, item.current_temperature) for item in projections] == [
         ("air_conditioner_1", 24),
         ("air_conditioner_2", 22),
@@ -106,6 +111,29 @@ def test_multi_climate_components_create_climate_candidates() -> None:
     ]
     assert [item.source for item in candidates] == ["device", "device"]
     assert all(item.device_id == "climate-dual-1" for item in candidates)
+
+
+def test_multi_climate_main_properties_do_not_duplicate_helper_entities() -> None:
+    """acm/acf/acdfltr 已由 climate 表达时不应重复成为 number/sensor."""
+    payload = multi_climate_payload()
+    for component in payload["ha_product_model"]["components"]:
+        component["properties"].append({"prop_id": "acdfltr", "access": "read_write"})
+    for component in payload["ha_device_instance"]["components"]:
+        component["state"]["acdfltr"] = 80
+
+    numbers = project_number_controls(payload, domain=DOMAIN)
+    sensors = project_sensors(payload, domain=DOMAIN)
+
+    assert [
+        (item.component_id, item.prop_id)
+        for item in numbers
+        if item.prop_id in {"acm", "acf", "acdfltr"}
+    ] == []
+    assert [
+        (item.component_id, item.name)
+        for item in sensors
+        if item.component_id.endswith(("ac_mode", "ac_fan", "ac_deflector"))
+    ] == []
 
 
 @pytest.mark.asyncio

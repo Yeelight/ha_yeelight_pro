@@ -12,6 +12,10 @@ from .device_classification import (
     friendly_model_id,
     is_generic_model_label,
 )
+from .device_structural_models import (
+    display_structural_model_label,
+    is_weak_display_model_label,
+)
 from .firmware_metadata import firmware_version
 from ..device_display import device_model_name
 
@@ -194,12 +198,27 @@ def _model_name(
     payload: Mapping[str, Any],
     product_model: HAProductModel,
 ) -> str | None:
-    return (
-        _specific_text(payload, ("model", "modelName", "productName"))
+    model_without_name = (
+        _specific_text(payload, ("modelName", "productName"))
+        or _structural_model_label_from_components(payload)
         or _specific_product_model(payload, product_model)
         or _specific_nested_text(payload, "product_schema", ("name", "model", "modelName"))
+        or _specific_text(payload, ("model",))
         or device_model_name(payload)
     )
+    if is_weak_display_model_label(model_without_name):
+        return display_structural_model_label(payload) or model_without_name
+    return model_without_name
+
+
+def _structural_model_label_from_components(payload: Mapping[str, Any]) -> str | None:
+    """Return structure label without using user-visible device names."""
+    payload_without_names = {
+        key: value
+        for key, value in payload.items()
+        if key not in _DEVICE_NAME_KEYS
+    }
+    return display_structural_model_label(payload_without_names)
 
 
 def _fallback_model_id(payload: Mapping[str, Any]) -> str:

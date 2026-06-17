@@ -20,6 +20,11 @@ from .device_runtime_capabilities import (
     normalize_iot_category,
     runtime_property_keys,
 )
+from .device_structural_models import (
+    component_categories,
+    is_weak_display_model_label,
+    structural_model_label,
+)
 
 GENERIC_MODEL_LABELS = frozenset({
     "",
@@ -88,7 +93,6 @@ _BROAD_CATEGORY_MODEL_LABELS = frozenset({
     "易来设备",
 })
 
-
 def infer_iot_category(payload: Mapping[str, Any]) -> str | None:
     """Infer a Yeelight IoT category from documented category/property evidence."""
     current = _category_text(payload.get("category")) or _category_text(payload.get("type"))
@@ -139,11 +143,22 @@ def friendly_model_name(payload: Mapping[str, Any]) -> str:
             "product_name",
             "modelName",
             "model_name",
-            "model",
             "deviceModel",
         ),
     )
     if explicit and not is_generic_model_label(explicit):
+        return explicit
+
+    structural_label = structural_model_label(payload)
+    if structural_label is not None:
+        return structural_label
+
+    explicit = _first_text(payload, ("model",))
+    if (
+        explicit
+        and not is_generic_model_label(explicit)
+        and not is_weak_display_model_label(explicit)
+    ):
         return explicit
 
     property_label = _property_model_label(payload, runtime_property_keys(payload))
@@ -215,12 +230,14 @@ def _property_model_label(payload: Mapping[str, Any], keys: set[str]) -> str | N
         return "人体传感器"
     if keys & {"cp", "tp", "rd"}:
         return "窗帘"
-    if keys & {"acp", "acm", "actt", "acct", "acf", "aco", "rfhp", "rfhct", "rfhtt"}:
-        return "温控设备"
+    if keys & {"acp", "acm", "actt", "acct", "acf", "aco", "acdfltr"}:
+        return "空调控制器"
+    if keys & {"rfhp", "rfhct", "rfhtt"}:
+        return "地暖控制器"
     if keys & {"vmcp", "vmcf"}:
-        return "新风"
-    if keys & {"tgt", "fa", "he"}:
-        return "温控设备"
+        return "新风控制器"
+    if keys & {"bhm", "do", "ve", "tgt", "fa", "he"}:
+        return "温控器"
     if (keys & {"t", "temp"}) and keys & {"h"}:
         return "温湿度传感器"
     if keys & {"t", "temp"}:
@@ -285,22 +302,7 @@ def _category_from_product_catalog(payload: Mapping[str, Any]) -> str | None:
 
 
 def _component_categories(payload: Mapping[str, Any]) -> Iterable[str]:
-    for subdevice in _property_rows(payload.get("subDeviceList")):
-        category = _category_text(subdevice.get("category"))
-        if category:
-            yield category
-    schema = payload.get("product_schema")
-    if isinstance(schema, Mapping):
-        for component in _schema_components(schema):
-            category = _category_text(component.get("category"))
-            if category:
-                yield category
-    product_model = payload.get("ha_product_model")
-    if isinstance(product_model, Mapping):
-        for component in _property_rows(product_model.get("components")):
-            category = _category_text(component.get("category"))
-            if category:
-                yield category
+    yield from component_categories(payload)
 
 
 def _params(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -392,4 +394,5 @@ __all__ = [
     "infer_iot_category",
     "infer_specific_iot_category",
     "is_generic_model_label",
+    "structural_model_label",
 ]

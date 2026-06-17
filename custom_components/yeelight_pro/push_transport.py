@@ -3,44 +3,34 @@
 from __future__ import annotations
 
 import asyncio
-import json
-from collections.abc import Awaitable, Callable, Mapping
 from contextlib import suppress
-from typing import Any, Protocol
+from time import time
+from typing import Any
 
 from aiohttp import WSMsgType
 
+from .const import DEFAULT_REQUEST_TIMEOUT
 from .push_contract import (
-    PUSH_CONTROL_METHODS,
-    PUSH_DATA_TYPES,
     PUSH_HEARTBEAT_INTERVAL_SECONDS,
     PushMessageBuilder,
     PushReconnectPolicy,
     build_push_url,
 )
-
-PushTransportPayloadCallback = Callable[[dict[str, Any]], Awaitable[object]]
-PushSleep = Callable[[float], Awaitable[object]]
-
-
-class PushWebSocket(Protocol):
-    """Small subset of aiohttp websocket behavior used by the transport."""
-
-    async def send_json(self, data: dict[str, Any]) -> None:
-        """Send a JSON frame."""
-
-    async def close(self) -> None:
-        """Close the websocket."""
-
-    def __aiter__(self) -> Any:
-        """Return the async iterator for incoming messages."""
-
-
-class PushWebSocketSession(Protocol):
-    """Small subset of aiohttp ClientSession used by the transport."""
-
-    async def ws_connect(self, url: str) -> PushWebSocket:
-        """Open a websocket connection."""
+from .push_transport_frames import (
+    PushControlFrameError,
+    is_control_frame,
+    is_push_data_payload,
+    json_payload_from_message,
+    payload_type,
+    raise_for_control_error_frame,
+)
+from .push_transport_types import (
+    PushSleep,
+    PushTransportHealth,
+    PushTransportPayloadCallback,
+    PushWebSocket,
+    PushWebSocketSession,
+)
 
 
 class YeelightPushWebSocketTransport:
@@ -58,6 +48,7 @@ class YeelightPushWebSocketTransport:
         reconnect_sleep: PushSleep | None = None,
         reconnect_policy: PushReconnectPolicy | None = None,
         auto_reconnect: bool = True,
+        connect_timeout_seconds: float = DEFAULT_REQUEST_TIMEOUT,
     ) -> None:
         """Initialize a transport without opening a network connection."""
         self._session = session
@@ -69,6 +60,7 @@ class YeelightPushWebSocketTransport:
         self._reconnect_sleep = reconnect_sleep or sleep
         self._reconnect_policy = reconnect_policy or PushReconnectPolicy()
         self._auto_reconnect = auto_reconnect
+        self._connect_timeout_seconds = connect_timeout_seconds
         self._websocket: PushWebSocket | None = None
         self._reader_task: asyncio.Task[None] | None = None
         self._heartbeat_task: asyncio.Task[None] | None = None
@@ -79,6 +71,7 @@ class YeelightPushWebSocketTransport:
         self._last_start_error_type: str | None = None
         self._last_runtime_error_type: str | None = None
         self._last_failure_was_connect = False
+        self._health = PushTransportHealth()
 
     @property
     def last_start_error_type(self) -> str | None:
@@ -90,11 +83,21 @@ class YeelightPushWebSocketTransport:
         """Return the aggregate error type from a background runtime failure."""
         return self._last_runtime_error_type
 
+    @property
+    def health(self) -> PushTransportHealth:
+        """Return diagnostics-safe aggregate transport health."""
+        self._health.running = self._running
+        self._health.websocket_open = self._websocket is not None
+        self._health.last_start_error_type = self._last_start_error_type
+        self._health.last_runtime_error_type = self._last_runtime_error_type
+        return self._health
+
     async def async_start(self, callback: PushTransportPayloadCallback) -> None:
         """Open the websocket, subscribe, and start a reader task."""
         if self._running or self._websocket is not None:
             return
         self._running = True
+        self._health.running = True
         self._callback = callback
         self._next_reconnect_delay = None
         self._last_start_error_type = None
@@ -111,13 +114,14 @@ class YeelightPushWebSocketTransport:
                 self._schedule_reconnect()
                 return
             self._running = False
+            self._health.running = False
             self._callback = None
             raise
 
     async def _connect_once(self, callback: PushTransportPayloadCallback) -> None:
         """Open one websocket session and start its background tasks."""
         try:
-            websocket = await self._session.ws_connect(
+            websocket = await self._ws_connect(
                 build_push_url(
                     self._token,
                     **({"base_url": self._base_url} if self._base_url else {}),
@@ -126,23 +130,50 @@ class YeelightPushWebSocketTransport:
         except Exception:
             self._last_failure_was_connect = True
             raise
-        self._last_failure_was_connect = False
         self._websocket = websocket
+        self._health.websocket_open = True
+        self._health.connected_count += 1
         try:
-            await websocket.send_json(self._message_builder.next_subscribe())
+            await self._send_json(websocket, self._message_builder.next_subscribe())
         except Exception:
+            self._last_failure_was_connect = True
             self._websocket = None
+            self._health.websocket_open = False
             with suppress(Exception):
                 await websocket.close()
             raise
+        self._last_failure_was_connect = False
         self._reader_task = asyncio.create_task(self._read_messages(callback))
         self._heartbeat_task = asyncio.create_task(self._send_heartbeats())
         self._next_reconnect_delay = None
         self._last_start_error_type = None
 
+    async def _ws_connect(self, url: str) -> PushWebSocket:
+        """Open websocket with a bounded setup timeout."""
+        self._health.connect_attempts += 1
+        try:
+            return await self._session.ws_connect(
+                url,
+                timeout=self._connect_timeout_seconds,
+            )
+        except TypeError:
+            return await self._session.ws_connect(url)
+
+    async def _send_json(
+        self,
+        websocket: PushWebSocket,
+        data: dict[str, Any],
+    ) -> None:
+        """Send a JSON frame with the same bounded setup/runtime timeout."""
+        await asyncio.wait_for(
+            websocket.send_json(data),
+            timeout=self._connect_timeout_seconds,
+        )
+
     async def async_stop(self) -> None:
         """Stop background tasks and close the active websocket."""
         self._running = False
+        self._health.running = False
         self._callback = None
         reconnect_task = self._reconnect_task
         self._reconnect_task = None
@@ -158,6 +189,8 @@ class YeelightPushWebSocketTransport:
         if websocket is not None:
             await websocket.close()
             self._websocket = None
+            self._health.websocket_open = False
+            self._health.disconnected_count += 1
 
     async def _read_messages(self, callback: PushTransportPayloadCallback) -> None:
         """Read websocket messages and dispatch JSON object payloads."""
@@ -167,15 +200,31 @@ class YeelightPushWebSocketTransport:
         reader_failed = False
         try:
             async for message in websocket:
-                payload = _json_payload_from_message(message)
-                if payload is None:
+                self._health.received_messages += 1
+                self._health.last_message_at = time()
+                message_type = getattr(message, "type", None)
+                if message_type not in {WSMsgType.TEXT, WSMsgType.BINARY}:
+                    self._health.ignored_messages += 1
                     continue
-                _raise_for_control_error_frame(payload)
-                if _is_push_data_payload(payload):
+                payload = json_payload_from_message(message)
+                if payload is None:
+                    self._health.malformed_messages += 1
+                    continue
+                self._health.decoded_json_messages += 1
+                if is_control_frame(payload):
+                    self._health.control_frames += 1
+                raise_for_control_error_frame(payload)
+                if is_push_data_payload(payload):
                     await callback(payload)
+                    self._health.dispatched_payloads += 1
+                    self._health.last_payload_type = payload_type(payload)
+                    self._health.last_dispatched_at = time()
+                else:
+                    self._health.ignored_messages += 1
         except Exception as err:
             reader_failed = True
             self._last_runtime_error_type = type(err).__name__
+            self._health.last_runtime_error_type = self._last_runtime_error_type
         finally:
             await self._cleanup_after_reader_exit(
                 websocket, close_websocket=reader_failed
@@ -191,9 +240,14 @@ class YeelightPushWebSocketTransport:
                 websocket = self._websocket
                 if websocket is None:
                     return
-                await websocket.send_json(self._message_builder.next_heartbeat())
+                await self._send_json(
+                    websocket,
+                    self._message_builder.next_heartbeat(),
+                )
+                self._health.heartbeat_sent_count += 1
         except Exception as err:
             self._last_runtime_error_type = type(err).__name__
+            self._health.last_runtime_error_type = self._last_runtime_error_type
             if self._heartbeat_task is current_task:
                 self._heartbeat_task = None
             await self._close_after_background_failure()
@@ -217,6 +271,8 @@ class YeelightPushWebSocketTransport:
             closed = True
         if closed and self._websocket is websocket:
             self._websocket = None
+            self._health.websocket_open = False
+            self._health.disconnected_count += 1
 
     async def _cleanup_after_reader_exit(
         self,
@@ -238,8 +294,12 @@ class YeelightPushWebSocketTransport:
                     closed = True
                 if closed and self._websocket is websocket:
                     self._websocket = None
+                    self._health.websocket_open = False
+                    self._health.disconnected_count += 1
             else:
                 self._websocket = None
+                self._health.websocket_open = False
+                self._health.disconnected_count += 1
 
         heartbeat_task = self._heartbeat_task
         if heartbeat_task is not None:
@@ -274,12 +334,14 @@ class YeelightPushWebSocketTransport:
                 if not self._running or self._websocket is not None:
                     return
                 try:
+                    self._health.reconnect_attempts += 1
                     await self._connect_once(callback)
                 except asyncio.CancelledError:
                     cancelled = True
                     raise
                 except Exception as err:
                     self._last_runtime_error_type = type(err).__name__
+                    self._health.last_runtime_error_type = self._last_runtime_error_type
                     continue
         except (asyncio.CancelledError, GeneratorExit):
             cancelled = True
@@ -291,70 +353,6 @@ class YeelightPushWebSocketTransport:
                     self._schedule_reconnect()
 
 
-def _json_payload_from_message(message: Any) -> dict[str, Any] | None:
-    """Return a JSON object payload for text/json websocket messages."""
-    message_type = getattr(message, "type", None)
-    if message_type not in {WSMsgType.TEXT, WSMsgType.BINARY}:
-        return None
-
-    data = getattr(message, "data", None)
-    if isinstance(data, bytes):
-        try:
-            data = data.decode()
-        except UnicodeDecodeError:
-            return None
-    if not isinstance(data, str):
-        return None
-
-    try:
-        payload = json.loads(data)
-    except json.JSONDecodeError:
-        return None
-    return payload if isinstance(payload, dict) else None
-
-
-def _is_push_data_payload(payload: dict[str, Any]) -> bool:
-    """Return whether a WebSocket object is a documented prop/event payload."""
-    if payload.get("type") in PUSH_DATA_TYPES:
-        return True
-    data = payload.get("data")
-    return isinstance(data, Mapping) and data.get("type") in PUSH_DATA_TYPES
-
-
-def _raise_for_control_error_frame(payload: dict[str, Any]) -> None:
-    """Reject control errors without exposing vendor text or payload values."""
-    method = payload.get("method")
-    if method not in PUSH_CONTROL_METHODS and not _is_result_control_payload(payload):
-        return
-
-    if _is_control_error_payload(payload):
-        raise PushControlFrameError
-
-
-def _is_result_control_payload(payload: Mapping[str, Any]) -> bool:
-    """Return whether a method-less result frame is a production control ACK."""
-    if "type" in payload or "result" not in payload:
-        return False
-    result = payload.get("result")
-    return isinstance(result, bool) or isinstance(result, Mapping)
-
-
-def _is_control_error_payload(payload: Mapping[str, Any]) -> bool:
-    """Classify control errors using aggregate-safe success/code markers."""
-    success = payload.get("success")
-    code = str(payload.get("code", "")).strip()
-    result = payload.get("result")
-    if success is False or code not in ("", "200"):
-        return True
-    if result is False:
-        return True
-    if isinstance(result, Mapping):
-        result_success = result.get("success")
-        result_code = str(result.get("code", "")).strip()
-        return result_success is False or result_code not in ("", "200")
-    return False
-
-
 async def _cancel_task(task: asyncio.Task[None] | None) -> None:
     """Cancel and await a background task."""
     if task is not None and not task.done():
@@ -362,15 +360,11 @@ async def _cancel_task(task: asyncio.Task[None] | None) -> None:
         with suppress(asyncio.CancelledError):
             await task
 
-
-class PushControlFrameError(Exception):
-    """Aggregate-only error for failed WebSocket control frames."""
-
-
 __all__ = [
     "PushControlFrameError",
     "PushSleep",
     "PushTransportPayloadCallback",
+    "PushTransportHealth",
     "PushWebSocket",
     "PushWebSocketSession",
     "YeelightPushWebSocketTransport",

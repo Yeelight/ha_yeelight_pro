@@ -255,25 +255,51 @@ def _analytics_period() -> _AnalyticsPeriod:
 
 def _response_dict(response: Any) -> dict[str, Any]:
     """Return response.data when it is an object."""
-    if not isinstance(response, dict):
-        return {}
-    data = response.get("data")
+    data = _response_data(response)
     return _safe_mapping(data) if isinstance(data, Mapping) else {}
 
 
 def _response_list(response: Any) -> list[dict[str, Any]]:
     """Return response.data when it is a list of objects."""
-    if not isinstance(response, dict):
-        return []
-    data = response.get("data")
+    data = _response_data(response)
     if not isinstance(data, list):
         return []
     return [_safe_mapping(item) for item in data if isinstance(item, Mapping)]
 
 
+def _response_data(response: Any) -> Any:
+    """Return analytics payload data from documented and proxy response wrappers."""
+    if not isinstance(response, dict):
+        return response
+    if "data" in response:
+        return response.get("data")
+    result = response.get("result")
+    if isinstance(result, Mapping) and "data" in result:
+        return result.get("data")
+    if any(key in response for key in ("code", "msg", "message", "success")):
+        return {}
+    return response
+
+
+def _response_has_data(response: Any) -> bool:
+    """Return whether a response carries a usable analytics payload."""
+    if isinstance(response, list):
+        return True
+    if not isinstance(response, dict):
+        return False
+    if "data" in response:
+        return True
+    result = response.get("result")
+    if isinstance(result, Mapping) and "data" in result:
+        return True
+    return not any(key in response for key in ("code", "msg", "message", "success"))
+
+
 def _is_analytics_response(response: Any) -> bool:
-    """Return true only for Open API response mappings."""
-    return isinstance(response, dict)
+    """Return true for documented analytics response shapes."""
+    if not isinstance(response, dict | list):
+        return False
+    return _response_has_data(response)
 
 
 def _safe_mapping(value: Mapping[Any, Any]) -> dict[str, Any]:

@@ -6,14 +6,20 @@ from collections.abc import Iterable, Mapping
 import re
 from typing import Any
 
-from .capabilities.registry import product_spec
+from .device_channel_catalog import (
+    is_channel_component_name,
+    is_input_channel_component_name,
+    payload_product_spec,
+    product_catalog_channel_count,
+    product_channel_count,
+)
 from .device_channel_generated_names import (
     generated_channel_name_index,
     looks_like_generated_channel_name,
 )
 from .device_channel_semantics import (
-    component_name_key,
     component_text,
+    is_channel_component,
     uses_output_channel_label,
 )
 from .utils import to_str
@@ -60,6 +66,7 @@ _POSITIONAL_CHANNEL_LABELS = {
 _CHANNEL_NAME_KEYS = ("desc", "componentName", "component_name", "name")
 _COMPONENT_INDEX_SUFFIX_RE = re.compile(r"_(?P<index>\d+)$")
 
+
 def channel_name_label(
     *,
     index: int | None,
@@ -79,6 +86,16 @@ def channel_name_label(
         inferred_index = 1
     if inferred_index is None and explicit:
         inferred_index = generated_channel_name_index(explicit)
+    if (
+        component is not None
+        and not is_channel_component(component)
+        and not _non_channel_component_uses_channel_label(
+            explicit,
+            inferred_index,
+            positional_context=has_positional_context,
+        )
+    ):
+        return None
     if explicit and not looks_like_generated_channel_name(
         explicit,
         inferred_index,
@@ -97,27 +114,39 @@ def channel_name_label(
     return labels.get(inferred_index, f"{prefix} {inferred_index}")
 
 
+def _non_channel_component_uses_channel_label(
+    explicit: str | None,
+    index: int | None,
+    *,
+    positional_context: bool,
+) -> bool:
+    """Allow generated key names without treating every indexed component as a key."""
+    if explicit is None:
+        return False
+    if _is_positional_channel_label(explicit):
+        return True
+    if generated_channel_name_index(explicit) is not None:
+        return True
+    if explicit.strip().isdecimal():
+        return True
+    return looks_like_generated_channel_name(
+        explicit,
+        index,
+        positional_context=positional_context,
+    )
+
+
+def _is_positional_channel_label(value: str) -> bool:
+    return value.strip() in {"左键", "中键", "右键"}
+
+
 def switch_channel_count_hint(payload: Mapping[str, Any]) -> int | None:
     """Return switch channel count from official product or runtime capability evidence."""
-    if count := _product_catalog_channel_count(payload):
+    if count := product_catalog_channel_count(payload):
         return count
     if count := _runtime_switch_channel_count(payload):
         return count
     return None
-
-
-def _product_catalog_channel_count(payload: Mapping[str, Any]) -> int | None:
-    """Return documented component count from Yeelight product composition."""
-    spec = _payload_product_spec(payload)
-    if spec is None:
-        return None
-    if count := _product_component_channel_count(spec):
-        return count
-    if len(spec.normal_components) != 1:
-        return None
-    if not _is_channel_component(spec.normal_components[0]):
-        return None
-    return _safe_channel_count(spec.normal_component_count)
 
 
 def _uses_output_channel_label(
@@ -132,10 +161,10 @@ def _uses_output_channel_label(
 
 def _product_catalog_prefers_input_channels(payload: Mapping[str, Any]) -> bool:
     """Return true when official composition identifies channels as input keys."""
-    spec = _payload_product_spec(payload)
+    spec = payload_product_spec(payload)
     if spec is None:
         return False
-    count = _product_channel_count(spec)
+    count = product_channel_count(spec)
     if count is not None and count < 4:
         return False
     components = tuple(spec.normal_components)
@@ -145,85 +174,12 @@ def _product_catalog_prefers_input_channels(payload: Mapping[str, Any]) -> bool:
     channel_components = [
         component
         for component in components
-        if _is_channel_component(component)
+        if is_channel_component_name(component)
     ]
     return bool(channel_components) and all(
-        _is_input_channel_component(component)
+        is_input_channel_component_name(component)
         for component in channel_components
     )
-
-
-def _payload_product_spec(payload: Mapping[str, Any]) -> Any | None:
-    """Return catalog product spec for the payload PID aliases."""
-    return product_spec(payload.get("pid") or payload.get("productId") or payload.get("product_id"))
-
-
-def _product_channel_count(spec: Any) -> int | None:
-    """Return documented channel count from counted or single channel components."""
-    if count := _product_component_channel_count(spec):
-        return count
-    if len(spec.normal_components) != 1:
-        return None
-    if not _is_channel_component(spec.normal_components[0]):
-        return None
-    return _safe_channel_count(spec.normal_component_count)
-
-
-def _product_component_channel_count(spec: Any) -> int | None:
-    """Return documented channel count for known channel components only."""
-    if not spec.normal_component_counts:
-        return None
-    switch_counts = [
-        count
-        for component_name, count in spec.normal_component_counts
-        if _is_switch_channel_component(component_name)
-    ]
-    if len(switch_counts) == 1:
-        return _safe_channel_count(switch_counts[0])
-    counts = [
-        count
-        for component_name, count in spec.normal_component_counts
-        if _is_channel_component(component_name)
-    ]
-    if len(counts) != 1:
-        return None
-    return _safe_channel_count(counts[0])
-
-
-def _is_switch_channel_component(value: Any) -> bool:
-    text = component_name_key(value)
-    return text in {
-        "switch control",
-        "wireless switch channel",
-        "开关",
-        "无线开关通道",
-    }
-
-
-def _is_input_channel_component(value: Any) -> bool:
-    text = component_name_key(value)
-    return text in {
-        "wireless switch channel",
-        "scene control button",
-        "dali scene control button",
-        "无线开关通道",
-        "情景按键",
-        "dali情景按键",
-    }
-
-
-def _is_channel_component(value: Any) -> bool:
-    text = component_name_key(value)
-    return text in {
-        "switch control",
-        "wireless switch channel",
-        "scene control button",
-        "dali scene control button",
-        "开关",
-        "无线开关通道",
-        "情景按键",
-        "dali情景按键",
-    }
 
 
 def _is_documented_channel_component(component: Any | None) -> bool:
@@ -235,7 +191,7 @@ def _is_documented_channel_component(component: Any | None) -> bool:
         component_text(component, ("name", "componentName", "component_name", "desc")),
         component_text(component, ("category",)),
     )
-    return any(_is_channel_component(value) for value in values if value)
+    return any(is_channel_component_name(value) for value in values if value)
 
 
 def _runtime_switch_channel_count(payload: Mapping[str, Any]) -> int | None:
@@ -272,6 +228,8 @@ def _component_indexes(value: Any) -> set[int]:
     """Return canonical component indexes for channel components."""
     indexes: set[int] = set()
     for item in _iter_mappings(value):
+        if not _is_documented_channel_component(item) and not is_channel_component(item):
+            continue
         component_id = to_str(item.get("component_id"))
         if component_id is None:
             continue
@@ -293,17 +251,6 @@ def _runtime_only_product_model(payload: Mapping[str, Any]) -> bool:
         and to_str(product_model.get("schema_version")) == "runtime-v1"
         and not isinstance(payload.get("subDeviceList"), list)
     )
-
-
-def _safe_channel_count(value: Any) -> int | None:
-    """Normalize documented fixed channel counts."""
-    if isinstance(value, int):
-        count = value
-    elif isinstance(value, str) and value.strip().isdecimal():
-        count = int(value.strip())
-    else:
-        return None
-    return count if 0 < count <= 12 else None
 
 
 def _iter_mappings(value: Any) -> Iterable[Mapping[str, Any]]:
@@ -336,6 +283,12 @@ def _component_index(component: Any | None) -> int | None:
         text = to_str(value)
         if text is None:
             continue
+        if is_channel_component(component):
+            if text.isdecimal() and int(text) > 0:
+                return int(text)
+            match = _COMPONENT_INDEX_SUFFIX_RE.search(text.strip().lower())
+            if match:
+                return int(match.group("index"))
         indexes = _component_indexes([{"component_id": text}])
         if indexes:
             return min(indexes)

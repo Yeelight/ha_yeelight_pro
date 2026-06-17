@@ -142,6 +142,8 @@ SPLIT_CLIENT_CONTRACT_TEST_TOKENS = {
         "test_push_property_updates_normalize_open_platform_payload": (
             "push property payload normalization coverage"
         ),
+    },
+    "tests/test_push_payload_events.py": {
         "test_push_event_payloads_normalize_open_platform_payload": (
             "push event payload normalization coverage"
         ),

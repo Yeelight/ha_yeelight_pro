@@ -149,6 +149,16 @@ def _is_push_data_payload(payload):
 """,
             encoding="utf-8",
         )
+        root.joinpath("push_transport_frames.py").write_text(
+            """
+PUSH_CONTROL_METHODS = object()
+PUSH_DATA_TYPES = object()
+class PushControlFrameError(Exception): ...
+def is_push_data_payload(payload):
+    return payload.get("type") in PUSH_DATA_TYPES
+""",
+            encoding="utf-8",
+        )
     manager_health = (
         """
 last_start_error_type = None

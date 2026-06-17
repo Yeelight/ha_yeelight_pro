@@ -86,7 +86,7 @@ def test_writable_value_range_projects_device_number_control() -> None:
     projection = projections[0]
     assert projection.unique_id == "yeelight_pro_curtain-1_curtain_1_rg_number"
     assert projection.component_id == "curtain_1_rg_number"
-    assert projection.name == "按键 1 旋转档位"
+    assert projection.name == "窗帘 旋转档位"
     assert projection.value == 4
     assert projection.native_range.min == 1
     assert projection.native_range.max == 10
@@ -107,7 +107,7 @@ def test_indicator_switch_projects_device_switch_not_number() -> None:
     projection = switches[0]
     assert projection.unique_id == "yeelight_pro_curtain-1_curtain_1_li_switch"
     assert projection.component_id == "curtain_1_li_switch"
-    assert projection.name == "按键 1 指示灯"
+    assert projection.name == "窗帘 指示灯"
     assert projection.is_on is True
     assert projection.on_value == 1
     assert projection.off_value == 0
@@ -141,7 +141,7 @@ def test_writable_value_list_projects_device_select_control() -> None:
     projection = projections[0]
     assert projection.unique_id == "yeelight_pro_curtain-1_curtain_1_rd_select"
     assert projection.component_id == "curtain_1_rd_select"
-    assert projection.name == "按键 1 电机方向"
+    assert projection.name == "窗帘 电机方向"
     assert [(item.value, item.label) for item in projection.options] == [
         ("0", "正向"),
         ("1", "反向"),
@@ -230,3 +230,66 @@ def test_main_entity_properties_are_not_projected_as_duplicate_controls() -> Non
     assert {item.prop_id for item in numbers} == {"rg"}
     assert {item.prop_id for item in selects} == {"rd"}
 
+
+def test_runtime_other_music_controls_use_documented_property_names() -> None:
+    """全景屏音乐组件不能把 other/raw 英文描述泄漏到实体名."""
+    payload = projection_payload(
+        device_id="screen-1",
+        category="other",
+        component_id="other",
+        component_category="other",
+        state={"mppm": 1, "mpmp": False},
+        params={"mppm": 1, "mpmp": False},
+    )
+    payload["name"] = "全景屏"
+    payload["ha_product_model"]["components"][0]["properties"] = [
+        {
+            "prop_id": "mppm",
+            "name": "music player play mode,音乐播放器播放模式",
+            "access": "read_write",
+            "property_type": "int",
+            "value_range": {"min": 0, "max": 10, "step": 1},
+        },
+        {
+            "prop_id": "mpmp",
+            "name": "music player play pause,音乐播放器播放/暂停",
+            "access": "read_write",
+            "property_type": "bool",
+        },
+    ]
+
+    numbers = project_number_controls(payload, domain=DOMAIN)
+    switches = project_switch_controls(payload, domain=DOMAIN)
+
+    assert numbers[0].name == "音乐播放器播放模式"
+    assert switches[0].name == "音乐播放器播放/暂停"
+
+
+def test_structural_component_controls_use_chinese_component_label() -> None:
+    """空调等官方组件别名不能把 air_conditioner 泄漏到辅助控制实体名."""
+    payload = projection_payload(
+        device_id="climate-helper-1",
+        category="temp_control",
+        component_id="air_conditioner_1",
+        component_category="air_conditioner",
+        state={"acrc": False},
+        params={"1-acrc": False},
+    )
+    payload["ha_device_instance"]["extensions"] = {
+        "component_state_keys": {
+            "air_conditioner_1": {"acrc": "1-acrc"},
+        }
+    }
+    payload["ha_product_model"]["components"][0]["name"] = "air conditioner"
+    payload["ha_product_model"]["components"][0]["properties"] = [
+        {
+            "prop_id": "acrc",
+            "name": "空调遥控器使能",
+            "access": "read_write",
+            "property_type": "bool",
+        },
+    ]
+
+    switches = project_switch_controls(payload, domain=DOMAIN)
+
+    assert switches[0].name == "空调控制器 空调遥控器使能"

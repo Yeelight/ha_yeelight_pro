@@ -33,9 +33,12 @@ REQUIRED_WEBSOCKET_EVENT_RUNTIME_TOKENS = {
         "next_heartbeat",
         "last_start_error_type",
         "last_runtime_error_type",
+        "PushControlFrameError",
+    },
+    "push_transport_frames.py": {
         "PUSH_DATA_TYPES",
         "PUSH_CONTROL_METHODS",
-        "_is_push_data_payload",
+        "is_push_data_payload",
         "PushControlFrameError",
     },
     "push_manager.py": {

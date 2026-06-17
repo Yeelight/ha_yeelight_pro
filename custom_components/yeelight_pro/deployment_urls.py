@@ -9,7 +9,8 @@ ACCOUNT_API_SUFFIX = "/apis/account"
 PUSH_WS_SUFFIX = "/ws"
 _API_SUFFIXES = (IOT_API_SUFFIX, ACCOUNT_API_SUFFIX, PUSH_WS_SUFFIX)
 _PRIVATE_PUSH_HOST_OVERRIDES = {
-    "api-test.yeedev.com": ("ws", "ws-test.yeedev.com"),
+    "api-test.yeedev.com": ("ws", "ws-test.yeedev.com", PUSH_WS_SUFFIX),
+    "ws-test.yeedev.com": ("ws", "ws-test.yeedev.com", PUSH_WS_SUFFIX),
 }
 
 
@@ -42,7 +43,7 @@ def deployment_push_base_url(value: Any) -> str:
             root = root[: -len(suffix)].rstrip("/")
             break
     if override := _private_push_host_override(root):
-        return f"{override}{PUSH_WS_SUFFIX}"
+        return override
     return f"{_http_to_ws(root)}{PUSH_WS_SUFFIX}"
 
 
@@ -73,8 +74,8 @@ def _private_push_host_override(value: str) -> str | None:
     host = (parsed.hostname or "").casefold()
     if host not in _PRIVATE_PUSH_HOST_OVERRIDES:
         return None
-    scheme, netloc = _PRIVATE_PUSH_HOST_OVERRIDES[host]
-    return urlunsplit((scheme, netloc, "", "", ""))
+    scheme, netloc, path = _PRIVATE_PUSH_HOST_OVERRIDES[host]
+    return urlunsplit((scheme, netloc, path, "", ""))
 
 
 def _required_text(value: Any) -> str:

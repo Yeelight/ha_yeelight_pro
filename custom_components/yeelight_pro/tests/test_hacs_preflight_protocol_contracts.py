@@ -116,14 +116,17 @@ def test_push_contract_check_requires_coverage_tokens(
         "PushTransport PushManager async_handle_push_payload",
     )
     _write_test_file(component_root / "push_transport.py", "ws_connect")
+    _write_test_file(component_root / "push_transport_frames.py", "")
     _write_test_file(component_root / "push.py", "")
     _write_test_file(core_root / "runtime_bridge.py", "socket")
     _write_test_file(tests_root / "test_push_contract.py", "")
     _write_test_file(tests_root / "test_push_websocket_contract.py", "")
     _write_test_file(tests_root / "test_push_payloads.py", "")
+    _write_test_file(tests_root / "test_push_payload_events.py", "")
     _write_test_file(tests_root / "test_push_manager.py", "FakeTransport")
     _write_test_file(tests_root / "push_transport_helpers.py", "FakeSession")
     _write_test_file(tests_root / "test_push_transport.py", "push_transport_helpers")
+    _write_test_file(tests_root / "test_push_transport_reconnect.py", "")
     _write_test_file(
         tests_root / "test_push_transport_failures.py",
         "push_transport_helpers",

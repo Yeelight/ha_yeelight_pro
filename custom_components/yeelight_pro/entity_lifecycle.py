@@ -13,6 +13,7 @@ from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN
 from .entity_candidates import (
+    EntityCandidate,
     EntityCandidateCoordinator,
     EntityKey,
     collect_entity_candidates,
@@ -31,6 +32,7 @@ from .entity_lifecycle_metadata import (
     restore_active_integration_entries,
     sync_active_registry_metadata,
 )
+from .entity_lifecycle_superseded import is_stale_helper_owned_by_active_main_entity
 from .identity import coordinator_identity_scope, entry_identity_alias_scopes
 
 _LOGGER = logging.getLogger(__name__)
@@ -132,10 +134,15 @@ async def async_reconcile_entity_registry(
     """Record stale integration registry entries without mutating user registries."""
     active_entity_candidates = collect_entity_candidates(coordinator)
     active_entity_keys = set(active_entity_candidates)
-    registry_entries, stale_entries, legacy_alias_stale_entries = _collect_registry_entries(
+    (
+        registry_entries,
+        stale_entries,
+        auto_disable_stale_entries,
+    ) = _collect_registry_entries(
         hass,
         entry,
         coordinator,
+        active_entity_candidates,
         active_entity_keys,
     )
     stale_keys = set(stale_entries)
@@ -152,8 +159,8 @@ async def async_reconcile_entity_registry(
         registry_entries,
         active_entity_candidates,
     )
-    disabled = _disable_stale_entries(hass, legacy_alias_stale_entries)
-    pending_stale_keys.difference_update(legacy_alias_stale_entries)
+    disabled = _disable_stale_entries(hass, auto_disable_stale_entries)
+    pending_stale_keys.difference_update(auto_disable_stale_entries)
 
     setattr(
         coordinator,
@@ -198,6 +205,7 @@ def _collect_registry_entries(
     hass: HomeAssistant,
     entry: ConfigEntry,
     coordinator: EntityLifecycleCoordinator,
+    active_entity_candidates: dict[EntityKey, EntityCandidate],
     active_entity_keys: set[EntityKey],
 ) -> tuple[
     list[er.RegistryEntry],
@@ -230,7 +238,12 @@ def _collect_registry_entries(
             if _registry_entry_disabled_by_user(registry_entry):
                 continue
             stale_entries[registry_key] = registry_entry
-            if _is_legacy_alias_entry(registry_entry, entry, alias_prefixes):
+            if _should_auto_disable_stale_entry(
+                registry_entry,
+                entry,
+                alias_prefixes,
+                active_entity_candidates,
+            ):
                 legacy_alias_stale_entries[registry_key] = registry_entry
     return (registry_entries, stale_entries, legacy_alias_stale_entries)
 
@@ -289,6 +302,23 @@ def _is_legacy_alias_entry(
     unique_id = getattr(registry_entry, "unique_id", "")
     return isinstance(unique_id, str) and any(
         unique_id.startswith(prefix) for prefix in alias_prefixes
+    )
+
+
+def _should_auto_disable_stale_entry(
+    registry_entry: er.RegistryEntry,
+    entry: ConfigEntry,
+    alias_prefixes: set[str],
+    active_entity_candidates: dict[EntityKey, EntityCandidate],
+) -> bool:
+    """Return true only for stale entries superseded by active integration entities."""
+    if _is_legacy_alias_entry(registry_entry, entry, alias_prefixes):
+        return True
+    if getattr(registry_entry, "name", None) not in {None, ""}:
+        return False
+    return is_stale_helper_owned_by_active_main_entity(
+        registry_entry,
+        active_entity_candidates,
     )
 
 

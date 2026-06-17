@@ -24,8 +24,14 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "custom_components/yeelight_pro/core/firmware_metadata.py": (
             "firmware metadata source token coverage"
         ),
+        "custom_components/yeelight_pro/core/device_structural_models.py": (
+            "structural model helper source token coverage"
+        ),
         "custom_components/yeelight_pro/deployment_urls.py": (
             "deployment root URL endpoint derivation coverage"
+        ),
+        "custom_components/yeelight_pro/diagnostics.py": (
+            "runtime diagnostics source token coverage"
         ),
         "custom_components/yeelight_pro/projector/event_identity_helpers.py": (
             "event identity helper source token coverage"
@@ -42,6 +48,9 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "custom_components/yeelight_pro/projector/common.py": "projector shared state-key helper coverage",
         "custom_components/yeelight_pro/projector/property_control_common.py": (
             "writable property control shared helper coverage"
+        ),
+        "custom_components/yeelight_pro/entity_lifecycle_superseded.py": (
+            "superseded lifecycle helper source token coverage"
         ),
     },
     "custom_components/yeelight_pro/core/schema_cache.py": {
@@ -123,6 +132,12 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "_FIRMWARE_VERSION_KEYS": "top-level firmware metadata aliases",
         "parse_component_property_key": "indexed fv property key parsing",
     },
+    "custom_components/yeelight_pro/core/device_structural_models.py": {
+        "structural_model_label": "screen and composite model helper facade",
+        "display_structural_model_label": "registry-display-only screen name fallback",
+        "_STRUCTURAL_COMPONENT_IDS": "screen component id mapping",
+        "_COMPOSITE_CONTROL_CATEGORIES": "composite control category mapping",
+    },
     "custom_components/yeelight_pro/core/property_hydration_summary.py": {
         "PropertyHydrationDiagnostics": (
             "property hydration aggregate diagnostics model"
@@ -130,21 +145,6 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "record_requests": "hydration request aggregate coverage",
         "record_response": "hydration response aggregate coverage",
         "as_dict": "hydration diagnostics JSON-safe serializer",
-    },
-    "custom_components/yeelight_pro/device_display.py": {
-        "device_type_label": "friendly picker device type summary",
-        "channel_name_label": "friendly sub-entity channel label",
-        "_CATEGORY_LABELS": "category label registry",
-    },
-    "custom_components/yeelight_pro/device_channel_semantics.py": {
-        "uses_output_channel_label": "input/output channel naming semantics",
-        "OUTPUT_CHANNEL_CATEGORIES": "relay output channel category guard",
-        "EVENT_INPUT_CATEGORIES": "event input channel category guard",
-    },
-    "custom_components/yeelight_pro/device_channel_generated_names.py": {
-        "looks_like_generated_channel_name": "generated channel name replacement guard",
-        "generated_channel_name_index": "generated channel index parser guard",
-        "CHANNEL_NUMERAL_LABELS": "Chinese channel numeral label registry",
     },
     "custom_components/yeelight_pro/device_select.py": {
         "YeelightProDeviceSelect": "device select entity split helper",
@@ -155,12 +155,6 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
     "custom_components/yeelight_pro/entity_device_id.py": {
         "source_device_id": "device payload source-id resolver",
         "_normalize_device_id": "numeric device id normalization guard",
-    },
-    "custom_components/yeelight_pro/device_channels.py": {
-        "channel_name_label": "friendly sub-entity channel label",
-        "switch_channel_count_hint": "switch channel count inference",
-        "_CHANNEL_LABELS": "indexed switch channel label registry",
-        "_POSITIONAL_CHANNEL_LABELS": "physical switch position label registry",
     },
     "custom_components/yeelight_pro/projector/climate_helpers.py": {
         "AC_MODE_TO_HVAC": "documented Yeelight acm to HA HVAC mapping",
@@ -179,6 +173,13 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "safe_entity_id_migration": "safe legacy entity-id migration helper",
         "registry_entity_ids": "entity-id conflict set helper",
         "_legacy_unique_id_tail": "legacy channel suffix detector",
+    },
+    "custom_components/yeelight_pro/entity_lifecycle_superseded.py": {
+        "is_stale_helper_owned_by_active_main_entity": (
+            "main-entity-owned stale helper detector"
+        ),
+        "_MAIN_ENTITY_PROPS_BY_PLATFORM": "main entity property ownership map",
+        "_candidate_helper_prefixes": "helper unique-id prefix matcher",
     },
     "custom_components/yeelight_pro/ha_house_registry.py": {
         "sync_house_device": "house helper registry sync facade",
@@ -289,7 +290,6 @@ LOCAL_HA_RUNTIME_SOURCE_TOKENS = {
         "is_writable_auxiliary_property": "main-entity duplicate property guard",
         "is_writable_auxiliary_bool_property": "writable bool config property guard",
         "component_state_key": "indexed Yeelight control key helper",
-        "MAIN_ENTITY_PROPS": "main entity property exclusion registry",
         "AUXILIARY_BOOL_CONFIG_PROPS": "documented bool config property registry",
     },
     "custom_components/yeelight_pro/projector/common.py": {

@@ -64,7 +64,7 @@ from .entry_title import config_entry_title
 from .house_metadata import friendly_house_name
 
 ENTRY_VERSION = 1
-ENTRY_MINOR_VERSION = 10
+ENTRY_MINOR_VERSION = 13
 
 
 async def async_migrate_config_entry(

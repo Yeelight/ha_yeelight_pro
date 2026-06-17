@@ -12,7 +12,10 @@ from custom_components.yeelight_pro.entity_lifecycle import (
     async_reconcile_entity_registry,
     entity_registry_reconcile_diagnostics,
 )
-from custom_components.yeelight_pro.identity import entry_identity_scope, scoped_entity_unique_id
+from custom_components.yeelight_pro.identity import (
+    entry_identity_scope,
+    scoped_entity_unique_id,
+)
 
 from .entity_lifecycle_helpers import (
     FakeEntityRegistry,

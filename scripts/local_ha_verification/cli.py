@@ -29,6 +29,7 @@ from .runtime import (
 )
 from .services import verify_services
 from .storage import verify_product_schema_cache, verify_storage
+from .storage import expected_runtime_entity_counts
 
 DRIFT_EXCLUDED_METRICS = frozenset({
     "entity_device_links",
@@ -156,11 +157,16 @@ def _run_once(args: argparse.Namespace) -> VerificationReport:
     if not args.skip_docker:
         verify_docker(args.container, report)
         verify_logs(args.container, report, tail=args.log_tail)
+        runtime_entity_counts = (
+            expected_runtime_entity_counts(config_dir, args.expected_domain_counts)
+            if config_dir.exists()
+            else args.expected_domain_counts
+        )
         verify_runtime_entities(
             args.container,
             report,
             tail=args.log_tail,
-            expected_entity_counts=args.expected_domain_counts,
+            expected_entity_counts=dict(runtime_entity_counts),
         )
     verify_synthetic_log_recovery(report)
     if not args.skip_url:

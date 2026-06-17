@@ -218,11 +218,127 @@ async def test_sync_gateway_devices_prefers_capability_specific_model(
     }
 
 
+async def test_sync_gateway_devices_uses_screen_name_for_weak_models() -> None:
+    """已有弱型号时，设备详情可用官方屏类名称作展示兜底."""
+    device_registry = _ModelIdDeviceRegistry()
+    existing = SimpleNamespace(
+        id="device-1",
+        identifiers={(DOMAIN, "40266156")},
+        connections=set(),
+        manufacturer="Yeelight",
+        model="开关灯",
+        name="S全面屏",
+        model_id=None,
+    )
+    device_registry.devices[existing.id] = existing
+    device_info = {
+        "identifiers": [[DOMAIN, "40266156"]],
+        "manufacturer": "Yeelight",
+        "model": "开关灯",
+        "name": "S全面屏",
+    }
+
+    updated = _sync_existing_device_metadata(
+        cast(Any, device_registry),
+        existing,
+        device_info=device_info,
+        identifiers={(DOMAIN, "40266156")},
+        connections=set(),
+    )
+
+    assert updated.model == "全面屏"
+    assert device_registry.updated_devices == [
+        ("device-1", {"model": "全面屏", "model_id": None})
+    ]
+
+
+async def test_sync_gateway_devices_replaces_generic_temp_control_model_from_components() -> None:
+    """已有温控大类型号应由官方组件结构刷新为具体控制器类型."""
+    device_registry = _ModelIdDeviceRegistry()
+    existing = SimpleNamespace(
+        id="device-1",
+        identifiers={(DOMAIN, "40266069")},
+        connections=set(),
+        manufacturer="Yeelight",
+        model="温控设备",
+        name="温控器1",
+        model_id=None,
+    )
+    device_registry.devices[existing.id] = existing
+    device_info = {
+        "identifiers": [[DOMAIN, "40266069"]],
+        "manufacturer": "Yeelight",
+        "model": "温控设备",
+        "name": "温控器1",
+        "category": "temp_control",
+        "ha_product_model": {
+            "components": [
+                {
+                    "component_id": "air_conditioner",
+                    "category": "air_conditioner",
+                    "name": "air conditioner",
+                }
+            ]
+        },
+    }
+
+    updated = _sync_existing_device_metadata(
+        cast(Any, device_registry),
+        existing,
+        device_info=device_info,
+        identifiers={(DOMAIN, "40266069")},
+        connections=set(),
+    )
+
+    assert updated.model == "空调控制器"
+    assert device_registry.updated_devices == [
+        ("device-1", {"model": "空调控制器", "model_id": None})
+    ]
+
+
+async def test_sync_gateway_devices_keeps_specific_screen_product_model() -> None:
+    """真实具体型号不能被设备名里的结构词覆盖."""
+    device_registry = _ModelIdDeviceRegistry()
+    existing = SimpleNamespace(
+        id="device-1",
+        identifiers={(DOMAIN, "40266145")},
+        connections=set(),
+        manufacturer="Yeelight",
+        model="开关控制器",
+        name="Yeelight Pro S系列AI智慧屏Ultra",
+        model_id=None,
+    )
+    device_registry.devices[existing.id] = existing
+    device_info = {
+        "identifiers": [[DOMAIN, "40266145"]],
+        "manufacturer": "Yeelight",
+        "model": "Yeelight Pro S系列AI智慧屏Ultra",
+        "name": "Yeelight Pro S系列AI智慧屏Ultra",
+    }
+
+    updated = _sync_existing_device_metadata(
+        cast(Any, device_registry),
+        existing,
+        device_info=device_info,
+        identifiers={(DOMAIN, "40266145")},
+        connections=set(),
+    )
+
+    assert updated.model == "Yeelight Pro S系列AI智慧屏Ultra"
+    assert device_registry.updated_devices == [
+        (
+            "device-1",
+            {"model": "Yeelight Pro S系列AI智慧屏Ultra", "model_id": None},
+        )
+    ]
+
+
 class _ModelIdDeviceRegistry:
     """Focused registry double whose update API supports model_id."""
 
     def __init__(self) -> None:
         self.updated_devices: list[tuple[str, dict[str, object]]] = []
+        self.devices: dict[str, SimpleNamespace] = {}
 
     def async_update_device(
         self,
@@ -247,7 +363,13 @@ class _ModelIdDeviceRegistry:
                 "merge_connections": merge_connections,
                 **kwargs,
             }.items()
-            if value is not None or key == "model_id"
+        if value is not None or key == "model_id"
         }
         self.updated_devices.append((device_id, update_kwargs))
-        return SimpleNamespace(id=device_id, model_id=model_id)
+        current = self.devices.get(device_id, SimpleNamespace(id=device_id))
+        for key, value in update_kwargs.items():
+            if key.startswith("merge_"):
+                continue
+            setattr(current, key, value)
+        self.devices[device_id] = current
+        return current

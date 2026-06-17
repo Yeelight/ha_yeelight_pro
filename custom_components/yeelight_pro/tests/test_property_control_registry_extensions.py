@@ -112,17 +112,16 @@ def test_bath_heat_mode_excludes_read_only_other_mode_from_write_options() -> No
     ]
 
 
-def test_light_and_ac_registry_config_properties_project_controls() -> None:
-    """灯光和空调配置属性应进入 HA 配置控制，而不是丢为未知属性."""
+def test_light_registry_config_properties_project_controls() -> None:
+    """灯光配置属性应进入 HA 配置控制，而不是丢为未知属性."""
     payload = _payload_with_props(
         state={
             "angle": 45,
             "dd": 2000,
             "slisaon": 1,
             "bp": "1",
-            "acdfltr": 80,
         },
-        props=("angle", "dd", "slisaon", "bp", "acdfltr"),
+        props=("angle", "dd", "slisaon", "bp"),
     )
 
     numbers = {item.prop_id: item for item in project_number_controls(payload, domain=DOMAIN)}
@@ -130,10 +129,8 @@ def test_light_and_ac_registry_config_properties_project_controls() -> None:
 
     assert numbers["angle"].native_range.max == 255
     assert numbers["dd"].native_range.max == 10000
-    assert numbers["acdfltr"].native_range.max == 255
     assert numbers["angle"].entity_category == "config"
     assert numbers["dd"].entity_category == "config"
-    assert numbers["acdfltr"].entity_category is None
     assert [(item.value, item.label) for item in selects["slisaon"].options] == [
         ("0", "关闭"),
         ("1", "开启"),

@@ -5,9 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from custom_components.yeelight_pro.const import PLATFORMS
+from custom_components.yeelight_pro.entry_migration import ENTRY_MINOR_VERSION
 from scripts.verify_local_ha import (
     DEFAULT_ENTITY_COUNTS,
     VerificationReport,
+    expected_runtime_entity_counts,
     verify_storage,
 )
 from .storage_verifier_helpers import (
@@ -42,7 +44,10 @@ def test_verify_storage_checks_counts_without_raw_ids(tmp_path: Path) -> None:
         f"entity registry retained entries: {expected_total}" in fact
         for fact in report.facts
     )
-    assert any("config entry versions: 1.10 x 1" in fact for fact in report.facts)
+    assert any(
+        f"config entry versions: 1.{ENTRY_MINOR_VERSION} x 1" in fact
+        for fact in report.facts
+    )
     assert any("config entry titles" in fact for fact in report.facts)
     assert any("config entry unique_id isolation" in fact for fact in report.facts)
     assert any("config entry required data keys present" in fact for fact in report.facts)
@@ -172,6 +177,92 @@ def test_verify_storage_accepts_lan_only_entry_with_smaller_retained_baseline(
         "number": 1,
         "select": 3,
         "sensor": 1,
+    }
+
+
+def test_verify_storage_accepts_private_lan_real_account_baseline(
+    tmp_path: Path,
+) -> None:
+    """private+LAN 实测环境按当前 registry 建 baseline，而不是云端大样本."""
+    entities = [
+        {
+            "platform": "yeelight_pro",
+            "entity_id": "light.private_room",
+            "unique_id": "yeelight_pro_private_house_1_room_1",
+            "device_id": "device-registry-1",
+        },
+        {
+            "platform": "yeelight_pro",
+            "entity_id": "switch.private_switch",
+            "unique_id": "yeelight_pro_private_house_1_device_304784336_switch_1",
+            "device_id": "device-registry-2",
+        },
+        {
+            "platform": "yeelight_pro",
+            "entity_id": "select.private_room",
+            "unique_id": "yeelight_pro_private_house_1_select_room",
+            "translation_key": "active_room",
+            "entity_category": "config",
+        },
+        {
+            "platform": "yeelight_pro",
+            "entity_id": "select.private_group",
+            "unique_id": "yeelight_pro_private_house_1_select_group",
+            "translation_key": "active_group",
+            "entity_category": "config",
+        },
+        {
+            "platform": "yeelight_pro",
+            "entity_id": "select.private_scene",
+            "unique_id": "yeelight_pro_private_house_1_select_scene",
+            "translation_key": "active_scene",
+            "entity_category": "config",
+        },
+        {
+            "platform": "yeelight_pro",
+            "entity_id": "sensor.private_online",
+            "unique_id": "yeelight_pro_private_house_1_device_304784336_online_status",
+            "original_name": "在线状态",
+            "device_id": "device-registry-2",
+            "entity_category": "diagnostic",
+        },
+    ]
+    private_entry = _config_entry()
+    private_entry["unique_id"] = "private:https://private.example:1"
+    private_entry["title"] = "Yeelight Pro Private (https://private.example · 家)"
+    private_entry["data"] = {
+        **private_entry["data"],
+            "connection_mode": "private",
+            "house_name": "家",
+            "private_domain": "https://private.example",
+            "private_push_domain": "wss://push.private.example/ws",
+        }
+    _write_storage(
+        tmp_path,
+        "core.config_entries",
+        {"entries": [private_entry, _lan_config_entry()]},
+    )
+    _write_storage(tmp_path, "core.device_registry", {"devices": _yeelight_devices()})
+    _write_storage(tmp_path, "core.entity_registry", {"entities": entities})
+    report = VerificationReport()
+
+    verify_storage(
+        tmp_path,
+        report,
+        expected_config_entries=1,
+        expected_devices=75,
+        expected_entities=sum(DEFAULT_ENTITY_COUNTS.values()),
+        expected_entity_counts=DEFAULT_ENTITY_COUNTS,
+    )
+
+    assert report.ok
+    assert report.metrics["devices"] == 2
+    assert report.metrics["retained_entities"] == 6
+    assert expected_runtime_entity_counts(tmp_path, DEFAULT_ENTITY_COUNTS) == {
+        "light": 1,
+        "select": 3,
+        "sensor": 1,
+        "switch": 1,
     }
 
 

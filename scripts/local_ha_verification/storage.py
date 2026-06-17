@@ -22,6 +22,7 @@ from .storage_helpers import (
     read_json,
     safe_storage_items,
     sensitive_cache_hits,
+    storage_items,
     storage_path,
 )
 
@@ -78,6 +79,16 @@ def verify_storage(
     verify_config_entry_unique_ids(enabled_entries, report)
     verify_config_entry_options(enabled_entries, report)
 
+    devices = [
+        device
+        for device in device_entries
+        if _is_yeelight_device(device)
+    ]
+    expected_devices = _expected_device_count_for_entries(
+        enabled_entries,
+        devices,
+        expected_devices,
+    )
     expected_entity_counts = _expected_entity_counts_for_entries(
         enabled_entries,
         entity_entries,
@@ -85,11 +96,6 @@ def verify_storage(
     )
     expected_entities = sum(expected_entity_counts.values())
 
-    devices = [
-        device
-        for device in device_entries
-        if _is_yeelight_device(device)
-    ]
     if len(devices) < expected_devices:
         report.fail(
             "device count below minimum: "
@@ -98,7 +104,7 @@ def verify_storage(
     else:
         report.fact(f"device registry entries: {len(devices)}")
     report.metric("devices", len(devices))
-    verify_device_registry_quality(devices, report)
+    verify_device_registry_quality(devices, report, entities=entity_entries)
 
     counts = _entity_counts(entity_entries)
     entity_total = sum(counts.values())
@@ -135,6 +141,37 @@ def verify_storage(
     report.metric("entity_registry_disabled_by", dict(sorted(disabled_counts.items())))
     verify_entity_registry_quality(config_dir, entity_entries, report)
     verify_platform_options_alignment(enabled_entries, expected_counts, report)
+
+
+def expected_runtime_entity_counts(
+    config_dir: Path,
+    fallback_counts: Mapping[str, int],
+) -> Mapping[str, int]:
+    """Return the runtime verifier baseline from HA storage when available."""
+    config_entries = storage_path(config_dir, "core.config_entries")
+    entity_entries = storage_path(config_dir, "core.entity_registry")
+    if not config_entries.exists() or not entity_entries.exists():
+        return fallback_counts
+    try:
+        entries = safe_enabled_entries(config_dir)
+        entities = safe_entity_entries(config_dir)
+    except (OSError, ValueError):
+        return fallback_counts
+    return _expected_entity_counts_for_entries(entries, entities, fallback_counts)
+
+
+def safe_enabled_entries(config_dir: Path) -> list[Mapping[str, Any]]:
+    """Return enabled Yeelight config entries from HA storage."""
+    return [
+        entry
+        for entry in storage_items(config_dir, "core.config_entries", "entries")
+        if entry.get("domain") == DOMAIN and entry.get("disabled_by") in (None, "")
+    ]
+
+
+def safe_entity_entries(config_dir: Path) -> list[Mapping[str, Any]]:
+    """Return HA entity registry entries from storage."""
+    return storage_items(config_dir, "core.entity_registry", "entities")
 
 
 def verify_product_schema_cache(config_dir: Path, report: VerificationReport) -> None:
@@ -221,9 +258,25 @@ def _expected_entity_counts_for_entries(
 ) -> Mapping[str, int]:
     """Return mode-aware retained entity baseline for the local verifier."""
     entry_list = list(entries)
-    if not entry_list or not all(_entry_connection_mode(entry) == "lan" for entry in entry_list):
+    if not entry_list:
         return expected_entity_counts
-    return _entity_counts(entities)
+    if any(_entry_connection_mode(entry) in {"lan", "private"} for entry in entry_list):
+        return _entity_counts(entities)
+    return expected_entity_counts
+
+
+def _expected_device_count_for_entries(
+    entries: Iterable[Mapping[str, Any]],
+    devices: Iterable[Mapping[str, Any]],
+    expected_devices: int,
+) -> int:
+    """Return mode-aware device baseline for local real-account verification."""
+    entry_list = list(entries)
+    if not entry_list:
+        return expected_devices
+    if any(_entry_connection_mode(entry) in {"lan", "private"} for entry in entry_list):
+        return len(list(devices))
+    return expected_devices
 
 
 def _entry_connection_mode(entry: Mapping[str, Any]) -> str | None:

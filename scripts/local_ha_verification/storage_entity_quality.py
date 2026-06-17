@@ -248,6 +248,7 @@ def _verify_yeelight_restore_state(
         item
         for item in restored_items
         if _restore_state_entity_id(item) in yeelight_entity_ids
+        and _restore_state_domain(item) != "event"
     ]
     unavailable = sum(
         1 for item in yeelight_states if _restore_state_value(item) == "unavailable"
@@ -347,6 +348,14 @@ def _restore_state_value(item: Mapping[str, Any]) -> str | None:
         return None
     value = state.get("state")
     return value if isinstance(value, str) else None
+
+
+def _restore_state_domain(item: Mapping[str, Any]) -> str | None:
+    """Return HA domain from a restore-state item."""
+    entity_id = _restore_state_entity_id(item)
+    if not isinstance(entity_id, str) or "." not in entity_id:
+        return None
+    return entity_id.split(".", 1)[0]
 
 
 __all__ = [

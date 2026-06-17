@@ -305,6 +305,14 @@ def test_required_modules_include_entity_id_migration_helper() -> None:
     )
 
 
+def test_required_modules_include_superseded_lifecycle_helper() -> None:
+    """本地 HA 安装态必须保留旧 helper superseded 清理 helper."""
+    assert (
+        "custom_components.yeelight_pro.entity_lifecycle_superseded"
+        in REQUIRED_RUNTIME_MODULES
+    )
+
+
 def test_required_modules_include_device_select_helper() -> None:
     """本地 HA 安装态必须保留设备级 select helper。"""
     assert (

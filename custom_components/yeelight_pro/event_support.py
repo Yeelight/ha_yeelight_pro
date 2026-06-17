@@ -81,10 +81,17 @@ def infer_event_component_id(
     if not isinstance(product_model, Mapping):
         return result
 
-    matches = {
-        candidate
-        for candidate in _matching_event_components(product_model, event_type)
-    }
+    matches = set(_matching_event_components(product_model, event_type))
+    if len(matches) > 1:
+        indexed_match = _indexed_event_component_match(
+            result,
+            product_model,
+            matches,
+        )
+        if indexed_match is not None:
+            result[ATTR_COMPONENT_ID] = indexed_match
+            return result
+
     if len(matches) == 1:
         result[ATTR_COMPONENT_ID] = next(iter(matches))
     elif is_safety_event_type(event_type) and is_safety_event_device(device_payload):
@@ -142,6 +149,70 @@ def _matching_event_components(
         if _component_declares_event(component, event_type):
             matches.append(component_id)
     return matches
+
+
+def _indexed_event_component_match(
+    payload: Mapping[str, Any],
+    product_model: Mapping[str, Any],
+    candidates: set[str],
+) -> str | None:
+    """Resolve multi-key event components from documented key/index params."""
+    index = _event_component_index(payload)
+    if index is None:
+        return None
+    components = product_model.get("components")
+    if not isinstance(components, list):
+        return None
+    matches: list[str] = []
+    for component in components:
+        if not isinstance(component, Mapping):
+            continue
+        component_id = str(
+            component.get("component_id", component.get("componentId", ""))
+        )
+        if component_id not in candidates:
+            continue
+        if _component_index(component_id, component) == index:
+            matches.append(component_id)
+    return matches[0] if len(matches) == 1 else None
+
+
+def _event_component_index(payload: Mapping[str, Any]) -> int | None:
+    """Return event component index from safe payload attributes."""
+    attributes = payload.get(ATTR_EVENT_ATTRIBUTES)
+    if not isinstance(attributes, Mapping):
+        return None
+    for key in ("key", "index", "button", "component_index", "componentIndex"):
+        value = _positive_int(attributes.get(key))
+        if value is not None:
+            return value
+    params = attributes.get("params")
+    if isinstance(params, Mapping):
+        for key in ("key", "index", "button", "component_index", "componentIndex"):
+            value = _positive_int(params.get(key))
+            if value is not None:
+                return value
+    return None
+
+
+def _component_index(component_id: str, component: Mapping[str, Any]) -> int | None:
+    """Return component index from schema fields or component id suffix."""
+    value = _positive_int(component.get("index"))
+    if value is not None:
+        return value
+    suffix = component_id.rsplit("_", 1)[-1].rsplit("-", 1)[-1]
+    if suffix.isdecimal():
+        return _positive_int(suffix)
+    return None
+
+
+def _positive_int(value: Any) -> int | None:
+    """Return a positive integer value when possible."""
+    try:
+        result = int(value)
+    except (TypeError, ValueError):
+        return None
+    return result if result > 0 else None
 
 
 def _component_declares_event(

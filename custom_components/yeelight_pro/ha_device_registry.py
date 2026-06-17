@@ -266,7 +266,18 @@ def _device_info_with_classification_context(
 ) -> Mapping[str, Any]:
     """Add parent category evidence for local model normalization only."""
     context: dict[str, Any] = {}
-    for key in ("iot_category", "category", "type"):
+    for key in (
+        "iot_category",
+        "category",
+        "type",
+        "pid",
+        "productId",
+        "product_id",
+        "params",
+        "product_schema",
+        "ha_product_model",
+        "subDeviceList",
+    ):
         if key not in device_info and key in device_payload:
             context[key] = device_payload[key]
     return dict(device_info, **context) if context else device_info

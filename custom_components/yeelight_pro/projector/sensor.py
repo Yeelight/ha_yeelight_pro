@@ -19,6 +19,7 @@ from ..const import DEFAULT_HIDE_UNKNOWN_ENTITIES
 from ..device_display import channel_name_label
 from ..identity import payload_entity_unique_id_prefix
 from .common import (
+    component_display_label,
     component_property_value,
     load_instance,
     load_product_model,
@@ -44,6 +45,7 @@ from .sensor_helpers import (
     sensor_specs,
     should_project_registry_sensor,
 )
+from .climate_helpers import CLIMATE_MAIN_ENTITY_PROPS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -233,7 +235,7 @@ def _is_climate_main_sensor_property(
         return False
     if not component_has_climate_evidence(component, schema_component):
         return False
-    return key in {"acf", "acm", "acp", "actt", "acct", "o"}
+    return key in CLIMATE_MAIN_ENTITY_PROPS
 
 
 def _product_component_map(
@@ -288,9 +290,19 @@ def _scoped_projection_name(
     if not scoped:
         return projection_name(None, label)
     channel = channel_name_label(index=None, component=component)
+    if channel is None and component is not None:
+        channel = _component_instance_label(component) or component_display_label(component)
     if channel and label:
         return f"{channel} {label}"
     return label or channel
+
+
+def _component_instance_label(component: ComponentInstanceModel) -> str | None:
+    """Return the component's explicit runtime label before type-level fallbacks."""
+    for value in (component.name, component.desc):
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
 
 
 def _log_sensor_missing_evidence(

@@ -21,6 +21,76 @@ from .diagnostics_helpers import (
 )
 
 
+def _push_health(**overrides: object) -> dict[str, object]:
+    """Return default push health diagnostics with optional overrides."""
+    data: dict[str, object] = {
+        "running": False,
+        "started_count": 0,
+        "stopped_count": 0,
+        "handled_payloads": 0,
+        "changed_payloads": 0,
+        "property_updates": 0,
+        "applied_property_updates": 0,
+        "unknown_property_updates": 0,
+        "group_updates": 0,
+        "topology_node_updates": 0,
+        "dispatched_events": 0,
+        "last_property_update_count": 0,
+        "last_dispatched_event_count": 0,
+        "last_payload_changed": False,
+        "last_payload_type": None,
+        "last_payload_at": None,
+        "last_error_type": None,
+    }
+    data.update(overrides)
+    return data
+
+
+class _TransportHealth:
+    """Transport health double used by diagnostics tests."""
+
+    def as_dict(self) -> dict[str, object]:
+        """Return aggregate-only transport diagnostics."""
+        return {
+            "running": True,
+            "websocket_open": True,
+            "connect_attempts": 1,
+            "connected_count": 1,
+            "disconnected_count": 0,
+            "reconnect_attempts": 0,
+            "received_messages": 2,
+            "decoded_json_messages": 2,
+            "dispatched_payloads": 1,
+            "ignored_messages": 1,
+            "malformed_messages": 0,
+            "control_frames": 1,
+            "heartbeat_sent_count": 0,
+            "last_start_error_type": None,
+            "last_runtime_error_type": None,
+            "last_payload_type": "prop",
+            "last_message_at": 123.0,
+            "last_dispatched_at": 124.0,
+        }
+
+
+class _TransportWithHealth:
+    """Push transport double exposing aggregate health."""
+
+    last_start_error_type: str | None = None
+    last_runtime_error_type: str | None = None
+
+    @property
+    def health(self) -> _TransportHealth:
+        """Return aggregate-only transport health."""
+        return _TransportHealth()
+
+    async def async_start(self, _callback) -> None:
+        """Start no-op transport."""
+
+    async def async_stop(self) -> None:
+        """Stop no-op transport."""
+
+
 @pytest.fixture
 def diagnostics_entry() -> MagicMock:
     """Build a diagnostics config entry."""
@@ -163,15 +233,10 @@ async def test_diagnostics_does_not_treat_stopped_push_manager_as_live_runtime(
     data = await async_get_config_entry_diagnostics(hass, diagnostics_entry)
     capabilities = data["runtime"]["client_capabilities"]
 
-    assert data["runtime"]["health"]["push"] == {
-        "running": False,
-        "started_count": 1,
-        "stopped_count": 1,
-        "handled_payloads": 0,
-        "last_payload_type": None,
-        "last_payload_at": None,
-        "last_error_type": None,
-    }
+    assert data["runtime"]["health"]["push"] == _push_health(
+        started_count=1,
+        stopped_count=1,
+    )
     assert capabilities["websocket_transport_runtime"] is False
     assert capabilities["push_connection"] is False
     assert capabilities["websocket_subscription"] is False
@@ -195,16 +260,52 @@ async def test_diagnostics_does_not_treat_failed_stop_push_manager_as_live_runti
     data = await async_get_config_entry_diagnostics(hass, diagnostics_entry)
     capabilities = data["runtime"]["client_capabilities"]
 
-    assert data["runtime"]["health"]["push"] == {
-        "running": False,
-        "started_count": 1,
-        "stopped_count": 0,
-        "handled_payloads": 0,
-        "last_payload_type": None,
-        "last_payload_at": None,
-        "last_error_type": "OSError",
-    }
+    assert data["runtime"]["health"]["push"] == _push_health(
+        started_count=1,
+        last_error_type="OSError",
+    )
     assert capabilities["websocket_transport_runtime"] is False
     assert capabilities["push_connection"] is False
     assert capabilities["websocket_subscription"] is False
     assert capabilities["websocket_event_notifications"] is False
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_includes_push_transport_health(
+    hass: HomeAssistant,
+    diagnostics_entry: MagicMock,
+) -> None:
+    """诊断应包含 WebSocket transport 聚合计数，便于排查事件通知延迟."""
+    coordinator = build_aggregate_runtime_coordinator()
+    manager = PushManager(coordinator, _TransportWithHealth())
+    await manager.async_start()
+    install_runtime_entry(hass, diagnostics_entry, coordinator, platforms=["light"])
+    hass.data[DOMAIN][diagnostics_entry.entry_id]["push_manager"] = manager
+
+    data = await async_get_config_entry_diagnostics(hass, diagnostics_entry)
+
+    assert data["runtime"]["health"]["push"] == {
+        **_push_health(running=True, started_count=1),
+        "transport": {
+            "running": True,
+            "websocket_open": True,
+            "connect_attempts": 1,
+            "connected_count": 1,
+            "disconnected_count": 0,
+            "reconnect_attempts": 0,
+            "received_messages": 2,
+            "decoded_json_messages": 2,
+            "dispatched_payloads": 1,
+            "ignored_messages": 1,
+            "malformed_messages": 0,
+            "control_frames": 1,
+            "heartbeat_sent_count": 0,
+            "last_start_error_type": None,
+            "last_runtime_error_type": None,
+            "last_payload_type": "prop",
+            "last_message_at": 123.0,
+            "last_dispatched_at": 124.0,
+        },
+    }
+
+    await manager.async_stop()

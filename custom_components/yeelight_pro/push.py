@@ -45,7 +45,7 @@ def push_property_updates(payload: Mapping[str, Any]) -> list[YeelightPushProper
         updates.append(
             YeelightPushPropertyUpdate(
                 node_id=node_id,
-                node_type=to_int(node.get("nt")),
+                node_type=_node_type(node),
                 params=dict(params),
             )
         )
@@ -65,7 +65,7 @@ def push_event_payloads(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
         if node_id is None or event_id in (None, ""):
             continue
         attributes = dict(message_meta)
-        node_type = to_int(node.get("nt"))
+        node_type = _node_type(node)
         if node_type is not None:
             attributes["node_type"] = node_type
         _add_safe_params(attributes, node, "params")
@@ -95,8 +95,14 @@ def _iter_nodes(payload: Mapping[str, Any]) -> list[Mapping[str, Any]]:
 
 def _data_payload(payload: Mapping[str, Any]) -> Mapping[str, Any]:
     """Return the WebSocket data object when transports wrap the documented frame."""
-    data = payload.get("data")
-    return data if isinstance(data, Mapping) else payload
+    for key in ("data", "params", "result"):
+        nested = payload.get(key)
+        if isinstance(nested, Mapping) and nested.get("type") in {
+            PUSH_TYPE_PROP,
+            PUSH_TYPE_EVENT,
+        }:
+            return nested
+    return payload
 
 
 def _looks_like_single_node(payload: Mapping[str, Any]) -> bool:
@@ -115,6 +121,15 @@ def _node_id(node: Mapping[str, Any]) -> int | None:
     return None
 
 
+def _node_type(node: Mapping[str, Any]) -> int | None:
+    """Return node type from documented and private-deployment aliases."""
+    for key in ("nt", "nodeType", "node_type"):
+        node_type = to_int(node.get(key))
+        if node_type is not None:
+            return node_type
+    return None
+
+
 def _node_params(node: Mapping[str, Any]) -> Mapping[str, Any] | None:
     """Return property params from documented and read-property result shapes."""
     params = node.get("params")
@@ -122,17 +137,49 @@ def _node_params(node: Mapping[str, Any]) -> Mapping[str, Any] | None:
         param_values = dict(params)
         if "o" not in param_values and "o" in node:
             param_values["o"] = node.get("o")
-        return param_values
+        return _scope_params_to_component(node, param_values)
+    data = node.get("data")
+    if isinstance(data, list):
+        property_values = _params_from_properties(data)
+        if property_values is not None and "o" not in property_values and "o" in node:
+            property_values["o"] = node.get("o")
+        return _scope_params_to_component(node, property_values)
+    if isinstance(data, Mapping):
+        property_values = _params_from_property_mapping(data)
+        if property_values is not None and "o" not in property_values and "o" in node:
+            property_values["o"] = node.get("o")
+        return _scope_params_to_component(node, property_values)
     properties = node.get("properties") or node.get("props")
     if isinstance(properties, list):
         property_values = _params_from_properties(properties)
         if property_values is not None and "o" not in property_values and "o" in node:
             property_values["o"] = node.get("o")
-        return property_values
+        return _scope_params_to_component(node, property_values)
     prop_id = node.get("propId") or node.get("propName")
     if prop_id not in (None, "") and "value" in node:
-        return {str(prop_id): node.get("value")}
+        return _scope_params_to_component(node, {str(prop_id): node.get("value")})
     return None
+
+
+def _scope_params_to_component(
+    node: Mapping[str, Any],
+    params: Mapping[str, Any] | None,
+) -> Mapping[str, Any] | None:
+    """Prefix component-scoped push params when the frame supplies an index."""
+    if params is None:
+        return None
+    index = _component_index(node)
+    if index is None:
+        return params
+    scoped: dict[str, Any] = {}
+    prefix = f"{index}-"
+    for raw_key, value in params.items():
+        key = str(raw_key)
+        if key == "o" or _has_component_prefix(key):
+            scoped[key] = value
+        else:
+            scoped[f"{prefix}{key}"] = value
+    return scoped
 
 
 def _params_from_properties(properties: list[Any]) -> dict[str, Any] | None:
@@ -141,11 +188,74 @@ def _params_from_properties(properties: list[Any]) -> dict[str, Any] | None:
     for prop in properties:
         if not isinstance(prop, Mapping):
             return None
-        prop_id = prop.get("propId") or prop.get("propName")
+        prop_id = _indexed_prop_id(prop)
         if prop_id in (None, "") or "value" not in prop:
             continue
         params[str(prop_id)] = prop.get("value")
     return params
+
+
+def _params_from_property_mapping(data: Mapping[str, Any]) -> dict[str, Any] | None:
+    """Convert nested Open API property data objects into runtime params."""
+    if "propId" in data or "propName" in data:
+        prop_id = _indexed_prop_id(data)
+        if prop_id in (None, ""):
+            return {}
+        if "value" in data:
+            return {str(prop_id): data.get("value")}
+        if "data" in data:
+            return {str(prop_id): data.get("data")}
+        return {}
+    values: dict[str, Any] = {}
+    for key, value in data.items():
+        if key in {"code", "msg", "message", "success"}:
+            continue
+        if isinstance(value, Mapping):
+            nested = _params_from_property_mapping(value)
+            if nested is None:
+                return None
+            values.update(nested)
+        else:
+            values[str(key)] = value
+    return values
+
+
+def _indexed_prop_id(item: Mapping[str, Any]) -> str | None:
+    """Return prop id preserving documented sub-device index rows."""
+    prop_id = item.get("propId") or item.get("propName")
+    if prop_id in (None, ""):
+        return None
+    index = to_int(item.get("index"))
+    if index is None:
+        return str(prop_id)
+    return f"{index}-{prop_id}"
+
+
+def _component_index(node: Mapping[str, Any]) -> int | None:
+    """Return component index aliases from push frames."""
+    for key in ("index", "componentIndex", "component_index", "key", "button"):
+        value = to_int(node.get(key))
+        if value is not None and value > 0:
+            return value
+
+    component_id = node.get("componentId") or node.get("component_id")
+    if component_id in (None, ""):
+        return None
+    text = str(component_id).strip()
+    if text.isdecimal():
+        value = int(text)
+        return value if value > 0 else None
+    suffix = text.rsplit("_", 1)[-1].rsplit("-", 1)[-1]
+    if suffix.isdecimal():
+        value = int(suffix)
+        return value if value > 0 else None
+    return None
+
+
+def _has_component_prefix(key: str) -> bool:
+    """Return true when a property key is already component-scoped."""
+    prefix, separator, prop = key.partition("-")
+    return bool(separator and prefix.isdecimal() and prop)
 
 
 def _message_meta(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -168,7 +278,7 @@ def _component_id(node: Mapping[str, Any]) -> str:
     component_id = node.get("componentId") or node.get("component_id")
     if component_id not in (None, ""):
         return str(component_id)
-    node_type = to_int(node.get("nt"))
+    node_type = _node_type(node)
     if node_type is not None:
         return f"node_type_{node_type}"
     return "push_event"

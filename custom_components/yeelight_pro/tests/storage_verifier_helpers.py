@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from custom_components.yeelight_pro.entry_migration import ENTRY_MINOR_VERSION
 from scripts.verify_local_ha import DEFAULT_ENTITY_COUNTS
 
 
@@ -25,7 +26,7 @@ def config_entry() -> dict[str, Any]:
         "unique_id": "cloud:cn:122349:1",
         "title": "Yeelight Pro Cloud (secret-user · CN · 绿地中央公园)",
         "version": 1,
-        "minor_version": 10,
+        "minor_version": ENTRY_MINOR_VERSION,
         "data": {
             "access_token": "secret-token",
             "account_user_id": 122349,

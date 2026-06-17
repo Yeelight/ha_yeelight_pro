@@ -13,14 +13,8 @@ from custom_components.yeelight_pro.const import (
     ATTR_COMPONENT_ID,
     ATTR_EVENT_TYPE,
     DEVICE_EVENT_TYPE,
-    CONF_CONNECTION_MODE,
-    CONF_CLOUD_REGION,
     CONF_LIVE_UPDATES,
-    CONF_PRIVATE_DOMAIN,
-    CONF_PRIVATE_PUSH_DOMAIN,
-    CONNECTION_MODE_CLOUD,
     CONNECTION_MODE_LAN,
-    CONNECTION_MODE_PRIVATE,
 )
 from custom_components.yeelight_pro.core.coordinator import YeelightProCoordinator
 from custom_components.yeelight_pro.live_runtime import (
@@ -29,7 +23,12 @@ from custom_components.yeelight_pro.live_runtime import (
 )
 
 from .config_entry_lifecycle_helpers import make_config_entry
-from .push_transport_helpers import FakeMessage, FakeSession, FakeWebSocket, OpenFakeWebSocket
+from .push_transport_helpers import (
+    FakeMessage,
+    FakeSession,
+    FakeWebSocket,
+    OpenFakeWebSocket,
+)
 
 
 def _make_live_entry():
@@ -85,115 +84,6 @@ async def test_live_runtime_starts_by_default_for_cloud_entries(
     await manager.async_stop()
 
 
-@pytest.mark.parametrize(
-    ("region", "expected_url"),
-    [
-        ("sg", "wss://push-sg.yeelight.com/ws/test_token"),
-        ("us", "wss://push-us.yeelight.com/ws/test_token"),
-        ("de", "wss://push-de.yeelight.com/ws/test_token"),
-    ],
-)
-@pytest.mark.asyncio
-async def test_live_runtime_uses_region_push_endpoint_for_cloud_entries(
-    hass: HomeAssistant,
-    monkeypatch: pytest.MonkeyPatch,
-    region: str,
-    expected_url: str,
-) -> None:
-    """不同云端区域应连接各自的 WebSocket push endpoint."""
-    entry = _make_live_entry()
-    entry.data[CONF_CONNECTION_MODE] = CONNECTION_MODE_CLOUD
-    entry.data[CONF_CLOUD_REGION] = region
-    websocket = OpenFakeWebSocket()
-    session = FakeSession(websocket)
-    monkeypatch.setattr(
-        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
-        lambda _hass: session,
-    )
-
-    manager = await async_start_live_runtime(hass, entry, AsyncMock())
-
-    assert manager is not None
-    assert session.connected_urls == [expected_url]
-
-    await manager.async_stop()
-
-
-@pytest.mark.asyncio
-async def test_live_runtime_uses_private_deployment_push_endpoint(
-    hass: HomeAssistant,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """私有部署实时通知应优先连接用户填写的 WebSocket endpoint."""
-    entry = _make_live_entry()
-    entry.data[CONF_CONNECTION_MODE] = CONNECTION_MODE_PRIVATE
-    entry.data[CONF_PRIVATE_DOMAIN] = "https://api-dev.yeedev.com"
-    entry.data[CONF_PRIVATE_PUSH_DOMAIN] = "ws-dev.yeedev.com"
-    websocket = OpenFakeWebSocket()
-    session = FakeSession(websocket)
-    monkeypatch.setattr(
-        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
-        lambda _hass: session,
-    )
-
-    manager = await async_start_live_runtime(hass, entry, AsyncMock())
-
-    assert manager is not None
-    assert session.connected_urls == ["wss://ws-dev.yeedev.com/ws/test_token"]
-
-    await manager.async_stop()
-
-
-@pytest.mark.asyncio
-async def test_live_runtime_falls_back_to_private_api_host_for_legacy_entries(
-    hass: HomeAssistant,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """旧私有 entry 缺少 push URL 时才从 API host 派生兼容 endpoint."""
-    entry = _make_live_entry()
-    entry.data[CONF_CONNECTION_MODE] = CONNECTION_MODE_PRIVATE
-    entry.data[CONF_PRIVATE_DOMAIN] = "https://api-dev.yeedev.com"
-    entry.data[CONF_PRIVATE_PUSH_DOMAIN] = ""
-    websocket = OpenFakeWebSocket()
-    session = FakeSession(websocket)
-    monkeypatch.setattr(
-        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
-        lambda _hass: session,
-    )
-
-    manager = await async_start_live_runtime(hass, entry, AsyncMock())
-
-    assert manager is not None
-    assert session.connected_urls == ["wss://api-dev.yeedev.com/ws/test_token"]
-
-    await manager.async_stop()
-
-
-@pytest.mark.asyncio
-async def test_live_runtime_falls_back_to_private_test_push_host(
-    hass: HomeAssistant,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """api-test.yeedev.com currently uses the separate ws-test push endpoint."""
-    entry = _make_live_entry()
-    entry.data[CONF_CONNECTION_MODE] = CONNECTION_MODE_PRIVATE
-    entry.data[CONF_PRIVATE_DOMAIN] = "http://api-test.yeedev.com"
-    entry.data[CONF_PRIVATE_PUSH_DOMAIN] = ""
-    websocket = OpenFakeWebSocket()
-    session = FakeSession(websocket)
-    monkeypatch.setattr(
-        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
-        lambda _hass: session,
-    )
-
-    manager = await async_start_live_runtime(hass, entry, AsyncMock())
-
-    assert manager is not None
-    assert session.connected_urls == ["ws://ws-test.yeedev.com/ws/test_token"]
-
-    await manager.async_stop()
-
-
 @pytest.mark.asyncio
 async def test_live_runtime_starts_websocket_transport_when_enabled(
     hass: HomeAssistant,
@@ -213,19 +103,46 @@ async def test_live_runtime_starts_websocket_transport_when_enabled(
     manager = await async_start_live_runtime(hass, entry, coordinator)
 
     assert manager is not None
-    assert manager.health.as_dict() == {
-        "running": True,
-        "started_count": 1,
-        "stopped_count": 0,
-        "handled_payloads": 0,
-        "last_error_type": None,
-        "last_payload_type": None,
-        "last_payload_at": None,
-    }
-    assert session.connected_urls == ["wss://push.yeelight.com/ws/test_token"]
-    assert websocket.sent_json[0]["method"] == "subscribe"
-
-    await manager.async_stop()
+    try:
+        health = manager.health.as_dict()
+        assert health["running"] is True
+        assert health["started_count"] == 1
+        assert health["stopped_count"] == 0
+        assert health["handled_payloads"] == 0
+        assert health["changed_payloads"] == 0
+        assert health["property_updates"] == 0
+        assert health["applied_property_updates"] == 0
+        assert health["unknown_property_updates"] == 0
+        assert health["group_updates"] == 0
+        assert health["topology_node_updates"] == 0
+        assert health["dispatched_events"] == 0
+        assert health["last_error_type"] is None
+        assert health["last_payload_type"] is None
+        assert health["last_payload_at"] is None
+        assert manager.transport_health == {
+            "running": True,
+            "websocket_open": True,
+            "connect_attempts": 1,
+            "connected_count": 1,
+            "disconnected_count": 0,
+            "reconnect_attempts": 0,
+            "received_messages": 0,
+            "decoded_json_messages": 0,
+            "dispatched_payloads": 0,
+            "ignored_messages": 0,
+            "malformed_messages": 0,
+            "control_frames": 0,
+            "heartbeat_sent_count": 0,
+            "last_start_error_type": None,
+            "last_runtime_error_type": None,
+            "last_payload_type": None,
+            "last_message_at": None,
+            "last_dispatched_at": None,
+        }
+        assert session.connected_urls == ["wss://push.yeelight.com/ws/test_token"]
+        assert websocket.sent_json[0]["method"] == "subscribe"
+    finally:
+        await manager.async_stop()
 
     assert websocket.closed is True
 
@@ -249,17 +166,44 @@ async def test_live_runtime_recovers_after_initial_websocket_connect_failure(
     manager = await async_start_live_runtime(hass, entry, coordinator)
 
     assert manager is not None
-    assert manager.health.as_dict() == {
-        "running": True,
-        "started_count": 1,
-        "stopped_count": 0,
-        "handled_payloads": 0,
-        "last_error_type": "OSError",
-        "last_payload_type": None,
-        "last_payload_at": None,
-    }
-
-    await manager.async_stop()
+    try:
+        health = manager.health.as_dict()
+        assert health["running"] is True
+        assert health["started_count"] == 1
+        assert health["stopped_count"] == 0
+        assert health["handled_payloads"] == 0
+        assert health["changed_payloads"] == 0
+        assert health["property_updates"] == 0
+        assert health["applied_property_updates"] == 0
+        assert health["unknown_property_updates"] == 0
+        assert health["group_updates"] == 0
+        assert health["topology_node_updates"] == 0
+        assert health["dispatched_events"] == 0
+        assert health["last_error_type"] == "OSError"
+        assert health["last_payload_type"] is None
+        assert health["last_payload_at"] is None
+        assert manager.transport_health == {
+            "running": True,
+            "websocket_open": False,
+            "connect_attempts": 1,
+            "connected_count": 0,
+            "disconnected_count": 0,
+            "reconnect_attempts": 0,
+            "received_messages": 0,
+            "decoded_json_messages": 0,
+            "dispatched_payloads": 0,
+            "ignored_messages": 0,
+            "malformed_messages": 0,
+            "control_frames": 0,
+            "heartbeat_sent_count": 0,
+            "last_start_error_type": "OSError",
+            "last_runtime_error_type": None,
+            "last_payload_type": None,
+            "last_message_at": None,
+            "last_dispatched_at": None,
+        }
+    finally:
+        await manager.async_stop()
 
 
 @pytest.mark.asyncio

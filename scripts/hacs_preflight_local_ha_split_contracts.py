@@ -63,6 +63,7 @@ LOCAL_HA_SPLIT_CONTRACT_TOKENS = {
         "p0_client_helpers.py": "P0 client helper split test guard",
         "test_p0_client_contracts.py": "P0 client contract split test guard",
         "test_push_payloads.py": "push payload split test guard",
+        "test_push_payload_events.py": "push event payload split test guard",
         "config_entry_lifecycle_helpers.py": "config-entry helper split test guard",
         "test_config_entry_unload.py": "config-entry unload split test guard",
         "shared scan-login client fake coverage": "scan-login fake helper coverage reason",

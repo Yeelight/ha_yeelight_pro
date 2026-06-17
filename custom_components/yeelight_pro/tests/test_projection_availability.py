@@ -127,7 +127,7 @@ def test_schema_backed_empty_state_remains_available_when_component_flag_is_fals
     assert binary.available is True
     assert sensor.available is True
     assert fan.available is True
-    assert fan.name == "按键 1"
+    assert fan.name == "新风控制器"
 
 
 def test_component_unavailable_with_runtime_state_stays_unavailable() -> None:

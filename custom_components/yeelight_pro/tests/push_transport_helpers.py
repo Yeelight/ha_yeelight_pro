@@ -63,6 +63,19 @@ class FailingSubscribeWebSocket(FakeWebSocket):
         raise ConnectionError("token-secret")
 
 
+class HangingSubscribeWebSocket(FakeWebSocket):
+    """发送 subscribe frame 时挂起的 websocket double。"""
+
+    def __init__(self) -> None:
+        super().__init__([])
+        self.send_started = asyncio.Event()
+
+    async def send_json(self, data: dict[str, Any]) -> None:
+        self.sent_json.append(data)
+        self.send_started.set()
+        await asyncio.Event().wait()
+
+
 class FailingCloseWebSocket(OpenFakeWebSocket):
     """第一次 close 失败，第二次 close 成功的 websocket double。"""
 

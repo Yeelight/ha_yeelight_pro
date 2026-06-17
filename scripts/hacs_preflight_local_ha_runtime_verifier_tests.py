@@ -96,18 +96,22 @@ LOCAL_HA_RUNTIME_VERIFIER_TEST_TOKENS = {
             "house placeholder device-name rejection coverage"
         ),
         "generated house helper names": "house placeholder verifier failure message",
+    },
+    "custom_components/yeelight_pro/tests/test_verify_local_ha_storage_entity_quality.py": {
         "test_verify_storage_rejects_device_backed_entities_without_device_id": (
             "device-backed entity registry coverage"
         ),
         "test_verify_storage_rejects_raw_numeric_entity_names": (
             "raw numeric channel/entity-name rejection coverage"
         ),
-        "test_verify_storage_rejects_unavailable_yeelight_restore_states": (
-            "Yeelight restore-state unavailable rejection coverage"
-        ),
         "default duration": "raw English property-name fixture",
         "raw channel/action/property names": (
             "raw channel/action/property-name failure message"
+        ),
+    },
+    "custom_components/yeelight_pro/tests/test_verify_local_ha_storage_restore_state.py": {
+        "test_verify_storage_rejects_unavailable_yeelight_restore_states": (
+            "Yeelight restore-state unavailable rejection coverage"
         ),
         "restored states are unavailable": (
             "Yeelight restore-state unavailable failure message"

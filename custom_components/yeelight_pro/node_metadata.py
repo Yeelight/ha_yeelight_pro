@@ -65,7 +65,7 @@ def topology_node_name(
     """Return a user-facing topology node name."""
     for key in _NODE_NAME_KEYS.get(node_kind, ("name",)):
         value = _text(row.get(key))
-        if value is not None:
+        if value is not None and not _is_generated_node_name(value):
             return value
     return f"{node_kind_label(node_kind)} {node_id}"
 
@@ -126,6 +126,12 @@ def _property_value(item: Mapping[str, Any]) -> Any:
 def _text(value: Any) -> str | None:
     text = to_str(value)
     return text or None
+
+
+def _is_generated_node_name(value: str) -> bool:
+    """Return true for raw ids accidentally exposed as topology names."""
+    text = value.strip()
+    return text.isdecimal()
 
 
 __all__ = [

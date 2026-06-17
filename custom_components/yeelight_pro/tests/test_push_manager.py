@@ -12,6 +12,9 @@ from custom_components.yeelight_pro.push_manager import (
     PushPayloadCallback,
     PushManager,
 )
+from custom_components.yeelight_pro.core.runtime_bridge import (
+    RuntimePropertyUpdateSummary,
+)
 
 
 class FakeTransport:
@@ -41,6 +44,43 @@ class FakeTransport:
         return await self.callback(payload)
 
 
+class FakeTransportHealth:
+    """Diagnostics-safe transport health double."""
+
+    def __init__(self, payload: dict[str, Any]) -> None:
+        """Store the aggregate health payload."""
+        self._payload = payload
+
+    def as_dict(self) -> dict[str, Any]:
+        """Return the aggregate health payload."""
+        return dict(self._payload)
+
+
+def _base_health(**overrides: object) -> dict[str, object]:
+    """Return the default diagnostics-safe health payload."""
+    data: dict[str, object] = {
+        "running": False,
+        "started_count": 0,
+        "stopped_count": 0,
+        "handled_payloads": 0,
+        "changed_payloads": 0,
+        "property_updates": 0,
+        "applied_property_updates": 0,
+        "unknown_property_updates": 0,
+        "group_updates": 0,
+        "topology_node_updates": 0,
+        "dispatched_events": 0,
+        "last_property_update_count": 0,
+        "last_dispatched_event_count": 0,
+        "last_payload_changed": False,
+        "last_error_type": None,
+        "last_payload_type": None,
+        "last_payload_at": None,
+    }
+    data.update(overrides)
+    return data
+
+
 @pytest.mark.asyncio
 async def test_push_manager_start_stop_are_idempotent() -> None:
     """重复 start/stop 不应重复启动 transport."""
@@ -55,15 +95,7 @@ async def test_push_manager_start_stop_are_idempotent() -> None:
 
     assert transport.started_count == 1
     assert transport.stopped_count == 1
-    assert manager.health.as_dict() == {
-        "running": False,
-        "started_count": 1,
-        "stopped_count": 1,
-        "handled_payloads": 0,
-        "last_error_type": None,
-        "last_payload_type": None,
-        "last_payload_at": None,
-    }
+    assert manager.health.as_dict() == _base_health(started_count=1, stopped_count=1)
 
 
 @pytest.mark.asyncio
@@ -87,6 +119,44 @@ async def test_push_manager_forwards_payload_only_to_coordinator() -> None:
 
 
 @pytest.mark.asyncio
+async def test_push_manager_records_aggregate_payload_result() -> None:
+    """push health 应暴露聚合处理结果，便于判断收到但未同步的原因。"""
+    coordinator = AsyncMock()
+    coordinator.last_push_property_summary = RuntimePropertyUpdateSummary(
+        input_updates=3,
+        applied_device_updates=1,
+        unknown_device_updates=1,
+        group_updates=0,
+        topology_node_updates=1,
+        changed=True,
+    )
+    coordinator.async_handle_push_payload.return_value = ["event-1", "event-2"]
+    transport = FakeTransport()
+    manager = PushManager(coordinator, transport)
+
+    await manager.async_start()
+    await transport.emit({"type": "prop", "nodes": [{"id": 1, "params": {"p": True}}]})
+
+    assert manager.health.as_dict() == _base_health(
+        running=True,
+        started_count=1,
+        handled_payloads=1,
+        changed_payloads=1,
+        property_updates=3,
+        applied_property_updates=1,
+        unknown_property_updates=1,
+        topology_node_updates=1,
+        dispatched_events=2,
+        last_property_update_count=3,
+        last_dispatched_event_count=2,
+        last_payload_changed=True,
+        last_payload_type="prop",
+        last_payload_at=manager.health.last_payload_at,
+    )
+    assert manager.health.last_payload_at is not None
+
+
+@pytest.mark.asyncio
 async def test_push_manager_accepts_payload_emitted_during_transport_start() -> None:
     """transport 启动阶段立即收到 payload 时不能因 running 时序被丢弃."""
 
@@ -106,15 +176,17 @@ async def test_push_manager_accepts_payload_emitted_during_transport_start() -> 
     coordinator.async_handle_push_payload.assert_awaited_once_with(
         {"type": "prop", "nodes": [{"id": 228216, "params": {"p": False}}]}
     )
-    assert manager.health.as_dict() == {
-        "running": True,
-        "started_count": 1,
-        "stopped_count": 0,
-        "handled_payloads": 1,
-        "last_error_type": None,
-        "last_payload_type": "prop",
-        "last_payload_at": manager.health.last_payload_at,
-    }
+    assert manager.health.as_dict() == _base_health(
+        running=True,
+        started_count=1,
+        handled_payloads=1,
+        changed_payloads=1,
+        dispatched_events=1,
+        last_dispatched_event_count=1,
+        last_payload_changed=True,
+        last_payload_type="prop",
+        last_payload_at=manager.health.last_payload_at,
+    )
     assert manager.health.last_payload_at is not None
 
 
@@ -135,15 +207,11 @@ async def test_push_manager_preserves_start_time_payload_error_type() -> None:
 
     await manager.async_start()
 
-    assert manager.health.as_dict() == {
-        "running": True,
-        "started_count": 1,
-        "stopped_count": 0,
-        "handled_payloads": 0,
-        "last_error_type": "ValueError",
-        "last_payload_type": None,
-        "last_payload_at": None,
-    }
+    assert manager.health.as_dict() == _base_health(
+        running=True,
+        started_count=1,
+        last_error_type="ValueError",
+    )
     assert "token-secret" not in str(manager.health.as_dict())
     assert "device-secret" not in str(manager.health.as_dict())
 
@@ -180,15 +248,11 @@ async def test_push_manager_records_error_type_without_payload_details() -> None
     )
 
     assert result is None
-    assert manager.health.as_dict() == {
-        "running": True,
-        "started_count": 1,
-        "stopped_count": 0,
-        "handled_payloads": 0,
-        "last_error_type": "RuntimeError",
-        "last_payload_type": None,
-        "last_payload_at": None,
-    }
+    assert manager.health.as_dict() == _base_health(
+        running=True,
+        started_count=1,
+        last_error_type="RuntimeError",
+    )
     assert "token-secret" not in str(manager.health.as_dict())
     assert "device-secret" not in str(manager.health.as_dict())
 
@@ -206,15 +270,7 @@ async def test_push_manager_records_transport_start_error_type() -> None:
     with pytest.raises(ConnectionError):
         await manager.async_start()
 
-    assert manager.health.as_dict() == {
-        "running": False,
-        "started_count": 0,
-        "stopped_count": 0,
-        "handled_payloads": 0,
-        "last_error_type": "ConnectionError",
-        "last_payload_type": None,
-        "last_payload_at": None,
-    }
+    assert manager.health.as_dict() == _base_health(last_error_type="ConnectionError")
 
 
 @pytest.mark.asyncio
@@ -230,15 +286,11 @@ async def test_push_manager_preserves_recoverable_start_error_type() -> None:
 
     await manager.async_start()
 
-    assert manager.health.as_dict() == {
-        "running": True,
-        "started_count": 1,
-        "stopped_count": 0,
-        "handled_payloads": 0,
-        "last_error_type": "OSError",
-        "last_payload_type": None,
-        "last_payload_at": None,
-    }
+    assert manager.health.as_dict() == _base_health(
+        running=True,
+        started_count=1,
+        last_error_type="OSError",
+    )
 
 
 @pytest.mark.asyncio
@@ -251,16 +303,46 @@ async def test_push_manager_reports_transport_runtime_error_type() -> None:
     await manager.async_start()
     transport.last_runtime_error_type = "PushControlFrameError"
 
-    assert manager.health.as_dict() == {
-        "running": True,
-        "started_count": 1,
-        "stopped_count": 0,
-        "handled_payloads": 0,
-        "last_error_type": "PushControlFrameError",
-        "last_payload_type": None,
-        "last_payload_at": None,
-    }
+    assert manager.health.as_dict() == _base_health(
+        running=True,
+        started_count=1,
+        last_error_type="PushControlFrameError",
+    )
     assert "token-secret" not in str(manager.health.as_dict())
+
+
+@pytest.mark.asyncio
+async def test_push_manager_exposes_transport_health_when_available() -> None:
+    """manager diagnostics 应透出 transport 聚合 health，便于定位实时同步链路."""
+
+    class TransportWithHealth(FakeTransport):
+        @property
+        def health(self) -> FakeTransportHealth:
+            return FakeTransportHealth(
+                {
+                    "running": True,
+                    "websocket_open": True,
+                    "connect_attempts": 1,
+                    "received_messages": 2,
+                    "decoded_json_messages": 2,
+                    "dispatched_payloads": 1,
+                    "malformed_messages": 0,
+                }
+            )
+
+    manager = PushManager(AsyncMock(), TransportWithHealth())
+
+    await manager.async_start()
+
+    assert manager.transport_health == {
+        "running": True,
+        "websocket_open": True,
+        "connect_attempts": 1,
+        "received_messages": 2,
+        "decoded_json_messages": 2,
+        "dispatched_payloads": 1,
+        "malformed_messages": 0,
+    }
 
 
 @pytest.mark.asyncio
@@ -292,15 +374,10 @@ async def test_push_manager_stop_failure_blocks_payloads_and_allows_retry() -> N
 
     assert result is None
     coordinator.async_handle_push_payload.assert_not_awaited()
-    assert manager.health.as_dict() == {
-        "running": False,
-        "started_count": 1,
-        "stopped_count": 0,
-        "handled_payloads": 0,
-        "last_error_type": "OSError",
-        "last_payload_type": None,
-        "last_payload_at": None,
-    }
+    assert manager.health.as_dict() == _base_health(
+        started_count=1,
+        last_error_type="OSError",
+    )
     assert "token-secret" not in str(manager.health.as_dict())
     assert "device-secret" not in str(manager.health.as_dict())
 
@@ -308,12 +385,4 @@ async def test_push_manager_stop_failure_blocks_payloads_and_allows_retry() -> N
 
     assert transport.stop_attempts == 2
     assert transport.stopped_count == 1
-    assert manager.health.as_dict() == {
-        "running": False,
-        "started_count": 1,
-        "stopped_count": 1,
-        "handled_payloads": 0,
-        "last_error_type": None,
-        "last_payload_type": None,
-        "last_payload_at": None,
-    }
+    assert manager.health.as_dict() == _base_health(started_count=1, stopped_count=1)

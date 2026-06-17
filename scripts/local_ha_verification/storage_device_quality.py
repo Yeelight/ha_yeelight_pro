@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from collections.abc import Mapping
 from typing import Any
 
@@ -42,11 +43,14 @@ GENERIC_SOURCE_MODELS = frozenset({
     "设备",
     "风扇",
 })
+DIAGNOSTIC_ONLY_DOMAINS = frozenset({"binary_sensor", "event", "sensor"})
 
 
 def verify_device_registry_quality(
     devices: list[Mapping[str, Any]],
     report: VerificationReport,
+    *,
+    entities: Iterable[Mapping[str, Any]] = (),
 ) -> None:
     """Verify source devices expose friendly metadata in HA's registry."""
     source_devices = [device for device in devices if is_source_device(device)]
@@ -55,24 +59,35 @@ def verify_device_registry_quality(
         report.metric("device_registry_quality", _quality_metrics(0))
         return
 
-    missing_name = sum(1 for device in source_devices if not _device_name(device))
-    missing_model = sum(1 for device in source_devices if not device.get("model"))
-    generic_model = sum(1 for device in source_devices if _is_generic_model(device))
+    entity_domains = _entity_domains_by_device(entities)
+    blocking_devices = [
+        device for device in source_devices if _requires_strict_metadata(device, entity_domains)
+    ]
+    missing_name = sum(1 for device in blocking_devices if not _device_name(device))
+    missing_model = sum(1 for device in blocking_devices if not device.get("model"))
+    generic_model = sum(1 for device in blocking_devices if _is_generic_model(device))
     runtime_model_id = sum(1 for device in source_devices if _has_runtime_model_id(device))
     missing_area = sum(
         1
-        for device in source_devices
+        for device in blocking_devices
         if not device.get("area_id") and not device.get("suggested_area")
+    )
+    diagnostic_only_with_gaps = sum(
+        1
+        for device in source_devices
+        if device not in blocking_devices and _has_metadata_gap(device)
     )
     house_placeholders = sum(1 for device in devices if _is_house_placeholder(device))
     _report_quality_failures(
         report,
-        source_count=len(source_devices),
+        source_count=len(blocking_devices),
+        total_source_count=len(source_devices),
         missing_name=missing_name,
         missing_model=missing_model,
         generic_model=generic_model,
         runtime_model_id=runtime_model_id,
         missing_area=missing_area,
+        diagnostic_only_with_gaps=diagnostic_only_with_gaps,
         house_placeholders=house_placeholders,
     )
     report.metric(
@@ -84,6 +99,7 @@ def verify_device_registry_quality(
             generic_model=generic_model,
             runtime_model_id=runtime_model_id,
             missing_area=missing_area,
+            diagnostic_only_with_gaps=diagnostic_only_with_gaps,
             house_placeholder_names=house_placeholders,
         ),
     )
@@ -113,11 +129,13 @@ def _report_quality_failures(
     report: VerificationReport,
     *,
     source_count: int,
+    total_source_count: int,
     missing_name: int,
     missing_model: int,
     generic_model: int,
     runtime_model_id: int,
     missing_area: int,
+    diagnostic_only_with_gaps: int,
     house_placeholders: int,
 ) -> None:
     if missing_name:
@@ -145,6 +163,11 @@ def _report_quality_failures(
             "device registry source devices missing area metadata: "
             f"{missing_area}/{source_count}"
         )
+    if diagnostic_only_with_gaps:
+        report.warn(
+            "device registry diagnostic-only source devices have incomplete metadata: "
+            f"{diagnostic_only_with_gaps}"
+        )
     if house_placeholders:
         report.fail(
             "device registry still contains generated house helper names: "
@@ -157,10 +180,16 @@ def _report_quality_failures(
         missing_area,
         house_placeholders,
     )):
-        report.fact(
-            "device registry source metadata: "
-            f"{source_count} named/modelled/area-linked devices"
-        )
+        if source_count:
+            report.fact(
+                "device registry source metadata: "
+                f"{source_count} named/modelled/area-linked devices"
+            )
+        else:
+            report.fact(
+                "device registry source metadata: "
+                f"{total_source_count} diagnostic-only source devices"
+            )
 
 
 def _quality_metrics(
@@ -171,6 +200,7 @@ def _quality_metrics(
     generic_model: int = 0,
     runtime_model_id: int = 0,
     missing_area: int = 0,
+    diagnostic_only_with_gaps: int = 0,
     house_placeholder_names: int = 0,
 ) -> dict[str, int]:
     return {
@@ -180,8 +210,61 @@ def _quality_metrics(
         "generic_model": generic_model,
         "runtime_model_id": runtime_model_id,
         "missing_area": missing_area,
+        "diagnostic_only_with_gaps": diagnostic_only_with_gaps,
         "house_placeholder_names": house_placeholder_names,
     }
+
+
+def _entity_domains_by_device(
+    entities: Iterable[Mapping[str, Any]],
+) -> Mapping[str, set[str]]:
+    """Return enabled Yeelight entity domains grouped by HA device_id."""
+    domains: dict[str, set[str]] = {}
+    for entity in entities:
+        if entity.get("platform") != "yeelight_pro":
+            continue
+        if entity.get("disabled_by") not in (None, ""):
+            continue
+        device_id = entity.get("device_id")
+        if not isinstance(device_id, str) or not device_id:
+            continue
+        domain = _entity_domain(entity)
+        if domain is None:
+            continue
+        domains.setdefault(device_id, set()).add(domain)
+    return domains
+
+
+def _requires_strict_metadata(
+    device: Mapping[str, Any],
+    domains_by_device: Mapping[str, set[str]],
+) -> bool:
+    """Return true when a source device has user-facing non-diagnostic entities."""
+    device_id = device.get("id")
+    if not isinstance(device_id, str):
+        return True
+    domains = domains_by_device.get(device_id)
+    if not domains:
+        return True
+    return bool(domains - DIAGNOSTIC_ONLY_DOMAINS)
+
+
+def _has_metadata_gap(device: Mapping[str, Any]) -> bool:
+    """Return true when optional metadata is missing on diagnostic-only devices."""
+    return (
+        not _device_name(device)
+        or not device.get("model")
+        or _is_generic_model(device)
+        or (not device.get("area_id") and not device.get("suggested_area"))
+    )
+
+
+def _entity_domain(entity: Mapping[str, Any]) -> str | None:
+    """Return domain from an entity registry item."""
+    entity_id = entity.get("entity_id")
+    if not isinstance(entity_id, str) or "." not in entity_id:
+        return None
+    return entity_id.split(".", 1)[0]
 
 
 def _device_name(device: Mapping[str, Any]) -> str | None:

@@ -13,6 +13,7 @@ from custom_components.yeelight_pro.core.device_classification import (
     friendly_specific_model_name,
     infer_iot_category,
     is_generic_model_label,
+    structural_model_label,
 )
 
 
@@ -64,6 +65,116 @@ def test_friendly_specific_model_name_exposes_only_specific_evidence() -> None:
         {"category": "other", "name": "未知设备", "model": "易来设备"},
     ):
         assert friendly_specific_model_name(payload) == ""
+
+
+def test_structural_screen_components_override_single_property_model_labels() -> None:
+    """屏类全局组件是整机结构证据，不能被 p/l 等属性压成开关灯。"""
+    assert friendly_specific_model_name(
+        {
+            "category": "light",
+            "model": "开关灯",
+            "params": {"1-p": True, "2-p": False},
+            "ha_product_model": {
+                "components": [
+                    {"component_id": "wifi_screen", "cid": 56, "name": "wifi屏组件"},
+                    {"component_id": "switch_1", "category": "relay_switch"},
+                ]
+            },
+        }
+    ) == "全面屏"
+    assert friendly_specific_model_name(
+        {
+            "category": "relay_switch",
+            "params": {"1-p": True},
+            "product_schema": {
+                "components": [
+                    {"componentId": 61, "name": "旋钮屏组件"},
+                ]
+            },
+        }
+    ) == "旋钮屏"
+    assert friendly_specific_model_name(
+        {
+            "category": "relay_switch",
+            "params": {"1-p": True},
+            "ha_product_model": {
+                "components": [
+                    {"component_id": "smart_screen", "cid": 75, "name": "智慧屏组件"},
+                ]
+            },
+        }
+    ) == "智慧屏"
+
+
+def test_registry_model_can_use_official_screen_words_without_projecting_capabilities() -> None:
+    """设备详情型号可用官方屏类名称兜底，但类型和投影不能被名称带偏."""
+    payload = {"category": "relay_switch", "model": "开关灯", "name": "S全面屏"}
+
+    assert registry_model_value(payload, "开关灯") == "全面屏"
+    assert device_type_label(payload) == "继电器开关"
+    assert infer_iot_category(payload) == "relay_switch"
+
+
+def test_registry_model_screen_name_fallback_is_limited_to_official_markers() -> None:
+    """普通用户设备名仍不能决定 HA 设备型号."""
+    assert registry_model_value(
+        {"category": "relay_switch", "model": "开关灯", "name": "厨房智能开关"},
+        "开关灯",
+    ) == "开关灯"
+    assert registry_model_value(
+        {"category": "binary_sensor", "name": "客厅人体传感器"},
+        "Yeelight Pro 设备",
+    ) is None
+
+
+def test_registry_model_screen_name_fallback_does_not_override_specific_model() -> None:
+    """官方具体型号应优先于设备名里的结构词."""
+    assert registry_model_value(
+        {
+            "category": "relay_switch",
+            "model": "Yeelight Pro S系列AI智慧屏Ultra",
+            "name": "客厅智慧屏",
+        },
+        "开关控制器",
+    ) == "Yeelight Pro S系列AI智慧屏Ultra"
+
+
+def test_registry_model_uses_official_product_name_over_weak_screen_label() -> None:
+    """官方产品名可替换结构兜底型号，普通用户别名仍不能污染 model."""
+    assert registry_model_value(
+        {
+            "category": "relay_switch",
+            "model": "智慧屏",
+            "name": "Yeelight Pro S系列AI智慧屏Ultra",
+        },
+        "智慧屏",
+    ) == "Yeelight Pro S系列AI智慧屏Ultra"
+    assert registry_model_value(
+        {
+            "category": "relay_switch",
+            "model": "智慧屏",
+            "name": "客厅智慧屏",
+        },
+        "智慧屏",
+    ) == "智慧屏"
+
+
+def test_composite_sensor_switch_components_use_composite_model_label() -> None:
+    """传感+开关复合组件不能被单一照度/人体属性压成传感器整机。"""
+    payload = {
+        "category": "light_sensor",
+        "params": {"mv": True, "luminance": 188, "1-p": True},
+        "ha_product_model": {
+            "components": [
+                {"component_id": "human_sensor", "category": "human_sensor"},
+                {"component_id": "illuminance", "category": "light_sensor"},
+                {"component_id": "switch_1", "category": "relay_switch"},
+            ]
+        },
+    }
+
+    assert structural_model_label(payload) == "复合控制器"
+    assert friendly_specific_model_name(payload) == "复合控制器"
 
 
 def test_device_type_label_uses_category_not_user_name() -> None:
@@ -134,4 +245,3 @@ def test_suggested_entity_object_id_uses_friendly_device_name() -> None:
         {"device_id": "304784333", "name": "彩光灯"},
         entity_name="彩光灯 默认渐变时长",
     ) == "彩光灯 默认渐变时长"
-

@@ -21,6 +21,8 @@ from .push_transport_helpers import (
     FakeMessage,
     FakeSession,
     FakeWebSocket,
+    HangingSubscribeWebSocket,
+    OpenFakeWebSocket,
     wait_for_sleep_calls,
 )
 
@@ -33,6 +35,7 @@ async def test_push_transport_closes_websocket_when_subscribe_fails() -> None:
     transport = YeelightPushWebSocketTransport(
         session=session,
         token="fake-token",
+        auto_reconnect=False,
     )
 
     with pytest.raises(ConnectionError):
@@ -40,6 +43,42 @@ async def test_push_transport_closes_websocket_when_subscribe_fails() -> None:
 
     assert [message["method"] for message in websocket.sent_json] == ["subscribe"]
     assert websocket.closed is True
+
+
+@pytest.mark.asyncio
+async def test_push_transport_subscribe_timeout_schedules_reconnect() -> None:
+    """订阅发送卡住时不阻塞 HA setup，应关闭连接并后台退避重连。"""
+    reconnect_sleep = ControlledSleep()
+    hanging_websocket = HangingSubscribeWebSocket()
+    reconnect_websocket = OpenFakeWebSocket()
+    session = FakeSession([hanging_websocket, reconnect_websocket])
+    transport = YeelightPushWebSocketTransport(
+        session=session,
+        token="fake-token",
+        reconnect_sleep=reconnect_sleep,
+        connect_timeout_seconds=0.01,
+    )
+
+    await transport.async_start(AsyncMock())
+
+    assert transport.last_start_error_type == "TimeoutError"
+    assert [message["method"] for message in hanging_websocket.sent_json] == [
+        "subscribe"
+    ]
+    assert hanging_websocket.closed is True
+
+    await wait_for_sleep_calls(reconnect_sleep, 1)
+    reconnect_sleep.release.set()
+    await reconnect_websocket.waiting_for_message.wait()
+    await transport.async_stop()
+
+    assert session.connected_urls == [
+        "wss://push.yeelight.com/ws/fake-token",
+        "wss://push.yeelight.com/ws/fake-token",
+    ]
+    assert [message["method"] for message in reconnect_websocket.sent_json] == [
+        "subscribe"
+    ]
 
 
 @pytest.mark.asyncio

@@ -79,20 +79,24 @@ def test_channel_name_label_humanizes_generated_component_ids() -> None:
     ) == "中键"
 
 
-def test_channel_name_label_humanizes_indexed_component_suffixes() -> None:
-    """switch_1/curtain_1 等带索引组件 ID 不应直接暴露到实体名称."""
+def test_channel_name_label_humanizes_indexed_channel_component_suffixes() -> None:
+    """只有真实通道组件才按按键/回路命名，避免空调/窗帘等误显示成左键."""
+    assert channel_name_label(
+        index=None,
+        component={"component_id": "switch_1", "category": "relay_switch"},
+        device_payload={"pid": 854018, "name": "厨房开关"},
+    ) == "左键"
     for component_id in (
         "air_conditioner_1",
         "curtain_1",
         "human_sensor_1",
         "sensor_1",
-        "switch_1",
     ):
         assert channel_name_label(
             index=None,
             component={"component_id": component_id},
             device_payload={"pid": 854018, "name": "厨房开关"},
-        ) == "左键"
+        ) is None
 
 
 def test_channel_name_label_replaces_generated_chinese_names_for_known_switches() -> None:

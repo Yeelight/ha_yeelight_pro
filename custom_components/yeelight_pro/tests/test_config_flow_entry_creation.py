@@ -17,6 +17,7 @@ from custom_components.yeelight_pro.const import (
     CONF_CLOUD_REGION,
     CONF_DEVICE_IMPORT_FILTER,
     CONF_HOUSE_NAME,
+    CONF_LIVE_UPDATES,
     CONF_OPEN_API_CLIENT_ID,
     CONF_PRIVATE_DOMAIN,
     CONF_PRIVATE_PUSH_DOMAIN,
@@ -57,6 +58,7 @@ async def test_create_entry_persists_open_api_client_id(config_flow) -> None:
     assert result["type"] == FlowResultType.CREATE_ENTRY
     assert result["title"] == "Yeelight Pro Cloud (CN · 易来家庭)"
     assert result["data"][CONF_OPEN_API_CLIENT_ID] == "client-from-token"
+    assert result["options"][CONF_LIVE_UPDATES] is True
     assert result["options"][CONF_DEVICE_IMPORT_FILTER] == {
         "enabled": False,
         "mode": "or",
@@ -221,6 +223,7 @@ async def test_create_entry_private_title_includes_endpoint_and_house(
     )
     assert result["data"][CONF_PRIVATE_DOMAIN] == "https://private.example"
     assert result["data"][CONF_PRIVATE_PUSH_DOMAIN] == "wss://ws-dev.private.example/ws"
+    assert result["options"][CONF_LIVE_UPDATES] is True
 
 
 def test_config_entry_title_does_not_expose_token_fingerprint() -> None:

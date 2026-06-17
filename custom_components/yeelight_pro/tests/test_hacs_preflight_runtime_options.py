@@ -230,5 +230,5 @@ def _write_complete_private_push_test(tests_root: Path) -> None:
     _write_test_file(
         tests_root / "test_options_flow_private_push.py",
         "test_options_flow_private_entry_shows_push_url "
-        "CONF_PRIVATE_PUSH_DOMAIN async_update_entry ws://ws-test.yeedev.com/ws",
+        "CONF_PRIVATE_PUSH_DOMAIN async_update_entry ws://ws-test.yeedev.com",
     )

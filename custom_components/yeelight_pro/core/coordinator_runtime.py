@@ -22,6 +22,7 @@ from ..push import push_event_payloads, push_property_updates
 from .runtime_bridge import (
     RuntimeEventDeduper,
     RuntimePayloadBridge,
+    RuntimePropertyUpdateSummary,
     property_updates_from_adapter,
 )
 from .lan_topology_payload import build_lan_topology_payloads
@@ -44,6 +45,8 @@ class _RuntimeCoordinator(Protocol):
     scenes: list[dict[str, Any]]
     _runtime_state: RuntimeStateStore
     _push_event_deduper: RuntimeEventDeduper
+    last_push_property_summary: RuntimePropertyUpdateSummary
+    last_push_event_count: int
     _device_payload_builder: Any
 
     def get_device(self, device_id: int | str) -> dict[str, Any] | None:
@@ -82,12 +85,15 @@ class CoordinatorRuntimeMixin:
             property_updates_from_adapter(push_property_updates(payload))
         ):
             self.async_update_listeners()
+        self.last_push_property_summary = bridge.last_apply_summary
 
-        return await bridge.dispatch_event_payloads(
+        events = await bridge.dispatch_event_payloads(
             self._push_event_deduper.filter_new_payloads(
                 push_event_payloads(payload)
             )
         )
+        self.last_push_event_count = len(events)
+        return events
 
     async def async_handle_lan_payload(
         self: _RuntimeCoordinator,
@@ -236,6 +242,9 @@ def _runtime_bridge(coordinator: _RuntimeCoordinator) -> RuntimePayloadBridge:
         gateways=coordinator.gateways,
         data=runtime_data,
         groups=coordinator.groups,
+        rooms=coordinator.rooms,
+        areas=coordinator.areas,
+        houses=coordinator.houses,
         get_device=coordinator.get_device,
         rebuild_canonical=(
             coordinator._device_payload_builder.attach_canonical_models_if_available

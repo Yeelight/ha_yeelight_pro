@@ -81,3 +81,16 @@ def test_normalize_entry_data_private_push_domain_accepts_legacy_alias() -> None
 
     assert data[CONF_PRIVATE_DOMAIN] == "https://api-dev.yeedev.com"
     assert data[CONF_PRIVATE_PUSH_DOMAIN] == "wss://ws-dev.yeedev.com/ws"
+
+
+def test_normalize_entry_data_private_test_push_host_preserves_ws_path() -> None:
+    """api-test 私有部署应迁移到符合事件通知文档的 /ws endpoint."""
+    data = normalize_entry_data({
+        CONF_CONNECTION_MODE: CONNECTION_MODE_PRIVATE,
+        CONF_PRIVATE_DOMAIN: "http://api-test.yeedev.com",
+        CONF_PRIVATE_PUSH_DOMAIN: "ws://ws-test.yeedev.com",
+        CONF_HOUSE_ID: "1",
+    })
+
+    assert data[CONF_PRIVATE_DOMAIN] == "http://api-test.yeedev.com"
+    assert data[CONF_PRIVATE_PUSH_DOMAIN] == "ws://ws-test.yeedev.com/ws"

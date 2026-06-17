@@ -9,7 +9,24 @@ from typing import Any
 
 def literal_client_capability_flags(component_root: Path) -> dict[str, Any] | None:
     """Read literal diagnostics capability flags without importing HA runtime."""
-    path = component_root / "diagnostics.py"
+    path = component_root / "diagnostic_runtime.py"
+    flags = _literal_client_capability_flags_from_path(
+        path,
+        "client_capabilities_for_entry",
+    )
+    if flags is not None:
+        return flags
+    return _literal_client_capability_flags_from_path(
+        component_root / "diagnostics.py",
+        "_client_capabilities_for_entry",
+    )
+
+
+def _literal_client_capability_flags_from_path(
+    path: Path,
+    function_name: str,
+) -> dict[str, Any] | None:
+    """Read literal capability flags from one source module."""
     if not path.exists():
         return None
 
@@ -17,7 +34,7 @@ def literal_client_capability_flags(component_root: Path) -> dict[str, Any] | No
     for node in tree.body:
         if not isinstance(node, ast.FunctionDef):
             continue
-        if node.name != "_client_capabilities_for_entry":
+        if node.name != function_name:
             continue
         for child in ast.walk(node):
             if isinstance(child, ast.Return) and isinstance(child.value, ast.Dict):

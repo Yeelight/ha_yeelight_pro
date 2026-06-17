@@ -202,7 +202,7 @@ async def test_options_update_reloads_when_private_push_entry_data_changes(
     })
     coordinator = _runtime_coordinator(apply_options=MagicMock())
     _install_runtime(hass, mock_config_entry, coordinator)
-    mock_config_entry.data[CONF_PRIVATE_PUSH_DOMAIN] = "ws://ws-test.yeedev.com/ws"
+    mock_config_entry.data[CONF_PRIVATE_PUSH_DOMAIN] = "ws://ws-test.yeedev.com"
     mock_config_entry.options = dict(coordinator.options)
     hass.config_entries.async_reload = AsyncMock()
 

@@ -14,6 +14,7 @@ from ..canonical.models import (
     HAProductModel,
 )
 from ..capabilities.registry import format_component_property_key
+from ..core.device_structural_models import structural_component_label
 from ..utils import to_bool, to_int
 
 COMPONENT_INDEX_RE = re.compile(r"_(?P<index>\d+)$")
@@ -153,6 +154,31 @@ def component_state_view(
 def humanize_component_id(component_id: str) -> str | None:
     """将组件 ID 转换为人类可读名称。"""
     text = component_id.replace("_", " ").strip()
+    return text or None
+
+
+def component_display_label(component: ComponentInstanceModel) -> str | None:
+    """Return a user-facing label for a component without leaking raw aliases."""
+    structural = structural_component_label(_component_label_payload(component))
+    if structural is not None:
+        return structural
+    for value in (component.name, component.desc):
+        if text := _display_text(value):
+            return text
+    return humanize_component_id(component.component_id)
+
+
+def _component_label_payload(component: ComponentInstanceModel) -> dict[str, Any]:
+    return {
+        "component_id": component.component_id,
+        "name": component.name,
+        "desc": component.desc,
+        "category": component.category,
+    }
+
+
+def _display_text(value: Any) -> str | None:
+    text = str(value).strip() if value is not None else ""
     return text or None
 
 

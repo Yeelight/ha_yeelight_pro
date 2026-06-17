@@ -31,7 +31,7 @@ from .exceptions import (
 from .property_hydration import async_hydrate_device_properties
 from .property_hydration_summary import PropertyHydrationDiagnostics
 from .coordinator_runtime import CoordinatorRuntimeMixin
-from .runtime_bridge import RuntimeEventDeduper
+from .runtime_bridge import RuntimeEventDeduper, RuntimePropertyUpdateSummary
 from .runtime_state import RuntimeStateStore
 from .schema_cache import ProductSchemaCache, product_ids_from_items
 from .topology_diff import TopologyDiffSummary
@@ -77,6 +77,8 @@ class YeelightProCoordinator(
         self.analytics_data: Any | None = None
         self._runtime_state = RuntimeStateStore()
         self._push_event_deduper = RuntimeEventDeduper()
+        self.last_push_property_summary = RuntimePropertyUpdateSummary()
+        self.last_push_event_count = 0
         self._topology_tracker = TopologyTracker()
         self._device_payload_builder = DevicePayloadBuilder()
         self._product_schema_cache = ProductSchemaCache(hass)

@@ -32,6 +32,7 @@ LIFECYCLE_CONTRACT_TOKENS = {
         "async_reconcile_entity_registry": "entity registry reconcile hook",
         "entity_lifecycle_cleanup": "cleanup helper facade imports",
         "entity_lifecycle_metadata": "metadata helper facade import",
+        "entity_lifecycle_superseded": "superseded helper cleanup import",
         "_registry_entry_disabled_by_user": "user-disabled entity preservation",
         "EntityRegistryReconcileSummary": "aggregate diagnostics summary",
         "collect_entity_candidate_keys": "filtered candidate lifecycle source",
@@ -48,6 +49,13 @@ LIFECYCLE_CONTRACT_TOKENS = {
         "registry_entity_ids": "entity-id conflict set helper",
         "_legacy_unique_id_tail": "legacy channel suffix detector",
         "_registry_entry_disabled_by_user": "user-disabled rename preservation",
+    },
+    "entity_lifecycle_superseded.py": {
+        "is_stale_helper_owned_by_active_main_entity": (
+            "main-entity-owned helper stale cleanup detector"
+        ),
+        "_MAIN_ENTITY_PROPS_BY_PLATFORM": "main platform ownership map",
+        "_candidate_helper_prefixes": "legacy helper unique-id prefix matcher",
     },
     "entity_candidates.py": {
         "CONF_DEVICE_IMPORT_FILTER": "candidate-level device import filter lookup",
@@ -186,6 +194,15 @@ LIFECYCLE_CONTRACT_TOKENS = {
         "select.cai_guang_deng_shi_fou_kai_qi_shan_duan": (
             "friendly property helper entity-id assertion"
         ),
+    },
+    "tests/test_entity_lifecycle_reconcile_superseded.py": {
+        "test_reconcile_disables_stale_helper_owned_by_active_main_entity": (
+            "main-entity-owned helper stale cleanup coverage"
+        ),
+        "test_reconcile_preserves_user_named_stale_main_owned_helper": (
+            "user-named superseded helper preservation coverage"
+        ),
+        "climate_1_acdfltr_number": "real stale climate helper unique-id fixture",
     },
     "tests/test_entity_lifecycle_reconcile_display.py": {
         "test_reconcile_marks_extra_catalog_double_switch_channel_stale_and_updates_names": (

@@ -18,6 +18,7 @@ from .const import (
     CONF_DEVICE_IMPORT_FILTER,
     CONF_HOUSE_ID,
     CONF_HOUSE_NAME,
+    CONF_LIVE_UPDATES,
     CONF_OPEN_API_CLIENT_ID,
     CONF_OPEN_API_CLIENT_SECRET,
     CONF_PRIVATE_DOMAIN,
@@ -32,6 +33,7 @@ from .const import (
     CONNECTION_MODE_PRIVATE,
     DEFAULT_CLOUD_REGION,
     DEFAULT_LAN_GATEWAY_PORT,
+    DEFAULT_LIVE_UPDATES,
     DOMAIN,
 )
 from .config_flow_account import (
@@ -352,6 +354,7 @@ class YeelightProConfigFlow(
         }:
             return {}
         return {
+            CONF_LIVE_UPDATES: DEFAULT_LIVE_UPDATES,
             CONF_DEVICE_IMPORT_FILTER: device_import_filter_for_selected_devices(
                 self._selected_device_ids,
                 self._device_choices,

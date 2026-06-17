@@ -18,6 +18,7 @@ from ..canonical.models import (
 )
 from ..identity import payload_entity_unique_id_prefix
 from .common import (
+    component_display_label,
     load_product_model,
     payload_available,
     product_component,
@@ -319,7 +320,7 @@ def _project_climate_name(
     """Return HA climate entity name, preserving single-climate compatibility."""
     if total <= 1 and component.component_id in {"air_conditioner", "climate"}:
         return "温控"
-    return component.name or component.desc or component.component_id
+    return component_display_label(component)
 
 
 def _project_climate_unique_id(

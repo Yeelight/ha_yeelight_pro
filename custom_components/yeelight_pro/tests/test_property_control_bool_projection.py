@@ -53,7 +53,7 @@ def test_writable_bool_config_projects_device_switch_control() -> None:
     projection = projections[0]
     assert projection.unique_id == "yeelight_pro_climate-1_air_conditioner_1_acrc_switch"
     assert projection.component_id == "air_conditioner_1_acrc_switch"
-    assert projection.name == "按键 1 空调遥控器"
+    assert projection.name == "空调控制器 空调遥控器"
     assert projection.is_on is True
     assert projection.control_key == "1-acrc"
     assert projection.icon == "mdi:remote"
@@ -61,19 +61,27 @@ def test_writable_bool_config_projects_device_switch_control() -> None:
 
 
 def test_climate_main_properties_do_not_project_duplicate_auxiliary_controls() -> None:
-    """温控主实体已消费的 acm/acf/actt 不应重复成为 select/number."""
+    """温控主实体已消费的 acm/acf/actt/acdfltr 不应重复成为 helper."""
     payload = projection_payload(
         device_id="multi-climate-aux-1",
         category="temp_control",
         component_id="air_conditioner_1",
         component_category="air_conditioner",
-        state={"acp": True, "acm": 1, "acf": 4, "actt": 26, "acct": 24},
+        state={
+            "acp": True,
+            "acm": 1,
+            "acf": 4,
+            "actt": 26,
+            "acct": 24,
+            "acdfltr": 80,
+        },
         params={
             "1-acp": True,
             "1-acm": 1,
             "1-acf": 4,
             "1-actt": 26,
             "1-acct": 24,
+            "1-acdfltr": 80,
             "1-acrc": True,
         },
     )
@@ -97,6 +105,12 @@ def test_climate_main_properties_do_not_project_duplicate_auxiliary_controls() -
             "property_type": "int",
             "value_range": {"min": 16, "max": 32, "step": 1},
         },
+        {
+            "prop_id": "acdfltr",
+            "access": "read_write",
+            "property_type": "int",
+            "value_range": {"min": 0, "max": 255, "step": 1},
+        },
         {"prop_id": "acct", "access": "read_only", "property_type": "int"},
         {"prop_id": "acrc", "access": "read_write", "property_type": "bool", "format": "bool"},
     ]
@@ -108,6 +122,7 @@ def test_climate_main_properties_do_not_project_duplicate_auxiliary_controls() -
                 "acf": "1-acf",
                 "actt": "1-actt",
                 "acct": "1-acct",
+                "acdfltr": "1-acdfltr",
                 "acrc": "1-acrc",
             }
         }
@@ -156,7 +171,7 @@ def test_writable_auxiliary_bool_schema_projects_switch_control() -> None:
     assert len(projections) == 1
     projection = projections[0]
     assert projection.component_id == "human_sensor_1_blp_switch"
-    assert projection.name == "按键 1 背光"
+    assert projection.name == "人体传感器 背光"
     assert projection.is_on is False
     assert projection.control_key == "1-blp"
 

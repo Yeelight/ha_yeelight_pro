@@ -7,9 +7,8 @@ from typing import Any, Mapping
 from homeassistant.components.fan import FanEntityFeature
 
 from ..canonical.models import ComponentInstanceModel, ComponentModel
-from ..device_display import channel_name_label
 from ..utils import to_bool, to_int, to_str
-from .common import NumericRange, component_index, humanize_component_id
+from .common import NumericRange, component_display_label, component_index
 from .fan_value_helpers import (
     fan_speed_count,
     project_fan_percentage as _project_percentage,
@@ -199,13 +198,7 @@ def _range_from_mapping(payload: Mapping[str, Any]) -> NumericRange | None:
 
 
 def _project_fan_name(component: ComponentInstanceModel) -> str | None:
-    index = component_index(component.component_id)
-    if index is not None:
-        return channel_name_label(index=index, component=component)
-
     lowered = component.component_id.lower()
     if lowered == "fresh_air":
         return "新风"
-    if text := to_str(component.name):
-        return text
-    return humanize_component_id(component.component_id)
+    return component_display_label(component)

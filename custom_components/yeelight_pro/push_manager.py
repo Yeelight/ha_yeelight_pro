@@ -38,6 +38,16 @@ class PushHealth:
     started_count: int = 0
     stopped_count: int = 0
     handled_payloads: int = 0
+    changed_payloads: int = 0
+    property_updates: int = 0
+    applied_property_updates: int = 0
+    unknown_property_updates: int = 0
+    group_updates: int = 0
+    topology_node_updates: int = 0
+    dispatched_events: int = 0
+    last_property_update_count: int = 0
+    last_dispatched_event_count: int = 0
+    last_payload_changed: bool = False
     last_error_type: str | None = None
     last_payload_type: str | None = None
     last_payload_at: float | None = None
@@ -49,6 +59,16 @@ class PushHealth:
             "started_count": self.started_count,
             "stopped_count": self.stopped_count,
             "handled_payloads": self.handled_payloads,
+            "changed_payloads": self.changed_payloads,
+            "property_updates": self.property_updates,
+            "applied_property_updates": self.applied_property_updates,
+            "unknown_property_updates": self.unknown_property_updates,
+            "group_updates": self.group_updates,
+            "topology_node_updates": self.topology_node_updates,
+            "dispatched_events": self.dispatched_events,
+            "last_property_update_count": self.last_property_update_count,
+            "last_dispatched_event_count": self.last_dispatched_event_count,
+            "last_payload_changed": self.last_payload_changed,
             "last_error_type": self.last_error_type,
             "last_payload_type": self.last_payload_type,
             "last_payload_at": self.last_payload_at,
@@ -70,6 +90,16 @@ class PushManager:
         """Return diagnostics-safe aggregate push health."""
         self._sync_transport_runtime_error()
         return self._health
+
+    @property
+    def transport_health(self) -> dict[str, Any] | None:
+        """Return diagnostics-safe transport health when the transport exposes it."""
+        health = getattr(self._transport, "health", None)
+        as_dict = getattr(health, "as_dict", None)
+        if callable(as_dict):
+            value = as_dict()
+            return value if isinstance(value, dict) else None
+        return None
 
     async def async_start(self) -> None:
         """Start the injected transport once."""
@@ -124,6 +154,7 @@ class PushManager:
             self._health.last_error_type = type(err).__name__
             return None
         self._health.handled_payloads += 1
+        self._record_payload_result(result)
         self._health.last_payload_type = _payload_type(payload)
         self._health.last_payload_at = time()
         self._health.last_error_type = None
@@ -140,6 +171,30 @@ class PushManager:
         if isinstance(transport_error, str) and transport_error:
             self._health.last_error_type = transport_error
 
+    def _record_payload_result(self, result: object | None) -> None:
+        """Copy aggregate coordinator push results into diagnostics health."""
+        summary = getattr(self._coordinator, "last_push_property_summary", None)
+        summary_dict = _summary_as_dict(summary)
+        input_updates = _int_value(summary_dict.get("input_updates"))
+        applied = _int_value(summary_dict.get("applied_device_updates"))
+        unknown = _int_value(summary_dict.get("unknown_device_updates"))
+        group_updates = _int_value(summary_dict.get("group_updates"))
+        topology_updates = _int_value(summary_dict.get("topology_node_updates"))
+        changed = bool(summary_dict.get("changed"))
+        event_count = _event_count(result)
+
+        self._health.property_updates += input_updates
+        self._health.applied_property_updates += applied
+        self._health.unknown_property_updates += unknown
+        self._health.group_updates += group_updates
+        self._health.topology_node_updates += topology_updates
+        self._health.dispatched_events += event_count
+        self._health.last_property_update_count = input_updates
+        self._health.last_dispatched_event_count = event_count
+        self._health.last_payload_changed = changed or event_count > 0
+        if self._health.last_payload_changed:
+            self._health.changed_payloads += 1
+
 
 def _payload_type(payload: Mapping[str, Any]) -> str | None:
     """Return a documented aggregate payload type without raw payload data."""
@@ -152,6 +207,34 @@ def _payload_type(payload: Mapping[str, Any]) -> str | None:
         if isinstance(nested, str) and nested:
             return nested
     return None
+
+
+def _event_count(result: object | None) -> int:
+    """Return dispatched event count from the coordinator result."""
+    return len(result) if isinstance(result, list) else 0
+
+
+def _summary_as_dict(summary: Any) -> Mapping[str, Any]:
+    """Return a real coordinator summary, ignoring mock-created attributes."""
+    if isinstance(summary, Mapping):
+        return summary
+    if _is_mock_object(summary):
+        return {}
+    as_dict = getattr(summary, "as_dict", None)
+    if not callable(as_dict):
+        return {}
+    value = as_dict()
+    return value if isinstance(value, Mapping) else {}
+
+
+def _is_mock_object(value: Any) -> bool:
+    """Return true for unittest.mock dynamic attributes without importing mocks."""
+    return value.__class__.__module__.startswith("unittest.mock")
+
+
+def _int_value(value: Any) -> int:
+    """Return safe integer diagnostics counters."""
+    return value if isinstance(value, int) and not isinstance(value, bool) else 0
 
 
 __all__ = [

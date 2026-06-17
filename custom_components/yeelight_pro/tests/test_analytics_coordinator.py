@@ -110,6 +110,55 @@ async def test_analytics_coordinator_collects_snapshot(hass) -> None:
 
 
 @pytest.mark.asyncio
+async def test_analytics_coordinator_accepts_wrapped_and_direct_data(hass) -> None:
+    """analytics 可兼容 data、result.data 和直接 data object/list 形态."""
+    client = AsyncMock(spec=YeelightProClient)
+    client.get_alarm_analysis.return_value = {
+        "result": {"data": {"statInfo": {"alarmNum": "5"}}}
+    }
+    client.get_alarm_top.return_value = {
+        "result": {"data": [{"deviceId": "1", "alarmNum": "2"}]}
+    }
+    client.get_alarm_trend.return_value = [
+        {"dateStr": "2024-08-08", "alarmNum": "1"}
+    ]
+    client.get_energy_analysis.return_value = {"used": {"usedCnt": "12.5"}}
+    client.get_energy_trend.return_value = {
+        "result": {"data": [{"dateStr": "2024-08-08", "usedCnt": "12.5"}]}
+    }
+    client.get_daily_user_actions.return_value = {
+        "summary": {"pOnNum": 2, "pOffNum": 1},
+        "details": [],
+    }
+    client.get_monthly_user_actions.return_value = {"data": {"summary": {"pOnNum": 20}}}
+    client.get_yearly_user_actions.return_value = {
+        "result": {"data": {"summary": {"pOnNum": 200}}}
+    }
+    coordinator = YeelightProAnalyticsCoordinator(hass, client, 12345)
+
+    with patch(
+        "custom_components.yeelight_pro.core.analytics_coordinator.dt_util.now",
+        return_value=datetime(2024, 8, 9, 12, 0, 0),
+    ):
+        await coordinator.async_config_entry_first_refresh()
+
+    assert coordinator.data is not None
+    assert coordinator.data.endpoint_errors == {}
+    assert coordinator.data.alarm_analysis["statInfo"]["alarmNum"] == "5"
+    assert coordinator.data.alarm_top == [{"deviceId": "1", "alarmNum": "2"}]
+    assert coordinator.data.alarm_trend == [
+        {"dateStr": "2024-08-08", "alarmNum": "1"}
+    ]
+    assert coordinator.data.energy_analysis["used"]["usedCnt"] == "12.5"
+    assert coordinator.data.energy_trend == [
+        {"dateStr": "2024-08-08", "usedCnt": "12.5"}
+    ]
+    assert coordinator.data.user_actions["summary"]["pOnNum"] == 2
+    assert coordinator.data.monthly_user_actions["summary"]["pOnNum"] == 20
+    assert coordinator.data.yearly_user_actions["summary"]["pOnNum"] == 200
+
+
+@pytest.mark.asyncio
 async def test_analytics_coordinator_first_refresh_reports_unavailable(hass) -> None:
     """初次 analytics API 不可用时应让实体保持注册但状态 unavailable。"""
     client = AsyncMock(spec=YeelightProClient)

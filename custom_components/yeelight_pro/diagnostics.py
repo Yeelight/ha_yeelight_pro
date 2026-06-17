@@ -11,18 +11,21 @@ from homeassistant.core import HomeAssistant
 from .capabilities.filter import summarize_unknown_capabilities
 from .capabilities import iot_registry, validate_iot_registry
 from .const import (
-    CONF_CONNECTION_MODE,
     CONF_DEVICE_IMPORT_FILTER,
     CONF_DEBUG_MODE,
     CONF_HIDE_UNKNOWN_ENTITIES,
     CONF_SCAN_INTERVAL,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
-    CONNECTION_MODE_CLOUD,
-    CONNECTION_MODE_LAN,
-    CONNECTION_MODE_PRIVATE,
     DEFAULT_TOPOLOGY_CHANGE_REPAIRS,
     DOMAIN,
     get_enabled_platforms,
+)
+from .diagnostic_runtime import (
+    client_capabilities,
+    client_capabilities_for_entry,
+    exception_type_name,
+    runtime_health,
+    safe_bool_or_none,
 )
 from .diagnostic_summaries import (
     availability_counts,
@@ -79,7 +82,7 @@ def _build_runtime_diagnostics(
     """Build aggregate runtime diagnostics without raw device payloads."""
     coordinator = runtime.get("coordinator")
     if coordinator is None:
-        capabilities = _client_capabilities_for_entry(entry)
+        capabilities = client_capabilities_for_entry(entry)
         capabilities.update(
             {
                 "cloud_http_polling": False,
@@ -109,9 +112,9 @@ def _build_runtime_diagnostics(
     return {
         "loaded": True,
         "platforms": list(runtime.get("platforms") or []),
-        "health": _runtime_health(runtime, coordinator),
+        "health": runtime_health(runtime, coordinator),
         "analytics": _analytics_diagnostics(runtime),
-        "client_capabilities": _client_capabilities(runtime),
+        "client_capabilities": client_capabilities(runtime),
         "options": {
             CONF_SCAN_INTERVAL: getattr(coordinator, "scan_interval", None),
             CONF_DEBUG_MODE: getattr(coordinator, "debug_mode", None),
@@ -204,10 +207,10 @@ def _analytics_diagnostics(runtime: Mapping[str, Any]) -> dict[str, Any]:
     endpoint_errors = getattr(snapshot, "endpoint_errors", None)
     return {
         "enabled": True,
-        "last_update_success": _safe_bool_or_none(
+        "last_update_success": safe_bool_or_none(
             getattr(coordinator, "last_update_success", None),
         ),
-        "last_exception_type": _exception_type_name(
+        "last_exception_type": exception_type_name(
             getattr(coordinator, "last_exception", None),
         ),
         "has_snapshot": snapshot is not None,
@@ -244,139 +247,3 @@ def _iot_registry_diagnostics() -> dict[str, Any]:
         "events": len(registry.events),
         "protocols": len(registry.protocols),
     }
-
-
-def _client_capabilities(runtime: Mapping[str, Any]) -> dict[str, Any]:
-    """Return safe connection capability flags without endpoint or token data."""
-    entry = runtime.get("entry")
-    capabilities = _client_capabilities_for_entry(entry)
-    connection_mode = capabilities["connection_mode"]
-    has_cloud_client = runtime.get("client") is not None
-    has_push_runtime = _runtime_manager_available(runtime.get("push_manager"))
-    has_lan_runtime = _runtime_manager_available(runtime.get("lan_runtime"))
-    capabilities.update(
-        {
-            "cloud_http_polling": (
-                connection_mode == CONNECTION_MODE_CLOUD and has_cloud_client
-            ),
-            "private_http_polling": (
-                connection_mode == CONNECTION_MODE_PRIVATE and has_cloud_client
-            ),
-            "lan_direct_control": has_lan_runtime,
-            "scan_login_runtime": has_cloud_client,
-            "websocket_transport_runtime": has_push_runtime,
-            "push_connection": has_push_runtime,
-            "websocket_subscription": has_push_runtime,
-            "websocket_event_notifications": has_push_runtime,
-            "local_gateway_control": has_lan_runtime,
-            "lan_control": has_lan_runtime,
-        }
-    )
-    return capabilities
-
-
-def _client_capabilities_for_entry(entry: Any) -> dict[str, Any]:
-    """Return safe connection capability flags from a config entry-like object."""
-    data = getattr(entry, "data", None)
-    connection_mode = None
-    if isinstance(data, Mapping):
-        raw_mode = data.get(CONF_CONNECTION_MODE)
-        connection_mode = raw_mode if isinstance(raw_mode, str) else None
-    supported_modes = (CONNECTION_MODE_CLOUD, CONNECTION_MODE_PRIVATE, CONNECTION_MODE_LAN)
-    return {
-        "connection_mode": (
-            connection_mode if connection_mode in supported_modes else "unknown"
-        ),
-        "supported_connection_modes": list(supported_modes),
-        "cloud_http_polling": connection_mode == CONNECTION_MODE_CLOUD,
-        "private_http_polling": connection_mode == CONNECTION_MODE_PRIVATE,
-        "lan_direct_control": connection_mode == CONNECTION_MODE_LAN,
-        "scan_login_contract": True,
-        "scan_login_runtime": True,
-        "push_message_adapter": True,
-        "runtime_payload_bridge": True,
-        "websocket_message_contract": True,
-        "websocket_transport_runtime": True,
-        "push_manager_contract": True,
-        "lan_discovery_parser": True,
-        "lan_message_contract": True,
-        "lan_payload_adapter": True,
-        "push_connection": True,
-        "websocket_subscription": True,
-        "websocket_event_notifications": True,
-        "local_gateway_control": True,
-        "lan_control": True,
-        "mqtt_subscription": False,
-    }
-
-
-def _runtime_health(
-    runtime: Mapping[str, Any],
-    coordinator: Any,
-) -> dict[str, Any]:
-    """Return safe runtime health details without raw exception messages."""
-    loaded_platforms = sorted(
-        str(platform)
-        for platform in (runtime.get("platforms") or [])
-        if isinstance(platform, str)
-    )
-    expected_platforms = sorted(get_enabled_platforms(_runtime_entry_options(runtime)))
-    return {
-        "last_update_success": _safe_bool_or_none(
-            getattr(coordinator, "last_update_success", None),
-        ),
-        "last_exception_type": _exception_type_name(
-            getattr(coordinator, "last_exception", None),
-        ),
-        "loaded_platform_count": len(loaded_platforms),
-        "expected_platform_count": len(expected_platforms),
-        "platforms_match_options": loaded_platforms == expected_platforms,
-        "push": _manager_health(runtime.get("push_manager")),
-        "lan": _manager_health(runtime.get("lan_runtime")),
-    }
-
-
-def _manager_health(manager: Any) -> dict[str, Any] | None:
-    """Return diagnostics-safe manager health when present."""
-    health = getattr(manager, "health", None)
-    as_dict = getattr(health, "as_dict", None)
-    if callable(as_dict):
-        return as_dict()
-    return None
-
-
-def _runtime_manager_available(manager: Any) -> bool:
-    """Return whether a runtime manager is loaded and not a recorded startup failure."""
-    if manager is None:
-        return False
-    health = _manager_health(manager)
-    if health is None:
-        return True
-    running = health.get("running")
-    connected = health.get("connected")
-    if running is False:
-        return False
-    if connected is False:
-        return False
-    return True
-
-
-def _runtime_entry_options(runtime: Mapping[str, Any]) -> Mapping[str, Any]:
-    """Return loaded config entry options from runtime data."""
-    entry = runtime.get("entry")
-    options = getattr(entry, "options", None)
-    return options if isinstance(options, Mapping) else {}
-
-
-def _safe_bool_or_none(value: Any) -> bool | None:
-    """Return a boolean diagnostic value, preserving unknown as None."""
-    if isinstance(value, bool):
-        return value
-    return None
-
-
-def _exception_type_name(value: Any) -> str | None:
-    """Return a safe exception class name without exposing the message."""
-    if isinstance(value, BaseException):
-        return type(value).__name__
-    return None

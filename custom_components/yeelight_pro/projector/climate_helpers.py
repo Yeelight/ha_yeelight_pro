@@ -29,12 +29,29 @@ CLIMATE_PROPERTY_PROPS = frozenset({
     "actt",
     "acct",
     "acf",
+    "acdfltr",
     "p",
     "t",
     "tgt",
     "rfhp",
     "rfhct",
     "rfhtt",
+})
+CLIMATE_MAIN_ENTITY_PROPS = frozenset({
+    "acf",
+    "acm",
+    "acp",
+    "acdfltr",
+    "actt",
+    "acct",
+    "aco",
+    "o",
+    "p",
+    "rfhp",
+    "rfhct",
+    "rfhtt",
+    "t",
+    "tgt",
 })
 
 
@@ -186,6 +203,7 @@ def _normalize_label(value: str) -> str:
 __all__ = [
     "AC_FAN_LABELS",
     "AC_MODE_TO_HVAC",
+    "CLIMATE_MAIN_ENTITY_PROPS",
     "CLIMATE_PROPERTY_PROPS",
     "HVAC_TO_AC_MODE",
     "climate_fan_mode",

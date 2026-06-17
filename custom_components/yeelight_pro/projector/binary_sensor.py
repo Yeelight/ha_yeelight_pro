@@ -21,6 +21,7 @@ from .sensor_helpers import (
     projection_property_keys,
 )
 from .common import (
+    component_display_label,
     component_property_value,
     load_product_model,
     payload_available,
@@ -102,6 +103,8 @@ BINARY_SENSOR_SPECS: dict[str, dict[str, str | None]] = {
         "inverted": None,
     },
 }
+
+
 @dataclass(slots=True)
 class HABinarySensorProjection:
     """投影后的 Home Assistant binary sensor 视图."""
@@ -207,10 +210,7 @@ def _binary_sensor_property_occurrences(
 ) -> list[tuple[str, ComponentInstanceModel | None, Any]]:
     """Return binary sensor properties without collapsing component scope."""
     if instance is None:
-        return [
-            (key, None, params.get(key))
-            for key in _binary_sensor_keys(None, None, params)
-        ]
+        return [(key, None, params.get(key)) for key in _binary_sensor_keys(None, None, params)]
 
     occurrences: list[tuple[str, ComponentInstanceModel | None, Any]] = []
     scoped_keys: set[str] = set()
@@ -276,6 +276,11 @@ def _scoped_projection_name(
     if not scoped:
         return _projection_name(None, label)
     channel = channel_name_label(index=None, component=component)
+    if channel is None and component is not None:
+        channel = next(
+            (value.strip() for value in (component.name, component.desc) if isinstance(value, str) and value.strip()),
+            None,
+        ) or component_display_label(component)
     if channel and label:
         return f"{channel} {label}"
     return label or channel

@@ -15,6 +15,7 @@ from custom_components.yeelight_pro.core.runtime_bridge import (
     runtime_event_dedupe_key,
 )
 from custom_components.yeelight_pro.light import YeelightProLight
+from custom_components.yeelight_pro.node_light import YeelightProNodeLight
 from custom_components.yeelight_pro.projector.sensor import project_sensors
 from custom_components.yeelight_pro.projector.switch import project_switches
 
@@ -261,6 +262,63 @@ async def test_lan_runtime_update_scales_temperature_humidity_raw_value(
         for projection in project_sensors(refreshed, domain=DOMAIN)
     }
     assert by_component["temperature"].native_value == 25.34
+
+
+@pytest.mark.asyncio
+async def test_push_updates_room_area_house_node_light_state(
+    hass: HomeAssistant,
+) -> None:
+    """WebSocket nodeType=1/3/5 属性推送应即时刷新拓扑总控实体。"""
+    coordinator = YeelightProCoordinator(
+        hass=hass,
+        client=MagicMock(),
+        house_id=12345,
+    )
+    coordinator.rooms = [{"id": 201, "name": "客厅", "params": {"p": True}}]
+    coordinator.areas = [{"id": 301, "name": "一楼", "params": {"p": True}}]
+    coordinator.houses = [{"id": 5001, "name": "我的家", "params": {"p": True}}]
+    room_light = YeelightProNodeLight(coordinator, "room", "201")
+    area_light = YeelightProNodeLight(coordinator, "area", "301")
+    house_light = YeelightProNodeLight(coordinator, "house", "5001")
+    updates = 0
+
+    def _listener() -> None:
+        nonlocal updates
+        updates += 1
+
+    remove_listener = coordinator.async_add_listener(_listener)
+
+    events = await coordinator.async_handle_push_payload(
+        {
+            "type": "prop",
+            "nodes": [
+                {"id": 201, "nt": 1, "params": {"p": False, "l": 25}},
+                {"id": 301, "nt": 3, "params": {"p": False}},
+                {"id": 5001, "nt": 5, "params": {"p": False, "o": True}},
+            ],
+        }
+    )
+
+    try:
+        assert events == []
+        assert coordinator.rooms[0]["params"] == {"p": False, "l": 25}
+        assert coordinator.areas[0]["params"] == {"p": False}
+        assert coordinator.houses[0]["params"] == {"p": False, "o": True}
+        assert room_light.is_on is False
+        assert area_light.is_on is False
+        assert house_light.is_on is False
+        assert updates == 1
+        assert coordinator.last_push_property_summary.as_dict() == {
+            "input_updates": 3,
+            "applied_device_updates": 0,
+            "unknown_device_updates": 0,
+            "group_updates": 0,
+            "topology_node_updates": 3,
+            "changed": True,
+        }
+        assert coordinator.last_push_event_count == 0
+    finally:
+        remove_listener()
 
 
 def test_runtime_event_dedupe_key_is_bounded_and_identifier_safe() -> None:

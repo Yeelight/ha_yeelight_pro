@@ -21,7 +21,7 @@ def _official_two_key_property_control_payload() -> dict:
     payload["pid"] = 854018
     payload["ha_device_instance"]["extensions"] = {
         "component_state_keys": {
-            "curtain_1": {
+            "switch_1": {
                 "li": "1-li",
                 "rd": "1-rd",
                 "rg": "1-rg",
@@ -29,6 +29,16 @@ def _official_two_key_property_control_payload() -> dict:
             }
         }
     }
+    component = payload["ha_device_instance"]["components"][0]
+    schema_component = payload["ha_product_model"]["components"][0]
+    component["component_id"] = "switch_1"
+    component["name"] = "无线开关通道"
+    component["desc"] = "无线开关通道"
+    component["category"] = "relay_switch"
+    schema_component["component_id"] = "switch_1"
+    schema_component["name"] = "无线开关通道"
+    schema_component["desc"] = "无线开关通道"
+    schema_component["category"] = "relay_switch"
     return payload
 
 
@@ -40,7 +50,7 @@ def test_device_number_suggests_friendly_object_id(mock_coordinator) -> None:
     number = YeelightProDeviceNumber(
         mock_coordinator,
         "curtain-1",
-        component_id="curtain_1_rg_number",
+        component_id="switch_1_rg_number",
     )
 
     assert number.suggested_object_id == "厨房双键开关 左键 旋转档位"
@@ -54,7 +64,7 @@ def test_device_select_suggests_friendly_object_id(mock_coordinator) -> None:
     select = YeelightProDeviceSelect(
         mock_coordinator,
         "curtain-1",
-        component_id="curtain_1_rd_select",
+        component_id="switch_1_rd_select",
     )
 
     assert select.suggested_object_id == "厨房双键开关 左键 电机方向"
@@ -68,7 +78,7 @@ async def test_device_number_write_sends_indexed_control_key(mock_coordinator) -
     number = YeelightProDeviceNumber(
         mock_coordinator,
         12345,
-        component_id="curtain_1_rg_number",
+        component_id="switch_1_rg_number",
     )
 
     assert number.name == "左键 旋转档位"
@@ -91,7 +101,7 @@ async def test_device_select_write_sends_raw_option_code(mock_coordinator) -> No
     select = YeelightProDeviceSelect(
         mock_coordinator,
         12345,
-        component_id="curtain_1_rd_select",
+        component_id="switch_1_rd_select",
     )
 
     assert select.options == ["正向", "反向"]
@@ -117,7 +127,7 @@ async def test_device_switch_write_sends_int_values_for_indicator_switch(
     switch = YeelightProSwitch(
         mock_coordinator,
         12345,
-        component_id="curtain_1_li_switch",
+        component_id="switch_1_li_switch",
     )
 
     assert switch.name == "左键 指示灯"

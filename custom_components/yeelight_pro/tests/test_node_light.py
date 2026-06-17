@@ -61,6 +61,18 @@ def test_node_light_parses_string_power_and_online_values(mock_coordinator) -> N
     assert entity.is_on is False
 
 
+def test_node_light_uses_kind_fallback_for_numeric_topology_name(
+    mock_coordinator,
+) -> None:
+    """区域/房间原始名称为数字时不应在 HA 设备页显示裸数字."""
+    mock_coordinator.areas = [
+        {"id": "18422", "name": "1", "online": True, "params": {"p": True}}
+    ]
+    entity = YeelightProNodeLight(mock_coordinator, "area", "18422")
+
+    assert entity.name == "区域 18422"
+
+
 @pytest.mark.asyncio
 async def test_node_light_turn_on_maps_ha_brightness_to_iot_percent(
     mock_coordinator,

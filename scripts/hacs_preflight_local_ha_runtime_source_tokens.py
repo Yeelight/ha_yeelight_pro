@@ -45,4 +45,41 @@ LOCAL_HA_RUNTIME_ADDITIONAL_SOURCE_TOKENS = {
             "private push endpoint priority over API host fallback"
         ),
     },
+    "custom_components/yeelight_pro/diagnostic_runtime.py": {
+        "push_manager_health": "push manager nested transport health diagnostics",
+        "transport_health": "WebSocket transport health diagnostics passthrough",
+        "client_capabilities_for_entry": "static client capability flag source",
+        "push_runtime_available": "active WebSocket availability guard",
+    },
+    "custom_components/yeelight_pro/device_display.py": {
+        "device_type_label": "friendly picker device type summary",
+        "channel_name_label": "friendly sub-entity channel label",
+        "_CATEGORY_LABELS": "category label registry",
+    },
+    "custom_components/yeelight_pro/device_channel_semantics.py": {
+        "uses_output_channel_label": "input/output channel naming semantics",
+        "OUTPUT_CHANNEL_CATEGORIES": "relay output channel category guard",
+        "EVENT_INPUT_CATEGORIES": "event input channel category guard",
+    },
+    "custom_components/yeelight_pro/device_channel_catalog.py": {
+        "product_catalog_channel_count": "catalog-backed channel count helper",
+        "is_input_channel_component_name": "input channel catalog name guard",
+        "is_channel_component_name": "channel catalog name guard",
+    },
+    "custom_components/yeelight_pro/device_channel_generated_names.py": {
+        "looks_like_generated_channel_name": "generated channel name replacement guard",
+        "generated_channel_name_index": "generated channel index parser guard",
+        "CHANNEL_NUMERAL_LABELS": "Chinese channel numeral label registry",
+    },
+    "custom_components/yeelight_pro/device_channels.py": {
+        "channel_name_label": "friendly sub-entity channel label",
+        "switch_channel_count_hint": "switch channel count inference",
+        "_CHANNEL_LABELS": "indexed switch channel label registry",
+        "_POSITIONAL_CHANNEL_LABELS": "physical switch position label registry",
+    },
+    "custom_components/yeelight_pro/projector/property_control_ownership.py": {
+        "MAIN_ENTITY_PROPS": "main entity property exclusion registry",
+        "MAIN_ENTITY_PROPS_BY_PLATFORM": "platform main-entity ownership map",
+        "is_main_entity_property": "main entity ownership helper",
+    },
 }

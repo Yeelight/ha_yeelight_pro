@@ -174,7 +174,7 @@ def test_temperature_humidity_payload_projects_two_sensors() -> None:
 
 
 def test_climate_main_properties_do_not_project_duplicate_sensors() -> None:
-    """温控主实体已表达的模式/风速/温度/在线状态不应重复成诊断 sensor."""
+    """温控主实体已表达的模式/风速/温度/导风/在线状态不应重复成 sensor."""
     device = projection_payload(
         device_id="climate-sensor-dup-1",
         category="temp_control",
@@ -187,9 +187,10 @@ def test_climate_main_properties_do_not_project_duplicate_sensors() -> None:
             "acct": 24,
             "o": True,
             "acd": 30,
+            "acdfltr": 80,
         },
         component_category="air_conditioner",
-        properties=("acp", "acm", "acf", "actt", "acct", "o", "acd"),
+        properties=("acp", "acm", "acf", "actt", "acct", "o", "acd", "acdfltr"),
     )
 
     sensors = project_sensors(device, domain=DOMAIN)

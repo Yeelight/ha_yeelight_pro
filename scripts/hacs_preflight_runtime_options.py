@@ -199,7 +199,7 @@ def check_runtime_options_contract_tests(component_root: Path) -> list[str]:
             ),
             "CONF_PRIVATE_PUSH_DOMAIN": "private push endpoint field is tested",
             "async_update_entry": "options flow updates config-entry data",
-            "ws://ws-test.yeedev.com/ws": "test deployment WebSocket normalization",
+            "ws://ws-test.yeedev.com": "test deployment WebSocket normalization",
         },
         "test_options_flow_private_push.py",
     ))

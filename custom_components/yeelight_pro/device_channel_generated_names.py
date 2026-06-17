@@ -76,7 +76,6 @@ def generated_channel_name_index(value: str) -> int | None:
 def _indexed_generated_names(index: int) -> set[str]:
     generated = {
         str(index),
-        f"air_conditioner_{index}",
         f"按键{index}",
         f"按键_{index}",
         f"第{index}键",
@@ -85,18 +84,14 @@ def _indexed_generated_names(index: int) -> set[str]:
         f"键_{index}",
         f"button_{index}",
         f"channel_{index}",
-        f"curtain_{index}",
-        f"fan_{index}",
-        f"human_sensor_{index}",
         f"key_{index}",
         f"knob_{index}",
         f"switch_{index}",
         f"relay_switch_{index}",
         f"relay_input_{index}",
-        f"sensor_{index}",
+        f"switch_control_{index}",
         f"scene_button_{index}",
         f"scene_control_button_{index}",
-        f"switch_control_{index}",
         f"wireless_switch_channel_{index}",
     }
     generated.update(_normal_name(label) for label in CHANNEL_NUMERAL_LABELS.get(index, ()))

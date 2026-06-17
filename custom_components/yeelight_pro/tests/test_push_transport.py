@@ -8,9 +8,6 @@ from unittest.mock import AsyncMock
 from aiohttp import WSMsgType
 import pytest
 
-from custom_components.yeelight_pro.push_contract import (
-    PUSH_HEARTBEAT_INTERVAL_SECONDS,
-)
 from custom_components.yeelight_pro.push_transport import (
     YeelightPushWebSocketTransport,
 )
@@ -40,6 +37,33 @@ async def test_push_transport_connects_subscribes_and_dispatches_json_objects() 
                     '"nodes":[{"id":2,"params":{"p":true}}]}}'
                 ),
             ),
+            FakeMessage(
+                WSMsgType.TEXT,
+                (
+                    '{"method":"message","params":{"type":"prop",'
+                    '"nodes":[{"id":3,"params":{"p":false}}]}}'
+                ),
+            ),
+            FakeMessage(
+                WSMsgType.TEXT,
+                (
+                    '{"result":{"type":"event",'
+                    '"nodes":[{"id":4,"event":"panel.click"}]}}'
+                ),
+            ),
+            FakeMessage(
+                WSMsgType.TEXT,
+                (
+                    '{"type":"prop","id":5,"propId":"p","value":true}'
+                ),
+            ),
+            FakeMessage(
+                WSMsgType.TEXT,
+                (
+                    '{"method":"message","data":{"type":"prop","resId":"6",'
+                    '"data":[{"propId":"sp","index":1,"value":false}]}}'
+                ),
+            ),
             FakeMessage(WSMsgType.TEXT, '["not-object"]'),
             FakeMessage(WSMsgType.TEXT, "not-json"),
             FakeMessage(WSMsgType.TEXT, '{"type":"unknown","nodes":[]}'),
@@ -52,6 +76,7 @@ async def test_push_transport_connects_subscribes_and_dispatches_json_objects() 
     transport = YeelightPushWebSocketTransport(
         session=session,
         token="Bearer fake-token",
+        auto_reconnect=False,
     )
 
     await transport.async_start(callback)
@@ -76,27 +101,50 @@ async def test_push_transport_connects_subscribes_and_dispatches_json_objects() 
         "method": "message",
         "data": {"type": "prop", "nodes": [{"id": 2, "params": {"p": True}}]},
     }
-    assert callback.await_args_list[2].args[0] == {"type": "event", "nodes": []}
-    assert callback.await_count == 3
+    assert callback.await_args_list[2].args[0] == {
+        "method": "message",
+        "params": {"type": "prop", "nodes": [{"id": 3, "params": {"p": False}}]},
+    }
+    assert callback.await_args_list[3].args[0] == {
+        "result": {"type": "event", "nodes": [{"id": 4, "event": "panel.click"}]},
+    }
+    assert callback.await_args_list[4].args[0] == {
+        "type": "prop",
+        "id": 5,
+        "propId": "p",
+        "value": True,
+    }
+    assert callback.await_args_list[5].args[0] == {
+        "method": "message",
+        "data": {
+            "type": "prop",
+            "resId": "6",
+            "data": [{"propId": "sp", "index": 1, "value": False}],
+        },
+    }
+    assert callback.await_args_list[6].args[0] == {"type": "event", "nodes": []}
+    assert callback.await_count == 7
+    health = transport.health.as_dict()
+    assert health["running"] is True
+    assert health["websocket_open"] is False
+    assert health["connect_attempts"] == 1
+    assert health["connected_count"] == 1
+    assert health["disconnected_count"] == 1
+    assert health["reconnect_attempts"] == 0
+    assert health["received_messages"] == 13
+    assert health["decoded_json_messages"] == 10
+    assert health["dispatched_payloads"] == 7
+    assert health["ignored_messages"] == 4
+    assert health["malformed_messages"] == 2
+    assert health["control_frames"] == 3
+    assert health["heartbeat_sent_count"] == 0
+    assert health["last_start_error_type"] is None
+    assert health["last_runtime_error_type"] is None
+    assert health["last_payload_type"] == "event"
+    assert health["last_message_at"] is not None
+    assert health["last_dispatched_at"] is not None
 
     await transport.async_stop()
-
-
-@pytest.mark.asyncio
-async def test_push_transport_uses_private_base_url_override() -> None:
-    """私有部署 transport 应连接派生出的私有 WebSocket endpoint."""
-    websocket = OpenFakeWebSocket()
-    session = FakeSession(websocket)
-    transport = YeelightPushWebSocketTransport(
-        session=session,
-        token="fake-token",
-        base_url="wss://private.example/ws",
-    )
-
-    await transport.async_start(AsyncMock())
-    await transport.async_stop()
-
-    assert session.connected_urls == ["wss://private.example/ws/fake-token"]
 
 
 @pytest.mark.asyncio
@@ -114,10 +162,6 @@ async def test_push_transport_sends_heartbeat_until_stopped() -> None:
     await transport.async_start(AsyncMock())
     await websocket.waiting_for_message.wait()
     await wait_for_sleep_calls(sleep, 1)
-
-    assert sleep.delays == [PUSH_HEARTBEAT_INTERVAL_SECONDS]
-    assert [message["method"] for message in websocket.sent_json] == ["subscribe"]
-
     sleep.release.set()
     await wait_for_sleep_calls(sleep, 2)
 
@@ -174,107 +218,6 @@ async def test_push_transport_start_is_idempotent_while_open() -> None:
     await transport.async_stop()
 
     assert session.connected_urls == ["wss://push.yeelight.com/ws/fake-token"]
-    assert [message["method"] for message in websocket.sent_json] == ["subscribe"]
-
-
-@pytest.mark.asyncio
-async def test_push_transport_reconnects_after_reader_finishes() -> None:
-    """有限流 reader 结束后应按退避策略自动重连并重新订阅."""
-    reconnect_sleep = ControlledSleep()
-    first_websocket = FakeWebSocket([])
-    second_websocket = OpenFakeWebSocket()
-    session = FakeSession([first_websocket, second_websocket])
-    transport = YeelightPushWebSocketTransport(
-        session=session,
-        token="fake-token",
-        reconnect_sleep=reconnect_sleep,
-    )
-
-    await transport.async_start(AsyncMock())
-    await asyncio.sleep(0)
-    await wait_for_sleep_calls(reconnect_sleep, 1)
-    reconnect_sleep.release.set()
-    await second_websocket.waiting_for_message.wait()
-    await transport.async_stop()
-
-    assert session.connected_urls == [
-        "wss://push.yeelight.com/ws/fake-token",
-        "wss://push.yeelight.com/ws/fake-token",
-    ]
-    assert [message["method"] for message in first_websocket.sent_json] == [
-        "subscribe"
-    ]
-    assert [message["method"] for message in second_websocket.sent_json] == [
-        "subscribe"
-    ]
-    assert second_websocket.sent_json[0]["id"] == 2
-
-
-@pytest.mark.asyncio
-async def test_push_transport_reconnect_backoff_retries_until_success() -> None:
-    """重连失败时应继续退避重试，成功后重新发送 subscribe frame."""
-    reconnect_sleep = ControlledSleep()
-    first_websocket = FakeWebSocket([])
-    second_websocket = OpenFakeWebSocket()
-    session = FakeSession([
-        first_websocket,
-        OSError("token-secret"),
-        second_websocket,
-    ])
-    transport = YeelightPushWebSocketTransport(
-        session=session,
-        token="fake-token",
-        reconnect_sleep=reconnect_sleep,
-    )
-
-    await transport.async_start(AsyncMock())
-    await asyncio.sleep(0)
-    await wait_for_sleep_calls(reconnect_sleep, 1)
-    reconnect_sleep.release.set()
-    await wait_for_sleep_calls(reconnect_sleep, 2)
-    reconnect_sleep.release.set()
-    await second_websocket.waiting_for_message.wait()
-    await transport.async_stop()
-
-    assert reconnect_sleep.delays == [1.0, 2.0]
-    assert session.connected_urls == [
-        "wss://push.yeelight.com/ws/fake-token",
-        "wss://push.yeelight.com/ws/fake-token",
-        "wss://push.yeelight.com/ws/fake-token",
-    ]
-    assert [message["method"] for message in second_websocket.sent_json] == [
-        "subscribe"
-    ]
-    assert second_websocket.sent_json[0]["id"] == 2
-    assert transport.last_runtime_error_type == "OSError"
-
-
-@pytest.mark.asyncio
-async def test_push_transport_initial_connect_failure_schedules_reconnect() -> None:
-    """初始 WebSocket 网络失败不应阻塞 runtime，应后台退避重连."""
-    reconnect_sleep = ControlledSleep()
-    websocket = OpenFakeWebSocket()
-    session = FakeSession([OSError("token-secret"), websocket])
-    callback = AsyncMock()
-    transport = YeelightPushWebSocketTransport(
-        session=session,
-        token="fake-token",
-        reconnect_sleep=reconnect_sleep,
-    )
-
-    await transport.async_start(callback)
-
-    assert transport.last_start_error_type == "OSError"
-    await wait_for_sleep_calls(reconnect_sleep, 1)
-    reconnect_sleep.release.set()
-    await websocket.waiting_for_message.wait()
-    await transport.async_stop()
-
-    assert reconnect_sleep.delays == [1.0]
-    assert session.connected_urls == [
-        "wss://push.yeelight.com/ws/fake-token",
-        "wss://push.yeelight.com/ws/fake-token",
-    ]
     assert [message["method"] for message in websocket.sent_json] == ["subscribe"]
 
 

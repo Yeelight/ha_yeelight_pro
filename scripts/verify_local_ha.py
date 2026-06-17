@@ -89,6 +89,7 @@ from scripts.local_ha_verification.service_schema import (  # noqa: E402
     verify_service_schema_contracts,
 )
 from scripts.local_ha_verification.storage import (  # noqa: E402
+    expected_runtime_entity_counts,
     verify_product_schema_cache,
     verify_storage,
 )
@@ -129,6 +130,7 @@ __all__ = [
     "registered_service_names",
     "registered_service_schema_fields",
     "runtime_diff",
+    "expected_runtime_entity_counts",
     "verify_required_modules",
     "verify_docker",
     "verify_diagnostics_capabilities",

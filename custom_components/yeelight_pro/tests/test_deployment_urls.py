@@ -69,3 +69,7 @@ def test_deployment_push_base_url_uses_known_private_test_host() -> None:
         deployment_push_base_url("http://api-test.yeedev.com/apis/iot")
         == "ws://ws-test.yeedev.com/ws"
     )
+    assert (
+        deployment_push_base_url("wss://ws-test.yeedev.com/ws")
+        == "ws://ws-test.yeedev.com/ws"
+    )

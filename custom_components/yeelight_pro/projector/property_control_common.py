@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import re
 from typing import Any
 
 from ..canonical.models import (
@@ -17,59 +18,15 @@ from ..device_display import channel_name_label
 from ..entity_category import entity_category_for_property
 from ..utils import to_str
 from .common import (
+    component_display_label,
     component_state_key,
     component_index,
-    humanize_component_id,
     load_product_model,
     payload_available,
     product_component,
     schema_backed_component_available,
 )
-from .platform_evidence import component_has_climate_evidence, component_platform
-
-MAIN_ENTITY_PROPS = frozenset({
-    "p",
-    "sp",
-    "l",
-    "ct",
-    "c",
-    "cp",
-    "tp",
-    "cra",
-    "tra",
-    "rs",
-    "acp",
-    "actt",
-    "acct",
-    "rfhp",
-    "rfhct",
-    "rfhtt",
-    "tgt",
-    "vmcp",
-    "vmcf",
-    "m",
-    "lock",
-    "locked",
-    "lck",
-})
-MAIN_ENTITY_PROPS_BY_PLATFORM = {
-    "climate": frozenset({
-        "acf",
-        "acm",
-        "acp",
-        "actt",
-        "acct",
-        "p",
-        "rfhp",
-        "rfhct",
-        "rfhtt",
-        "tgt",
-    }),
-    "cover": frozenset({"cp", "cra", "rs", "tp", "tra"}),
-    "fan": frozenset({"vmcp", "vmcf"}),
-    "light": frozenset({"c", "ct", "l", "m", "p"}),
-    "switch": frozenset({"p", "sp"}),
-}
+from .property_control_ownership import is_main_entity_property
 BOOL_FORMATS = frozenset({"bool", "boolean"})
 AUXILIARY_BOOL_CONFIG_PROPS = frozenset({
     "acrc",
@@ -85,6 +42,19 @@ AUXILIARY_BOOL_CONFIG_PROPS = frozenset({
 READ_ONLY_ENUM_CODES_BY_PROP = {
     "bhm": frozenset({"5"}),
 }
+GENERIC_COMPONENT_LABELS = frozenset({
+    "other",
+    "custom",
+    "component",
+    "device",
+    "temp control",
+    "其他",
+    "其他组件",
+    "自定义",
+    "组件",
+    "设备",
+})
+ASCII_WORD_RE = re.compile(r"[A-Za-z]{2,}")
 
 
 def schema_properties(
@@ -113,7 +83,7 @@ def auxiliary_property_skip_reason(
     spec = property_spec(prop.prop_id)
     if spec is None or not spec.writable:
         return "undocumented_or_registry_read_only_property"
-    if _is_main_entity_property(prop.prop_id, component):
+    if is_main_entity_property(prop.prop_id, component):
         return "owned_by_main_entity"
     if looks_bool(prop):
         return "boolean_property"
@@ -138,7 +108,7 @@ def auxiliary_bool_property_skip_reason(
     spec = property_spec(prop.prop_id)
     if spec is None or not spec.writable:
         return "undocumented_or_registry_read_only_property"
-    if _is_main_entity_property(prop.prop_id, component):
+    if is_main_entity_property(prop.prop_id, component):
         return "owned_by_main_entity"
     if not looks_bool(prop):
         return "not_boolean_property"
@@ -170,41 +140,6 @@ def looks_bool(prop: PropertyModel) -> bool:
         return True
     spec = property_spec(prop.prop_id)
     return bool(spec is not None and spec.data_type.lower() in BOOL_FORMATS)
-
-
-def _is_main_entity_property(
-    prop_id: str,
-    component: ComponentInstanceModel | None,
-) -> bool:
-    """Return whether a property is already owned by the component's main entity."""
-    if component is None:
-        return prop_id in MAIN_ENTITY_PROPS
-
-    platform = component_platform(component)
-    if platform in MAIN_ENTITY_PROPS_BY_PLATFORM:
-        return prop_id in MAIN_ENTITY_PROPS_BY_PLATFORM[platform]
-    category = (component.category or "").lower().replace("-", "_").replace(" ", "_")
-    component_id = component.component_id.lower()
-    if platform is None and (
-        component_id.startswith("fresh_air")
-        or (category == "temp_control" and prop_id in MAIN_ENTITY_PROPS_BY_PLATFORM["fan"])
-    ):
-        return prop_id in MAIN_ENTITY_PROPS_BY_PLATFORM["fan"]
-    if platform is None and (
-        component_has_climate_evidence(component)
-        or category in {"air_conditioner", "temp_control"}
-        or component_id.startswith(("air_conditioner", "climate"))
-    ):
-        return prop_id in MAIN_ENTITY_PROPS_BY_PLATFORM["climate"]
-    if platform is None and _looks_like_relay_switch_component(component):
-        return prop_id in MAIN_ENTITY_PROPS_BY_PLATFORM["switch"]
-    return prop_id in MAIN_ENTITY_PROPS
-
-
-def _looks_like_relay_switch_component(component: ComponentInstanceModel) -> bool:
-    """Return true for canonical relay-switch channels with power control."""
-    category = (component.category or "").lower()
-    return category in {"relay_switch", "switch"}
 
 
 def control_value_range(prop: PropertyModel) -> ValueRangeModel | None:
@@ -293,8 +228,12 @@ def control_name(
         component=component,
         device_payload=device_payload,
     )
-    component_name = channel_name or humanize_component_id(component.component_id)
+    component_name = channel_name or component_display_label(component)
     if _same_label(component_name, device_payload):
+        component_name = None
+    if _is_generic_component_label(component_name):
+        component_name = None
+    if _component_label_redundant(component_name, prop_name):
         component_name = None
     if component_name and prop_name:
         return f"{component_name} {prop_name}"
@@ -308,10 +247,42 @@ def property_label(prop: PropertyModel) -> str | None:
         if text := to_str(value):
             if spec is not None and text == spec.full_name and spec.description:
                 return spec.display_name
+            if spec is not None and _looks_like_raw_property_label(text, prop.prop_id):
+                return spec.display_name
             return text
     if spec is not None:
         return spec.display_name
     return prop.prop_id
+
+
+def _looks_like_raw_property_label(text: str, prop_id: str) -> bool:
+    """Return true for mixed OpenAPI labels that should use registry Chinese."""
+    normalized = text.strip()
+    if normalized == prop_id:
+        return True
+    if "," in normalized and ASCII_WORD_RE.search(normalized):
+        return True
+    return False
+
+
+def _is_generic_component_label(value: str | None) -> bool:
+    """Return true for component labels that add no user-facing meaning."""
+    if value is None:
+        return False
+    normalized = " ".join(value.strip().lower().replace("_", " ").split())
+    return normalized in GENERIC_COMPONENT_LABELS
+
+
+def _component_label_redundant(
+    component_name: str | None,
+    prop_name: str | None,
+) -> bool:
+    """Return true when the property label already includes the component label."""
+    if not component_name or not prop_name:
+        return False
+    component_text = _normalize_label(component_name)
+    prop_text = _normalize_label(prop_name)
+    return bool(component_text and prop_text.startswith(component_text))
 
 
 def _same_label(value: str | None, payload: Mapping[str, Any] | None) -> bool:

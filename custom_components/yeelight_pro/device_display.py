@@ -10,6 +10,10 @@ from .core.device_classification import (
     infer_iot_category,
     is_generic_model_label,
 )
+from .core.device_structural_models import (
+    display_structural_model_label,
+    is_weak_display_model_label,
+)
 from . import device_channels
 from .utils import to_str
 
@@ -27,12 +31,22 @@ _CATEGORY_LABELS = {
     "other": "其他设备",
 }
 _CATEGORY_MODEL_LABELS = frozenset(_CATEGORY_LABELS.values())
+_STRUCTURAL_MODEL_LABELS = frozenset({
+    "全面屏",
+    "全景屏",
+    "智慧屏",
+    "旋钮屏",
+})
 _MODEL_NAME_KEYS = (
     "productName",
     "product_name",
     "modelName",
     "model_name",
     "model",
+)
+_OFFICIAL_PRODUCT_NAME_PREFIXES = (
+    "yeelight ",
+    "yeelight pro ",
 )
 
 
@@ -78,10 +92,28 @@ def registry_model_value(
     model = device_info.get("model")
     if model is not None:
         model_text = str(model)
+        official_name = _official_product_name(device_info)
+        if official_name is not None and (
+            is_weak_display_model_label(model_text)
+            or model_text in _STRUCTURAL_MODEL_LABELS
+        ):
+            return official_name
+        structural = display_structural_model_label(device_info)
+        if structural is not None and (
+            is_weak_display_model_label(model_text)
+            or is_generic_model_label(model_text)
+            or model_text in _CATEGORY_MODEL_LABELS
+        ):
+            return structural
         if not is_generic_model_label(model) or model_text in _CATEGORY_MODEL_LABELS:
             return model_text
 
     inferred = device_model_name(device_info)
+    structural = display_structural_model_label(device_info)
+    if structural is not None and (
+        is_weak_display_model_label(inferred) or is_generic_model_label(inferred)
+    ):
+        return structural
     if inferred and not is_generic_model_label(inferred):
         return inferred
 
@@ -143,7 +175,11 @@ def _specific_text(
     keys: tuple[str, ...],
 ) -> str | None:
     value = _first_text(payload, keys)
-    if value is None or is_generic_model_label(value):
+    if (
+        value is None
+        or is_generic_model_label(value)
+        or is_weak_display_model_label(value)
+    ):
         return None
     return value
 
@@ -163,3 +199,14 @@ def _text(value: Any) -> str | None:
 def _category_model_value(device_info: Mapping[str, Any]) -> str | None:
     category = infer_iot_category(device_info)
     return _CATEGORY_LABELS.get(category) if category is not None else None
+
+
+def _official_product_name(device_info: Mapping[str, Any]) -> str | None:
+    """Return an official-looking product name without trusting arbitrary aliases."""
+    name = _first_text(device_info, ("name", "deviceName", "device_name", "n"))
+    if name is None:
+        return None
+    normalized = name.strip().casefold()
+    if any(normalized.startswith(prefix) for prefix in _OFFICIAL_PRODUCT_NAME_PREFIXES):
+        return name
+    return None
