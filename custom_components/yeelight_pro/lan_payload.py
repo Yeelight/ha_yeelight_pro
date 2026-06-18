@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from homeassistant.exceptions import HomeAssistantError
@@ -37,6 +37,10 @@ class YeelightLanPropertyUpdate:
     node_id: int
     node_type: int | None
     params: dict[str, Any]
+    node_id_candidates: tuple[tuple[str, int], ...] = field(
+        default=(),
+        compare=False,
+    )
 
 
 _PROP_METHODS = {METHOD_POST_PROP, METHOD_DEVICE_POST_PROP}
@@ -53,7 +57,7 @@ def lan_property_updates(
 
     updates: list[YeelightLanPropertyUpdate] = []
     for node in _iter_nodes(message):
-        node_id = to_int(node.get("id"))
+        node_id = _node_id(node)
         if node_id is None:
             continue
 
@@ -68,8 +72,9 @@ def lan_property_updates(
             updates.append(
                 YeelightLanPropertyUpdate(
                     node_id=node_id,
-                    node_type=to_int(node.get("nt")),
+                    node_type=_node_type(node),
                     params=params,
+                    node_id_candidates=_node_id_candidates(node),
                 )
             )
     return updates
@@ -89,13 +94,13 @@ def lan_event_payloads(message: Mapping[str, Any]) -> list[dict[str, Any]]:
     events: list[dict[str, Any]] = []
     message_meta = _message_meta(message)
     for node in _iter_nodes(message):
-        node_id = to_int(node.get("id"))
+        node_id = _node_id(node)
         event_type = node.get("value")
         if node_id is None or event_type in (None, ""):
             continue
 
         attributes = dict(message_meta)
-        node_type = to_int(node.get("nt"))
+        node_type = _node_type(node)
         if node_type is not None:
             attributes["node_type"] = node_type
         params = node.get("params")
@@ -234,6 +239,33 @@ def _node_params(node: Mapping[str, Any]) -> dict[str, Any]:
             return {}
         raise HomeAssistantError("Invalid Yeelight Pro LAN property node params")
     return dict(params)
+
+
+def _node_id(node: Mapping[str, Any]) -> int | None:
+    """返回节点 ID，兼容文档帧和 OpenAPI 读属性字段别名。"""
+    candidates = _node_id_candidates(node)
+    if candidates:
+        return candidates[0][1]
+    return None
+
+
+def _node_id_candidates(node: Mapping[str, Any]) -> tuple[tuple[str, int], ...]:
+    """返回节点 ID 候选，保留字段名便于脱敏诊断候选命中情况。"""
+    candidates: list[tuple[str, int]] = []
+    for key in ("id", "nodeId", "node_id", "resId", "res_id", "deviceId", "device_id"):
+        node_id = to_int(node.get(key))
+        if node_id is not None:
+            candidates.append((key, node_id))
+    return tuple(candidates)
+
+
+def _node_type(node: Mapping[str, Any]) -> int | None:
+    """返回节点类型，兼容私有部署可能使用的字段别名。"""
+    for key in ("nt", "nodeType", "node_type"):
+        node_type = to_int(node.get(key))
+        if node_type is not None:
+            return node_type
+    return None
 
 
 def _message_meta(message: Mapping[str, Any]) -> dict[str, Any]:

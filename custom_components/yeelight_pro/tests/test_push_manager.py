@@ -63,6 +63,16 @@ async def test_push_manager_records_aggregate_payload_result() -> None:
         unknown_device_updates=1,
         group_updates=0,
         topology_node_updates=1,
+        unknown_node_samples=(
+            {
+                "node_id_hash": "safe-hash",
+                "node_type": None,
+                "param_keys": ["p"],
+                "matched_collections": [],
+                "reason": "not_loaded",
+                "device_import_filter_enabled": False,
+            },
+        ),
         changed=True,
     )
     coordinator.async_handle_push_payload.return_value = ["event-1", "event-2"]
@@ -81,6 +91,16 @@ async def test_push_manager_records_aggregate_payload_result() -> None:
         applied_property_updates=1,
         unknown_property_updates=1,
         topology_node_updates=1,
+        last_unknown_node_samples=[
+            {
+                "node_id_hash": "safe-hash",
+                "node_type": None,
+                "param_keys": ["p"],
+                "matched_collections": [],
+                "reason": "not_loaded",
+                "device_import_filter_enabled": False,
+            }
+        ],
         dispatched_events=2,
         last_property_update_count=3,
         last_dispatched_event_count=2,

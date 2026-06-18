@@ -3,22 +3,22 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from hashlib import blake2b
 import logging
 from typing import Any
 
 from homeassistant.core import HomeAssistant
 
-from ..const import CONF_DEVICE_IMPORT_FILTER
-from ..device_filter import normalize_device_import_filter
 from ..const import (
     ATTR_COMPONENT_ID,
     ATTR_EVENT_ATTRIBUTES,
     ATTR_EVENT_TYPE,
+    CONF_DEVICE_IMPORT_FILTER,
     ATTR_SOURCE_DEVICE_ID,
     DEVICE_EVENT_TYPE,
 )
+from ..device_filter import normalize_device_import_filter
 from ..event_support import (
     YeelightRuntimeEvent,
     infer_event_component_id,
@@ -55,6 +55,10 @@ class RuntimePropertyUpdate:
     node_id: int
     node_type: int | None
     params: Mapping[str, Any]
+    node_id_candidates: tuple[tuple[str, int], ...] = field(
+        default=(),
+        compare=False,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,8 +133,9 @@ class RuntimePayloadBridge:
         group_updates = 0
         topology_node_updates = 0
         unknown_node_samples: list[dict[str, Any]] = []
-        for update in updates:
+        for raw_update in updates:
             input_updates += 1
+            update = self._resolve_update_node(raw_update)
             if not update.params:
                 continue
             params = self._normalized_params(update)
@@ -207,6 +212,40 @@ class RuntimePayloadBridge:
             )
         return changed
 
+    def _resolve_update_node(
+        self,
+        update: RuntimePropertyUpdate,
+    ) -> RuntimePropertyUpdate:
+        """Resolve alternate node-id aliases when only one candidate is loaded."""
+        if not update.node_id_candidates or self._matching_collections(update.node_id):
+            return update
+
+        matches: list[tuple[str, int]] = []
+        seen: set[int] = set()
+        for field_name, candidate_id in update.node_id_candidates:
+            if candidate_id == update.node_id or candidate_id in seen:
+                continue
+            seen.add(candidate_id)
+            if self._matching_collections(candidate_id):
+                matches.append((field_name, candidate_id))
+        if len(matches) != 1:
+            return update
+
+        field_name, resolved_id = matches[0]
+        _LOGGER.debug(
+            "Resolved Yeelight Pro runtime update node alias: "
+            "selected_hash=%s alias_field=%s alias_hash=%s",
+            _stable_digest(update.node_id),
+            field_name,
+            _stable_digest(resolved_id),
+        )
+        return RuntimePropertyUpdate(
+            node_id=resolved_id,
+            node_type=update.node_type,
+            params=update.params,
+            node_id_candidates=update.node_id_candidates,
+        )
+
     def _normalized_params(self, update: RuntimePropertyUpdate) -> dict[str, Any]:
         """Return params normalized against the loaded device metadata."""
         device = self._loaded_payload(update.node_id)
@@ -248,6 +287,10 @@ class RuntimePayloadBridge:
             "matched_collections": matched_collections,
             "reason": _unknown_update_reason(matched_collections),
             "device_import_filter_enabled": self._device_import_filter_enabled,
+            **_safe_node_id_candidate_diagnostics(
+                update.node_id_candidates,
+                self._matching_collections,
+            ),
         }
 
     def _matching_collections(self, node_id: int) -> list[str]:
@@ -363,6 +406,7 @@ def property_updates_from_adapter(
             node_id=update.node_id,
             node_type=getattr(update, "node_type", None),
             params=update.params,
+            node_id_candidates=getattr(update, "node_id_candidates", ()),
         )
         for update in updates
     ]
@@ -402,6 +446,30 @@ def _safe_param_keys(params: Mapping[str, Any]) -> list[str]:
     """Return sorted param keys only, never param values."""
     keys = sorted(str(key) for key in params)
     return keys[:MAX_RUNTIME_PROPERTY_PARAM_KEYS]
+
+
+def _safe_node_id_candidate_diagnostics(
+    candidates: Sequence[tuple[str, int]],
+    matching_collections: Callable[[int], list[str]],
+) -> dict[str, Any]:
+    """Return redacted alternate node-id candidates for unknown update diagnosis."""
+    if len(candidates) <= 1:
+        return {}
+    safe_candidates: list[dict[str, Any]] = []
+    seen: set[tuple[str, int]] = set()
+    for field_name, node_id in candidates[:MAX_RUNTIME_PROPERTY_SAMPLE_ITEMS]:
+        key = (str(field_name), node_id)
+        if key in seen:
+            continue
+        seen.add(key)
+        safe_candidates.append(
+            {
+                "field": str(field_name),
+                "node_id_hash": _stable_digest(node_id),
+                "matched_collections": matching_collections(node_id),
+            }
+        )
+    return {"node_id_candidates": safe_candidates}
 
 
 def _stable_digest(value: Any) -> str:

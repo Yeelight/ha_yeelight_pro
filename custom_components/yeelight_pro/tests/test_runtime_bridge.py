@@ -151,6 +151,70 @@ async def test_coordinator_routes_indexed_lan_updates_to_matching_component(
 
 
 @pytest.mark.asyncio
+async def test_push_update_resolves_loaded_node_id_alias(
+    hass: HomeAssistant,
+) -> None:
+    """若私有推送 id 是行 ID、resId 才是设备 ID，应路由到已加载设备。"""
+    coordinator = YeelightProCoordinator(
+        hass=hass,
+        client=MagicMock(),
+        house_id=12345,
+    )
+    coordinator.devices = {
+        228230: {
+            "id": 228230,
+            "device_id": 228230,
+            "name": "Motion Panel",
+            "category": "other",
+            "type": "sensor",
+            "online": True,
+            "params": {"2-mv": 0},
+        }
+    }
+    coordinator.data = coordinator.devices
+    updates = 0
+
+    def _listener() -> None:
+        nonlocal updates
+        updates += 1
+
+    remove_listener = coordinator.async_add_listener(_listener)
+
+    await coordinator.async_handle_push_payload(
+        {
+            "method": "gateway_post.prop",
+            "nodes": [
+                {
+                    "id": 999999,
+                    "resId": "228230",
+                    "nt": 2,
+                    "params": {"2-mv": 1},
+                }
+            ],
+        }
+    )
+
+    try:
+        refreshed = coordinator.get_device(228230)
+        assert refreshed is not None
+        assert refreshed["params"]["2-mv"] == 1
+        assert updates == 1
+        assert coordinator.last_push_property_summary.as_dict() == {
+            "input_updates": 1,
+            "applied_device_updates": 1,
+            "unknown_device_updates": 0,
+            "group_updates": 0,
+            "topology_node_updates": 0,
+            "changed": True,
+            "device_import_filter_enabled": False,
+            "unknown_node_samples": [],
+        }
+        assert 999999 not in coordinator._runtime_state.overrides
+    finally:
+        remove_listener()
+
+
+@pytest.mark.asyncio
 async def test_lan_runtime_update_rebuilds_scaled_canonical_state(
     hass: HomeAssistant,
 ) -> None:
@@ -315,10 +379,125 @@ async def test_push_updates_room_area_house_node_light_state(
             "group_updates": 0,
             "topology_node_updates": 3,
             "changed": True,
+            "device_import_filter_enabled": False,
+            "unknown_node_samples": [],
         }
         assert coordinator.last_push_event_count == 0
     finally:
         remove_listener()
+
+
+@pytest.mark.asyncio
+async def test_push_unknown_update_summary_classifies_missing_node_type(
+    hass: HomeAssistant,
+) -> None:
+    """未知推送诊断应脱敏说明是缺 nodeType，还是完全未加载节点。"""
+    coordinator = YeelightProCoordinator(
+        hass=hass,
+        client=MagicMock(),
+        house_id=12345,
+        options={
+            "device_import_filter": {
+                "enabled": True,
+                "include": {"devices": ["filtered-secret"]},
+                "exclude": {},
+                "mode": "or",
+            }
+        },
+    )
+    coordinator.groups = [{"id": 401, "name": "灯组", "params": {"p": True}}]
+    coordinator.data = {}
+
+    await coordinator.async_handle_push_payload(
+        {
+            "type": "prop",
+            "nodes": [
+                {"id": 401, "params": {"p": False}},
+                {"id": 999, "params": {"1-p": True, "secret": "value"}},
+            ],
+        }
+    )
+
+    summary = coordinator.last_push_property_summary.as_dict()
+
+    assert summary["unknown_device_updates"] == 2
+    assert summary["device_import_filter_enabled"] is True
+    assert summary["unknown_node_samples"] == [
+        {
+            "node_id_hash": "24816ecaefa2baf2",
+            "node_type": None,
+            "param_keys": ["p"],
+            "matched_collections": ["groups"],
+            "reason": "missing_group_node_type",
+            "device_import_filter_enabled": True,
+        },
+        {
+            "node_id_hash": "4ffe0cb3de9f85b4",
+            "node_type": None,
+            "param_keys": ["1-p", "secret"],
+            "matched_collections": [],
+            "reason": "not_loaded",
+            "device_import_filter_enabled": True,
+        },
+    ]
+    assert "401" not in str(summary)
+    assert "999" not in str(summary)
+    assert "value" not in str(summary)
+
+
+@pytest.mark.asyncio
+async def test_push_unknown_update_summary_reports_id_alias_candidates(
+    hass: HomeAssistant,
+) -> None:
+    """未知节点诊断应脱敏列出多 ID 候选及其集合命中情况。"""
+    coordinator = YeelightProCoordinator(
+        hass=hass,
+        client=MagicMock(),
+        house_id=12345,
+    )
+    coordinator.data = {}
+
+    await coordinator.async_handle_push_payload(
+        {
+            "method": "gateway_post.prop",
+            "nodes": [
+                {
+                    "id": 998,
+                    "resId": "999",
+                    "nt": 2,
+                    "params": {"4-mv": 1},
+                }
+            ],
+        }
+    )
+
+    summary = coordinator.last_push_property_summary.as_dict()
+
+    assert summary["unknown_device_updates"] == 1
+    assert summary["unknown_node_samples"] == [
+        {
+            "node_id_hash": "ada57d8e7ef57315",
+            "node_type": 2,
+            "param_keys": ["4-mv"],
+            "matched_collections": [],
+            "reason": "not_loaded",
+            "device_import_filter_enabled": False,
+            "node_id_candidates": [
+                {
+                    "field": "id",
+                    "node_id_hash": "ada57d8e7ef57315",
+                    "matched_collections": [],
+                },
+                {
+                    "field": "resId",
+                    "node_id_hash": "4ffe0cb3de9f85b4",
+                    "matched_collections": [],
+                },
+            ],
+        }
+    ]
+    assert "998" not in str(summary)
+    assert "999" not in str(summary)
 
 
 def test_runtime_event_dedupe_key_is_bounded_and_identifier_safe() -> None:

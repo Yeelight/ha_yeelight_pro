@@ -138,6 +138,62 @@ async def test_coordinator_applies_gateway_post_prop_push_to_switch_entity(
 
 
 @pytest.mark.asyncio
+async def test_coordinator_applies_gateway_post_prop_push_with_res_id_alias(
+    hass: HomeAssistant,
+) -> None:
+    """gateway_post.prop 使用 resId 时也必须走实时状态更新，而不是等轮询。"""
+    coordinator = YeelightProCoordinator(
+        hass=hass,
+        client=MagicMock(),
+        house_id=12345,
+    )
+    coordinator.devices = {
+        228226: {
+            "id": 228226,
+            "device_id": 228226,
+            "name": "四键开关",
+            "category": "relay_switch",
+            "type": "switch",
+            "online": True,
+            "params": {"1-p": True, "2-p": True, "3-p": False, "4-p": False},
+        }
+    }
+    coordinator.data = coordinator.devices
+    fourth_key = YeelightProSwitch(coordinator, 228226, component_id="switch_4")
+    updates = 0
+
+    def _listener() -> None:
+        nonlocal updates
+        updates += 1
+
+    remove_listener = coordinator.async_add_listener(_listener)
+
+    events = await coordinator.async_handle_push_payload(
+        {
+            "method": "gateway_post.prop",
+            "nodes": [
+                {
+                    "resId": "228226",
+                    "nodeType": 2,
+                    "params": {"4-p": True},
+                }
+            ],
+        }
+    )
+
+    try:
+        assert events == []
+        assert updates == 1
+        assert fourth_key.is_on is True
+        refreshed = coordinator.get_device(228226)
+        assert refreshed is not None
+        assert refreshed["params"]["4-p"] is True
+        assert coordinator.last_push_property_summary.as_dict()["unknown_device_updates"] == 0
+    finally:
+        remove_listener()
+
+
+@pytest.mark.asyncio
 async def test_coordinator_routes_component_index_push_update_to_matching_component(
     hass: HomeAssistant,
 ) -> None:

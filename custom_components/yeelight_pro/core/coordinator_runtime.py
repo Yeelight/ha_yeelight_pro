@@ -245,6 +245,7 @@ def _runtime_bridge(coordinator: _RuntimeCoordinator) -> RuntimePayloadBridge:
         rooms=coordinator.rooms,
         areas=coordinator.areas,
         houses=coordinator.houses,
+        options=getattr(coordinator, "options", {}),
         get_device=coordinator.get_device,
         rebuild_canonical=(
             coordinator._device_payload_builder.attach_canonical_models_if_available

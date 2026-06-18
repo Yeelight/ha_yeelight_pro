@@ -86,6 +86,26 @@ def test_lan_scene_updates_preserve_scene_name_and_state() -> None:
     assert property_updates[0].params == {"o": False}
 
 
+def test_lan_property_updates_accept_node_id_aliases() -> None:
+    """gateway_post.prop 兼容帧也应支持 OpenAPI 风格节点 ID 字段。"""
+    updates = lan_property_updates(
+        {
+            "method": "gateway_post.prop",
+            "nodes": [
+                {"nodeId": "1002", "nodeType": 2, "params": {"p": False}},
+                {"resId": "1003", "node_type": 1, "params": {"p": True}},
+                {"deviceId": "1004", "nt": 2, "o": True, "params": {"4-mv": 1}},
+            ],
+        }
+    )
+
+    assert [update.node_id for update in updates] == [1002, 1003, 1004]
+    assert [update.node_type for update in updates] == [2, 1, 2]
+    assert updates[0].params == {"p": False}
+    assert updates[1].params == {"p": True}
+    assert updates[2].params == {"4-mv": 1, "o": True}
+
+
 def test_lan_property_updates_ignore_outgoing_gateway_set_prop() -> None:
     """控制请求 gateway_set.prop 不能被误当成入站状态推送。"""
     assert (

@@ -30,6 +30,7 @@ class YeelightPushPropertyUpdate:
     node_id: int
     node_type: int | None
     params: dict[str, Any]
+    node_id_candidates: tuple[tuple[str, int], ...] = ()
 
 
 def push_property_updates(payload: Mapping[str, Any]) -> list[YeelightPushPropertyUpdate]:
@@ -42,6 +43,7 @@ def push_property_updates(payload: Mapping[str, Any]) -> list[YeelightPushProper
                 node_id=update.node_id,
                 node_type=update.node_type,
                 params=update.params,
+                node_id_candidates=getattr(update, "node_id_candidates", ()),
             )
             for update in lan_updates
         ]
@@ -58,6 +60,7 @@ def push_property_updates(payload: Mapping[str, Any]) -> list[YeelightPushProper
                 node_id=node_id,
                 node_type=_node_type(node),
                 params=dict(params),
+                node_id_candidates=_node_id_candidates(node),
             )
         )
     return updates
@@ -151,11 +154,20 @@ def _looks_like_single_node(payload: Mapping[str, Any]) -> bool:
 
 def _node_id(node: Mapping[str, Any]) -> int | None:
     """Return node id from documented and Open API read/control aliases."""
+    candidates = _node_id_candidates(node)
+    if candidates:
+        return candidates[0][1]
+    return None
+
+
+def _node_id_candidates(node: Mapping[str, Any]) -> tuple[tuple[str, int], ...]:
+    """Return node id aliases in the same priority order as _node_id."""
+    candidates: list[tuple[str, int]] = []
     for key in ("id", "nodeId", "node_id", "resId", "res_id", "deviceId", "device_id"):
         node_id = to_int(node.get(key))
         if node_id is not None:
-            return node_id
-    return None
+            candidates.append((key, node_id))
+    return tuple(candidates)
 
 
 def _node_type(node: Mapping[str, Any]) -> int | None:

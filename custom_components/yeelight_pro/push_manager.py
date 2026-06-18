@@ -8,6 +8,8 @@ import logging
 from time import time
 from typing import Any, Protocol
 
+from .push_transport_frames import payload_type
+
 PushPayloadCallback = Callable[[Mapping[str, Any]], Awaitable[object]]
 _LOGGER = logging.getLogger(__name__)
 
@@ -45,6 +47,7 @@ class PushHealth:
     unknown_property_updates: int = 0
     group_updates: int = 0
     topology_node_updates: int = 0
+    last_unknown_node_samples: tuple[dict[str, Any], ...] = ()
     dispatched_events: int = 0
     last_property_update_count: int = 0
     last_dispatched_event_count: int = 0
@@ -67,6 +70,7 @@ class PushHealth:
             "unknown_property_updates": self.unknown_property_updates,
             "group_updates": self.group_updates,
             "topology_node_updates": self.topology_node_updates,
+            "last_unknown_node_samples": list(self.last_unknown_node_samples),
             "dispatched_events": self.dispatched_events,
             "last_property_update_count": self.last_property_update_count,
             "last_dispatched_event_count": self.last_dispatched_event_count,
@@ -157,7 +161,7 @@ class PushManager:
             return None
         self._health.handled_payloads += 1
         self._record_payload_result(result)
-        self._health.last_payload_type = _payload_type(payload)
+        self._health.last_payload_type = payload_type(payload)
         self._health.last_payload_at = time()
         self._health.last_error_type = None
         _LOGGER.debug(
@@ -182,6 +186,7 @@ class PushManager:
         unknown = _int_value(summary_dict.get("unknown_device_updates"))
         group_updates = _int_value(summary_dict.get("group_updates"))
         topology_updates = _int_value(summary_dict.get("topology_node_updates"))
+        unknown_samples = _sample_tuple(summary_dict.get("unknown_node_samples"))
         changed = bool(summary_dict.get("changed"))
         event_count = _event_count(result)
 
@@ -190,6 +195,7 @@ class PushManager:
         self._health.unknown_property_updates += unknown
         self._health.group_updates += group_updates
         self._health.topology_node_updates += topology_updates
+        self._health.last_unknown_node_samples = unknown_samples
         self._health.dispatched_events += event_count
         self._health.last_property_update_count = input_updates
         self._health.last_dispatched_event_count = event_count
@@ -198,20 +204,6 @@ class PushManager:
             self._health.changed_payloads += 1
         else:
             self._health.unchanged_payloads += 1
-
-
-def _payload_type(payload: Mapping[str, Any]) -> str | None:
-    """Return a documented aggregate payload type without raw payload data."""
-    value = payload.get("type")
-    if isinstance(value, str) and value:
-        return value
-    data = payload.get("data")
-    if isinstance(data, Mapping):
-        nested = data.get("type")
-        if isinstance(nested, str) and nested:
-            return nested
-    return None
-
 
 def _event_count(result: object | None) -> int:
     """Return dispatched event count from the coordinator result."""
@@ -239,6 +231,13 @@ def _is_mock_object(value: Any) -> bool:
 def _int_value(value: Any) -> int:
     """Return safe integer diagnostics counters."""
     return value if isinstance(value, int) and not isinstance(value, bool) else 0
+
+
+def _sample_tuple(value: Any) -> tuple[dict[str, Any], ...]:
+    """Return diagnostics samples only when they are already mapping objects."""
+    if not isinstance(value, list):
+        return ()
+    return tuple(dict(item) for item in value if isinstance(item, Mapping))
 
 
 __all__ = [

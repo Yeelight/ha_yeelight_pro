@@ -35,6 +35,7 @@ def _push_health(**overrides: object) -> dict[str, object]:
         "unknown_property_updates": 0,
         "group_updates": 0,
         "topology_node_updates": 0,
+        "last_unknown_node_samples": [],
         "dispatched_events": 0,
         "last_property_update_count": 0,
         "last_dispatched_event_count": 0,
