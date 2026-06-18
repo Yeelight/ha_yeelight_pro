@@ -9,7 +9,6 @@ from typing import Any, Protocol
 PushTransportPayloadCallback = Callable[[dict[str, Any]], Awaitable[object]]
 PushSleep = Callable[[float], Awaitable[object]]
 PushTokenProvider = Callable[[], str]
-PushTokenRefreshHandler = Callable[[], Awaitable[str | None]]
 
 
 @dataclass(slots=True)
@@ -28,9 +27,8 @@ class PushTransportHealth:
     ignored_messages: int = 0
     malformed_messages: int = 0
     control_frames: int = 0
+    subscribe_sent_count: int = 0
     heartbeat_sent_count: int = 0
-    token_refresh_attempts: int = 0
-    token_refresh_successes: int = 0
     pre_first_frame_abnormal_close_count: int = 0
     consecutive_pre_first_frame_abnormal_close_count: int = 0
     reconnect_pending: bool = False
@@ -40,14 +38,15 @@ class PushTransportHealth:
     last_runtime_error_type: str | None = None
     last_handshake_status: int | None = None
     last_disconnect_reason: str | None = None
+    last_subscribe_error_type: str | None = None
     last_close_code: int | None = None
     last_close_exception_type: str | None = None
-    last_token_refresh_error_type: str | None = None
     first_frame_received: bool = False
     proxy_configured: bool = False
     last_payload_type: str | None = None
     last_ignored_reason: str | None = None
     last_ignored_payload_type: str | None = None
+    last_subscribe_sent_at: float | None = None
     last_message_at: float | None = None
     last_dispatched_at: float | None = None
 
@@ -66,9 +65,8 @@ class PushTransportHealth:
             "ignored_messages": self.ignored_messages,
             "malformed_messages": self.malformed_messages,
             "control_frames": self.control_frames,
+            "subscribe_sent_count": self.subscribe_sent_count,
             "heartbeat_sent_count": self.heartbeat_sent_count,
-            "token_refresh_attempts": self.token_refresh_attempts,
-            "token_refresh_successes": self.token_refresh_successes,
             "pre_first_frame_abnormal_close_count": (
                 self.pre_first_frame_abnormal_close_count
             ),
@@ -82,14 +80,15 @@ class PushTransportHealth:
             "last_runtime_error_type": self.last_runtime_error_type,
             "last_handshake_status": self.last_handshake_status,
             "last_disconnect_reason": self.last_disconnect_reason,
+            "last_subscribe_error_type": self.last_subscribe_error_type,
             "last_close_code": self.last_close_code,
             "last_close_exception_type": self.last_close_exception_type,
-            "last_token_refresh_error_type": self.last_token_refresh_error_type,
             "first_frame_received": self.first_frame_received,
             "proxy_configured": self.proxy_configured,
             "last_payload_type": self.last_payload_type,
             "last_ignored_reason": self.last_ignored_reason,
             "last_ignored_payload_type": self.last_ignored_payload_type,
+            "last_subscribe_sent_at": self.last_subscribe_sent_at,
             "last_message_at": self.last_message_at,
             "last_dispatched_at": self.last_dispatched_at,
         }
@@ -106,6 +105,9 @@ class PushWebSocket(Protocol):
 
     def __aiter__(self) -> Any:
         """Return the async iterator for incoming messages."""
+
+    async def __anext__(self) -> Any:
+        """Return the next async-iterator message."""
 
     async def receive(self, timeout: float | None = None) -> Any:
         """Receive one message from the websocket."""
@@ -127,7 +129,6 @@ class PushWebSocketSession(Protocol):
 
 __all__ = [
     "PushSleep",
-    "PushTokenRefreshHandler",
     "PushTokenProvider",
     "PushTransportHealth",
     "PushTransportPayloadCallback",

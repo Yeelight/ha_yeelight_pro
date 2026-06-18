@@ -114,7 +114,6 @@ def translation_payload() -> dict[str, Any]:
                     "data": {
                         "private_domain": "Domain",
                         "private_push_domain": "WebSocket push URL",
-                        "private_push_proxy": "WebSocket HTTP proxy URL",
                     },
                 },
                 "reauth_confirm": {

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from unittest.mock import AsyncMock
 
+from aiohttp import WSMsgType
 import pytest
 
 from custom_components.yeelight_pro.push_transport import (
@@ -14,6 +15,7 @@ from custom_components.yeelight_pro.push_transport import (
 from .push_transport_helpers import (
     ControlledSleep,
     FakeSession,
+    FakeMessage,
     FakeWebSocket,
     OpenFakeWebSocket,
     wait_for_sleep_calls,
@@ -51,6 +53,7 @@ async def test_push_transport_passes_bounded_connect_timeout() -> None:
             *,
             timeout: float | None = None,
             proxy: str | None = None,
+            **kwargs: object,
         ) -> OpenFakeWebSocket:
             self.calls.append((url, timeout))
             return OpenFakeWebSocket()
@@ -225,6 +228,37 @@ async def test_push_transport_keeps_backoff_after_unstable_short_connections() -
     assert [message["method"] for message in third_websocket.sent_json] == [
         "subscribe"
     ]
+
+
+@pytest.mark.asyncio
+async def test_push_transport_keeps_backoff_after_short_snapshot_then_close() -> None:
+    """订阅快照后立即关闭仍属不稳定短连，不能把退避重置回 1 秒。"""
+    reconnect_sleep = ControlledSleep()
+    snapshot = FakeMessage(
+        WSMsgType.TEXT,
+        '{"result":"ok","data":{"method":"subscribe","devices":[]}}',
+    )
+    first_websocket = FakeWebSocket([snapshot])
+    second_websocket = FakeWebSocket([snapshot])
+    third_websocket = OpenFakeWebSocket()
+    session = FakeSession([first_websocket, second_websocket, third_websocket])
+    transport = YeelightPushWebSocketTransport(
+        session=session,
+        token="fake-token",
+        reconnect_sleep=reconnect_sleep,
+    )
+
+    await transport.async_start(AsyncMock())
+    await asyncio.sleep(0)
+    await wait_for_sleep_calls(reconnect_sleep, 1)
+    reconnect_sleep.release.set()
+    await wait_for_sleep_calls(reconnect_sleep, 2)
+    reconnect_sleep.release.set()
+    await third_websocket.waiting_for_message.wait()
+    await transport.async_stop()
+
+    assert reconnect_sleep.delays == [1.0, 2.0]
+    assert len(session.connected_urls) == 3
 
 
 @pytest.mark.asyncio

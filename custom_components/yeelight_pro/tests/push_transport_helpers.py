@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -156,9 +157,11 @@ class FakeSession:
 
     def __init__(
         self,
-        websocket: FakeWebSocket | Exception | list[FakeWebSocket | Exception],
+        websocket: FakeWebSocket | Exception | Sequence[FakeWebSocket | Exception],
     ) -> None:
-        self._websockets = websocket if isinstance(websocket, list) else [websocket]
+        self._websockets = (
+            list(websocket) if isinstance(websocket, Sequence) else [websocket]
+        )
         self.connected_urls: list[str] = []
         self.connected_kwargs: list[dict[str, Any]] = []
 

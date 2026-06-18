@@ -38,11 +38,10 @@
       },
       "private_config": {
         "title": "私有部署服务 URL",
-        "description": "请输入私有部署的服务根 URL，例如 https://private.example.com。系统会自动派生 Open API 与账号 API 地址；后续认证方式、扫码登录、家庭选择和设备选择与云端连接流程一致。如 WebSocket 推送服务使用不同域名，可填写推送 URL，例如 wss://ws-private.example/ws。如 Home Assistant 运行环境需要代理才能连接 WebSocket，可填写仅用于 WebSocket 的 HTTP 代理 URL，例如 http://host.docker.internal:7890。",
+        "description": "请输入私有部署的服务根 URL，例如 https://private.example.com。系统会自动派生 Open API 与账号 API 地址；后续认证方式、扫码登录、家庭选择和设备选择与云端连接流程一致。如 WebSocket 推送服务使用不同域名，可填写推送 URL，例如 wss://ws-private.example/ws。",
         "data": {
           "private_domain": "服务根 URL",
-          "private_push_domain": "WebSocket 推送 URL",
-          "private_push_proxy": "WebSocket HTTP 代理 URL"
+          "private_push_domain": "WebSocket 推送 URL"
         }
       },
       "reauth_confirm": {
@@ -124,8 +123,7 @@
           "private_push_domain": "私有部署 WebSocket 推送 URL",
           "local_gateway_control": "启用本地网关控制",
           "local_gateway_host": "本地网关地址",
-          "local_gateway_port": "本地网关端口",
-          "private_push_proxy": "私有部署 WebSocket HTTP 代理 URL"
+          "local_gateway_port": "本地网关端口"
         }
       },
       "filter_categories": {

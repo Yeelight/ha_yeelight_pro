@@ -15,7 +15,6 @@ from .const import (
     CONF_LOCAL_GATEWAY_HOST,
     CONF_LOCAL_GATEWAY_PORT,
     CONF_PRIVATE_PUSH_DOMAIN,
-    CONF_PRIVATE_PUSH_PROXY,
     CONF_SCAN_INTERVAL,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
     CONNECTION_MODE_CLOUD,
@@ -56,7 +55,7 @@ _OPTION_FORM_KEYS = (
     *_CLOUD_OPTION_FORM_KEYS,
     *_LAN_OPTION_FORM_KEYS,
 )
-_PRIVATE_ENTRY_DATA_FORM_KEYS = (CONF_PRIVATE_PUSH_DOMAIN, CONF_PRIVATE_PUSH_PROXY)
+_PRIVATE_ENTRY_DATA_FORM_KEYS = (CONF_PRIVATE_PUSH_DOMAIN,)
 
 
 def entry_options(entry: object) -> dict[str, Any]:
@@ -108,10 +107,6 @@ def options_schema(options: Mapping[str, Any], entry: object | None = None) -> v
             fields[vol.Optional(
                 CONF_PRIVATE_PUSH_DOMAIN,
                 default=_entry_private_push_domain(entry),
-            )] = str
-            fields[vol.Optional(
-                CONF_PRIVATE_PUSH_PROXY,
-                default=_entry_private_push_proxy(entry),
             )] = str
 
     if connection_mode == CONNECTION_MODE_LAN:
@@ -217,18 +212,11 @@ def merge_private_entry_data(
     normalized_push = _normalize_optional_private_push(
         user_input.get(CONF_PRIVATE_PUSH_DOMAIN)
     )
-    normalized_proxy = _normalize_optional_private_push_proxy(
-        user_input.get(CONF_PRIVATE_PUSH_PROXY)
-    )
-    if (
-        normalized_push == str(current_data.get(CONF_PRIVATE_PUSH_DOMAIN) or "")
-        and normalized_proxy == str(current_data.get(CONF_PRIVATE_PUSH_PROXY) or "")
-    ):
+    if normalized_push == str(current_data.get(CONF_PRIVATE_PUSH_DOMAIN) or ""):
         return None
     return {
         **dict(current_data),
         CONF_PRIVATE_PUSH_DOMAIN: normalized_push,
-        CONF_PRIVATE_PUSH_PROXY: normalized_proxy,
     }
 
 
@@ -271,25 +259,9 @@ def _entry_private_push_domain(entry: object | None) -> str:
     return ""
 
 
-def _entry_private_push_proxy(entry: object | None) -> str:
-    data = getattr(entry, "data", None) if entry is not None else None
-    if isinstance(data, Mapping):
-        return str(data.get(CONF_PRIVATE_PUSH_PROXY) or "")
-    return ""
-
-
 def _normalize_optional_private_push(value: Any) -> str:
     text = "" if value is None else str(value).strip()
     return deployment_push_base_url(text) if text else ""
-
-
-def _normalize_optional_private_push_proxy(value: Any) -> str:
-    text = "" if value is None else str(value).strip()
-    if not text:
-        return ""
-    if text.startswith(("http://", "https://")):
-        return text
-    raise vol.Invalid("invalid_url")
 
 
 def _option_form_keys_for_entry(entry: object | None) -> tuple[str, ...]:

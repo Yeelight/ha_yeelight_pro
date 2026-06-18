@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+from typing import cast
 from unittest.mock import AsyncMock
 
+from aiohttp import RequestInfo
 from aiohttp import WSServerHandshakeError, WSMsgType
 import pytest
 
@@ -13,7 +15,6 @@ from custom_components.yeelight_pro.push_transport import (
 )
 
 from .push_transport_helpers import (
-    ClosedBeforeFirstFrameWebSocket,
     ControlledSleep,
     FailingCloseWebSocket,
     FailingHeartbeatWebSocket,
@@ -26,219 +27,6 @@ from .push_transport_helpers import (
     OpenFakeWebSocket,
     wait_for_sleep_calls,
 )
-
-
-@pytest.mark.asyncio
-async def test_push_transport_records_abnormal_close_before_first_frame() -> None:
-    """101 后首帧前异常关闭必须进入诊断，避免被误判为状态应用延迟."""
-    websocket = ClosedBeforeFirstFrameWebSocket(
-        close_code=1006,
-        exception=ConnectionResetError("token-secret"),
-    )
-    session = FakeSession(websocket)
-    callback = AsyncMock()
-    transport = YeelightPushWebSocketTransport(
-        session=session,
-        token="fake-token",
-        auto_reconnect=False,
-    )
-
-    await transport.async_start(callback)
-    await asyncio.sleep(0)
-
-    health = transport.health.as_dict()
-    callback.assert_not_awaited()
-    assert health["received_messages"] == 0
-    assert health["decoded_json_messages"] == 0
-    assert health["dispatched_payloads"] == 0
-    assert health["first_frame_received"] is False
-    assert health["last_close_code"] == 1006
-    assert health["last_close_exception_type"] == "ConnectionResetError"
-    assert health["last_disconnect_reason"] == "abnormal_close_before_first_frame"
-    assert health["pre_first_frame_abnormal_close_count"] == 1
-    assert health["consecutive_pre_first_frame_abnormal_close_count"] == 1
-    assert "token-secret" not in str(health)
-
-    await transport.async_stop()
-
-
-@pytest.mark.asyncio
-async def test_push_transport_uses_long_backoff_after_abnormal_close_before_first_frame() -> None:
-    """首帧前 1006 后按普通退避重连，不能进入长时间不可用状态。"""
-    reconnect_sleep = ControlledSleep()
-    first_websocket = ClosedBeforeFirstFrameWebSocket(
-        close_code=1006,
-        exception=ConnectionResetError("token-secret"),
-    )
-    second_websocket = ClosedBeforeFirstFrameWebSocket(
-        close_code=1006,
-        exception=ConnectionResetError("token-secret"),
-    )
-    third_websocket = OpenFakeWebSocket()
-    session = FakeSession([first_websocket, second_websocket, third_websocket])
-    transport = YeelightPushWebSocketTransport(
-        session=session,
-        token="fake-token",
-        reconnect_sleep=reconnect_sleep,
-    )
-
-    await transport.async_start(AsyncMock())
-    await asyncio.sleep(0)
-    await wait_for_sleep_calls(reconnect_sleep, 1)
-
-    assert reconnect_sleep.delays == [1.0]
-    health = transport.health.as_dict()
-    assert health["pre_first_frame_abnormal_close_count"] == 1
-    assert health["consecutive_pre_first_frame_abnormal_close_count"] == 1
-    assert health["reconnect_pending"] is True
-    assert health["reconnect_suspended"] is False
-    assert health["next_reconnect_delay"] == 1.0
-
-    reconnect_sleep.release.set()
-    await second_websocket.waiting_for_message.wait()
-    await transport.async_stop()
-
-
-@pytest.mark.asyncio
-async def test_push_transport_does_not_suspend_after_repeated_abnormal_close_before_first_frame() -> None:
-    """连续首帧前 1006 也不应长暂停，恢复应依赖 token 刷新和短退避。"""
-    reconnect_sleep = ControlledSleep()
-    websockets = [
-        ClosedBeforeFirstFrameWebSocket(
-            close_code=1006,
-            exception=ConnectionResetError("token-secret"),
-        )
-        for _ in range(3)
-    ]
-    websockets.append(OpenFakeWebSocket())
-    session = FakeSession(websockets)
-    transport = YeelightPushWebSocketTransport(
-        session=session,
-        token="fake-token",
-        reconnect_sleep=reconnect_sleep,
-    )
-
-    await transport.async_start(AsyncMock())
-    await asyncio.sleep(0)
-    for count in range(1, 4):
-        await wait_for_sleep_calls(reconnect_sleep, count)
-        if count < 3:
-            reconnect_sleep.release.set()
-            await asyncio.sleep(0)
-
-    assert reconnect_sleep.delays == [1.0, 2.0, 4.0]
-    health = transport.health.as_dict()
-    assert health["pre_first_frame_abnormal_close_count"] == 3
-    assert health["consecutive_pre_first_frame_abnormal_close_count"] == 3
-    assert health["reconnect_pending"] is True
-    assert health["reconnect_suspended"] is False
-    assert health["next_reconnect_delay"] == 4.0
-
-    await transport.async_stop()
-
-
-@pytest.mark.asyncio
-async def test_push_transport_refreshes_token_after_abnormal_close_before_first_frame() -> None:
-    """订阅阶段早期 1006 后应先刷新 token，再用新 token 重连。"""
-    reconnect_sleep = ControlledSleep()
-    first_websocket = ClosedBeforeFirstFrameWebSocket(
-        close_code=1006,
-        exception=ConnectionResetError("token-secret"),
-    )
-    second_websocket = ClosedBeforeFirstFrameWebSocket(
-        close_code=1006,
-        exception=ConnectionResetError("token-secret"),
-    )
-    third_websocket = OpenFakeWebSocket()
-    session = FakeSession([first_websocket, second_websocket, third_websocket])
-    refresh_handler = AsyncMock(return_value="fresh-token")
-    transport = YeelightPushWebSocketTransport(
-        session=session,
-        token="old-token",
-        token_refresh_handler=refresh_handler,
-        reconnect_sleep=reconnect_sleep,
-    )
-
-    await transport.async_start(AsyncMock())
-    await asyncio.sleep(0)
-    await wait_for_sleep_calls(reconnect_sleep, 1)
-    reconnect_sleep.release.set()
-    await second_websocket.waiting_for_message.wait()
-
-    health = transport.health.as_dict()
-    refresh_handler.assert_awaited_once()
-    assert session.connected_urls == [
-        "wss://push.yeelight.com/ws/old-token",
-        "wss://push.yeelight.com/ws/fresh-token",
-    ]
-    assert health["token_refresh_attempts"] == 1
-    assert health["token_refresh_successes"] == 1
-    assert health["last_token_refresh_error_type"] is None
-
-    await transport.async_stop()
-
-
-@pytest.mark.asyncio
-async def test_push_transport_records_token_refresh_failure_after_early_close() -> None:
-    """早期关闭后的 token refresh 失败只能记录聚合错误，不能泄露凭证。"""
-    reconnect_sleep = ControlledSleep()
-    first_websocket = ClosedBeforeFirstFrameWebSocket(
-        close_code=1006,
-        exception=ConnectionResetError("token-secret"),
-    )
-    second_websocket = OpenFakeWebSocket()
-    session = FakeSession([first_websocket, second_websocket])
-    refresh_handler = AsyncMock(side_effect=RuntimeError("token-secret"))
-    transport = YeelightPushWebSocketTransport(
-        session=session,
-        token="old-token",
-        token_refresh_handler=refresh_handler,
-        reconnect_sleep=reconnect_sleep,
-    )
-
-    await transport.async_start(AsyncMock())
-    await asyncio.sleep(0)
-    await wait_for_sleep_calls(reconnect_sleep, 1)
-    reconnect_sleep.release.set()
-    await wait_for_sleep_calls(reconnect_sleep, 2)
-
-    health = transport.health.as_dict()
-    refresh_handler.assert_awaited_once()
-    assert session.connected_urls == [
-        "wss://push.yeelight.com/ws/old-token",
-        "wss://push.yeelight.com/ws/old-token",
-    ]
-    assert reconnect_sleep.delays == [1.0, 60.0]
-    assert health["token_refresh_attempts"] == 1
-    assert health["token_refresh_successes"] == 0
-    assert health["last_token_refresh_error_type"] == "RuntimeError"
-    assert "token-secret" not in str(health)
-
-    reconnect_sleep.release.set()
-    await third_websocket.waiting_for_message.wait()
-    await transport.async_stop()
-
-
-@pytest.mark.asyncio
-async def test_push_transport_resets_abnormal_close_streak_after_first_frame() -> None:
-    """收到任意首帧后应清零早期 1006 streak，避免正常重连被长暂停。"""
-    websocket = FakeWebSocket([FakeMessage(WSMsgType.TEXT, '{"method":"subscribe","result":"ok"}')])
-    session = FakeSession(websocket)
-    transport = YeelightPushWebSocketTransport(
-        session=session,
-        token="fake-token",
-        auto_reconnect=False,
-    )
-    transport.health.consecutive_pre_first_frame_abnormal_close_count = 2
-
-    await transport.async_start(AsyncMock())
-    await asyncio.sleep(0)
-
-    health = transport.health.as_dict()
-    assert health["first_frame_received"] is True
-    assert health["consecutive_pre_first_frame_abnormal_close_count"] == 0
-
-    await transport.async_stop()
 
 
 @pytest.mark.asyncio
@@ -301,7 +89,12 @@ async def test_push_transport_records_handshake_status_without_endpoint() -> Non
     """WebSocket 握手失败时只记录聚合状态码，不暴露 URL/token/header."""
     reconnect_sleep = ControlledSleep()
     session = FakeSession(
-        WSServerHandshakeError(None, (), status=403, message="token-secret")
+        WSServerHandshakeError(
+            cast(RequestInfo, None),
+            (),
+            status=403,
+            message="token-secret",
+        )
     )
     transport = YeelightPushWebSocketTransport(
         session=session,

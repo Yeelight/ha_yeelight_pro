@@ -28,7 +28,6 @@ REQUIRED_WEBSOCKET_EVENT_RUNTIME_TOKENS = {
     },
     "push_transport.py": {
         "PushWebSocketSession",
-        "ws_connect",
         "next_subscribe",
         "next_heartbeat",
         "last_start_error_type",
@@ -36,6 +35,31 @@ REQUIRED_WEBSOCKET_EVENT_RUNTIME_TOKENS = {
         "last_handshake_status",
         "last_disconnect_reason",
         "PushControlFrameError",
+        "PushTransportConnectionMixin",
+        "PushTransportRuntimeMixin",
+        "PushTransportReconnectMixin",
+    },
+    "push_transport_connection.py": {
+        "PushTransportConnectionMixin",
+        "ws_connect",
+        "websocket_ip_fallback",
+        "enable_ip_fallback",
+    },
+    "push_transport_reconnect.py": {
+        "PushTransportReconnectMixin",
+        "_schedule_reconnect",
+        "_reconnect_until_connected",
+    },
+    "push_transport_runtime.py": {
+        "PushTransportRuntimeMixin",
+        "_cleanup_after_reader_exit",
+        "json_payload_from_message",
+        "abnormal_close_before_first_frame",
+    },
+    "push_transport_dns.py": {
+        "websocket_ip_fallback",
+        "198.18.0.0/15",
+        "resolve_public_dns_ips",
     },
     "push_transport_frames.py": {
         "PUSH_DATA_TYPES",
@@ -139,7 +163,7 @@ def verify_websocket_event_runtime_contract(
 def _missing_websocket_runtime_call_edges(install_root: Path) -> list[str]:
     """Return missing AST call edges for the WebSocket-only event runtime."""
     live_tree = _parse_installed_module(install_root / "live_runtime.py")
-    transport_tree = _parse_installed_module(install_root / "push_transport.py")
+    connection_tree = _parse_installed_module(install_root / "push_transport_connection.py")
     missing: list[str] = []
     if live_tree is None:
         missing.append("live_runtime.py: parseable AST")
@@ -148,10 +172,10 @@ def _missing_websocket_runtime_call_edges(install_root: Path) -> list[str]:
             if not _ast_has_call(live_tree, call_name):
                 missing.append(f"live_runtime.py: {call_name}()")
 
-    if transport_tree is None:
-        missing.append("push_transport.py: parseable AST")
-    elif not _ast_has_attribute_call(transport_tree, "ws_connect"):
-        missing.append("push_transport.py: *.ws_connect()")
+    if connection_tree is None:
+        missing.append("push_transport_connection.py: parseable AST")
+    elif not _ast_has_attribute_call(connection_tree, "ws_connect"):
+        missing.append("push_transport_connection.py: *.ws_connect()")
     return missing
 
 

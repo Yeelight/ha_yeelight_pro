@@ -177,7 +177,9 @@ async def test_push_transport_connects_subscribes_and_dispatches_json_objects() 
     assert health["ignored_messages"] == 4
     assert health["malformed_messages"] == 2
     assert health["control_frames"] == 3
+    assert health["subscribe_sent_count"] == 1
     assert health["heartbeat_sent_count"] == 0
+    assert health["last_subscribe_error_type"] is None
     assert health["last_start_error_type"] is None
     assert health["last_runtime_error_type"] is None
     assert health["last_handshake_status"] is None
@@ -188,6 +190,7 @@ async def test_push_transport_connects_subscribes_and_dispatches_json_objects() 
     assert health["last_payload_type"] == "event"
     assert health["last_ignored_reason"] is None
     assert health["last_ignored_payload_type"] is None
+    assert health["last_subscribe_sent_at"] is not None
     assert health["last_message_at"] is not None
     assert health["last_dispatched_at"] is not None
 
@@ -232,26 +235,6 @@ async def test_push_transport_treats_private_subscribe_snapshot_as_control() -> 
     assert health["control_frames"] == 2
     assert health["dispatched_payloads"] == 1
     assert health["last_runtime_error_type"] is None
-
-    await transport.async_stop()
-
-
-@pytest.mark.asyncio
-async def test_push_transport_passes_configured_proxy_to_ws_connect() -> None:
-    """私有部署代理只应作为 aiohttp ws_connect 参数传入。"""
-    websocket = OpenFakeWebSocket()
-    session = FakeSession(websocket)
-    transport = YeelightPushWebSocketTransport(
-        session=session,
-        token="fake-token",
-        proxy=" http://host.docker.internal:7890 ",
-    )
-
-    await transport.async_start(AsyncMock())
-    await websocket.waiting_for_message.wait()
-
-    assert session.connected_kwargs[0]["proxy"] == "http://host.docker.internal:7890"
-    assert transport.health.as_dict()["proxy_configured"] is True
 
     await transport.async_stop()
 

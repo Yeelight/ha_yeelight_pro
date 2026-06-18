@@ -30,7 +30,7 @@ def test_verify_diagnostics_capabilities_requires_websocket_event_runtime(
     verify_diagnostics_capabilities(tmp_path, report)
 
     assert not report.ok
-    assert any("push_transport.py" in failure for failure in report.failures)
+    assert any("push_transport_connection.py" in failure for failure in report.failures)
 
 
 def test_verify_diagnostics_capabilities_accepts_websocket_event_runtime(

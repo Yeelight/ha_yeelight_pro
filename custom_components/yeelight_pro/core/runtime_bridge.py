@@ -10,6 +10,8 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 
+from ..const import CONF_DEVICE_IMPORT_FILTER
+from ..device_filter import normalize_device_import_filter
 from ..const import (
     ATTR_COMPONENT_ID,
     ATTR_EVENT_ATTRIBUTES,
@@ -41,6 +43,8 @@ CanonicalRebuilder = Callable[[dict[str, Any]], None]
 DeviceLookup = Callable[[int], Mapping[str, Any] | None]
 RuntimeEventDedupeKey = str
 MAX_RUNTIME_EVENT_DEDUPE_KEYS = 256
+MAX_RUNTIME_PROPERTY_SAMPLE_ITEMS = 5
+MAX_RUNTIME_PROPERTY_PARAM_KEYS = 12
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -63,6 +67,8 @@ class RuntimePropertyUpdateSummary:
     group_updates: int = 0
     topology_node_updates: int = 0
     changed: bool = False
+    device_import_filter_enabled: bool = False
+    unknown_node_samples: tuple[dict[str, Any], ...] = ()
 
     def as_dict(self) -> dict[str, Any]:
         """Return diagnostics-safe aggregate counters."""
@@ -73,6 +79,8 @@ class RuntimePropertyUpdateSummary:
             "group_updates": self.group_updates,
             "topology_node_updates": self.topology_node_updates,
             "changed": self.changed,
+            "device_import_filter_enabled": self.device_import_filter_enabled,
+            "unknown_node_samples": list(self.unknown_node_samples),
         }
 
 
@@ -91,6 +99,7 @@ class RuntimePayloadBridge:
         rooms: list[dict[str, Any]] | None = None,
         areas: list[dict[str, Any]] | None = None,
         houses: list[dict[str, Any]] | None = None,
+        options: Mapping[str, Any] | None = None,
         get_device: DeviceLookup,
         rebuild_canonical: CanonicalRebuilder,
     ) -> None:
@@ -103,6 +112,7 @@ class RuntimePayloadBridge:
         self._rooms = rooms
         self._areas = areas
         self._houses = houses
+        self._device_import_filter_enabled = _device_import_filter_enabled(options)
         self._get_device = get_device
         self._rebuild_canonical = rebuild_canonical
         self.last_apply_summary = RuntimePropertyUpdateSummary()
@@ -118,6 +128,7 @@ class RuntimePayloadBridge:
         unknown = 0
         group_updates = 0
         topology_node_updates = 0
+        unknown_node_samples: list[dict[str, Any]] = []
         for update in updates:
             input_updates += 1
             if not update.params:
@@ -147,6 +158,10 @@ class RuntimePayloadBridge:
                 continue
             if self._loaded_payload(update.node_id) is None:
                 unknown += 1
+                if len(unknown_node_samples) < MAX_RUNTIME_PROPERTY_SAMPLE_ITEMS:
+                    unknown_node_samples.append(
+                        self._unknown_update_sample(update, params)
+                    )
                 self._runtime_state.store_update(
                     update.node_id,
                     params,
@@ -176,15 +191,19 @@ class RuntimePayloadBridge:
             group_updates=group_updates,
             topology_node_updates=topology_node_updates,
             changed=changed,
+            device_import_filter_enabled=self._device_import_filter_enabled,
+            unknown_node_samples=tuple(unknown_node_samples),
         )
         if applied or unknown or group_updates or topology_node_updates:
             _LOGGER.debug(
                 "Applied Yeelight Pro runtime property updates: "
-                "applied=%s unknown_nodes=%s group_updates=%s topology_node_updates=%s",
+                "applied=%s unknown_nodes=%s group_updates=%s topology_node_updates=%s "
+                "unknown_samples=%s",
                 applied,
                 unknown,
                 group_updates,
                 topology_node_updates,
+                unknown_node_samples,
             )
         return changed
 
@@ -214,6 +233,41 @@ class RuntimePayloadBridge:
         if update.node_type == NODE_TYPE_HOUSE:
             return self._houses
         return None
+
+    def _unknown_update_sample(
+        self,
+        update: RuntimePropertyUpdate,
+        params: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Return a redacted sample explaining why one update was not loaded."""
+        matched_collections = self._matching_collections(update.node_id)
+        return {
+            "node_id_hash": _stable_digest(update.node_id),
+            "node_type": update.node_type,
+            "param_keys": _safe_param_keys(params),
+            "matched_collections": matched_collections,
+            "reason": _unknown_update_reason(matched_collections),
+            "device_import_filter_enabled": self._device_import_filter_enabled,
+        }
+
+    def _matching_collections(self, node_id: int) -> list[str]:
+        """Return loaded coordinator collections containing the node id."""
+        matches: list[str] = []
+        if node_id in self._devices:
+            matches.append("devices")
+        if node_id in self._gateways:
+            matches.append("gateways")
+        if node_id in self._data:
+            matches.append("data")
+        for name, collection in (
+            ("groups", self._groups),
+            ("rooms", self._rooms),
+            ("areas", self._areas),
+            ("houses", self._houses),
+        ):
+            if collection is not None and _collection_contains_node(collection, node_id):
+                matches.append(name)
+        return matches
 
     async def dispatch_event_payloads(
         self,
@@ -314,9 +368,47 @@ def property_updates_from_adapter(
     ]
 
 
+def _device_import_filter_enabled(options: Mapping[str, Any] | None) -> bool:
+    """Return whether the loaded entry has a meaningful import filter."""
+    if not isinstance(options, Mapping):
+        return False
+    normalized = normalize_device_import_filter(options.get(CONF_DEVICE_IMPORT_FILTER))
+    return normalized.enabled
+
+
 def _is_group_update(update: RuntimePropertyUpdate) -> bool:
     """判断属性更新是否来自 LAN 灯组节点。"""
     return update.node_type == NODE_TYPE_GROUP
+
+
+def _collection_contains_node(collection: Iterable[Mapping[str, Any]], node_id: int) -> bool:
+    """Return whether a topology collection contains a node id."""
+    for item in collection:
+        if isinstance(item, Mapping) and coerce_device_id(item.get("id")) == node_id:
+            return True
+    return False
+
+
+def _unknown_update_reason(matched_collections: Sequence[str]) -> str:
+    """Classify an unknown update without exposing raw identifiers."""
+    if "groups" in matched_collections:
+        return "missing_group_node_type"
+    if {"rooms", "areas", "houses"} & set(matched_collections):
+        return "missing_topology_node_type"
+    return "not_loaded"
+
+
+def _safe_param_keys(params: Mapping[str, Any]) -> list[str]:
+    """Return sorted param keys only, never param values."""
+    keys = sorted(str(key) for key in params)
+    return keys[:MAX_RUNTIME_PROPERTY_PARAM_KEYS]
+
+
+def _stable_digest(value: Any) -> str:
+    """Return a stable non-reversible identifier for diagnostics."""
+    digest = blake2b(digest_size=8)
+    digest.update(str(value).encode())
+    return digest.hexdigest()
 
 
 def coerce_device_id(value: Any) -> int | None:
@@ -334,6 +426,7 @@ __all__ = [
     "RuntimePayloadBridge",
     "RuntimePropertyUpdate",
     "RuntimePropertyUpdateSummary",
+    "MAX_RUNTIME_PROPERTY_SAMPLE_ITEMS",
     "coerce_device_id",
     "property_updates_from_adapter",
     "runtime_event_dedupe_key",

@@ -9,25 +9,12 @@ from homeassistant.data_entry_flow import FlowResult
 
 from .const import (
     CONF_ACCESS_TOKEN,
-    CONF_ACCOUNT_USER_ID,
-    CONF_ACCOUNT_USERNAME,
     CONF_CLOUD_AUTH_METHOD,
     CONF_CONNECTION_MODE,
-    CONF_CLOUD_DOMAIN,
     CONF_CLOUD_REGION,
     CONF_DEVICE_IMPORT_FILTER,
     CONF_HOUSE_ID,
-    CONF_HOUSE_NAME,
     CONF_LIVE_UPDATES,
-    CONF_OPEN_API_CLIENT_ID,
-    CONF_OPEN_API_CLIENT_SECRET,
-    CONF_PRIVATE_DOMAIN,
-    CONF_PRIVATE_PUSH_DOMAIN,
-    CONF_PRIVATE_PUSH_PROXY,
-    CONF_REFRESH_TOKEN,
-    CONF_SCAN_LOGIN_DEVICE,
-    CONF_TOKEN_EXPIRES_IN,
-    CONF_TOKEN_TYPE,
     CLOUD_AUTH_METHOD_SCAN_LOGIN,
     CONNECTION_MODE_CLOUD,
     CONNECTION_MODE_LAN,
@@ -61,6 +48,7 @@ from .config_flow_device_picker import (
     device_import_filter_for_selected_devices,
     selected_device_ids_from_input,
 )
+from .config_flow_entry_data import build_cloud_entry_data
 from .config_flow_scan_login import (
     ScanLoginConfigFlowMixin,
     ScanLoginFlowState,
@@ -114,7 +102,6 @@ class YeelightProConfigFlow(
         self._open_api_client_id = ""
         self._open_api_client_secret = ""
         self._private_push_domain = ""
-        self._private_push_proxy = ""
         self._device_choices: tuple[DevicePickerChoice, ...] = ()
         self._house_choices: dict[Any, str] = {}
         self._selected_device_ids: list[str] = []
@@ -316,37 +303,7 @@ class YeelightProConfigFlow(
         await self.async_set_unique_id(unique_id)
         self._abort_if_unique_id_configured()
 
-        data = {
-            CONF_CONNECTION_MODE: self._connection_mode,
-            CONF_CLOUD_DOMAIN: self._domain if self._connection_mode == CONNECTION_MODE_CLOUD else "",
-            CONF_CLOUD_REGION: (
-                self._cloud_region
-                if self._connection_mode == CONNECTION_MODE_CLOUD
-                else ""
-            ),
-            CONF_PRIVATE_DOMAIN: self._domain if self._connection_mode == CONNECTION_MODE_PRIVATE else "",
-            CONF_PRIVATE_PUSH_DOMAIN: (
-                self._private_push_domain
-                if self._connection_mode == CONNECTION_MODE_PRIVATE
-                else ""
-            ),
-            CONF_PRIVATE_PUSH_PROXY: (
-                self._private_push_proxy
-                if self._connection_mode == CONNECTION_MODE_PRIVATE
-                else ""
-            ),
-            CONF_ACCESS_TOKEN: self._access_token,
-            CONF_REFRESH_TOKEN: self._refresh_token,
-            CONF_TOKEN_EXPIRES_IN: self._token_expires_in,
-            CONF_TOKEN_TYPE: self._token_type,
-            CONF_HOUSE_ID: self._house_id,
-            CONF_HOUSE_NAME: self._house_name,
-            CONF_OPEN_API_CLIENT_ID: self._open_api_client_id,
-            CONF_OPEN_API_CLIENT_SECRET: self._open_api_client_secret,
-            CONF_ACCOUNT_USER_ID: self._account_user_id,
-            CONF_ACCOUNT_USERNAME: self._account_username,
-            CONF_SCAN_LOGIN_DEVICE: self._scan_login_device,
-        }
+        data = build_cloud_entry_data(self)
         return self.async_create_entry(
             title=config_entry_title(data),
             data=data,

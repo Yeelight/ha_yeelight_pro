@@ -38,7 +38,7 @@ from .const import (
     CONF_DEVICE_IMPORT_FILTER_INCLUDE_DEVICES,
     CONF_HOUSE_ID,
     CONF_OPEN_API_CLIENT_ID,
-    CONF_PRIVATE_PUSH_PROXY,
+    CONF_PRIVATE_PUSH_DOMAIN,
     DOMAIN,
 )
 from .device_filter_options import (
@@ -102,7 +102,7 @@ class YeelightProOptionsFlow(config_entries.OptionsFlow):
                         entry_options(self._config_entry),
                         self._config_entry,
                     ),
-                    errors={CONF_PRIVATE_PUSH_PROXY: "invalid_url"},
+                    errors={CONF_PRIVATE_PUSH_DOMAIN: "invalid_url"},
                 )
             if self._pending_options_require_reload():
                 return await self.async_step_confirm_reload()

@@ -115,17 +115,32 @@ def test_push_contract_check_requires_coverage_tokens(
         component_root / "push_manager.py",
         "PushTransport PushManager async_handle_push_payload",
     )
-    _write_test_file(component_root / "push_transport.py", "ws_connect")
+    _write_test_file(
+        component_root / "push_transport.py",
+        (
+            "PushTransportConnectionMixin PushTransportRuntimeMixin "
+            "PushTransportReconnectMixin"
+        ),
+    )
+    _write_test_file(component_root / "push_transport_connection.py", "ws_connect")
+    _write_test_file(component_root / "push_transport_dns.py", "")
     _write_test_file(component_root / "push_transport_frames.py", "")
+    _write_test_file(component_root / "push_transport_reconnect.py", "")
+    _write_test_file(component_root / "push_transport_runtime.py", "")
     _write_test_file(component_root / "push.py", "")
     _write_test_file(core_root / "runtime_bridge.py", "socket")
     _write_test_file(tests_root / "test_push_contract.py", "")
     _write_test_file(tests_root / "test_push_websocket_contract.py", "")
     _write_test_file(tests_root / "test_push_payloads.py", "")
     _write_test_file(tests_root / "test_push_payload_events.py", "")
-    _write_test_file(tests_root / "test_push_manager.py", "FakeTransport")
+    _write_test_file(tests_root / "push_manager_helpers.py", "FakeTransport")
+    _write_test_file(tests_root / "test_push_manager.py", "push_manager_helpers")
+    _write_test_file(tests_root / "test_push_manager_health.py", "push_manager_helpers")
     _write_test_file(tests_root / "push_transport_helpers.py", "FakeSession")
     _write_test_file(tests_root / "test_push_transport.py", "push_transport_helpers")
+    _write_test_file(tests_root / "test_push_transport_dns.py", "")
+    _write_test_file(tests_root / "test_push_transport_early_close.py", "")
+    _write_test_file(tests_root / "test_push_transport_proxy.py", "")
     _write_test_file(tests_root / "test_push_transport_reconnect.py", "")
     _write_test_file(
         tests_root / "test_push_transport_failures.py",
@@ -163,6 +178,13 @@ def test_push_contract_check_requires_coverage_tokens(
     assert any("automatic reconnect scheduler" in error for error in errors)
     assert any("automatic reconnect loop" in error for error in errors)
     assert any("recoverable initial-connect error diagnostics" in error for error in errors)
+    assert any("subscribe send count diagnostics" in error for error in errors)
+    assert any("subscribe send timestamp diagnostics" in error for error in errors)
+    assert any("subscribe send error diagnostics" in error for error in errors)
+    assert any("fake-ip DNS fallback runtime gate" in error for error in errors)
+    assert any("fake-ip DNS fallback helper use" in error for error in errors)
+    assert any("fake-ip DNS range allowlist" in error for error in errors)
+    assert any("public DNS fallback resolver" in error for error in errors)
     assert any("session protocol seam" in error for error in errors)
     assert any("subscribe frame send boundary" in error for error in errors)
     assert any("heartbeat frame send boundary" in error for error in errors)
@@ -178,6 +200,9 @@ def test_push_contract_check_requires_coverage_tokens(
     assert any("finite websocket stream coverage" in error for error in errors)
     assert any("controllable heartbeat sleep coverage" in error for error in errors)
     assert any("connect subscribe dispatch coverage" in error for error in errors)
+    assert any("subscribe diagnostics coverage" in error for error in errors)
+    assert any("fake-ip CIDR detector coverage" in error for error in errors)
+    assert any("normal DNS no-rewrite coverage" in error for error in errors)
     assert any("heartbeat loop cancellation coverage" in error for error in errors)
     assert any("transport stop cleanup coverage" in error for error in errors)
     assert any("transport start idempotency coverage" in error for error in errors)
@@ -185,6 +210,10 @@ def test_push_contract_check_requires_coverage_tokens(
     assert any("transport reconnect retry backoff coverage" in error for error in errors)
     assert any("initial connect failure reconnect coverage" in error for error in errors)
     assert any("subscribe failure cleanup coverage" in error for error in errors)
+    assert any(
+        "post-subscribe pre-first-frame close diagnostics coverage" in error
+        for error in errors
+    )
     assert any("transport stop retry cleanup coverage" in error for error in errors)
     assert any("heartbeat failure cleanup coverage" in error for error in errors)
     assert any("reader failure cleanup coverage" in error for error in errors)

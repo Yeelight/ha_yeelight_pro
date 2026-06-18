@@ -79,6 +79,10 @@ def test_release_zip_required_files_include_runtime_contracts() -> None:
         "custom_components/yeelight_pro/push_contract.py",
         "custom_components/yeelight_pro/push_manager.py",
         "custom_components/yeelight_pro/push_transport.py",
+        "custom_components/yeelight_pro/push_transport_connection.py",
+        "custom_components/yeelight_pro/push_transport_dns.py",
+        "custom_components/yeelight_pro/push_transport_reconnect.py",
+        "custom_components/yeelight_pro/push_transport_runtime.py",
     } <= check_release_zip.REQUIRED_FILES
 
 

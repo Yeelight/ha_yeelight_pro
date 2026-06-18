@@ -61,6 +61,15 @@ from .device_filter_options import (
     stored_or_legacy_device_import_filter_options,
 )
 from .deployment_urls import deployment_push_base_url, deployment_root_url
+from .entry_migration_helpers import (
+    coerce_bool as _coerce_bool,
+    coerce_house_id as _coerce_house_id,
+    coerce_int as _coerce_int,
+    first_value as _first_value,
+    mapping_or_empty as _mapping_or_empty,
+    optional_int as _optional_int,
+    string_value as _string,
+)
 from .entry_title import config_entry_title
 from .house_metadata import friendly_house_name
 
@@ -356,68 +365,3 @@ def _private_push_proxy_url(value: Any) -> str:
     if not text:
         return ""
     return text if text.startswith(("http://", "https://")) else ""
-
-
-def _mapping_or_empty(value: Any) -> dict[str, Any]:
-    return dict(value) if isinstance(value, Mapping) else {}
-
-
-def _first_value(value: Mapping[str, Any], *keys: str) -> Any:
-    for key in keys:
-        candidate = value.get(key)
-        if candidate not in (None, ""):
-            return candidate
-    return None
-
-
-def _coerce_house_id(value: Any) -> int | str:
-    if isinstance(value, int):
-        return value
-    if isinstance(value, str) and value.isdecimal():
-        return int(value)
-    return _string(value)
-
-
-def _optional_int(value: Any) -> int | None:
-    if value in (None, ""):
-        return None
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def _coerce_int(
-    value: Any,
-    *,
-    default: int,
-    minimum: int | None = None,
-    maximum: int | None = None,
-) -> int:
-    if isinstance(value, bool):
-        return default
-    try:
-        result = int(value)
-    except (TypeError, ValueError):
-        return default
-    if minimum is not None:
-        result = max(minimum, result)
-    if maximum is not None:
-        result = min(maximum, result)
-    return result
-
-
-def _coerce_bool(value: Any, *, default: bool) -> bool:
-    if value is None:
-        return default
-    if isinstance(value, str):
-        normalized = value.strip().lower()
-        if normalized in {"true", "1", "yes", "on"}:
-            return True
-        if normalized in {"false", "0", "no", "off", ""}:
-            return False
-    return bool(value)
-
-
-def _string(value: Any) -> str:
-    return "" if value is None else str(value)

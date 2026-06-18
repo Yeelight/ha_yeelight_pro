@@ -13,7 +13,6 @@ from custom_components.yeelight_pro.const import (
     CONF_CLOUD_REGION,
     CONF_PRIVATE_DOMAIN,
     CONF_PRIVATE_PUSH_DOMAIN,
-    CONF_PRIVATE_PUSH_PROXY,
     CONNECTION_MODE_CLOUD,
     CONNECTION_MODE_PRIVATE,
 )
@@ -150,7 +149,7 @@ async def test_live_runtime_does_not_override_private_push_heartbeat(
     entry.data[CONF_PRIVATE_DOMAIN] = "http://api-test.yeedev.com"
     entry.data[CONF_PRIVATE_PUSH_DOMAIN] = "ws://ws-test.yeedev.com/ws"
     session = FakeSession(OpenFakeWebSocket())
-    captured: dict[str, float] = {}
+    captured: dict[str, object] = {}
     monkeypatch.setattr(
         "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
         lambda _hass: session,
@@ -169,16 +168,15 @@ async def test_live_runtime_does_not_override_private_push_heartbeat(
 
 
 @pytest.mark.asyncio
-async def test_live_runtime_passes_private_push_proxy_to_transport(
+async def test_live_runtime_enables_private_fake_ip_detection_without_proxy(
     hass: HomeAssistant,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """私有部署 WebSocket 代理应独立传给 transport，不改变 endpoint。"""
+    """私有部署可检测 fake-ip DNS，但不猜测宿主机代理端口。"""
     entry = _make_live_entry()
     entry.data[CONF_CONNECTION_MODE] = CONNECTION_MODE_PRIVATE
     entry.data[CONF_PRIVATE_DOMAIN] = "http://api-test.yeedev.com"
     entry.data[CONF_PRIVATE_PUSH_DOMAIN] = "ws://ws-test.yeedev.com/ws"
-    entry.data[CONF_PRIVATE_PUSH_PROXY] = "http://host.docker.internal:7890"
     session = FakeSession(OpenFakeWebSocket())
     captured: dict[str, object] = {}
     monkeypatch.setattr(
@@ -193,8 +191,9 @@ async def test_live_runtime_passes_private_push_proxy_to_transport(
     manager = await async_start_live_runtime(hass, entry, AsyncMock())
 
     assert manager is not None
-    assert captured["base_url"] == "ws://ws-test.yeedev.com/ws"
-    assert captured["proxy"] == "http://host.docker.internal:7890"
+    assert "proxy" not in captured or captured["proxy"] is None
+    assert "auto_proxy_candidates" not in captured
+    assert captured["enable_ip_fallback"] is True
 
     await manager.async_stop()
 
@@ -208,7 +207,7 @@ async def test_live_runtime_keeps_documented_cloud_push_heartbeat(
     entry = _make_live_entry()
     entry.data[CONF_CONNECTION_MODE] = CONNECTION_MODE_CLOUD
     session = FakeSession(OpenFakeWebSocket())
-    captured: dict[str, float] = {}
+    captured: dict[str, object] = {}
     monkeypatch.setattr(
         "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
         lambda _hass: session,
@@ -226,7 +225,7 @@ async def test_live_runtime_keeps_documented_cloud_push_heartbeat(
     await manager.async_stop()
 
 
-def _capturing_transport_factory(captured: dict[str, float]):
+def _capturing_transport_factory(captured: dict[str, object]):
     """Return a fake transport class that records constructor heartbeat args."""
 
     class _Transport:

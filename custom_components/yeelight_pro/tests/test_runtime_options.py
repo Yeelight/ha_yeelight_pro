@@ -20,7 +20,6 @@ from custom_components.yeelight_pro.const import (
     CONF_LOCAL_GATEWAY_PORT,
     CONF_PRIVATE_DOMAIN,
     CONF_PRIVATE_PUSH_DOMAIN,
-    CONF_PRIVATE_PUSH_PROXY,
     CONF_SCAN_INTERVAL,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
     CONNECTION_MODE_PRIVATE,
@@ -204,30 +203,6 @@ async def test_options_update_reloads_when_private_push_entry_data_changes(
     coordinator = _runtime_coordinator(apply_options=MagicMock())
     _install_runtime(hass, mock_config_entry, coordinator)
     mock_config_entry.data[CONF_PRIVATE_PUSH_DOMAIN] = "ws://ws-test.yeedev.com"
-    mock_config_entry.options = dict(coordinator.options)
-    hass.config_entries.async_reload = AsyncMock()
-
-    await async_options_updated(hass, mock_config_entry)
-
-    hass.config_entries.async_reload.assert_awaited_once_with(mock_config_entry.entry_id)
-    coordinator.apply_options.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_options_update_reloads_when_private_push_proxy_entry_data_changes(
-    hass: HomeAssistant,
-    mock_config_entry,
-) -> None:
-    """Private WebSocket proxy data changes must rebuild the push transport."""
-    mock_config_entry.data.update({
-        CONF_CONNECTION_MODE: CONNECTION_MODE_PRIVATE,
-        CONF_PRIVATE_DOMAIN: "http://api-test.yeedev.com",
-        CONF_PRIVATE_PUSH_DOMAIN: "ws://ws-test.yeedev.com/ws",
-        CONF_PRIVATE_PUSH_PROXY: "",
-    })
-    coordinator = _runtime_coordinator(apply_options=MagicMock())
-    _install_runtime(hass, mock_config_entry, coordinator)
-    mock_config_entry.data[CONF_PRIVATE_PUSH_PROXY] = "http://host.docker.internal:7890"
     mock_config_entry.options = dict(coordinator.options)
     hass.config_entries.async_reload = AsyncMock()
 

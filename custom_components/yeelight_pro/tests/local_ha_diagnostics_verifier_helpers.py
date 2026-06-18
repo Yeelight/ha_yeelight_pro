@@ -137,9 +137,12 @@ class PushControlFrameError(Exception): ...
             f"""
 class PushWebSocketSession:
     async def ws_connect(self, url): ...
+class PushTransportConnectionMixin: ...
+class PushTransportRuntimeMixin: ...
+class PushTransportReconnectMixin: ...
 class YeelightPushWebSocketTransport:
     async def _connect_once(self):
-{connect_line}
+        pass
 PUSH_CONTROL_METHODS = object()
 PUSH_DATA_TYPES = object()
 def next_subscribe(): ...
@@ -148,6 +151,41 @@ def _is_push_data_payload(payload):
     return payload.get("type") in PUSH_DATA_TYPES
 {runtime_health}
 {eventsource}
+""",
+            encoding="utf-8",
+        )
+        root.joinpath("push_transport_connection.py").write_text(
+            f"""
+class PushTransportConnectionMixin:
+    async def _connect_once(self):
+{connect_line}
+def websocket_ip_fallback(url): ...
+enable_ip_fallback = True
+""",
+            encoding="utf-8",
+        )
+        root.joinpath("push_transport_reconnect.py").write_text(
+            """
+class PushTransportReconnectMixin: ...
+def _schedule_reconnect(): ...
+def _reconnect_until_connected(): ...
+""",
+            encoding="utf-8",
+        )
+        root.joinpath("push_transport_runtime.py").write_text(
+            """
+class PushTransportRuntimeMixin: ...
+def _cleanup_after_reader_exit(): ...
+def json_payload_from_message(message): ...
+abnormal_close_before_first_frame = "abnormal_close_before_first_frame"
+""",
+            encoding="utf-8",
+        )
+        root.joinpath("push_transport_dns.py").write_text(
+            """
+websocket_ip_fallback = object()
+FAKE_IP_NETWORKS = ("198.18.0.0/15",)
+def resolve_public_dns_ips(host): ...
 """,
             encoding="utf-8",
         )

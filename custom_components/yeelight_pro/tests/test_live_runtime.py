@@ -142,56 +142,6 @@ async def test_live_runtime_transport_token_provider_reads_latest_client_token(
 
 
 @pytest.mark.asyncio
-async def test_live_runtime_transport_token_refresh_handler_updates_coordinator_data(
-    hass: HomeAssistant,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """WebSocket 订阅级失败恢复应通过 config-entry refresh seam 换 token."""
-    entry = _make_live_entry()
-    coordinator = AsyncMock()
-    coordinator.entry_data = dict(entry.data)
-    coordinator.client.access_token = "old-client-token"
-    captured: dict[str, object] = {}
-    monkeypatch.setattr(
-        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
-        lambda _hass: FakeSession(OpenFakeWebSocket()),
-    )
-    monkeypatch.setattr(
-        "custom_components.yeelight_pro.live_runtime.YeelightPushWebSocketTransport",
-        _capturing_transport_factory(captured),
-    )
-
-    async def _refresh(_hass, _entry, client, *, force=False):
-        assert force is True
-        client.access_token = "fresh-client-token"
-        return type(
-            "RefreshResult",
-            (),
-            {
-                "entry_data": {
-                    **entry.data,
-                    CONF_ACCESS_TOKEN: "fresh-entry-token",
-                }
-            },
-        )()
-
-    monkeypatch.setattr(
-        "custom_components.yeelight_pro.live_runtime.async_refresh_entry_token",
-        _refresh,
-    )
-
-    manager = await async_start_live_runtime(hass, entry, coordinator)
-
-    assert manager is not None
-    refresh_handler = captured["token_refresh_handler"]
-    assert callable(refresh_handler)
-    assert await refresh_handler() == "fresh-client-token"
-    assert coordinator.entry_data[CONF_ACCESS_TOKEN] == "fresh-entry-token"
-
-    await manager.async_stop()
-
-
-@pytest.mark.asyncio
 async def test_live_runtime_starts_websocket_transport_when_enabled(
     hass: HomeAssistant,
     monkeypatch: pytest.MonkeyPatch,

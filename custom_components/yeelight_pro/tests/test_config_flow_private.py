@@ -16,7 +16,6 @@ from custom_components.yeelight_pro.const import (
     CONF_HOUSE_ID,
     CONF_PRIVATE_DOMAIN,
     CONF_PRIVATE_PUSH_DOMAIN,
-    CONF_PRIVATE_PUSH_PROXY,
     CONNECTION_MODE_PRIVATE,
 )
 from custom_components.yeelight_pro.core.exceptions import (
@@ -49,17 +48,11 @@ def test_private_config_schema_is_frontend_serializable() -> None:
             "type": "string",
             "default": "",
         },
-        {
-            "name": CONF_PRIVATE_PUSH_PROXY,
-            "optional": True,
-            "type": "string",
-            "default": "",
-        },
     ]
 
 
 def test_private_config_schema_only_requests_private_url(config_flow) -> None:
-    """私有部署首屏填写 API URL、WebSocket URL 和可选代理。"""
+    """私有部署首屏只填写 API URL 和可选 WebSocket URL。"""
     result = config_flow.async_show_form(
         step_id="private_config",
         data_schema=__import__(
@@ -72,7 +65,6 @@ def test_private_config_schema_only_requests_private_url(config_flow) -> None:
     assert schema_keys == {
         CONF_PRIVATE_DOMAIN,
         CONF_PRIVATE_PUSH_DOMAIN,
-        CONF_PRIVATE_PUSH_PROXY,
     }
     assert CONF_ACCESS_TOKEN not in schema_keys
     assert CONF_HOUSE_ID not in schema_keys
@@ -106,7 +98,6 @@ async def test_private_config_routes_to_same_auth_method_flow(config_flow) -> No
     assert result["step_id"] == "cloud_auth_method"
     assert config_flow._domain == "https://private.example"
     assert config_flow._private_push_domain == ""
-    assert config_flow._private_push_proxy == ""
     schema_keys = {key.schema for key in result["data_schema"].schema}
     assert schema_keys == {CONF_CLOUD_AUTH_METHOD}
 
@@ -125,24 +116,6 @@ async def test_private_config_accepts_separate_push_domain(config_flow) -> None:
     assert result["step_id"] == "cloud_auth_method"
     assert config_flow._domain == "https://api-dev.yeedev.com"
     assert config_flow._private_push_domain == "wss://ws-dev.yeedev.com/ws"
-
-
-@pytest.mark.asyncio
-async def test_private_config_accepts_push_proxy(config_flow) -> None:
-    """私有部署 WebSocket 代理可独立填写，且不影响 API 根 URL。"""
-    config_flow._connection_mode = CONNECTION_MODE_PRIVATE
-
-    result = await config_flow.async_step_private_config({
-        CONF_PRIVATE_DOMAIN: "api-dev.yeedev.com",
-        CONF_PRIVATE_PUSH_DOMAIN: "ws-dev.yeedev.com",
-        CONF_PRIVATE_PUSH_PROXY: " http://host.docker.internal:7890 ",
-    })
-
-    assert result["type"] == FlowResultType.FORM
-    assert result["step_id"] == "cloud_auth_method"
-    assert config_flow._domain == "https://api-dev.yeedev.com"
-    assert config_flow._private_push_domain == "wss://ws-dev.yeedev.com/ws"
-    assert config_flow._private_push_proxy == "http://host.docker.internal:7890"
 
 
 @pytest.mark.asyncio

@@ -15,7 +15,6 @@ from .const import (
     CONF_LIVE_UPDATES,
     CONF_PRIVATE_DOMAIN,
     CONF_PRIVATE_PUSH_DOMAIN,
-    CONF_PRIVATE_PUSH_PROXY,
     CLOUD_REGION_PUSH_BASE_URLS,
     DEFAULT_CLOUD_REGION,
     CONNECTION_MODE_CLOUD,
@@ -24,7 +23,6 @@ from .const import (
 )
 from .deployment_urls import deployment_push_base_url
 from .entry_migration import normalize_entry_data
-from .oauth_refresh import async_refresh_entry_token
 from .push_manager import PushManager
 from .push_transport import YeelightPushWebSocketTransport
 
@@ -59,13 +57,8 @@ async def async_start_live_runtime(
             _runtime_entry_data(entry, coordinator),
             coordinator,
         ),
-        token_refresh_handler=lambda: _async_refresh_push_token(
-            hass,
-            entry,
-            coordinator,
-        ),
         base_url=push_base_url,
-        proxy=_push_proxy_for_data(runtime_data),
+        enable_ip_fallback=_push_ip_fallback_enabled(runtime_data),
     )
     manager = PushManager(coordinator, transport)
     await manager.async_start()
@@ -119,31 +112,9 @@ def _push_base_url_for_data(data: Mapping[str, Any]) -> str | None:
     return deployment_push_base_url(private_domain)
 
 
-def _push_proxy_for_data(data: Mapping[str, Any]) -> str | None:
-    """Return an optional HTTP proxy URL for private-deployment WebSocket only."""
-    if data.get(CONF_CONNECTION_MODE) != CONNECTION_MODE_PRIVATE:
-        return None
-    value = data.get(CONF_PRIVATE_PUSH_PROXY)
-    if not isinstance(value, str):
-        return None
-    text = value.strip()
-    return text or None
-
-
-async def _async_refresh_push_token(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    coordinator: Any,
-) -> str | None:
-    """Refresh the config-entry token for a WebSocket reconnect."""
-    client = getattr(coordinator, "client", None)
-    if client is None:
-        return None
-    result = await async_refresh_entry_token(hass, entry, client, force=True)
-    entry_data = getattr(result, "entry_data", None)
-    if isinstance(entry_data, Mapping):
-        coordinator.entry_data = dict(entry_data)
-    return _push_access_token(_runtime_entry_data(entry, coordinator), coordinator)
+def _push_ip_fallback_enabled(data: Mapping[str, Any]) -> bool:
+    """Return whether private runtime should bypass fake-ip DNS automatically."""
+    return data.get(CONF_CONNECTION_MODE) == CONNECTION_MODE_PRIVATE
 
 
 __all__ = ["async_start_live_runtime", "live_updates_enabled"]
