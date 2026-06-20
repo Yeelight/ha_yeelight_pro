@@ -13,7 +13,7 @@ from homeassistant.helpers.storage import Store
 
 from ..const import DOMAIN
 from ..utils import to_int
-from .exceptions import AuthenticationError, safe_error_summary
+from .exceptions import safe_error_summary
 
 SchemaFetcher = Callable[[list[int]], Awaitable[dict[int, dict[str, Any]]]]
 STORAGE_KEY = f"{DOMAIN}.product_schemas"
@@ -132,8 +132,6 @@ class ProductSchemaCache:
                 fetcher,
                 force_refresh=force_refresh,
             )
-        except AuthenticationError:
-            raise
         except Exception as err:
             cached = self.get_many(requested)
             missing = self.missing(requested)

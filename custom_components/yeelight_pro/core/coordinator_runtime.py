@@ -52,7 +52,7 @@ class _RuntimeCoordinator(Protocol):
     def get_device(self, device_id: int | str) -> dict[str, Any] | None:
         """Return the current runtime device payload."""
 
-    def async_update_listeners(self) -> None:
+    def async_update_listeners(self, contexts: Any = None) -> None:
         """Notify Home Assistant coordinator listeners."""
 
     def async_refresh_from_lan_topology(self) -> Any:
@@ -81,16 +81,16 @@ class CoordinatorRuntimeMixin:
     ) -> list[YeelightRuntimeEvent]:
         """处理已接收的 Yeelight 推送消息，不负责建立网络连接."""
         bridge = _runtime_bridge(self)
-        if bridge.apply_property_updates(
+        changed = bridge.apply_property_updates(
             property_updates_from_adapter(push_property_updates(payload))
-        ):
-            self.async_update_listeners()
+        )
         self.last_push_property_summary = bridge.last_apply_summary
+        if changed:
+            self.async_update_listeners(bridge.last_apply_summary.affected_contexts)
 
+        event_payloads = bridge.resolve_event_payloads(push_event_payloads(payload))
         events = await bridge.dispatch_event_payloads(
-            self._push_event_deduper.filter_new_payloads(
-                push_event_payloads(payload)
-            )
+            self._push_event_deduper.filter_new_payloads(event_payloads)
         )
         self.last_push_event_count = len(events)
         return events
@@ -119,8 +119,10 @@ class CoordinatorRuntimeMixin:
 
         # 场景状态同步；同一帧内的设备/场景变化合并成一次 HA 状态通知。
         scene_updates = lan_scene_updates(payload)
+        scene_changed = False
         if scene_updates:
-            changed = _apply_lan_scene_updates_to_coordinator(self, scene_updates) or changed
+            scene_changed = _apply_lan_scene_updates_to_coordinator(self, scene_updates)
+            changed = scene_changed or changed
             for update in scene_updates:
                 _LOGGER.debug(
                     "LAN scene state: id=%d state=%s",
@@ -129,7 +131,8 @@ class CoordinatorRuntimeMixin:
                 )
 
         if changed:
-            self.async_update_listeners()
+            contexts = bridge.last_apply_summary.affected_contexts
+            self.async_update_listeners(None if scene_changed else contexts)
 
         return await bridge.dispatch_event_payloads(lan_event_payloads(payload))
 

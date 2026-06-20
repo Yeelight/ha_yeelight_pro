@@ -226,6 +226,36 @@
       "name": "调试事件发射",
       "description": "向 Home Assistant 事件总线发射调试 Yeelight Pro 设备事件（管理员服务）"
     },
+    "debug_dump_push_health": {
+      "name": "调试推送链路",
+      "description": "向 Home Assistant 日志输出聚合后的 Yeelight Pro WebSocket 推送链路诊断（管理员服务）"
+    },
+    "debug_emit_push_payload": {
+      "name": "调试推送属性",
+      "description": "注入一条合成 Yeelight Pro 属性推送以验证实时刷新链路；不会控制真实设备（管理员服务）",
+      "fields": {
+        "node_type": {
+          "name": "节点类型",
+          "description": "开放平台节点类型；默认 2 表示设备"
+        },
+        "payload_shape": {
+          "name": "推送帧形态",
+          "description": "选择合成标准 prop 帧或私有部署订阅快照状态帧，用于排查实时刷新链路"
+        },
+        "params": {
+          "name": "属性参数",
+          "description": "要注入到运行时状态的属性键值对象"
+        },
+        "source_device_id": {
+          "name": "源设备 ID",
+          "description": "可选；合成推送的源设备标识。不填时可通过实体 ID 解析"
+        },
+        "entity_id": {
+          "name": "实体 ID",
+          "description": "可选；从现有 Yeelight Pro 实体解析源设备 ID，便于在开发者工具中验证"
+        }
+      }
+    },
     "refresh": {
       "name": "手动刷新",
       "description": "立即刷新已加载的 Yeelight Pro 数据并同步设备和实体注册表（管理员服务）",

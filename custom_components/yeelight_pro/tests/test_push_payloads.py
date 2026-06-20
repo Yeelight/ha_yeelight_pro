@@ -321,6 +321,37 @@ def test_push_property_updates_accept_node_id_aliases() -> None:
     assert updates[2].params == {"o": False}
 
 
+def test_push_property_updates_accept_topology_node_id_aliases() -> None:
+    """房间/区域/灯组等拓扑节点别名也应进入候选 ID，供运行时精确路由。"""
+    updates = push_property_updates(
+        {
+            "type": "prop",
+            "nodes": [
+                {
+                    "id": "998",
+                    "groupId": "228230",
+                    "roomId": "228231",
+                    "areaId": "228232",
+                    "houseId": "228233",
+                    "projectId": "228234",
+                    "params": {"p": True},
+                }
+            ],
+        }
+    )
+
+    assert len(updates) == 1
+    assert updates[0].node_id == 998
+    assert updates[0].node_id_candidates == (
+        ("id", 998),
+        ("groupId", 228230),
+        ("roomId", 228231),
+        ("areaId", 228232),
+        ("houseId", 228233),
+        ("projectId", 228234),
+    )
+
+
 def test_push_property_updates_scope_plain_params_with_component_index() -> None:
     """多组件 prop 帧带 index/key 时应转为官方 N-p/N-sp 键。"""
     updates = push_property_updates(

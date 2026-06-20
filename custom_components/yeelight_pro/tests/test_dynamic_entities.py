@@ -67,6 +67,43 @@ def test_dynamic_entities_adds_only_new_unique_ids() -> None:
     ]
 
 
+def test_dynamic_entities_rescans_when_generation_is_unchanged() -> None:
+    """投影规则/Schema 恢复新增候选时，同一拓扑代数也应补建实体."""
+    coordinator = MagicMock()
+    coordinator.hass = None
+    coordinator.items = ["one"]
+    coordinator.topology_generation = 7
+    entry = entry_with_unload_hook()
+    listeners: list = []
+
+    def _add_listener(listener):
+        listeners.append(listener)
+        return lambda: None
+
+    coordinator.async_add_listener = MagicMock(side_effect=_add_listener)
+    add_entities = MagicMock()
+
+    async_track_dynamic_entities(
+        entry,
+        coordinator,
+        add_entities,
+        lambda current: [DummyEntity(f"{DOMAIN}_{item}") for item in current.items],
+        logger=MagicMock(),
+        platform_name="dummy",
+    )
+
+    assert add_entities.call_count == 1
+
+    coordinator.items.append("two")
+    listeners[0]()
+
+    assert coordinator.topology_generation == 7
+    assert add_entities.call_count == 2
+    assert [entity.unique_id for entity in add_entities.call_args.args[0]] == [
+        "yeelight_pro_two"
+    ]
+
+
 def test_dynamic_entity_scan_logs_aggregate_counts(caplog) -> None:
     """动态实体扫描日志应只输出聚合计数，不泄露 unique_id."""
     coordinator = MagicMock()

@@ -3,12 +3,21 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from copy import deepcopy
 from types import MappingProxyType
 from typing import Any
 
 from ..utils import to_bool, to_int
 
 CanonicalRebuilder = Callable[[dict[str, Any]], None]
+PayloadSnapshot = list[tuple[dict[str, Any], dict[str, Any]]]
+SNAPSHOT_PAYLOAD_KEYS = (
+    "params",
+    "online",
+    "ha_device_instance",
+    "ha_product_model",
+    "model_id",
+)
 
 
 class RuntimeStateStore:
@@ -112,6 +121,32 @@ def merge_runtime_state_into_loaded_payloads(
         )
 
 
+def capture_loaded_payload_snapshot(
+    *,
+    device_id: int,
+    devices: Mapping[int, dict[str, Any]],
+    gateways: Mapping[int, dict[str, Any]],
+    data: Mapping[int, Any],
+) -> PayloadSnapshot:
+    """Capture loaded payload fields that optimistic writes may change."""
+    return [
+        (payload, _payload_snapshot(payload))
+        for payload in _loaded_device_payloads(
+            device_id=device_id,
+            devices=devices,
+            gateways=gateways,
+            data=data,
+        )
+    ]
+
+
+def restore_loaded_payload_snapshot(snapshot: PayloadSnapshot) -> None:
+    """Restore loaded payloads after a failed optimistic write."""
+    for payload, payload_snapshot in snapshot:
+        for key in SNAPSHOT_PAYLOAD_KEYS:
+            _restore_snapshot_field(payload, payload_snapshot, key)
+
+
 def merge_runtime_state_into_group_payloads(
     groups: list[dict[str, Any]],
     *,
@@ -144,6 +179,47 @@ def merge_runtime_state_into_node_payloads(
         merge_runtime_state_into_payload(node, params, online=online)
         changed = changed or before != repr((node.get("params"), node.get("online")))
     return changed
+
+
+def _loaded_device_payloads(
+    *,
+    device_id: int,
+    devices: Mapping[int, dict[str, Any]],
+    gateways: Mapping[int, dict[str, Any]],
+    data: Mapping[int, Any],
+) -> list[dict[str, Any]]:
+    payloads: list[dict[str, Any]] = []
+    seen: set[int] = set()
+    for payload in (
+        devices.get(device_id),
+        gateways.get(device_id),
+        data.get(device_id),
+    ):
+        if not isinstance(payload, dict) or id(payload) in seen:
+            continue
+        seen.add(id(payload))
+        payloads.append(payload)
+    return payloads
+
+
+def _payload_snapshot(payload: Mapping[str, Any]) -> dict[str, Any]:
+    present_keys = {key for key in SNAPSHOT_PAYLOAD_KEYS if key in payload}
+    return {
+        **{key: deepcopy(payload.get(key)) for key in present_keys},
+        "_present_keys": present_keys,
+    }
+
+
+def _restore_snapshot_field(
+    payload: dict[str, Any],
+    snapshot: Mapping[str, Any],
+    key: str,
+) -> None:
+    present_keys = snapshot.get("_present_keys")
+    if isinstance(present_keys, set) and key in present_keys:
+        payload[key] = deepcopy(snapshot.get(key))
+    else:
+        payload.pop(key, None)
 
 
 def merge_runtime_state_into_payload(

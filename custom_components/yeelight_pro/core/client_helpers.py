@@ -5,6 +5,7 @@ from typing import Any, Awaitable, Callable, Mapping
 
 from ..const import DEFAULT_PRODUCT_SCHEMA_BATCH_SIZE
 from .client_paths import paginated_path, product_schema_path
+from .exceptions import TokenExpiredError
 from .schema_cache import product_id_from_mapping
 
 RequestCallable = Callable[..., Awaitable[dict[str, Any]]]
@@ -44,11 +45,7 @@ async def get_product_schemas(
     for i in range(0, len(product_ids), DEFAULT_PRODUCT_SCHEMA_BATCH_SIZE):
         batch = product_ids[i:i + DEFAULT_PRODUCT_SCHEMA_BATCH_SIZE]
 
-        response = await request(
-            "GET",
-            product_schema_path(batch),
-            with_auth=False,
-        )
+        response = await _request_product_schema_batch(request, batch)
 
         data = response.get("data", {})
         for schema in data.get("schemas", []):
@@ -57,6 +54,18 @@ async def get_product_schemas(
                 schemas[pid] = schema
 
     return schemas
+
+
+async def _request_product_schema_batch(
+    request: RequestCallable,
+    product_ids: list[int],
+) -> dict[str, Any]:
+    """读取产品 schema；私有部署未授权公开端点时重试认证请求."""
+    path = product_schema_path(product_ids)
+    try:
+        return await request("GET", path, with_auth=False)
+    except TokenExpiredError:
+        return await request("GET", path, with_auth=True)
 
 
 def int_or_none(value: Any) -> int | None:
@@ -74,6 +83,8 @@ def list_result(data: Mapping[str, Any]) -> list[dict[str, Any]]:
         rows = data.get("rows")
     if rows is None:
         rows = data.get("list")
+    if rows is None:
+        rows = data.get("gateways")
     return rows if isinstance(rows, list) else []
 
 

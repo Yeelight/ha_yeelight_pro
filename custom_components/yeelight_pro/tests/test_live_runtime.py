@@ -73,7 +73,7 @@ async def test_live_runtime_starts_by_default_for_cloud_entries(
     websocket = OpenFakeWebSocket()
     session = FakeSession(websocket)
     monkeypatch.setattr(
-        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
+        "custom_components.yeelight_pro.live_runtime.async_create_clientsession",
         lambda _hass: session,
     )
 
@@ -99,7 +99,7 @@ async def test_live_runtime_prefers_refreshed_runtime_token(
     coordinator.entry_data = {**entry.data, CONF_ACCESS_TOKEN: "fresh_runtime_token"}
     coordinator.client.access_token = "fresh_client_token"
     monkeypatch.setattr(
-        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
+        "custom_components.yeelight_pro.live_runtime.async_create_clientsession",
         lambda _hass: session,
     )
 
@@ -123,7 +123,7 @@ async def test_live_runtime_transport_token_provider_reads_latest_client_token(
     coordinator.client.access_token = "fresh-client-token"
     captured: dict[str, object] = {}
     monkeypatch.setattr(
-        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
+        "custom_components.yeelight_pro.live_runtime.async_create_clientsession",
         lambda _hass: FakeSession(OpenFakeWebSocket()),
     )
     monkeypatch.setattr(
@@ -153,7 +153,7 @@ async def test_live_runtime_starts_websocket_transport_when_enabled(
     session = FakeSession(websocket)
     coordinator = AsyncMock()
     monkeypatch.setattr(
-        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
+        "custom_components.yeelight_pro.live_runtime.async_create_clientsession",
         lambda _hass: session,
     )
 
@@ -225,7 +225,7 @@ async def test_live_runtime_recovers_after_initial_websocket_connect_failure(
     session = FakeSession([OSError("token-secret"), websocket])
     coordinator = AsyncMock()
     monkeypatch.setattr(
-        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
+        "custom_components.yeelight_pro.live_runtime.async_create_clientsession",
         lambda _hass: session,
     )
 
@@ -332,7 +332,7 @@ async def test_live_runtime_routes_only_websocket_prop_and_event_to_coordinator(
     fired: list[dict] = []
     hass.bus.async_listen(DEVICE_EVENT_TYPE, lambda event: fired.append(event.data))
     monkeypatch.setattr(
-        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
+        "custom_components.yeelight_pro.live_runtime.async_create_clientsession",
         lambda _hass: session,
     )
 

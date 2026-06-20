@@ -140,23 +140,32 @@ async def test_coordinator_control_group_uses_connected_lan_for_numeric_group_id
     coordinator, mock_client = _coordinator_with_device(hass)
     coordinator.groups = [{"id": 146, "name": "客厅灯组", "params": {"p": True}}]
     listener = MagicMock()
-    remove_listener = coordinator.async_add_listener(listener)
+    other_listener = MagicMock()
+    remove_listener = coordinator.async_add_listener(listener, ("group", "146"))
+    remove_other_listener = coordinator.async_add_listener(
+        other_listener,
+        ("group", "147"),
+    )
     lan_runtime = _connected_lan_runtime()
     coordinator.set_lan_runtime(lan_runtime)
 
-    await coordinator.async_control_group(
-        group_id="146",
-        params={"p": False},
-        duration=300,
-    )
+    try:
+        await coordinator.async_control_group(
+            group_id="146",
+            params={"p": False},
+            duration=300,
+        )
 
-    lan_runtime.async_set_properties.assert_awaited_once_with(
-        [{"id": 146, "nt": 4, "duration": 300, "set": {"p": False}}]
-    )
-    mock_client.control_group.assert_not_awaited()
-    assert coordinator.groups[0]["params"] == {"p": False}
-    listener.assert_called_once()
-    remove_listener()
+        lan_runtime.async_set_properties.assert_awaited_once_with(
+            [{"id": 146, "nt": 4, "duration": 300, "set": {"p": False}}]
+        )
+        mock_client.control_group.assert_not_awaited()
+        assert coordinator.groups[0]["params"] == {"p": False}
+        listener.assert_called_once()
+        other_listener.assert_not_called()
+    finally:
+        remove_listener()
+        remove_other_listener()
 
 
 @pytest.mark.asyncio
@@ -203,24 +212,40 @@ async def test_coordinator_control_node_uses_connected_lan_for_numeric_ids(
     coordinator, mock_client = _coordinator_with_device(hass)
     setattr(coordinator, collection_name, [{"id": int(node_id), "params": {"p": True}}])
     listener = MagicMock()
-    remove_listener = coordinator.async_add_listener(listener)
+    other_listener = MagicMock()
+    remove_listener = coordinator.async_add_listener(listener, (node_kind, node_id))
+    remove_other_listener = coordinator.async_add_listener(
+        other_listener,
+        (node_kind, "9999"),
+    )
     lan_runtime = _connected_lan_runtime()
     coordinator.set_lan_runtime(lan_runtime)
 
-    await coordinator.async_control_node(
-        node_kind,
-        node_id,
-        {"p": False},
-        duration=300,
-    )
+    try:
+        await coordinator.async_control_node(
+            node_kind,
+            node_id,
+            {"p": False},
+            duration=300,
+        )
 
-    lan_runtime.async_set_properties.assert_awaited_once_with(
-        [{"id": int(node_id), "nt": node_type, "duration": 300, "set": {"p": False}}]
-    )
-    mock_client.control_node_properties.assert_not_awaited()
-    assert getattr(coordinator, collection_name)[0]["params"] == {"p": False}
-    listener.assert_called_once()
-    remove_listener()
+        lan_runtime.async_set_properties.assert_awaited_once_with(
+            [
+                {
+                    "id": int(node_id),
+                    "nt": node_type,
+                    "duration": 300,
+                    "set": {"p": False},
+                }
+            ]
+        )
+        mock_client.control_node_properties.assert_not_awaited()
+        assert getattr(coordinator, collection_name)[0]["params"] == {"p": False}
+        listener.assert_called_once()
+        other_listener.assert_not_called()
+    finally:
+        remove_listener()
+        remove_other_listener()
 
 
 @pytest.mark.asyncio

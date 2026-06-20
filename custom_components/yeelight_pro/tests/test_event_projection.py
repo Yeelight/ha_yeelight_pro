@@ -186,6 +186,41 @@ def test_contact_sensor_declared_events_project_event_and_trigger() -> None:
     )
 
 
+def test_schema_event_ids_win_over_runtime_display_names() -> None:
+    """样板家庭 schema 里的显示名不稳定，已知 event_id 应优先决定事件类型。"""
+    human = projection_payload(
+        device_id="human-display-event-1",
+        category="human_sensor",
+        component_id="human_sensor",
+        state={"mv": True},
+        component_category="human_sensor",
+        product_events=[
+            {"event_id": 8, "name": "有人"},
+            {"event_id": 9, "name": "无人"},
+        ],
+    )
+    contact = projection_payload(
+        device_id="contact-display-event-1",
+        category="contact_sensor",
+        component_id="contact_sensor",
+        state={"dc": False},
+        component_category="contact_sensor",
+        product_events=[
+            {"event_id": 4, "name": "打开"},
+            {"event_id": 5, "name": "关闭"},
+        ],
+    )
+
+    assert project_events(human, domain=DOMAIN)[0].event_types == [
+        "motion_detected",
+        "motion_undetected",
+    ]
+    assert project_events(contact, domain=DOMAIN)[0].event_types == [
+        "door_open",
+        "door_close",
+    ]
+
+
 def test_scene_panel_fallback_event_uses_panel_name() -> None:
     """缺少显式 schema events 时，事件实体也不能显示为泛泛的“事件”."""
     device = projection_payload(
@@ -202,6 +237,63 @@ def test_scene_panel_fallback_event_uses_panel_name() -> None:
 
     assert len(events) == 1
     assert events[0].name == "面板事件"
+
+
+def test_multi_key_scene_panel_fallback_projects_each_key_event() -> None:
+    """多按键情景面板缺少 schema events 时也应按通道暴露事件入口。"""
+    device = projection_payload(
+        device_id="scene-panel-fallback-4",
+        category="scene_panel",
+        component_id="scene_panel_1",
+        state={},
+        component_category="scene_panel",
+    )
+    components = []
+    for index in range(1, 5):
+        components.append({
+            "component_id": f"scene_panel_{index}",
+            "category": "scene_panel",
+            "name": "scene control button",
+            "component_type": "scene_panel",
+            "properties": [],
+            "events": [],
+        })
+    device["ha_product_model"]["components"] = components
+    device["ha_device_instance"]["components"] = [
+        {
+            "component_id": f"scene_panel_{index}",
+            "category": "scene_panel",
+            "available": True,
+            "state": {},
+        }
+        for index in range(1, 5)
+    ]
+
+    events = project_events(device, domain=DOMAIN)
+    triggers = project_device_triggers(device)
+
+    assert [event.component_id for event in events] == [
+        "scene_panel_1",
+        "scene_panel_2",
+        "scene_panel_3",
+        "scene_panel_4",
+    ]
+    assert [event.name for event in events] == [
+        "按键 1 事件",
+        "按键 2 事件",
+        "按键 3 事件",
+        "按键 4 事件",
+    ]
+    assert all(
+        event.event_types == ["click", "hold", "release_after_hold"]
+        for event in events
+    )
+    assert len(triggers) == 12
+    assert [(trigger.type, trigger.subtype) for trigger in triggers[:3]] == [
+        ("scene_panel_1", "click"),
+        ("scene_panel_1", "hold"),
+        ("scene_panel_1", "release_after_hold"),
+    ]
 
 
 def test_power_alarm_schema_events_project_without_static_component_claim() -> None:

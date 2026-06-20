@@ -37,6 +37,7 @@ FORBIDDEN_NAMES = {
     "lock.py",
     "media_player.py",
     "notify.py",
+    "push_transport_dns.py",
     "scene.py",
     "text.py",
     "vacuum.py",

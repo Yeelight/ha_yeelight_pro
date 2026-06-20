@@ -11,12 +11,24 @@ from typing import TYPE_CHECKING, Any, Protocol, cast
 from aiohttp import WSCloseCode, WSMsgType
 
 from .push_transport_frames import (
+    control_frame_method,
+    control_frame_subscribe_device_count,
+    control_frame_subscribe_node_candidate_hash_samples,
+    control_frame_subscribe_node_hash_samples,
+    control_frame_subscribe_state_device_count,
+    control_frame_subscribe_state_key_samples,
+    data_frame_node_candidate_hash_samples,
+    data_frame_node_hash_samples,
     is_control_frame,
     is_push_data_payload,
     json_payload_from_message,
     payload_type,
+    private_status_reason_label,
+    private_status_result_label,
+    private_subscribe_state_payload,
     raise_for_control_error_frame,
 )
+from .push_transport_shapes import payload_shape_summary
 from .push_transport_types import PushTransportPayloadCallback, PushWebSocket
 
 _LOGGER = logging.getLogger(__name__)
@@ -122,24 +134,85 @@ class PushTransportRuntimeMixin:
         """Classify one decoded JSON payload without logging raw payload data."""
         self._health.decoded_json_messages += 1
         aggregate_payload_type = payload_type(payload)
-        if is_control_frame(payload):
+        control_frame = is_control_frame(payload)
+        if control_frame:
             self._health.control_frames += 1
+            self._health.last_control_method = control_frame_method(payload)
+            private_status = private_status_result_label(payload)
+            if private_status is not None:
+                self._health.private_status_frames += 1
+                self._health.last_private_status_result = private_status
+                private_status_reason = private_status_reason_label(payload)
+                if private_status_reason is not None:
+                    self._health.last_private_status_reason = private_status_reason
+                if private_status != "success":
+                    self._health.private_status_non_success_frames += 1
+            device_count = control_frame_subscribe_device_count(payload)
+            if device_count is not None:
+                self._health.last_subscribe_device_count = device_count
+                self._health.last_subscribe_state_device_count = (
+                    control_frame_subscribe_state_device_count(payload)
+                )
+                self._health.last_subscribe_state_key_samples = tuple(
+                    control_frame_subscribe_state_key_samples(payload)
+                )
+                self._health.last_subscribe_node_hash_samples = tuple(
+                    control_frame_subscribe_node_hash_samples(payload)
+                )
+                self._health.last_subscribe_node_candidate_hash_samples = (
+                    _freeze_node_hash_groups(
+                        control_frame_subscribe_node_candidate_hash_samples(payload)
+                    )
+                )
             _LOGGER.debug(
                 "Yeelight Pro WebSocket control frame received: type=%s control_frames=%s",
                 aggregate_payload_type,
                 self._health.control_frames,
             )
+            if self._health.last_control_method == "private_status":
+                self._health.last_unsupported_payload_shape = payload_shape_summary(
+                    payload
+                )
         raise_for_control_error_frame(payload)
+        snapshot_payload = private_subscribe_state_payload(payload)
+        if snapshot_payload is not None:
+            await self._dispatch_payload(callback, snapshot_payload, aggregate_payload_type)
+            return
         if is_push_data_payload(payload):
-            await callback(payload)
-            self._health.dispatched_payloads += 1
-            self._health.last_payload_type = aggregate_payload_type
-            self._health.last_ignored_reason = None
-            self._health.last_ignored_payload_type = None
-            self._health.last_dispatched_at = time()
+            await self._dispatch_payload(callback, payload, aggregate_payload_type)
             return
         self._health.ignored_messages += 1
-        self._record_ignored("unsupported_payload", aggregate_payload_type)
+        reason = "control_frame" if control_frame else "unsupported_payload"
+        if not control_frame:
+            self._health.unsupported_messages += 1
+            self._health.last_unsupported_payload_shape = payload_shape_summary(payload)
+        self._record_ignored(reason, aggregate_payload_type)
+
+    async def _dispatch_payload(
+        self,
+        callback: PushTransportPayloadCallback,
+        payload: dict[str, Any],
+        aggregate_payload_type: str | None,
+    ) -> None:
+        """Dispatch one state/event payload and update aggregate diagnostics."""
+        await callback(payload)
+        self._health.dispatched_payloads += 1
+        data_node_samples = tuple(data_frame_node_hash_samples(payload))
+        data_node_candidate_samples = _freeze_node_hash_groups(
+            data_frame_node_candidate_hash_samples(payload)
+        )
+        self._health.last_data_node_hash_samples = data_node_samples
+        self._health.last_data_node_candidate_hash_samples = data_node_candidate_samples
+        if data_node_samples:
+            self._health.recent_data_node_hash_samples = data_node_samples
+        if data_node_candidate_samples:
+            self._health.recent_data_node_candidate_hash_samples = (
+                data_node_candidate_samples
+            )
+        self._health.last_payload_type = aggregate_payload_type or payload_type(payload)
+        self._health.last_ignored_reason = None
+        self._health.last_ignored_payload_type = None
+        self._health.last_dispatched_at = time()
 
     def _record_close_frame(self, websocket: PushWebSocket, message_type: Any) -> None:
         """Record aggregate close-frame metadata without exposing frame data."""
@@ -208,6 +281,8 @@ class PushTransportRuntimeMixin:
         websocket = self._websocket
         if websocket is None:
             return
+        if self._connection_was_stable():
+            self._next_reconnect_delay = None
         closed = False
         with suppress(Exception):
             await websocket.close()
@@ -307,6 +382,11 @@ async def _cancel_task(task: asyncio.Task[None] | None) -> None:
         task.cancel()
         with suppress(asyncio.CancelledError):
             await task
+
+
+def _freeze_node_hash_groups(groups: list[list[str]]) -> tuple[tuple[str, ...], ...]:
+    """Return an immutable diagnostics-safe node alias hash matrix."""
+    return tuple(tuple(group) for group in groups if group)
 
 
 __all__ = ["PushTransportRuntimeMixin", "_cancel_task"]

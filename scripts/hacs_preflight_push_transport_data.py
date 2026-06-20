@@ -14,7 +14,6 @@ PUSH_TRANSPORT_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
         "subscribe_sent_count": "subscribe send count diagnostics",
         "last_subscribe_sent_at": "subscribe send timestamp diagnostics",
         "last_subscribe_error_type": "subscribe send error diagnostics",
-        "reconnect_suspended": "WebSocket reconnect pending-state diagnostics",
         "next_reconnect_delay": "planned reconnect delay diagnostics",
         "PushWebSocketSession": "session protocol seam",
         "PushWebSocket": "websocket protocol seam",
@@ -27,11 +26,8 @@ PUSH_TRANSPORT_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
     "push_transport_connection.py": {
         "PushTransportConnectionMixin": "connection helper mixin",
         "last_handshake_status": "WebSocket handshake status diagnostics",
-        "enable_ip_fallback": "fake-ip DNS fallback runtime gate",
-        "websocket_ip_fallback": "fake-ip DNS fallback helper use",
         "ws_connect": "websocket connect boundary",
-        "proxy": "explicit proxy passthrough boundary",
-        "server_hostname": "TLS SNI preservation for direct-IP fallback",
+        "_ws_connect_direct": "direct websocket connect boundary",
         "_record_handshake_failure": "safe handshake diagnostics helper",
     },
     "push_transport_runtime.py": {
@@ -39,6 +35,7 @@ PUSH_TRANSPORT_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
         "decoded_json_messages": "decoded JSON frame count diagnostics",
         "dispatched_payloads": "coordinator-dispatched payload count diagnostics",
         "ignored_messages": "ignored frame count diagnostics",
+        "unsupported_messages": "unsupported frame count diagnostics",
         "malformed_messages": "malformed frame count diagnostics",
         "control_frames": "control frame count diagnostics",
         "heartbeat_sent_count": "heartbeat send count diagnostics",
@@ -47,6 +44,13 @@ PUSH_TRANSPORT_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
         ),
         "next_heartbeat": "heartbeat frame send boundary",
         "raise_for_control_error_frame": "control frame error classifier call",
+        "data_frame_node_hash_samples": "redacted data-payload node diagnostics",
+        "control_frame_subscribe_state_key_samples": (
+            "subscribe snapshot state-shape diagnostics"
+        ),
+        "payload_shape_summary": "unsupported payload field-shape diagnostics",
+        "private_status_reason_label": "private status fixed reason classifier call",
+        "last_private_status_reason": "private status reason health field",
         "json_payload_from_message": "incoming JSON object filter",
         "_cleanup_after_reader_exit": "reader failure cleanup boundary",
         "abnormal_close_before_first_frame": "early close diagnostics reason",
@@ -64,29 +68,49 @@ PUSH_TRANSPORT_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
         "json_payload_from_message": "incoming JSON object filter",
         "is_push_data_payload": "prop/event payload type filter",
         "raise_for_control_error_frame": "control frame error classifier",
+        "data_frame_node_hash_samples": "redacted data-frame node hash helper",
         "is_result_control_payload": "method-less result control-frame classifier",
         "is_control_error_payload": "aggregate-only control result error classifier",
+        "private_status_reason_label": "private status fixed reason classifier",
         "PushControlFrameError": "aggregate-only control frame error helper",
+    },
+    "push_transport_private_frames.py": {
+        "no_subscribable_devices": "private no-subscribable-device reason",
+        "private_status_reason_label": "private status fixed reason classifier",
+    },
+    "push_transport_shapes.py": {
+        "payload_shape_summary": "field-name-only unsupported payload shape helper",
+        "_safe_keys": "shape helper copies keys only",
+        "_NESTED_MAPPING_KEYS": "known envelope key traversal",
     },
     "push_transport_types.py": {
         "PushTransportHealth": "aggregate WebSocket transport health model",
         "subscribe_sent_count": "subscribe send count health field",
         "last_subscribe_sent_at": "subscribe send timestamp health field",
         "last_subscribe_error_type": "subscribe send error health field",
+        "last_subscribe_state_device_count": (
+            "subscribe snapshot state-device count diagnostics"
+        ),
+        "last_subscribe_state_key_samples": (
+            "subscribe snapshot state-key diagnostics"
+        ),
+        "last_data_node_hash_samples": "latest data-frame node hash diagnostics",
+        "recent_data_node_hash_samples": "recent non-empty data-frame node diagnostics",
+        "last_unsupported_payload_shape": "last unsupported JSON shape diagnostics",
+        "last_private_status_reason": "private status reason health field",
         "PushWebSocketSession": "session protocol seam helper",
         "PushWebSocket": "websocket protocol seam helper",
         "PushTransportPayloadCallback": "payload callback type helper",
     },
-    "push_transport_dns.py": {
-        "FAKE_IP_NETWORKS": "fake-ip DNS range allowlist",
-        "198.18.0.0/15": "Clash fake-ip CIDR boundary",
-        "WebSocketIpFallback": "direct-IP websocket fallback target",
-        "is_fake_ip_address": "fake-ip detector",
-        "websocket_ip_fallback": "fake-ip DNS fallback helper",
-        "resolve_host_ips": "local resolver fake-ip detection",
-        "resolve_public_dns_ips": "public DNS fallback resolver",
-        "server_hostname": "TLS SNI preservation for direct-IP fallback",
-        '"Host"': "original Host header preservation",
+    "push_topology_diagnostics.py": {
+        "push_topology_diagnostics": "push topology diagnostics helper",
+        "loaded_topology_node_hash_count": "loaded topology hash count diagnostics",
+        "last_subscribe_nodes_matching_loaded_topology": (
+            "subscribe snapshot topology match diagnostics"
+        ),
+        "recent_data_nodes_matching_loaded_topology": (
+            "recent data payload topology match diagnostics"
+        ),
     },
     "push.py": {
         "safe_runtime_event_params": "push event privacy filter",
@@ -98,10 +122,13 @@ PUSH_TRANSPORT_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
         "RuntimeEventDeduper": "bounded WebSocket event dedupe guard",
         "runtime_event_dedupe_key": "privacy-safe event dedupe key",
         "MAX_RUNTIME_EVENT_DEDUPE_KEYS": "bounded event dedupe storage",
-        "apply_property_updates": "runtime property merge path",
         "dispatch_event_payloads": "runtime event dispatch path",
         "infer_event_component_id": "schema event component inference",
         "property_updates_from_adapter": "adapter update conversion",
+    },
+    "core/runtime_bridge_properties.py": {
+        "apply_property_updates": "runtime property merge path",
+        "RuntimePropertyApplyMixin": "runtime property update helper mixin",
     },
     "tests/test_push_contract.py": {
         "Bearer fake-token": "Bearer prefix regression coverage",
@@ -128,6 +155,17 @@ PUSH_TRANSPORT_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
         ),
         "test_push_reconnect_policy_rejects_invalid_values": (
             "reconnect policy validation coverage"
+        ),
+    },
+    "tests/test_push_event_routing.py": {
+        "test_coordinator_deduplicates_replayed_push_event_message_id": (
+            "push event replay dedupe coverage"
+        ),
+        "test_coordinator_dedupes_push_events_by_message_and_event_identity": (
+            "push event dedupe identity coverage"
+        ),
+        "test_coordinator_does_not_dedupe_push_events_without_message_id": (
+            "push event missing-message-id passthrough coverage"
         ),
     },
     "tests/test_push_manager.py": {
@@ -205,15 +243,22 @@ PUSH_TRANSPORT_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
             "method-less production ACK redaction fixture"
         ),
     },
-    "tests/test_push_transport_proxy.py": {
-        "test_push_transport_passes_configured_proxy_to_ws_connect": (
-            "explicit proxy passthrough coverage"
+    "tests/test_push_transport_private_frames.py": {
+        "test_push_transport_classifies_no_subscribable_devices_reason": (
+            "private no-subscribable-device status coverage"
         ),
+    },
+    "tests/test_push_transport_private_snapshot_state.py": {
+        "test_private_subscribe_snapshot_state_dispatches_prop_payload": (
+            "private subscribe snapshot state dispatch coverage"
+        ),
+        "test_private_subscribe_snapshot_state_refreshes_switch_entity": (
+            "private subscribe snapshot entity refresh coverage"
+        ),
+    },
+    "tests/test_push_transport_proxy.py": {
         "test_push_transport_does_not_try_implicit_proxy_fallback": (
             "implicit proxy fallback rejection coverage"
-        ),
-        "test_push_transport_uses_only_explicit_proxy": (
-            "explicit-only proxy coverage"
         ),
         "test_push_transport_direct_connect_has_no_proxy_health_flags": (
             "direct connect proxy health coverage"
@@ -321,39 +366,19 @@ PUSH_TRANSPORT_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
         "test_live_runtime_uses_private_deployment_push_endpoint": (
             "private deployment live push endpoint coverage"
         ),
-        "test_live_runtime_enables_private_fake_ip_detection_without_proxy": (
-            "private fake-ip detection without proxy coverage"
+        "test_live_runtime_uses_direct_private_websocket_without_proxy_fallback": (
+            "private direct WebSocket without proxy fallback coverage"
         ),
-        "enable_ip_fallback": "private fake-ip fallback runtime gate coverage",
         "test_live_runtime_uses_region_push_endpoint_for_cloud_entries": (
             "regional cloud push endpoint coverage"
         ),
         "test_live_runtime_falls_back_to_private_api_host_for_legacy_entries": (
             "legacy private entry push fallback coverage"
         ),
-        "ws-dev.yeedev.com": "private push endpoint example coverage",
+        "192.168.1.202:7779": "private push endpoint example coverage",
         "push-sg.yeelight.com": "Singapore push endpoint test coverage",
         "push-us.yeelight.com": "US push endpoint test coverage",
         "push-de.yeelight.com": "EU push endpoint test coverage",
-        "ws-test.yeedev.com": "private test push endpoint override coverage",
-    },
-    "tests/test_push_transport_dns.py": {
-        "test_fake_ip_detection_matches_clash_docker_range": (
-            "fake-ip CIDR detector coverage"
-        ),
-        "test_push_transport_uses_real_ip_fallback_for_wss_fake_ip": (
-            "wss direct-IP fake-ip fallback coverage"
-        ),
-        "test_push_transport_uses_real_ip_fallback_for_ws_fake_ip": (
-            "ws direct-IP fake-ip fallback coverage"
-        ),
-        "test_push_transport_keeps_normal_dns_path": (
-            "normal DNS no-rewrite coverage"
-        ),
-        "198.18.0.8": "fake-ip fixture coverage",
-        "resolve_public_dns_ips": "public DNS fallback resolver coverage",
-        "server_hostname": "TLS SNI preservation coverage",
-        '"Host"': "original Host header preservation coverage",
-        "enable_ip_fallback=True": "explicit fake-ip fallback opt-in coverage",
+        "192.168.0.89:7779": "private test push endpoint override coverage",
     },
 }

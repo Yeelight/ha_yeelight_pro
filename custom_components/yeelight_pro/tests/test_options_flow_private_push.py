@@ -66,7 +66,7 @@ async def test_options_flow_private_push_change_updates_entry_data(
 
     result = await flow.async_step_general({
         **mock_config_entry.options,
-        CONF_PRIVATE_PUSH_DOMAIN: "ws://ws-test.yeedev.com",
+        CONF_PRIVATE_PUSH_DOMAIN: "ws://192.168.0.89:7779",
     })
 
     assert result["type"] == FlowResultType.FORM
@@ -80,7 +80,46 @@ async def test_options_flow_private_push_change_updates_entry_data(
     update = mock_hass.config_entries.async_update_entry.call_args
     assert update.args == (mock_config_entry,)
     assert update.kwargs["data"][CONF_PRIVATE_PUSH_DOMAIN] == (
-        "ws://ws-test.yeedev.com/ws"
+        "ws://192.168.0.89:7779/ws"
+    )
+
+
+@pytest.mark.asyncio
+async def test_options_flow_repairs_known_private_push_cross_route(
+    mock_config_entry,
+    mock_hass,
+) -> None:
+    """OptionsFlow 保存时修正 api-dev 到 api-test push 的历史误配。"""
+    mock_config_entry.data.update({
+        CONF_CONNECTION_MODE: CONNECTION_MODE_PRIVATE,
+        CONF_PRIVATE_DOMAIN: "http://api-dev.yeedev.com",
+        CONF_PRIVATE_PUSH_DOMAIN: "",
+    })
+    mock_config_entry.options = {
+        CONF_SCAN_INTERVAL: 15,
+        CONF_DEBUG_MODE: False,
+        CONF_HIDE_UNKNOWN_ENTITIES: True,
+        CONF_TOPOLOGY_CHANGE_REPAIRS: True,
+        CONF_LIVE_UPDATES: True,
+    }
+    mock_hass.config_entries.async_update_entry = MagicMock()
+    flow = YeelightProOptionsFlow(mock_config_entry)
+    flow.hass = mock_hass
+
+    result = await flow.async_step_general({
+        **mock_config_entry.options,
+        CONF_PRIVATE_PUSH_DOMAIN: "ws://192.168.0.89:7779/ws",
+    })
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "confirm_reload"
+
+    result = await flow.async_step_confirm_reload({})
+
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    update = mock_hass.config_entries.async_update_entry.call_args
+    assert update.kwargs["data"][CONF_PRIVATE_PUSH_DOMAIN] == (
+        "ws://192.168.1.202:7779/ws"
     )
 
 

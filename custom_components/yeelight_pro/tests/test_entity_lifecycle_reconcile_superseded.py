@@ -101,6 +101,76 @@ async def test_reconcile_preserves_user_named_stale_main_owned_helper(
     }
 
 
+@pytest.mark.asyncio
+async def test_reconcile_disables_stale_helper_replaced_by_new_helper_domain(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """同一属性从旧 helper 域迁移到新 helper 域时，应自动禁用旧实体."""
+    scope = "private_endpoint_scope_house_1"
+    stale_uid = f"yeelight_pro_{scope}_device_1001_other_mpml_switch"
+    active_uid = f"yeelight_pro_{scope}_device_1001_other_mpml_number"
+    registry = FakeEntityRegistry([
+        registry_entry(
+            unique_id=stale_uid,
+            entity_id="switch.p20_music_list",
+            domain="switch",
+            original_name="音乐播放器歌单ID",
+        )
+    ])
+    coordinator = lifecycle_coordinator(data={1001: _music_number_payload(scope)})
+    patch_entity_registry(monkeypatch, registry)
+
+    active_unique_ids = await async_reconcile_entity_registry(
+        SimpleNamespace(),
+        SimpleNamespace(entry_id="entry_1"),
+        coordinator,
+    )
+
+    assert active_uid in active_unique_ids
+    assert registry.updated_entities == [
+        (
+            "switch.p20_music_list",
+            {"disabled_by": entity_lifecycle.er.RegistryEntryDisabler.INTEGRATION},
+        )
+    ]
+    assert getattr(coordinator, "_yeelight_pro_pending_stale_entity_keys") == set()
+
+
+@pytest.mark.asyncio
+async def test_reconcile_disables_stale_component_event_replaced_by_main_switch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """旧的 switch_N_event 残留应在当前 switch_N 主实体存在时自动禁用."""
+    scope = "private_endpoint_scope_house_1"
+    stale_uid = f"yeelight_pro_{scope}_device_1002_switch_1_event"
+    active_uid = f"yeelight_pro_{scope}_device_1002_switch_1"
+    registry = FakeEntityRegistry([
+        registry_entry(
+            unique_id=stale_uid,
+            entity_id="event.scene_panel_key_1",
+            domain="event",
+            original_name="按键 1 事件",
+        )
+    ])
+    coordinator = lifecycle_coordinator(data={1002: _switch_payload(scope)})
+    patch_entity_registry(monkeypatch, registry)
+
+    active_unique_ids = await async_reconcile_entity_registry(
+        SimpleNamespace(),
+        SimpleNamespace(entry_id="entry_1"),
+        coordinator,
+    )
+
+    assert active_uid in active_unique_ids
+    assert registry.updated_entities == [
+        (
+            "event.scene_panel_key_1",
+            {"disabled_by": entity_lifecycle.er.RegistryEntryDisabler.INTEGRATION},
+        )
+    ]
+    assert getattr(coordinator, "_yeelight_pro_pending_stale_entity_keys") == set()
+
+
 def _scoped_climate_payload(scope: str) -> dict:
     """Return a private-scope climate payload where acdfltr belongs to climate."""
     payload = projection_payload(
@@ -144,5 +214,53 @@ def _scoped_climate_payload(scope: str) -> dict:
             "property_type": "int",
             "value_range": {"min": 0, "max": 255, "step": 1},
         },
+    ]
+    return payload
+
+
+def _music_number_payload(scope: str) -> dict:
+    """Return a music-component payload where mpml is now a number control."""
+    payload = projection_payload(
+        device_id="1001",
+        category="other",
+        component_id="other",
+        component_category="other",
+        state={},
+        params={},
+    )
+    payload[IDENTITY_SCOPE_KEY] = scope
+    payload["ha_device_instance"][IDENTITY_SCOPE_KEY] = scope
+    payload["ha_product_model"]["components"][0]["properties"] = [
+        {
+            "prop_id": "mpml",
+            "name": "音乐播放器歌单ID",
+            "access": "read_write",
+            "property_type": "int",
+            "format": "uint16",
+            "value_range": {"min": 0, "max": 65535, "step": 1},
+        },
+    ]
+    return payload
+
+
+def _switch_payload(scope: str) -> dict:
+    """Return a switch payload whose old event helper is superseded."""
+    payload = projection_payload(
+        device_id="1002",
+        category="relay_switch",
+        component_id="switch_1",
+        component_category="switch",
+        state={"p": False},
+        params={"1-p": False},
+    )
+    payload[IDENTITY_SCOPE_KEY] = scope
+    payload["ha_device_instance"][IDENTITY_SCOPE_KEY] = scope
+    payload["ha_device_instance"]["extensions"] = {
+        "component_state_keys": {
+            "switch_1": {"p": "1-p"},
+        }
+    }
+    payload["ha_product_model"]["components"][0]["properties"] = [
+        {"prop_id": "p", "access": "read_write", "property_type": "bool"},
     ]
     return payload

@@ -38,11 +38,6 @@ def async_track_dynamic_entities(
     def _add_missing_entities() -> None:
         nonlocal last_topology_generation
         current_topology_generation = _topology_generation(coordinator)
-        if (
-            current_topology_generation is not None
-            and current_topology_generation == last_topology_generation
-        ):
-            return
         last_topology_generation = current_topology_generation
 
         registry_entries = _registry_entries_by_unique_id(

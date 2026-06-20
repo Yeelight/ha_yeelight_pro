@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from custom_components.yeelight_pro.push_manager import PushManager
+from custom_components.yeelight_pro.push_transport_frames import safe_node_id_hash
 
 from .push_manager_helpers import FakeTransport, FakeTransportHealth, base_health
 
@@ -44,6 +45,36 @@ async def test_push_manager_preserves_recoverable_start_error_type() -> None:
         running=True,
         started_count=1,
         last_error_type="OSError",
+    )
+
+
+@pytest.mark.asyncio
+async def test_push_manager_clears_recovered_start_error_when_transport_open() -> None:
+    """transport 已恢复连接后，不应继续暴露旧的启动错误."""
+
+    class RecoveredStartTransport(FakeTransport):
+        @property
+        def health(self) -> FakeTransportHealth:
+            return FakeTransportHealth(
+                {
+                    "running": True,
+                    "websocket_open": True,
+                    "received_messages": 1,
+                    "last_runtime_error_type": None,
+                }
+            )
+
+        async def async_start(self, callback) -> None:
+            await super().async_start(callback)
+            self.last_start_error_type = "ConnectionTimeoutError"
+
+    manager = PushManager(AsyncMock(), RecoveredStartTransport())
+
+    await manager.async_start()
+
+    assert manager.health.as_dict() == base_health(
+        running=True,
+        started_count=1,
     )
 
 
@@ -96,7 +127,211 @@ async def test_push_manager_exposes_transport_health_when_available() -> None:
         "decoded_json_messages": 2,
         "dispatched_payloads": 1,
         "malformed_messages": 0,
+        "loaded_topology_node_hash_count": 0,
     }
+
+
+@pytest.mark.asyncio
+async def test_push_manager_reports_subscribe_snapshot_topology_match() -> None:
+    """订阅快照节点样本应能和当前拓扑做脱敏匹配。"""
+
+    class TransportWithSubscribeHealth(FakeTransport):
+        @property
+        def health(self) -> FakeTransportHealth:
+            return FakeTransportHealth(
+                {
+                    "last_subscribe_node_hash_samples": [
+                        "legacy-row-hash",
+                        "missing-safe-hash",
+                    ],
+                    "last_subscribe_node_candidate_hash_samples": [
+                        ["legacy-row-hash", safe_node_id_hash(228215)],
+                        ["missing-safe-hash"],
+                    ],
+                    "last_subscribe_device_count": 2,
+                    "last_subscribe_state_device_count": 0,
+                    "last_subscribe_state_key_samples": [],
+                }
+            )
+
+    coordinator = AsyncMock()
+    coordinator.devices = {228215: {"id": 228215}}
+    coordinator.gateways = {}
+    coordinator.data = {}
+    coordinator.groups = []
+    coordinator.rooms = []
+    coordinator.areas = []
+    coordinator.houses = []
+    manager = PushManager(coordinator, TransportWithSubscribeHealth())
+
+    await manager.async_start()
+
+    assert manager.transport_health == {
+        "last_subscribe_node_hash_samples": [
+            "legacy-row-hash",
+            "missing-safe-hash",
+        ],
+        "last_subscribe_node_candidate_hash_samples": [
+            ["legacy-row-hash", safe_node_id_hash(228215)],
+            ["missing-safe-hash"],
+        ],
+        "last_subscribe_device_count": 2,
+        "last_subscribe_state_device_count": 0,
+        "last_subscribe_state_key_samples": [],
+        "loaded_topology_node_hash_count": 1,
+        "last_subscribe_nodes_matching_loaded_topology": 1,
+        "last_subscribe_nodes_not_loaded": 1,
+    }
+
+
+@pytest.mark.asyncio
+async def test_push_manager_reports_data_payload_topology_match() -> None:
+    """数据帧节点样本应能和当前拓扑做脱敏匹配。"""
+
+    class TransportWithDataPayloadHealth(FakeTransport):
+        @property
+        def health(self) -> FakeTransportHealth:
+            return FakeTransportHealth(
+                {
+                    "last_data_node_hash_samples": [
+                        "legacy-row-hash",
+                        "missing-safe-hash",
+                    ],
+                    "last_data_node_candidate_hash_samples": [
+                        ["legacy-row-hash", safe_node_id_hash(228215)],
+                        ["missing-safe-hash"],
+                    ],
+                    "recent_data_node_hash_samples": [
+                        "recent-row-hash",
+                        "missing-safe-hash",
+                    ],
+                    "recent_data_node_candidate_hash_samples": [
+                        ["recent-row-hash", safe_node_id_hash(228215)],
+                        ["missing-safe-hash"],
+                    ],
+                    "dispatched_payloads": 1,
+                }
+            )
+
+    coordinator = AsyncMock()
+    coordinator.devices = {228215: {"id": 228215}}
+    coordinator.gateways = {}
+    coordinator.data = {}
+    coordinator.groups = []
+    coordinator.rooms = []
+    coordinator.areas = []
+    coordinator.houses = []
+    manager = PushManager(coordinator, TransportWithDataPayloadHealth())
+
+    await manager.async_start()
+
+    assert manager.transport_health == {
+        "last_data_node_hash_samples": [
+            "legacy-row-hash",
+            "missing-safe-hash",
+        ],
+        "last_data_node_candidate_hash_samples": [
+            ["legacy-row-hash", safe_node_id_hash(228215)],
+            ["missing-safe-hash"],
+        ],
+        "dispatched_payloads": 1,
+        "loaded_topology_node_hash_count": 1,
+        "last_data_nodes_matching_loaded_topology": 1,
+        "last_data_nodes_not_loaded": 1,
+        "recent_data_node_hash_samples": [
+            "recent-row-hash",
+            "missing-safe-hash",
+        ],
+        "recent_data_node_candidate_hash_samples": [
+            ["recent-row-hash", safe_node_id_hash(228215)],
+            ["missing-safe-hash"],
+        ],
+        "recent_data_nodes_matching_loaded_topology": 1,
+        "recent_data_nodes_not_loaded": 1,
+    }
+
+
+@pytest.mark.asyncio
+async def test_push_manager_matches_topology_aliases_from_loaded_payloads() -> None:
+    """拓扑匹配应使用 loaded payload 中的 OpenAPI/LAN ID aliases。"""
+
+    class TransportWithSubscribeHealth(FakeTransport):
+        @property
+        def health(self) -> FakeTransportHealth:
+            return FakeTransportHealth(
+                {
+                    "last_subscribe_node_candidate_hash_samples": [
+                        [safe_node_id_hash("internal-row"), safe_node_id_hash("res-1")],
+                        [safe_node_id_hash("missing-row")],
+                    ],
+                    "last_subscribe_device_count": 2,
+                    "last_subscribe_state_device_count": 0,
+                    "last_subscribe_state_key_samples": [],
+                }
+            )
+
+    coordinator = AsyncMock()
+    coordinator.devices = {
+        228215: {"id": 228215, "resId": "res-1", "deviceId": "device-1"}
+    }
+    coordinator.gateways = {}
+    coordinator.data = {}
+    coordinator.groups = []
+    coordinator.rooms = []
+    coordinator.areas = []
+    coordinator.houses = []
+    manager = PushManager(coordinator, TransportWithSubscribeHealth())
+
+    await manager.async_start()
+
+    health = manager.transport_health or {}
+    assert health["loaded_topology_node_hash_count"] == 3
+    assert health["last_subscribe_nodes_matching_loaded_topology"] == 1
+    assert health["last_subscribe_nodes_not_loaded"] == 1
+
+
+@pytest.mark.asyncio
+async def test_push_manager_does_not_match_device_payload_by_room_relation() -> None:
+    """当前设备节点样本未命中时，不能因拓扑中有房间而误报为已加载."""
+
+    class TransportWithRelationOnlyHealth(FakeTransport):
+        @property
+        def health(self) -> FakeTransportHealth:
+            return FakeTransportHealth(
+                {
+                    "last_subscribe_node_candidate_hash_samples": [
+                        [safe_node_id_hash("internal-row")],
+                    ],
+                    "last_data_node_candidate_hash_samples": [
+                        [safe_node_id_hash("internal-row")],
+                    ],
+                    "recent_data_node_candidate_hash_samples": [
+                        [safe_node_id_hash("internal-row")],
+                    ],
+                    "dispatched_payloads": 1,
+                }
+            )
+
+    coordinator = AsyncMock()
+    coordinator.devices = {}
+    coordinator.gateways = {}
+    coordinator.data = {}
+    coordinator.groups = []
+    coordinator.rooms = [{"id": 228217, "name": "Room"}]
+    coordinator.areas = []
+    coordinator.houses = []
+    manager = PushManager(coordinator, TransportWithRelationOnlyHealth())
+
+    await manager.async_start()
+
+    health = manager.transport_health or {}
+    assert health["loaded_topology_node_hash_count"] == 1
+    assert health["last_subscribe_nodes_matching_loaded_topology"] == 0
+    assert health["last_subscribe_nodes_not_loaded"] == 1
+    assert health["last_data_nodes_matching_loaded_topology"] == 0
+    assert health["last_data_nodes_not_loaded"] == 1
+    assert health["recent_data_nodes_matching_loaded_topology"] == 0
+    assert health["recent_data_nodes_not_loaded"] == 1
 
 
 @pytest.mark.asyncio

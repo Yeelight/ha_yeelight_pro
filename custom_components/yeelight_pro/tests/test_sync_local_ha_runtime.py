@@ -18,6 +18,7 @@ def test_iter_runtime_files_excludes_tests_and_generated_artifacts(
     (source / "__pycache__").mkdir()
     (source / "__init__.py").write_text("", encoding="utf-8")
     (source / "ha_device_registry.py").write_text("", encoding="utf-8")
+    (source / "push_transport_dns.py").write_text("", encoding="utf-8")
     (source / "text.py").write_text("", encoding="utf-8")
     (source / "tests" / "test_runtime.py").write_text("", encoding="utf-8")
     (source / "__pycache__" / "__init__.pyc").write_bytes(b"cache")
@@ -68,6 +69,62 @@ def test_sync_runtime_files_removes_stale_runtime_files(tmp_path: Path) -> None:
     assert (install_root / "__init__.py").read_text(encoding="utf-8") == "current"
     assert not (install_root / "stale_runtime.py").exists()
     assert not (install_root / "__pycache__").exists()
+
+
+def test_planned_runtime_sync_reports_changes_without_mutation(tmp_path: Path) -> None:
+    """dry-run 计划只能报告差异，不能改动本地 HA 安装态."""
+    source = tmp_path / "source" / "custom_components" / "yeelight_pro"
+    config_dir = tmp_path / "config"
+    install_root = config_dir / "custom_components" / "yeelight_pro"
+    source.mkdir(parents=True)
+    install_root.mkdir(parents=True)
+    (source / "__init__.py").write_text("current", encoding="utf-8")
+    (source / "new_runtime.py").write_text("new", encoding="utf-8")
+    (install_root / "__init__.py").write_text("old", encoding="utf-8")
+    (install_root / "stale_runtime.py").write_text("old", encoding="utf-8")
+    (install_root / "__pycache__").mkdir()
+    (install_root / "__pycache__" / "stale_runtime.pyc").write_bytes(b"cache")
+
+    original_source_root = sync_local_ha_runtime.SOURCE_COMPONENT_ROOT
+    sync_local_ha_runtime.SOURCE_COMPONENT_ROOT = source
+    try:
+        plan = sync_local_ha_runtime.planned_runtime_sync(config_dir)
+    finally:
+        sync_local_ha_runtime.SOURCE_COMPONENT_ROOT = original_source_root
+
+    assert plan["source_file_count"] == 2
+    assert plan["changed_or_missing_files"] == ["__init__.py", "new_runtime.py"]
+    assert plan["stale_files"] == ["stale_runtime.py"]
+    assert plan["cache_artifact_count"] == 1
+    assert (install_root / "__init__.py").read_text(encoding="utf-8") == "old"
+    assert (install_root / "stale_runtime.py").exists()
+    assert (install_root / "__pycache__" / "stale_runtime.pyc").exists()
+
+
+def test_sync_script_dry_run_is_directly_executable(tmp_path: Path) -> None:
+    """dry-run CLI 应输出同步计划并保持安装态不变."""
+    config_dir = tmp_path / "config"
+    install_root = config_dir / "custom_components" / "yeelight_pro"
+    install_root.mkdir(parents=True)
+    (install_root / "stale_runtime.py").write_text("old", encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/sync_local_ha_runtime.py",
+            "--config-dir",
+            str(config_dir),
+            "--dry-run",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert "Changed or missing files:" in result.stdout
+    assert "Stale files:" in result.stdout
+    assert (install_root / "stale_runtime.py").exists()
 
 
 def test_sync_script_fails_when_install_target_still_contains_tests(

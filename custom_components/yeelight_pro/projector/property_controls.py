@@ -92,7 +92,7 @@ class HASwitchControlProjection:
     unique_id: str
     name: str | None
     available: bool
-    is_on: bool
+    is_on: bool | None
     on_value: Any
     off_value: Any
     control_key: str
@@ -292,6 +292,12 @@ def _project_switch(
         return None
 
     on_value, off_value = switch_command_values(prop)
+    raw_value = component_property_value(
+        _params(device_payload),
+        instance,
+        component,
+        prop.prop_id,
+    )
     unique_id_prefix = payload_entity_unique_id_prefix(device_payload, domain=domain)
     return HASwitchControlProjection(
         component_id=f"{component.component_id}_{prop.prop_id}_switch",
@@ -299,15 +305,7 @@ def _project_switch(
         unique_id=f"{unique_id_prefix}_{instance.device_id}_{component.component_id}_{prop.prop_id}_switch",
         name=control_name(component, prop, device_payload=device_payload),
         available=control_available(device_payload, instance, component),
-        is_on=to_bool(
-            component_property_value(
-                _params(device_payload),
-                instance,
-                component,
-                prop.prop_id,
-            ),
-            default=to_bool(prop.default, default=False),
-        ),
+        is_on=_switch_state(raw_value, prop),
         on_value=on_value,
         off_value=off_value,
         control_key=control_key(instance, component.component_id, prop.prop_id),
@@ -315,6 +313,13 @@ def _project_switch(
         icon=switch_icon(prop),
         entity_category=entity_category_for_property(prop.prop_id),
     )
+
+
+def _switch_state(value: Any, prop: PropertyModel) -> bool | None:
+    """Return bool state, preserving unknown when no value/default exists."""
+    if value is None and prop.default is None:
+        return None
+    return to_bool(value, default=to_bool(prop.default, default=False))
 
 
 def _log_property_control_skip(

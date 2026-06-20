@@ -38,7 +38,6 @@ from .light_helpers import (
     _project_color_temp,
     _project_color_temp_kelvin,
     _project_icon,
-    _project_light_name,
     _project_max_mireds,
     _project_min_mireds,
     _project_rgb_color,
@@ -48,6 +47,7 @@ from .light_helpers import (
     _resolve_supported_color_modes,
     _state_has_light_property,
 )
+from .light_name_helpers import _project_light_name
 from .platform_evidence import (
     component_category,
     component_has_light_evidence,

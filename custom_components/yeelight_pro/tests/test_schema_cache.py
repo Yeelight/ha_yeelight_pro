@@ -11,6 +11,7 @@ from custom_components.yeelight_pro.core.schema_cache import (
     normalize_product_ids,
     product_ids_from_items,
 )
+from custom_components.yeelight_pro.core.exceptions import TokenExpiredError
 
 
 def test_normalize_product_ids_keeps_order_and_deduplicates() -> None:
@@ -228,3 +229,15 @@ async def test_cache_force_refresh_failure_falls_back_to_cached_schema() -> None
     fetcher.assert_awaited_once_with([100])
     assert schemas == {100: {"pid": 100, "name": "Cached Schema"}}
 
+
+@pytest.mark.asyncio
+async def test_cache_token_error_falls_back_to_cached_schema() -> None:
+    """私有 schema 端点认证失败时，应复用缓存避免实体投影退化."""
+    cache = ProductSchemaCache()
+    cache.update({100: {"pid": 100, "name": "Cached Schema"}})
+    fetcher = AsyncMock(side_effect=TokenExpiredError("schema endpoint requires auth"))
+
+    schemas = await cache.async_get_with_fallback([100, 101], fetcher)
+
+    fetcher.assert_awaited_once_with([101])
+    assert schemas == {100: {"pid": 100, "name": "Cached Schema"}}

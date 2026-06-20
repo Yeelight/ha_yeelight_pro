@@ -73,7 +73,10 @@ async def test_coordinator_applies_wrapped_push_property_updates_to_cover(
         nonlocal updates
         updates += 1
 
-    remove_listener = coordinator.async_add_listener(_listener)
+    remove_listener = coordinator.async_add_listener(
+        _listener,
+        ("device", "228219"),
+    )
 
     events = await coordinator.async_handle_push_payload(
         {
@@ -172,7 +175,10 @@ async def test_coordinator_applies_push_property_updates_with_res_id_alias(
         nonlocal updates
         updates += 1
 
-    remove_listener = coordinator.async_add_listener(_listener)
+    remove_listener = coordinator.async_add_listener(
+        _listener,
+        ("device", "228220"),
+    )
 
     events = await coordinator.async_handle_push_payload(
         {
@@ -246,7 +252,10 @@ async def test_coordinator_applies_push_online_only_update_to_cover(
         nonlocal updates
         updates += 1
 
-    remove_listener = coordinator.async_add_listener(_listener)
+    remove_listener = coordinator.async_add_listener(
+        _listener,
+        ("device", "228221"),
+    )
 
     events = await coordinator.async_handle_push_payload(
         {

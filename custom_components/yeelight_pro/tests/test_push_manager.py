@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from unittest.mock import AsyncMock
 
 import pytest
@@ -59,10 +60,20 @@ async def test_push_manager_records_aggregate_payload_result() -> None:
     coordinator = AsyncMock()
     coordinator.last_push_property_summary = RuntimePropertyUpdateSummary(
         input_updates=3,
+        empty_param_updates=1,
         applied_device_updates=1,
         unknown_device_updates=1,
         group_updates=0,
         topology_node_updates=1,
+        routed_updates=2,
+        applied_node_samples=(
+            {
+                "node_id_hash": "applied-safe-hash",
+                "node_type": 2,
+                "param_keys": ["p"],
+                "matched_collections": ["devices"],
+            },
+        ),
         unknown_node_samples=(
             {
                 "node_id_hash": "safe-hash",
@@ -73,6 +84,7 @@ async def test_push_manager_records_aggregate_payload_result() -> None:
                 "device_import_filter_enabled": False,
             },
         ),
+        affected_contexts=(("device", "50018395"),),
         changed=True,
     )
     coordinator.async_handle_push_payload.return_value = ["event-1", "event-2"]
@@ -88,10 +100,45 @@ async def test_push_manager_records_aggregate_payload_result() -> None:
         handled_payloads=1,
         changed_payloads=1,
         property_updates=3,
+        empty_param_updates=1,
         applied_property_updates=1,
         unknown_property_updates=1,
+        affected_context_count=1,
+        affected_context_samples=[
+            {
+                "kind": "device",
+                "node_id_hash": "ddabe06356586fa8",
+            }
+        ],
         topology_node_updates=1,
+        routed_property_updates=2,
+        last_applied_node_samples=[
+            {
+                "node_id_hash": "applied-safe-hash",
+                "node_type": 2,
+                "param_keys": ["p"],
+                "matched_collections": ["devices"],
+            }
+        ],
         last_unknown_node_samples=[
+            {
+                "node_id_hash": "safe-hash",
+                "node_type": None,
+                "param_keys": ["p"],
+                "matched_collections": [],
+                "reason": "not_loaded",
+                "device_import_filter_enabled": False,
+            }
+        ],
+        recent_applied_node_samples=[
+            {
+                "node_id_hash": "applied-safe-hash",
+                "node_type": 2,
+                "param_keys": ["p"],
+                "matched_collections": ["devices"],
+            }
+        ],
+        recent_unknown_node_samples=[
             {
                 "node_id_hash": "safe-hash",
                 "node_type": None,
@@ -103,8 +150,74 @@ async def test_push_manager_records_aggregate_payload_result() -> None:
         ],
         dispatched_events=2,
         last_property_update_count=3,
+        last_applied_property_update_count=1,
+        last_unknown_property_update_count=1,
+        last_topology_node_update_count=1,
+        last_routed_property_update_count=2,
         last_dispatched_event_count=2,
         last_payload_changed=True,
+        last_payload_handle_duration_ms=manager.health.last_payload_handle_duration_ms,
+        last_payload_type="prop",
+        last_payload_at=manager.health.last_payload_at,
+    )
+    assert manager.health.last_payload_at is not None
+
+
+@pytest.mark.asyncio
+async def test_push_manager_preserves_recent_non_empty_node_samples() -> None:
+    """后续空帧不应覆盖最近一次非空节点样本，便于追踪偶发未命中。"""
+    unknown_sample = {
+        "node_id_hash": "unknown-safe-hash",
+        "node_type": None,
+        "param_keys": ["1-p"],
+        "matched_collections": [],
+        "reason": "not_loaded",
+        "device_import_filter_enabled": False,
+    }
+    applied_sample = {
+        "node_id_hash": "applied-safe-hash",
+        "node_type": 2,
+        "param_keys": ["2-p"],
+        "matched_collections": ["devices", "data"],
+    }
+    coordinator = AsyncMock()
+    coordinator.async_handle_push_payload.return_value = []
+    transport = FakeTransport()
+    manager = PushManager(coordinator, transport)
+
+    await manager.async_start()
+    coordinator.last_push_property_summary = RuntimePropertyUpdateSummary(
+        input_updates=2,
+        applied_device_updates=1,
+        unknown_device_updates=1,
+        routed_updates=1,
+        applied_node_samples=(applied_sample,),
+        unknown_node_samples=(unknown_sample,),
+        changed=True,
+    )
+    await transport.emit({"type": "prop", "nodes": [{"id": 1}]})
+    coordinator.last_push_property_summary = RuntimePropertyUpdateSummary(
+        input_updates=0,
+        changed=False,
+    )
+    await transport.emit({"type": "prop", "nodes": []})
+
+    assert manager.health.as_dict() == base_health(
+        running=True,
+        started_count=1,
+        handled_payloads=2,
+        changed_payloads=1,
+        unchanged_payloads=1,
+        property_updates=2,
+        applied_property_updates=1,
+        unknown_property_updates=1,
+        routed_property_updates=1,
+        last_applied_node_samples=[],
+        last_unknown_node_samples=[],
+        recent_applied_node_samples=[applied_sample],
+        recent_unknown_node_samples=[unknown_sample],
+        last_routed_property_update_count=0,
+        last_payload_handle_duration_ms=manager.health.last_payload_handle_duration_ms,
         last_payload_type="prop",
         last_payload_at=manager.health.last_payload_at,
     )
@@ -131,6 +244,7 @@ async def test_push_manager_records_unchanged_payloads() -> None:
         started_count=1,
         handled_payloads=1,
         unchanged_payloads=1,
+        last_payload_handle_duration_ms=manager.health.last_payload_handle_duration_ms,
         last_payload_type="prop",
         last_payload_at=manager.health.last_payload_at,
     )
@@ -165,6 +279,7 @@ async def test_push_manager_accepts_payload_emitted_during_transport_start() -> 
         dispatched_events=1,
         last_dispatched_event_count=1,
         last_payload_changed=True,
+        last_payload_handle_duration_ms=manager.health.last_payload_handle_duration_ms,
         last_payload_type="prop",
         last_payload_at=manager.health.last_payload_at,
     )
@@ -195,6 +310,58 @@ async def test_push_manager_preserves_start_time_payload_error_type() -> None:
     )
     assert "token-secret" not in str(manager.health.as_dict())
     assert "device-secret" not in str(manager.health.as_dict())
+
+
+@pytest.mark.asyncio
+async def test_push_manager_debug_logs_payload_routing_summary(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """debug 模式应记录本次 push 处理和 listener 通知聚合证据."""
+    coordinator = AsyncMock()
+    coordinator.debug_mode = True
+    coordinator.last_listener_notification_count = 2
+    coordinator.last_listener_context_count = 1
+    coordinator.last_push_property_summary = RuntimePropertyUpdateSummary(
+        input_updates=1,
+        applied_device_updates=1,
+        routed_updates=1,
+        applied_node_samples=(
+            {
+                "node_id_hash": "ddabe06356586fa8",
+                "node_type": 2,
+                "param_keys": ["4-p", "o"],
+                "matched_collections": ["devices", "data"],
+            },
+        ),
+        affected_contexts=(("device", "50018395"),),
+        changed=True,
+    )
+    coordinator.async_handle_push_payload.return_value = []
+    transport = FakeTransport()
+    manager = PushManager(coordinator, transport)
+
+    await manager.async_start()
+    with caplog.at_level(logging.INFO):
+        await transport.emit(
+            {
+                "type": "prop",
+                "nodes": [{"id": "secret-raw-device-id", "params": {"4-p": True}}],
+            }
+        )
+
+    message = "\n".join(record.getMessage() for record in caplog.records)
+    assert "Yeelight Pro push payload applied" in message
+    assert '"type":"prop"' in message
+    assert '"property_updates":1' in message
+    assert '"applied_property_updates":1' in message
+    assert '"routed_property_updates":1' in message
+    assert '"affected_context_count":1' in message
+    assert '"affected_context_samples":[{"kind":"device","node_id_hash":"ddabe06356586fa8"}]' in message
+    assert '"listener_notifications":2' in message
+    assert '"listener_contexts":1' in message
+    assert '"node_id_hash":"ddabe06356586fa8"' in message
+    assert '"param_keys":["4-p","o"]' in message
+    assert "secret-raw-device-id" not in message
 
 
 @pytest.mark.asyncio

@@ -20,19 +20,31 @@ def event_types(component: ComponentModel) -> list[str]:
     """提取组件的规范化事件类型列表。"""
     projected: list[str] = []
     seen: set[str] = set()
+    registry_event_types = {event.normalized for event in iot_registry().events}
     for event in component.events:
-        event_type = (
-            normalize_event_type(event.semantic)
-            or normalize_event_type(event.name)
-            or normalize_event_type(event.desc)
-        )
-        if event_type is None and event.event_id is not None:
-            event_type = normalize_event_type(event.event_id)
+        event_type = _registry_event_type(event.event_id, registry_event_types)
+        if event_type is None:
+            event_type = (
+                _registry_event_type(event.semantic, registry_event_types)
+                or _registry_event_type(event.name, registry_event_types)
+                or _registry_event_type(event.desc, registry_event_types)
+            )
         if not event_type or event_type in seen:
             continue
         seen.add(event_type)
         projected.append(event_type)
     return projected
+
+
+def _registry_event_type(
+    value: Any,
+    registry_event_types: set[str],
+) -> str | None:
+    """Return a registry-known event type without accepting unknown display names."""
+    event_type = normalize_event_type(value)
+    if event_type in registry_event_types:
+        return event_type
+    return None
 
 
 def fallback_event_input_category(

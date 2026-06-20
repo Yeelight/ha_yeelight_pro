@@ -11,6 +11,7 @@ import logging
 from typing import Any, Mapping
 
 from ..canonical.models import ComponentInstanceModel, HADeviceInstanceModel
+from ..device_channel_catalog import payload_product_spec, product_channel_count
 from ..entity_category import entity_category_for_property
 from ..identity import payload_entity_unique_id_prefix
 from ..utils import to_bool, to_str
@@ -35,6 +36,7 @@ from .switch_helpers import (
     _index_from_raw_key,
     _looks_like_switch_component,
     _params,
+    _prefers_switch_power_prop,
     _resolve_component_control_key,
     _switch_channel_allowed,
 )
@@ -50,7 +52,7 @@ class HASwitchProjection:
     unique_id: str
     name: str | None
     available: bool
-    is_on: bool
+    is_on: bool | None
     control_key: str
     device_info: dict[str, Any] | None
     icon: str | None = None
@@ -136,10 +138,17 @@ def _project_instance_switches(
             )
             continue
 
-        prop = _direct_switch_prop(component.state) or _schema_switch_prop(
+        prop = _switch_prop_for_component(
+            device_payload,
             product_model,
-            component.component_id,
+            component,
+            schema_component,
         )
+        if prop is None:
+            prop = _direct_switch_prop(component.state) or _schema_switch_prop(
+                product_model,
+                component.component_id,
+            )
         if prop is None:
             _log_switch_component_skip(
                 instance,
@@ -158,16 +167,17 @@ def _project_instance_switches(
         control_key = _resolve_schema_component_control_key(
             control_key,
             prop,
-            component_index=component_position,
+            component_index=component_index(component.component_id) or component_position,
             params=params,
         )
+        public_component_id = _public_switch_component_id(device_payload, component)
         projections.append(
             HASwitchProjection(
-                component_id=component.component_id,
-                unique_id=f"{unique_id_prefix}_{instance.device_id}_{component.component_id}",
+                component_id=public_component_id,
+                unique_id=f"{unique_id_prefix}_{instance.device_id}_{public_component_id}",
                 name=_build_switch_name(
                     base_name,
-                    component.component_id,
+                    public_component_id,
                     control_key,
                     component,
                     device_payload=device_payload,
@@ -177,7 +187,9 @@ def _project_instance_switches(
                     component,
                     schema_component=schema_component,
                 ),
-                is_on=bool(component_property_value(params, instance, component, prop)),
+                is_on=_switch_state_value(
+                    component_property_value(params, instance, component, prop)
+                ),
                 control_key=control_key,
                 device_info=device_info,
                 icon="mdi:light-switch",
@@ -186,6 +198,35 @@ def _project_instance_switches(
         )
 
     return projections
+
+
+def _public_switch_component_id(
+    device_payload: Mapping[str, Any],
+    component: ComponentInstanceModel,
+) -> str:
+    """Return the stable HA identity for catalog-backed switch channels."""
+    index = component_index(component.component_id)
+    if index is None:
+        return component.component_id
+    if component.component_id.startswith("switch_"):
+        return component.component_id
+    if not component.component_id.startswith("relay_switch_"):
+        return component.component_id
+    if not _catalog_switch_channel_allows_legacy_identity(device_payload, index):
+        return component.component_id
+    return f"switch_{index}"
+
+
+def _catalog_switch_channel_allows_legacy_identity(
+    device_payload: Mapping[str, Any],
+    index: int,
+) -> bool:
+    """Return true when product catalog already exposes channels as switch_N."""
+    spec = payload_product_spec(device_payload)
+    if spec is None:
+        return False
+    count = product_channel_count(spec)
+    return count is not None and 0 < index <= count
 
 
 def _schema_switch_prop(product_model: Any | None, component_id: str) -> str | None:
@@ -209,6 +250,33 @@ def _schema_switch_prop(product_model: Any | None, component_id: str) -> str | N
     return None
 
 
+def _switch_prop_for_component(
+    device_payload: Mapping[str, Any],
+    product_model: Any | None,
+    component: ComponentInstanceModel,
+    schema_component: Any | None,
+) -> str | None:
+    """Resolve the documented switch property for this component."""
+    prop_ids = set(component.state)
+    if schema_component is not None:
+        prop_ids.update(prop.prop_id for prop in schema_component.properties)
+    if not prop_ids and product_model is not None:
+        component_schema = product_component(product_model, component.component_id)
+        if component_schema is not None:
+            prop_ids.update(prop.prop_id for prop in component_schema.properties)
+
+    if _prefers_switch_power_prop(device_payload, component, schema_component):
+        for prop in ("sp", "p"):
+            if prop in prop_ids:
+                return prop
+        return "sp"
+
+    for prop in ("p", "sp"):
+        if prop in prop_ids:
+            return prop
+    return None
+
+
 def _resolve_schema_component_control_key(
     control_key: str,
     prop: str,
@@ -217,10 +285,19 @@ def _resolve_schema_component_control_key(
     params: Mapping[str, Any],
 ) -> str:
     """Map repeated schema switch components to indexed runtime control keys."""
-    if control_key != prop or prop != "sp":
+    if control_key != prop or prop not in {"p", "sp"}:
         return control_key
     indexed_key = f"{component_index}-{prop}"
-    return indexed_key if indexed_key in params else control_key
+    if indexed_key in params or component_index > 1:
+        return indexed_key
+    return control_key
+
+
+def _switch_state_value(value: Any) -> bool | None:
+    """Return switch state while preserving unknown sparse component state."""
+    if value is None:
+        return None
+    return bool(value)
 
 
 # ---------------------------------------------------------------------------

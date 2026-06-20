@@ -14,6 +14,7 @@ from .const import (
     CONF_LOCAL_GATEWAY_CONTROL,
     CONF_LOCAL_GATEWAY_HOST,
     CONF_LOCAL_GATEWAY_PORT,
+    CONF_PRIVATE_DOMAIN,
     CONF_PRIVATE_PUSH_DOMAIN,
     CONF_SCAN_INTERVAL,
     CONF_TOPOLOGY_CHANGE_REPAIRS,
@@ -35,7 +36,7 @@ from .device_filter_options import (
     build_filter_config,
     filter_dimension_schema,
 )
-from .deployment_urls import deployment_push_base_url
+from .deployment_urls import deployment_private_push_base_url
 from .entry_migration import normalize_entry_options
 
 _BASE_OPTION_FORM_KEYS = (
@@ -210,7 +211,8 @@ def merge_private_entry_data(
     if _entry_connection_mode(entry) != CONNECTION_MODE_PRIVATE:
         return None
     normalized_push = _normalize_optional_private_push(
-        user_input.get(CONF_PRIVATE_PUSH_DOMAIN)
+        user_input.get(CONF_PRIVATE_PUSH_DOMAIN),
+        entry,
     )
     if normalized_push == str(current_data.get(CONF_PRIVATE_PUSH_DOMAIN) or ""):
         return None
@@ -259,9 +261,17 @@ def _entry_private_push_domain(entry: object | None) -> str:
     return ""
 
 
-def _normalize_optional_private_push(value: Any) -> str:
+def _normalize_optional_private_push(value: Any, entry: object | None) -> str:
     text = "" if value is None else str(value).strip()
-    return deployment_push_base_url(text) if text else ""
+    if not text:
+        return ""
+    data = getattr(entry, "data", None) if entry is not None else None
+    private_domain = (
+        data.get(CONF_PRIVATE_DOMAIN)
+        if isinstance(data, Mapping)
+        else ""
+    )
+    return deployment_private_push_base_url(private_domain, text)
 
 
 def _option_form_keys_for_entry(entry: object | None) -> tuple[str, ...]:

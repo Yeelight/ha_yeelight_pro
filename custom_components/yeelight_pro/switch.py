@@ -160,10 +160,10 @@ class YeelightProSwitch(CoordinatorEntity, SwitchEntity):
         return ha_entity_category(projection.entity_category)
 
     @property
-    def is_on(self) -> bool:
+    def is_on(self) -> bool | None:
         """返回开关是否开启."""
         projection = self._projection
-        return projection.is_on if projection is not None else False
+        return projection.is_on if projection is not None else None
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """开启开关."""

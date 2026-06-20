@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable, Collection
 from datetime import timedelta
 from typing import Any, Dict, Mapping
 
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -32,6 +33,7 @@ from .property_hydration import async_hydrate_device_properties
 from .property_hydration_summary import PropertyHydrationDiagnostics
 from .coordinator_runtime import CoordinatorRuntimeMixin
 from .runtime_bridge import RuntimeEventDeduper, RuntimePropertyUpdateSummary
+from .runtime_bridge_types import RuntimeUpdateContext
 from .runtime_state import RuntimeStateStore
 from .schema_cache import ProductSchemaCache, product_ids_from_items
 from .topology_diff import TopologyDiffSummary
@@ -79,6 +81,8 @@ class YeelightProCoordinator(
         self._push_event_deduper = RuntimeEventDeduper()
         self.last_push_property_summary = RuntimePropertyUpdateSummary()
         self.last_push_event_count = 0
+        self.last_listener_notification_count = 0
+        self.last_listener_context_count = 0
         self._topology_tracker = TopologyTracker()
         self._device_payload_builder = DevicePayloadBuilder()
         self._product_schema_cache = ProductSchemaCache(hass)
@@ -95,6 +99,38 @@ class YeelightProCoordinator(
         """Apply runtime-safe options without reloading the config entry."""
         self.options = dict(options)
         self.update_interval = timedelta(seconds=self.scan_interval)
+
+    @callback
+    def async_add_listener(
+        self,
+        update_callback: Callable[[], None],
+        context: Any = None,
+    ) -> Callable[[], None]:
+        """Register a coordinator listener with an inferred runtime context."""
+        return super().async_add_listener(
+            update_callback,
+            context if context is not None else _runtime_listener_context(update_callback),
+        )
+
+    @callback
+    def async_update_listeners(
+        self,
+        contexts: Collection[RuntimeUpdateContext] | None = None,
+    ) -> None:
+        """Notify all listeners, or only listeners matching runtime contexts."""
+        if not contexts:
+            self.last_listener_context_count = 0
+            self.last_listener_notification_count = len(self._listeners)
+            super().async_update_listeners()
+            return
+        wanted = {(_normalize_context_kind(kind), str(value)) for kind, value in contexts}
+        notified = 0
+        for update_callback, context in list(self._listeners.values()):
+            if _runtime_context_matches(context, wanted):
+                notified += 1
+                update_callback()
+        self.last_listener_context_count = len(wanted)
+        self.last_listener_notification_count = notified
 
     @property
     def debug_mode(self) -> bool:
@@ -296,3 +332,49 @@ class YeelightProCoordinator(
     def product_schema_cache_size(self) -> int:
         """返回当前内存产品 schema 缓存数量."""
         return self._product_schema_cache.size
+
+
+def _runtime_listener_context(update_callback: Callable[[], None]) -> RuntimeUpdateContext | None:
+    """Infer the Yeelight runtime node context from a bound HA entity callback."""
+    entity = getattr(update_callback, "__self__", None)
+    return _runtime_entity_context(entity)
+
+
+def _runtime_entity_context(entity: Any) -> RuntimeUpdateContext | None:
+    """Infer the Yeelight runtime node context from an entity-like object."""
+    if entity is None:
+        return None
+    source_device_id = getattr(entity, "_source_device_id", None)
+    if source_device_id not in (None, ""):
+        return ("device", str(source_device_id))
+    device_id = getattr(entity, "_device_id", None)
+    if device_id not in (None, ""):
+        return ("device", str(device_id))
+    group_id = getattr(entity, "_group_id", None)
+    if group_id not in (None, ""):
+        return ("group", str(group_id))
+    node_kind = getattr(entity, "_node_kind", None)
+    node_id = getattr(entity, "_node_id", None)
+    if node_kind not in (None, "") and node_id not in (None, ""):
+        return (_normalize_context_kind(str(node_kind)), str(node_id))
+    return None
+
+
+def _runtime_context_matches(
+    context: Any,
+    wanted: set[RuntimeUpdateContext],
+) -> bool:
+    """Return whether one stored listener context is affected by a runtime update."""
+    runtime_context = (
+        context if isinstance(context, tuple) and len(context) == 2
+        else _runtime_entity_context(context)
+    )
+    if runtime_context is None:
+        return False
+    kind, value = runtime_context
+    return (_normalize_context_kind(str(kind)), str(value)) in wanted
+
+
+def _normalize_context_kind(kind: str) -> str:
+    """Normalize equivalent runtime listener context names."""
+    return "device" if kind in {"gateway", "data"} else kind

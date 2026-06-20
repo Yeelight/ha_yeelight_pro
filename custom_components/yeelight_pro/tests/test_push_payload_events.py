@@ -13,7 +13,10 @@ from custom_components.yeelight_pro.const import (
     ATTR_SOURCE_DEVICE_ID,
 )
 from custom_components.yeelight_pro.event_support import infer_event_component_id
-from custom_components.yeelight_pro.push import push_event_payloads
+from custom_components.yeelight_pro.push import (
+    ATTR_NODE_ID_CANDIDATES,
+    push_event_payloads,
+)
 
 
 def test_push_event_payloads_normalize_open_platform_payload() -> None:
@@ -79,6 +82,33 @@ def test_push_event_payloads_redact_sensitive_event_params() -> None:
     assert "22535" not in str(event)
     assert "secret-access-token" not in str(event)
     assert "secret-token" not in str(event)
+
+
+def test_push_event_payloads_carry_internal_node_id_candidates() -> None:
+    """多 ID event 帧应带内部候选 ID，但不能写进 HA 事件属性。"""
+    [event] = push_event_payloads(
+        {
+            "type": "event",
+            "msgId": "message-alias",
+            "nodes": [
+                {
+                    "id": 999998,
+                    "deviceId": "228215",
+                    "roomId": "228231",
+                    "nt": 2,
+                    "event": 1,
+                }
+            ],
+        }
+    )
+
+    assert event[ATTR_SOURCE_DEVICE_ID] == "999998"
+    assert event[ATTR_NODE_ID_CANDIDATES] == (
+        ("id", 999998),
+        ("deviceId", 228215),
+        ("roomId", 228231),
+    )
+    assert ATTR_NODE_ID_CANDIDATES not in event[ATTR_EVENT_ATTRIBUTES]
 
 
 def test_push_event_payloads_accept_device_post_event_payload() -> None:

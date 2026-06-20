@@ -149,5 +149,7 @@ def _runtime_files(root: Path) -> dict[str, str]:
             continue
         if path.suffix in EXCLUDED_COMPARE_SUFFIXES:
             continue
+        if path.name in FORBIDDEN_INSTALL_NAMES:
+            continue
         files[rel.as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
     return files

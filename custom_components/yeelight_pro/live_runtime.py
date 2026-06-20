@@ -6,7 +6,7 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
 from .const import (
     CONF_ACCESS_TOKEN,
@@ -21,7 +21,7 @@ from .const import (
     CONNECTION_MODE_PRIVATE,
     DEFAULT_LIVE_UPDATES,
 )
-from .deployment_urls import deployment_push_base_url
+from .deployment_urls import deployment_private_push_base_url, deployment_push_base_url
 from .entry_migration import normalize_entry_data
 from .push_manager import PushManager
 from .push_transport import YeelightPushWebSocketTransport
@@ -51,14 +51,13 @@ async def async_start_live_runtime(
     access_token = _push_access_token(runtime_data, coordinator)
     push_base_url = _push_base_url_for_data(runtime_data)
     transport = YeelightPushWebSocketTransport(
-        session=async_get_clientsession(hass),
+        session=async_create_clientsession(hass),
         token=access_token,
         token_provider=lambda: _push_access_token(
             _runtime_entry_data(entry, coordinator),
             coordinator,
         ),
         base_url=push_base_url,
-        enable_ip_fallback=_push_ip_fallback_enabled(runtime_data),
     )
     manager = PushManager(coordinator, transport)
     await manager.async_start()
@@ -103,18 +102,11 @@ def _push_base_url_for_data(data: Mapping[str, Any]) -> str | None:
         )
     if mode != CONNECTION_MODE_PRIVATE:
         return None
-    private_push_domain = data.get(CONF_PRIVATE_PUSH_DOMAIN)
-    if isinstance(private_push_domain, str) and private_push_domain.strip():
-        return deployment_push_base_url(private_push_domain)
     private_domain = data.get(CONF_PRIVATE_DOMAIN)
     if not isinstance(private_domain, str) or not private_domain.strip():
         return None
-    return deployment_push_base_url(private_domain)
-
-
-def _push_ip_fallback_enabled(data: Mapping[str, Any]) -> bool:
-    """Return whether private runtime should bypass fake-ip DNS automatically."""
-    return data.get(CONF_CONNECTION_MODE) == CONNECTION_MODE_PRIVATE
+    private_push_domain = data.get(CONF_PRIVATE_PUSH_DOMAIN)
+    return deployment_private_push_base_url(private_domain, private_push_domain)
 
 
 __all__ = ["async_start_live_runtime", "live_updates_enabled"]

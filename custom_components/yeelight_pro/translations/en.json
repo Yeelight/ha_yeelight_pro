@@ -226,6 +226,36 @@
       "name": "Emit Debug Event",
       "description": "Emit a debug Yeelight Pro device event to the Home Assistant event bus (admin service)"
     },
+    "debug_dump_push_health": {
+      "name": "Dump Push Health",
+      "description": "Write aggregate Yeelight Pro WebSocket push diagnostics to the Home Assistant log (admin service)"
+    },
+    "debug_emit_push_payload": {
+      "name": "Emit Debug Push Payload",
+      "description": "Inject one synthetic Yeelight Pro property push to verify the live refresh path; this does not control a real device (admin service)",
+      "fields": {
+        "node_type": {
+          "name": "Node type",
+          "description": "Open Platform node type; 2 means device by default"
+        },
+        "payload_shape": {
+          "name": "Push payload shape",
+          "description": "Choose a standard prop frame or private subscribe snapshot state frame to debug the live refresh path"
+        },
+        "params": {
+          "name": "Property parameters",
+          "description": "Property key-value object to merge into runtime state"
+        },
+        "source_device_id": {
+          "name": "Source device ID",
+          "description": "Optional source device identifier for the synthetic push. If omitted, entity ID can be used instead."
+        },
+        "entity_id": {
+          "name": "Entity ID",
+          "description": "Optional existing Yeelight Pro entity used to resolve the source device ID in Developer Tools."
+        }
+      }
+    },
     "refresh": {
       "name": "Manual Refresh",
       "description": "Refresh loaded Yeelight Pro data and synchronize device and entity registries (admin service)",

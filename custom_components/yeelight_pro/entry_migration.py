@@ -29,7 +29,6 @@ from .const import (
     CONF_OPEN_API_CLIENT_SECRET,
     CONF_PRIVATE_DOMAIN,
     CONF_PRIVATE_PUSH_DOMAIN,
-    CONF_PRIVATE_PUSH_PROXY,
     CONF_REFRESH_TOKEN,
     CONF_SCAN_INTERVAL,
     CONF_SCAN_LOGIN_DEVICE,
@@ -60,7 +59,7 @@ from .device_filter_options import (
     stored_device_import_filter_options,
     stored_or_legacy_device_import_filter_options,
 )
-from .deployment_urls import deployment_push_base_url, deployment_root_url
+from .deployment_urls import deployment_private_push_base_url, deployment_root_url
 from .entry_migration_helpers import (
     coerce_bool as _coerce_bool,
     coerce_house_id as _coerce_house_id,
@@ -74,7 +73,7 @@ from .entry_title import config_entry_title
 from .house_metadata import friendly_house_name
 
 ENTRY_VERSION = 1
-ENTRY_MINOR_VERSION = 13
+ENTRY_MINOR_VERSION = 15
 
 
 async def async_migrate_config_entry(
@@ -128,25 +127,15 @@ def normalize_entry_data(value: Mapping[str, Any]) -> dict[str, Any]:
             "websocket_url",
         )
     )
-    private_push_proxy = _string(
-        _first_value(
-            source,
-            CONF_PRIVATE_PUSH_PROXY,
-            "privatePushProxy",
-            "pushProxy",
-            "websocketProxy",
-        )
-    )
-
     # LAN 模式：不依赖云端域名和认证信息
     if connection_mode == CONNECTION_MODE_LAN:
+        _drop_private_push_proxy_fields(source)
         return {
             **source,
             CONF_CONNECTION_MODE: connection_mode,
             CONF_CLOUD_DOMAIN: "",
             CONF_PRIVATE_DOMAIN: "",
             CONF_PRIVATE_PUSH_DOMAIN: "",
-            CONF_PRIVATE_PUSH_PROXY: "",
             CONF_ACCESS_TOKEN: "",
             CONF_REFRESH_TOKEN: "",
             CONF_TOKEN_EXPIRES_IN: None,
@@ -171,6 +160,12 @@ def normalize_entry_data(value: Mapping[str, Any]) -> dict[str, Any]:
     domain = (
         private_domain if connection_mode == CONNECTION_MODE_PRIVATE else cloud_domain
     )
+    normalized_private_domain = (
+        _private_root_url(domain) or DEFAULT_PRIVATE_DOMAIN
+        if connection_mode == CONNECTION_MODE_PRIVATE
+        else private_domain or ""
+    )
+    _drop_private_push_proxy_fields(source)
 
     return {
         **source,
@@ -180,20 +175,11 @@ def normalize_entry_data(value: Mapping[str, Any]) -> dict[str, Any]:
             if connection_mode == CONNECTION_MODE_PRIVATE
             else domain or DEFAULT_CLOUD_DOMAIN
         ),
-        CONF_PRIVATE_DOMAIN: (
-            _private_root_url(domain) or DEFAULT_PRIVATE_DOMAIN
-            if connection_mode == CONNECTION_MODE_PRIVATE
-            else private_domain or ""
-        ),
-        CONF_PRIVATE_PUSH_DOMAIN: (
-            _private_push_url(private_push_domain)
-            if connection_mode == CONNECTION_MODE_PRIVATE
-            else ""
-        ),
-        CONF_PRIVATE_PUSH_PROXY: (
-            _private_push_proxy_url(private_push_proxy)
-            if connection_mode == CONNECTION_MODE_PRIVATE
-            else ""
+        CONF_PRIVATE_DOMAIN: normalized_private_domain,
+        CONF_PRIVATE_PUSH_DOMAIN: _normalized_private_push_url(
+            normalized_private_domain,
+            private_push_domain,
+            connection_mode=connection_mode,
         ),
         CONF_ACCESS_TOKEN: _string(
             _first_value(source, CONF_ACCESS_TOKEN, "accessToken", "token")
@@ -355,13 +341,23 @@ def _private_root_url(value: Any) -> str:
     return deployment_root_url(text)
 
 
-def _private_push_url(value: Any) -> str:
-    text = _string(value)
-    return deployment_push_base_url(text) if text else ""
-
-
-def _private_push_proxy_url(value: Any) -> str:
-    text = _string(value).strip()
-    if not text:
+def _normalized_private_push_url(
+    private_domain: Any,
+    private_push_domain: Any,
+    *,
+    connection_mode: str,
+) -> str:
+    if connection_mode != CONNECTION_MODE_PRIVATE:
         return ""
-    return text if text.startswith(("http://", "https://")) else ""
+    push_text = _string(private_push_domain)
+    if not push_text:
+        return ""
+    return deployment_private_push_base_url(private_domain, push_text)
+
+
+def _drop_private_push_proxy_fields(source: dict[str, Any]) -> None:
+    """Drop obsolete WebSocket proxy fields from migrated entry data."""
+    source.pop("private_push_proxy", None)
+    source.pop("privatePushProxy", None)
+    source.pop("pushProxy", None)
+    source.pop("websocketProxy", None)

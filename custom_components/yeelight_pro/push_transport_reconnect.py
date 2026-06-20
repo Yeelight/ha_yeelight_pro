@@ -46,16 +46,14 @@ class PushTransportReconnectMixin:
         planned_delay = self._planned_reconnect_delay()
         self._health.reconnect_pending = True
         self._health.next_reconnect_delay = planned_delay
-        self._health.reconnect_suspended = False
         self._reconnect_task = asyncio.create_task(
             self._reconnect_until_connected(self._callback)
         )
         _LOGGER.info(
             "Yeelight Pro WebSocket reconnect scheduled: last_disconnect_reason=%s "
-            "next_delay=%s reconnect_suspended=%s reconnect_attempts=%s",
+            "next_delay=%s reconnect_attempts=%s",
             self._health.last_disconnect_reason,
             planned_delay,
-            self._health.reconnect_suspended,
             self._health.reconnect_attempts,
         )
 
@@ -72,7 +70,6 @@ class PushTransportReconnectMixin:
                 self._next_reconnect_delay = delay
                 self._health.reconnect_pending = True
                 self._health.next_reconnect_delay = delay
-                self._health.reconnect_suspended = False
                 await self._reconnect_sleep(delay)
                 if not self._running or self._websocket is not None:
                     return

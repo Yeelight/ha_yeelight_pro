@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Mapping, Protocol
 
 from .commands import (
@@ -24,9 +25,15 @@ from .lan_control import (
 )
 from .runtime_state import (
     RuntimeStateStore,
+    capture_loaded_payload_snapshot,
+    merge_runtime_state_into_loaded_payloads,
     merge_runtime_state_into_group_payloads,
     merge_runtime_state_into_node_payloads,
+    online_from_params,
+    restore_loaded_payload_snapshot,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class _ControlCoordinator(Protocol):
@@ -48,7 +55,7 @@ class _ControlCoordinator(Protocol):
     def get_device(self, device_id: int | str) -> dict[str, Any] | None:
         """Return a device payload by id."""
 
-    def async_update_listeners(self) -> None:
+    def async_update_listeners(self, contexts: Any = None) -> None:
         """Notify Home Assistant coordinator listeners."""
 
     async def async_request_refresh(self) -> None:
@@ -78,14 +85,28 @@ class CoordinatorControlMixin:
         if normalized_device_id is None or not self.get_device(normalized_device_id):
             raise DeviceNotFoundError("Device not found")
 
-        lan_ok = await async_try_lan_control_device(
-            self._lan_runtime,
-            device_id=normalized_device_id,
-            params=params,
-            duration=duration,
+        if lan_runtime_connected(self._lan_runtime):
+            lan_ok = await async_try_lan_control_device(
+                self._lan_runtime,
+                device_id=normalized_device_id,
+                params=params,
+                duration=duration,
+            )
+            if lan_ok:
+                _store_device_runtime_update(self, normalized_device_id, params)
+                self.async_update_listeners({("device", str(normalized_device_id))})
+                return
+
+        _ensure_cloud_client(self)
+        snapshot = _capture_device_payload_snapshot(self, normalized_device_id)
+        _merge_device_runtime_update(self, normalized_device_id, params)
+        _LOGGER.debug(
+            "Optimistic Yeelight Pro device update merged: device_id=%s keys=%s",
+            normalized_device_id,
+            sorted(str(key) for key in params),
         )
-        if not lan_ok:
-            _ensure_cloud_client(self)
+        self.async_update_listeners({("device", str(normalized_device_id))})
+        try:
             await async_execute_control_device(
                 self.client,
                 house_id=self.house_id,
@@ -93,19 +114,12 @@ class CoordinatorControlMixin:
                 params=params,
                 duration=duration,
             )
+        except Exception:
+            _restore_device_payload_snapshot(snapshot)
+            self.async_update_listeners({("device", str(normalized_device_id))})
+            raise
 
-        runtime_data = self.data if isinstance(self.data, Mapping) else {}
-        self._runtime_state.store_update(
-            normalized_device_id,
-            params,
-            devices=self.devices,
-            gateways=self.gateways,
-            data=runtime_data,
-            rebuild_canonical=(
-                self._device_payload_builder.attach_canonical_models_if_available
-            ),
-        )
-        self.async_update_listeners()
+        _store_device_runtime_update(self, normalized_device_id, params)
 
     async def async_action_device(
         self: _ControlCoordinator,
@@ -202,7 +216,7 @@ class CoordinatorControlMixin:
             group_id=normalized_group_id,
             params=params,
         ):
-            self.async_update_listeners()
+            self.async_update_listeners({("group", str(normalized_group_id))})
 
     async def async_control_node(
         self: _ControlCoordinator,
@@ -240,7 +254,7 @@ class CoordinatorControlMixin:
                 params=params,
             )
         ):
-            self.async_update_listeners()
+            self.async_update_listeners({(node_kind, str(normalized_node_id))})
 
     async def async_control_room(
         self: _ControlCoordinator,
@@ -295,6 +309,66 @@ def _node_collection(
     if node_kind == "group":
         return coordinator.groups
     return None
+
+
+def _store_device_runtime_update(
+    coordinator: _ControlCoordinator,
+    device_id: int,
+    params: Mapping[str, Any],
+) -> None:
+    """Persist a successful device update into the runtime override store."""
+    runtime_data = coordinator.data if isinstance(coordinator.data, Mapping) else {}
+    coordinator._runtime_state.store_update(
+        device_id,
+        params,
+        devices=coordinator.devices,
+        gateways=coordinator.gateways,
+        data=runtime_data,
+        rebuild_canonical=(
+            coordinator._device_payload_builder.attach_canonical_models_if_available
+        ),
+    )
+
+
+def _merge_device_runtime_update(
+    coordinator: _ControlCoordinator,
+    device_id: int,
+    params: Mapping[str, Any],
+) -> None:
+    """Temporarily merge a pending cloud update into loaded payloads."""
+    runtime_data = coordinator.data if isinstance(coordinator.data, Mapping) else {}
+    merge_runtime_state_into_loaded_payloads(
+        device_id=device_id,
+        params=params,
+        online=online_from_params(params),
+        devices=coordinator.devices,
+        gateways=coordinator.gateways,
+        data=runtime_data,
+        rebuild_canonical=(
+            coordinator._device_payload_builder.attach_canonical_models_if_available
+        ),
+    )
+
+
+def _capture_device_payload_snapshot(
+    coordinator: _ControlCoordinator,
+    device_id: int,
+) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    """Capture loaded payload fields that optimistic cloud writes may change."""
+    runtime_data = coordinator.data if isinstance(coordinator.data, Mapping) else {}
+    return capture_loaded_payload_snapshot(
+        device_id=device_id,
+        devices=coordinator.devices,
+        gateways=coordinator.gateways,
+        data=runtime_data,
+    )
+
+
+def _restore_device_payload_snapshot(
+    snapshots: list[tuple[dict[str, Any], dict[str, Any]]],
+) -> None:
+    """Restore loaded payloads after a failed optimistic cloud write."""
+    restore_loaded_payload_snapshot(snapshots)
 
 
 def _ensure_cloud_client(coordinator: _ControlCoordinator) -> None:

@@ -132,7 +132,40 @@ def component_property_value(
             prop_id,
             control_key,
         )
-    return state_value(state, control_key)
+    return component_scoped_state_value(state, control_key, instance, component, prop_id)
+
+
+def component_scoped_state_value(
+    state: Mapping[str, Any],
+    control_key: str | None,
+    instance: HADeviceInstanceModel,
+    component: ComponentInstanceModel,
+    prop_id: str,
+) -> Any:
+    """按组件 scoped key 读值，避免多组件设备回退到裸属性造成串路."""
+    if control_key is None:
+        return None
+    if control_key in state:
+        return state.get(control_key)
+    if control_key == prop_id:
+        return state.get(prop_id)
+    if "-" not in control_key:
+        return state.get(control_key)
+    if _can_fallback_to_plain_component_key(instance, component):
+        return state.get(prop_id)
+    return None
+
+
+def _can_fallback_to_plain_component_key(
+    instance: HADeviceInstanceModel,
+    component: ComponentInstanceModel,
+) -> bool:
+    """Return true when plain-key fallback cannot collide with another component."""
+    if component.index is not None:
+        return False
+    if component_index(component.component_id) is not None:
+        return False
+    return len(instance.components) == 1
 
 
 def component_state_view(

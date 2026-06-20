@@ -16,8 +16,12 @@ from custom_components.yeelight_pro.const import (
     ATTR_SOURCE_DEVICE_ID,
     DOMAIN,
 )
+from custom_components.yeelight_pro.debug_push_service import (
+    SERVICE_DEBUG_DUMP_PUSH_HEALTH,
+    SERVICE_DEBUG_EMIT_PUSH_PAYLOAD,
+)
+from custom_components.yeelight_pro.debug_runtime import ATTR_ENTRY_ID
 from custom_components.yeelight_pro.debug_service import (
-    ATTR_ENTRY_ID,
     SERVICE_DEBUG_EMIT_EVENT_SCHEMA,
     _debug_coordinator,
     async_register_debug_event_service,
@@ -66,6 +70,15 @@ def test_debug_service_schema_accepts_optional_entry_id() -> None:
     assert payload[ATTR_ENTRY_ID] == "entry-1"
     assert payload[ATTR_SOURCE_DEVICE_ID] == 12345
     assert payload[ATTR_EVENT_ATTRIBUTES] == {}
+
+
+def test_debug_service_registers_push_debug_services(hass: HomeAssistant) -> None:
+    """统一 debug 入口必须继续注册 push 诊断服务."""
+    async_register_debug_event_service(hass)
+
+    assert hass.services.has_service(DOMAIN, "debug_emit_event")
+    assert hass.services.has_service(DOMAIN, SERVICE_DEBUG_DUMP_PUSH_HEALTH)
+    assert hass.services.has_service(DOMAIN, SERVICE_DEBUG_EMIT_PUSH_PAYLOAD)
 
 
 @pytest.mark.asyncio

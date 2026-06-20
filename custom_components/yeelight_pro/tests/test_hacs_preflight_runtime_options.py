@@ -105,11 +105,9 @@ def test_runtime_options_contract_requires_debug_service_gate(
     )
     _write_complete_options_picker_test(tests_root)
     _write_complete_private_push_test(tests_root)
-    _write_test_file(
-        component_root / "debug_service.py",
-        "async_register_admin_service coordinator.debug_mode async_handle_runtime_event",
-    )
+    _write_complete_debug_service_files(component_root, tests_root)
     _write_test_file(tests_root / "test_debug_service.py", "")
+    _write_test_file(tests_root / "test_debug_push_service.py", "")
 
     errors = check_runtime_options_contract_tests(component_root)
 
@@ -137,15 +135,8 @@ def test_runtime_options_contract_requires_background_runtime_reload_coverage(
     _write_test_file(tests_root / "test_options_flow_contract.py", "confirm_reload")
     _write_complete_options_picker_test(tests_root)
     _write_complete_private_push_test(tests_root)
-    _write_test_file(
-        component_root / "debug_service.py",
-        "async_register_admin_service coordinator.debug_mode async_handle_runtime_event",
-    )
-    _write_test_file(
-        tests_root / "test_debug_service.py",
-        "test_debug_emit_event_service_rejects_disabled_debug_mode "
-        "assert_not_awaited debug mode is disabled",
-    )
+    _write_complete_debug_service_files(component_root, tests_root)
+    _write_complete_debug_service_tests(tests_root)
 
     errors = check_runtime_options_contract_tests(component_root)
 
@@ -189,15 +180,8 @@ def test_runtime_options_contract_requires_options_device_picker_coverage(
         "CONF_DEVICE_IMPORT_FILTER_PICKER",
     )
     _write_complete_private_push_test(tests_root)
-    _write_test_file(
-        component_root / "debug_service.py",
-        "async_register_admin_service coordinator.debug_mode async_handle_runtime_event",
-    )
-    _write_test_file(
-        tests_root / "test_debug_service.py",
-        "test_debug_emit_event_service_rejects_disabled_debug_mode "
-        "assert_not_awaited debug mode is disabled",
-    )
+    _write_complete_debug_service_files(component_root, tests_root)
+    _write_complete_debug_service_tests(tests_root)
 
     errors = check_runtime_options_contract_tests(component_root)
 
@@ -212,6 +196,42 @@ def test_runtime_options_contract_requires_options_device_picker_coverage(
 def _write_test_file(path: Path, content: str) -> None:
     """写入最小 synthetic test 文件供 preflight 扫描."""
     path.write_text(content, encoding="utf-8")
+
+
+def _write_complete_debug_service_files(component_root: Path, tests_root: Path) -> None:
+    """写入满足 debug service preflight 的 synthetic runtime 文件。"""
+    _write_test_file(
+        component_root / "debug_service.py",
+        "async_register_admin_service async_handle_runtime_event "
+        "async_register_debug_push_services",
+    )
+    _write_test_file(
+        component_root / "debug_runtime.py",
+        "coordinator.debug_mode debug_runtime_entry",
+    )
+    _write_test_file(
+        component_root / "debug_push_service.py",
+        "async_register_admin_service debug_coordinator "
+        "async_handle_push_payload debug_dump_push_health "
+        "debug_emit_push_payload push_manager_health",
+    )
+
+
+def _write_complete_debug_service_tests(tests_root: Path) -> None:
+    """写入满足 debug service preflight 的 synthetic test 文件。"""
+    _write_test_file(
+        tests_root / "test_debug_service.py",
+        "test_debug_emit_event_service_rejects_disabled_debug_mode "
+        "assert_not_awaited debug mode is disabled",
+    )
+    _write_test_file(
+        tests_root / "test_debug_push_service.py",
+        "test_debug_dump_push_health_service_rejects_disabled_debug_mode "
+        "test_debug_emit_push_payload_service_rejects_disabled_debug_mode "
+        "test_debug_emit_push_payload_service_injects_synthetic_push "
+        "test_debug_dump_push_health_logs_aggregate_payload_only "
+        "assert_not_awaited debug mode is disabled",
+    )
 
 
 def _write_complete_options_picker_test(tests_root: Path) -> None:
@@ -230,5 +250,5 @@ def _write_complete_private_push_test(tests_root: Path) -> None:
     _write_test_file(
         tests_root / "test_options_flow_private_push.py",
         "test_options_flow_private_entry_shows_push_url "
-        "CONF_PRIVATE_PUSH_DOMAIN async_update_entry ws://ws-test.yeedev.com",
+        "CONF_PRIVATE_PUSH_DOMAIN async_update_entry ws://192.168.0.89:7779",
     )

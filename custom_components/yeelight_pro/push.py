@@ -21,6 +21,30 @@ from .utils import to_int
 
 PUSH_TYPE_EVENT = PUSH_DATA_TYPE_EVENT
 PUSH_TYPE_PROP = PUSH_DATA_TYPE_PROP
+ATTR_NODE_ID_CANDIDATES = "_node_id_candidates"
+NODE_ID_ALIAS_KEYS = (
+    "id",
+    "nodeId",
+    "node_id",
+    "resId",
+    "res_id",
+    "deviceId",
+    "device_id",
+)
+TOPOLOGY_NODE_ID_ALIAS_KEYS = (
+    "gatewayId",
+    "gateway_id",
+    "groupId",
+    "group_id",
+    "roomId",
+    "room_id",
+    "areaId",
+    "area_id",
+    "houseId",
+    "house_id",
+    "projectId",
+    "project_id",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,14 +111,16 @@ def push_event_payloads(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
             attributes["node_type"] = node_type
         _add_safe_params(attributes, node, "params")
         attributes["raw_event"] = event_id
-        events.append(
-            {
-                ATTR_SOURCE_DEVICE_ID: str(node_id),
-                ATTR_COMPONENT_ID: _component_id(node),
-                ATTR_EVENT_TYPE: event_id,
-                ATTR_EVENT_ATTRIBUTES: attributes,
-            }
-        )
+        event_payload = {
+            ATTR_SOURCE_DEVICE_ID: str(node_id),
+            ATTR_COMPONENT_ID: _component_id(node),
+            ATTR_EVENT_TYPE: event_id,
+            ATTR_EVENT_ATTRIBUTES: attributes,
+        }
+        candidates = _node_id_candidates(node)
+        if len(candidates) > 1:
+            event_payload[ATTR_NODE_ID_CANDIDATES] = candidates
+        events.append(event_payload)
     return events
 
 
@@ -148,7 +174,7 @@ def _is_push_data_payload(payload: Mapping[str, Any]) -> bool:
 def _looks_like_single_node(payload: Mapping[str, Any]) -> bool:
     """Return true for a documented data frame collapsed into one node object."""
     return payload.get("type") in {PUSH_TYPE_PROP, PUSH_TYPE_EVENT} and any(
-        key in payload for key in ("id", "nodeId", "resId", "deviceId")
+        key in payload for key in NODE_ID_ALIAS_KEYS
     )
 
 
@@ -163,7 +189,7 @@ def _node_id(node: Mapping[str, Any]) -> int | None:
 def _node_id_candidates(node: Mapping[str, Any]) -> tuple[tuple[str, int], ...]:
     """Return node id aliases in the same priority order as _node_id."""
     candidates: list[tuple[str, int]] = []
-    for key in ("id", "nodeId", "node_id", "resId", "res_id", "deviceId", "device_id"):
+    for key in (*NODE_ID_ALIAS_KEYS, *TOPOLOGY_NODE_ID_ALIAS_KEYS):
         node_id = to_int(node.get(key))
         if node_id is not None:
             candidates.append((key, node_id))
@@ -349,6 +375,7 @@ def _add_safe_params(
 
 
 __all__ = [
+    "ATTR_NODE_ID_CANDIDATES",
     "PUSH_TYPE_EVENT",
     "PUSH_TYPE_PROP",
     "YeelightPushPropertyUpdate",

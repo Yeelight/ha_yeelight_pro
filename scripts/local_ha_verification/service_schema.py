@@ -34,6 +34,17 @@ SERVICE_FIELD_CONTRACTS: dict[str, dict[str, ServiceFieldContract]] = {
         "event_type": ServiceFieldContract(required=True, selector="text"),
         "event_attributes": ServiceFieldContract(required=False, selector="object"),
     },
+    "debug_dump_push_health": {
+        "entry_id": ServiceFieldContract(required=False, selector="text"),
+    },
+    "debug_emit_push_payload": {
+        "entry_id": ServiceFieldContract(required=False, selector="text"),
+        "source_device_id": ServiceFieldContract(required=False, selector="text"),
+        "entity_id": ServiceFieldContract(required=False, selector="entity"),
+        "node_type": ServiceFieldContract(required=False, selector="number"),
+        "payload_shape": ServiceFieldContract(required=False, selector="select"),
+        "params": ServiceFieldContract(required=True, selector="object"),
+    },
     "refresh": {
         "entry_id": ServiceFieldContract(required=False, selector="text"),
         "refresh_product_schemas": ServiceFieldContract(

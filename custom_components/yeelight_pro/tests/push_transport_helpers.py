@@ -167,7 +167,7 @@ class FakeSession:
 
     async def ws_connect(self, url: str, **kwargs: Any) -> FakeWebSocket:
         self.connected_urls.append(url)
-        self.connected_kwargs.append(dict(kwargs))
+        self.connected_kwargs.append({key: value for key, value in kwargs.items() if value is not None})
         if not self._websockets:
             raise AssertionError("no websocket double queued")
         websocket = self._websockets.pop(0)

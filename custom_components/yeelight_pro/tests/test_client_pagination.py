@@ -62,6 +62,27 @@ async def test_client_paginated_rows_accepts_documented_result_field() -> None:
 
 
 @pytest.mark.asyncio
+async def test_client_paginated_rows_accepts_gateway_field() -> None:
+    """私有部署 gateway 接口返回 data.gateways，也应进入拓扑."""
+    client = _client()
+    with patch.object(client, "_request", new_callable=AsyncMock) as mock_request:
+        mock_request.return_value = {
+            "data": {
+                "gateways": [{"id": 50018326}, {"id": 50018328}],
+                "total": 2,
+            }
+        }
+
+        rows = await client.get_gateways(12345)
+
+    assert rows == [{"id": 50018326}, {"id": 50018328}]
+    mock_request.assert_awaited_once_with(
+        "GET",
+        "/v2/thing/schema/house/12345/gateway/r/info/1/200",
+    )
+
+
+@pytest.mark.asyncio
 async def test_client_get_houses_uses_documented_paginated_endpoint() -> None:
     """家庭列表应使用开放平台公开分页路径和 result 响应字段."""
     client = _client()

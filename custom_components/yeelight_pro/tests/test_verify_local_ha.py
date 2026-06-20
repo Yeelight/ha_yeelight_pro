@@ -46,6 +46,19 @@ def test_runtime_diff_detects_changed_runtime_file(tmp_path: Path) -> None:
     assert diff.changed == ("manifest.json",)
 
 
+def test_runtime_diff_ignores_forbidden_source_only_files(tmp_path: Path) -> None:
+    """Release-excluded debug helpers should not be required in installed runtime."""
+    source = tmp_path / "source"
+    installed = tmp_path / "installed"
+    source.mkdir()
+    installed.mkdir()
+    (source / "__init__.py").write_text("same", encoding="utf-8")
+    (installed / "__init__.py").write_text("same", encoding="utf-8")
+    (source / "push_transport_dns.py").write_text("debug-only", encoding="utf-8")
+
+    assert runtime_diff(source, installed).ok is True
+
+
 def test_required_modules_fail_for_missing_support_module(tmp_path: Path) -> None:
     """本地 HA 验证应发现缺失的关键支持模块."""
     install_root = tmp_path / "config" / "custom_components" / "yeelight_pro"
@@ -328,6 +341,7 @@ def test_required_modules_include_protocol_contract_modules() -> None:
         "custom_components.yeelight_pro.core.scan_login",
         "custom_components.yeelight_pro.push_contract",
         "custom_components.yeelight_pro.push_manager",
+        "custom_components.yeelight_pro.push_topology_diagnostics",
         "custom_components.yeelight_pro.push_transport",
         "custom_components.yeelight_pro.core.runtime_bridge",
         "custom_components.yeelight_pro.deployment_urls",
@@ -349,9 +363,15 @@ def test_forbidden_install_paths_rejects_tests_and_text(tmp_path: Path) -> None:
     tests_dir = install / "tests"
     tests_dir.mkdir(parents=True)
     (tests_dir / "test_old.py").write_text("", encoding="utf-8")
+    (install / "push_transport_dns.py").write_text("", encoding="utf-8")
     (install / "text.py").write_text("", encoding="utf-8")
 
-    assert forbidden_install_paths(install) == ["tests", "tests/test_old.py", "text.py"]
+    assert forbidden_install_paths(install) == [
+        "push_transport_dns.py",
+        "tests",
+        "tests/test_old.py",
+        "text.py",
+    ]
 
 
 def test_parse_domain_counts() -> None:

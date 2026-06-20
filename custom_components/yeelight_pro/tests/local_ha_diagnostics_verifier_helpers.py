@@ -121,7 +121,6 @@ def build_heartbeat_message(message_id): ...
             """
 last_start_error_type = None
 last_runtime_error_type = None
-last_handshake_status = None
 last_disconnect_reason = None
 class PushControlFrameError(Exception): ...
 """
@@ -157,10 +156,9 @@ def _is_push_data_payload(payload):
         root.joinpath("push_transport_connection.py").write_text(
             f"""
 class PushTransportConnectionMixin:
+    last_handshake_status = None
     async def _connect_once(self):
 {connect_line}
-def websocket_ip_fallback(url): ...
-enable_ip_fallback = True
 """,
             encoding="utf-8",
         )
@@ -177,15 +175,10 @@ def _reconnect_until_connected(): ...
 class PushTransportRuntimeMixin: ...
 def _cleanup_after_reader_exit(): ...
 def json_payload_from_message(message): ...
+def payload_shape_summary(payload): ...
+def control_frame_subscribe_state_key_samples(payload): ...
+def next_heartbeat(): ...
 abnormal_close_before_first_frame = "abnormal_close_before_first_frame"
-""",
-            encoding="utf-8",
-        )
-        root.joinpath("push_transport_dns.py").write_text(
-            """
-websocket_ip_fallback = object()
-FAKE_IP_NETWORKS = ("198.18.0.0/15",)
-def resolve_public_dns_ips(host): ...
 """,
             encoding="utf-8",
         )
@@ -196,6 +189,82 @@ PUSH_DATA_TYPES = object()
 class PushControlFrameError(Exception): ...
 def is_push_data_payload(payload):
     return payload.get("type") in PUSH_DATA_TYPES
+def control_frame_subscribe_state_device_count(payload): ...
+def control_frame_subscribe_state_key_samples(payload): ...
+""",
+            encoding="utf-8",
+        )
+        root.joinpath("push_transport_shapes.py").write_text(
+            """
+def payload_shape_summary(payload): ...
+def _safe_keys(payload): ...
+_NESTED_MAPPING_KEYS = ("data", "params", "result")
+""",
+            encoding="utf-8",
+        )
+        root.joinpath("push_topology_diagnostics.py").write_text(
+            """
+def push_topology_diagnostics(coordinator, transport_health):
+    return {
+        "loaded_topology_node_hash_count": 0,
+        "last_subscribe_nodes_matching_loaded_topology": 0,
+        "recent_data_nodes_matching_loaded_topology": 0,
+    }
+""",
+            encoding="utf-8",
+        )
+        root.joinpath("diagnostic_runtime.py").write_text(
+            """
+from diagnostic_push_flow import push_payload_flow, push_sync_status
+
+def push_manager_health(manager):
+    return {
+        "push_sync_status": "no_data_payload_received",
+        "payload_flow": push_payload_flow(
+            {},
+            {"dispatched_payloads": 0},
+            sync_status="no_data_payload_received",
+            import_filter_active=False,
+        ),
+    }
+""",
+            encoding="utf-8",
+        )
+        root.joinpath("diagnostic_push_flow.py").write_text(
+            """
+def push_payload_flow(manager_health_payload, transport_health, *, sync_status, import_filter_active):
+    return {
+        "status": sync_status,
+        "payload_flow": True,
+        "last_payload_handle_duration_ms": manager_health_payload.get("last_payload_handle_duration_ms"),
+        "last_listener_notification_count": manager_health_payload.get("last_listener_notification_count"),
+        "last_listener_context_count": manager_health_payload.get("last_listener_context_count"),
+        "data_topology_check": data_topology_check(transport_health),
+        "data_import_filter_check": "not_applicable_no_data_payload",
+        "import_filter_active": import_filter_active,
+    }
+
+def push_sync_status(manager_health_payload, transport_health):
+    if transport_health is None:
+        return "transport_health_unavailable"
+    if transport_health.get("dispatched_payloads") <= 0:
+        if transport_health.get("unsupported_messages") > 0:
+            return "unsupported_payload_received"
+        return "no_data_payload_received"
+    if manager_health_payload.get("last_payload_changed"):
+        return "data_payload_applied"
+    if manager_health_payload.get("routed_property_updates") > 0:
+        return "data_payload_routed_no_state_change"
+    if manager_health_payload.get("empty_param_updates") > 0:
+        return "data_payload_empty_params"
+    return "data_payload_not_in_topology"
+
+def data_topology_check(transport_health):
+    if transport_health.get("dispatched_payloads", 0) <= 0:
+        return "not_applicable_no_data_payload"
+    if transport_health.get("recent_data_nodes_not_loaded", 0) > 0:
+        return "not_in_loaded_topology"
+    return "matched_loaded_topology"
 """,
             encoding="utf-8",
         )
@@ -204,6 +273,9 @@ def is_push_data_payload(payload):
 last_start_error_type = None
 last_runtime_error_type = None
 last_error_type = None
+last_payload_handle_duration_ms = None
+last_listener_notification_count = 0
+last_listener_context_count = 0
 def _sync_transport_runtime_error(): ...
 """
         if include_runtime_health

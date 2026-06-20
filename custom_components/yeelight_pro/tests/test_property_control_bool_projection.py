@@ -176,6 +176,43 @@ def test_writable_auxiliary_bool_schema_projects_switch_control() -> None:
     assert projection.control_key == "1-blp"
 
 
+def test_generic_switch_component_label_is_not_prefixed_to_auxiliary_control() -> None:
+    """S21 等开关组件的配置实体不应显示英文通用 switch 前缀."""
+    payload = projection_payload(
+        device_id="s21-single-1",
+        category="relay_switch",
+        component_id="switch",
+        component_category="relay_switch",
+        state={"p": True, "blp": True},
+        params={"p": True, "blp": True},
+    )
+    payload["name"] = "S21 智能墙壁开关"
+    payload["ha_product_model"]["components"][0]["name"] = "switch"
+    payload["ha_product_model"]["components"][0]["properties"] = [
+        {
+            "prop_id": "p",
+            "name": "开关",
+            "access": "read_write",
+            "property_type": "bool",
+            "format": "bool",
+        },
+        {
+            "prop_id": "blp",
+            "name": "面板背光开关状态",
+            "access": "read_write",
+            "property_type": "bool",
+            "format": "bool",
+        },
+    ]
+    payload["ha_device_instance"]["components"][0]["name"] = "switch"
+
+    projections = project_switch_controls(payload, domain=DOMAIN)
+
+    assert len(projections) == 1
+    assert projections[0].component_id == "switch_blp_switch"
+    assert projections[0].name == "面板背光开关状态"
+
+
 def test_registry_backed_control_labels_replace_english_spec_names() -> None:
     """产品目录属性即使用英文 full_name，也必须显示易来中文描述."""
     payload = projection_payload(

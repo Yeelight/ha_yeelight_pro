@@ -1,4 +1,9 @@
-"""DNS fallback helpers for Yeelight Pro WebSocket transport."""
+"""Source-only DNS fallback helpers kept out of Yeelight Pro runtime installs.
+
+The production WebSocket transport does not import this module. Release and
+local-HA verification guards forbid installing it so private push uses the
+configured URL through Home Assistant/aiohttp directly.
+"""
 
 from __future__ import annotations
 

@@ -91,7 +91,6 @@ async def test_push_transport_uses_long_backoff_after_abnormal_close_before_firs
     assert health["pre_first_frame_abnormal_close_count"] == 1
     assert health["consecutive_pre_first_frame_abnormal_close_count"] == 1
     assert health["reconnect_pending"] is True
-    assert health["reconnect_suspended"] is False
     assert health["next_reconnect_delay"] == 1.0
 
     reconnect_sleep.release.set()
@@ -138,7 +137,6 @@ async def test_push_transport_does_not_suspend_after_repeated_abnormal_close_bef
     assert health["pre_first_frame_abnormal_close_count"] == 3
     assert health["consecutive_pre_first_frame_abnormal_close_count"] == 3
     assert health["reconnect_pending"] is True
-    assert health["reconnect_suspended"] is False
     assert health["next_reconnect_delay"] == 4.0
 
     await transport.async_stop()

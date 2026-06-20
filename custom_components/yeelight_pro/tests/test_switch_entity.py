@@ -76,6 +76,38 @@ def test_switch_reads_projection_state(mock_coordinator) -> None:
     assert switch.entity_category is None
 
 
+def test_switch_unknown_when_projection_state_is_unknown(mock_coordinator) -> None:
+    """helper switch 当前值缺失时应显示 unknown，而不是误显示关闭."""
+    payload = _switch_payload(
+        device_id="screen-unknown-1",
+        component_id="other",
+        state={},
+        params={},
+    )
+    payload["category"] = "other"
+    payload["iot_category"] = "other"
+    payload["ha_device_instance"]["components"][0]["category"] = "other"
+    payload["ha_product_model"]["components"][0]["category"] = "other"
+    payload["ha_product_model"]["components"][0]["properties"] = [
+        {
+            "prop_id": "mpmp",
+            "name": "音乐播放器播放/暂停",
+            "access": "read_write",
+            "property_type": "config",
+            "format": "bool",
+        }
+    ]
+    mock_coordinator.get_device.return_value = payload
+    switch = YeelightProSwitch(
+        mock_coordinator,
+        "screen-unknown-1",
+        component_id="other_mpmp_switch",
+    )
+
+    assert switch.available is True
+    assert switch.is_on is None
+
+
 def test_indexed_switch_entity_uses_friendly_channel_name(mock_coordinator) -> None:
     """多键开关子实体名称不能显示裸数字."""
     mock_coordinator.get_device.return_value = _switch_payload(

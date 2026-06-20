@@ -10,6 +10,8 @@ from ..capabilities.registry import (
     component_platform_hint,
     platform_for_category,
 )
+from ..device_channel_catalog import payload_product_spec, product_channel_count
+from ..device_channel_semantics import component_name_key, component_text
 from ..device_display import channel_name_label, switch_channel_count_hint
 from ..utils import to_category, to_int
 from .common import component_index, component_state_key_map
@@ -19,6 +21,11 @@ from .platform_evidence import component_has_switch_evidence
 
 RAW_SWITCH_KEY_RE = re.compile(r"^(?P<index>\d+)-(?P<prop>p|sp)$")
 DIRECT_SWITCH_PROPS = ("p", "sp")
+WIRELESS_SWITCH_CHANNEL_KEYS = {
+    "wireless switch channel",
+    "wireless_switch_channel",
+    "无线开关通道",
+}
 SWITCH_PARENT_CATEGORIES = {"relay_switch", "switch"}
 NON_SWITCH_PARENT_CATEGORIES = {
     "binary_sensor",
@@ -104,9 +111,14 @@ def _looks_like_switch_component(
     """判断组件是否具备官方 relay switch 证据."""
     category = to_category(component.category)
 
-    if is_event_input_category(category):
+    if is_event_input_category(category) and not _relay_event_component_has_power(
+        component,
+        product_component,
+    ):
         return False
-    if is_event_input_component(component.component_id):
+    if is_event_input_component(
+        component.component_id
+    ) and not _relay_event_component_has_power(component, product_component):
         return False
 
     features = {
@@ -130,6 +142,8 @@ def _looks_like_switch_component(
     if non_switch_features & features:
         return False
 
+    if _relay_event_component_has_power(component, product_component):
+        return True
     if component_has_switch_evidence(component, product_component):
         return True
     if _looks_like_indexed_switch_channel(component, category):
@@ -139,6 +153,69 @@ def _looks_like_switch_component(
         and _direct_switch_prop(component.state)
         and component_index(component.component_id) is not None
     )
+
+
+def _prefers_switch_power_prop(
+    device_payload: Mapping[str, Any],
+    component: ComponentInstanceModel,
+    product_component: ComponentModel | None = None,
+) -> bool:
+    """Return true when documented channel evidence says to control N-sp."""
+    if _is_wireless_switch_channel_component(component):
+        return True
+    if _is_wireless_switch_channel_component(product_component):
+        return True
+
+    index = component_index(component.component_id)
+    for item in _iter_subdevices(device_payload.get("subDeviceList")):
+        if index is not None and to_int(item.get("index")) != index:
+            continue
+        if _is_wireless_switch_channel_component(item):
+            return True
+
+    spec = payload_product_spec(device_payload)
+    if spec is None or product_channel_count(spec) is None:
+        return False
+    components = tuple(spec.normal_components) + tuple(
+        component_name for component_name, _count in spec.normal_component_counts
+    )
+    return bool(components) and all(
+        component_name_key(component_name) in WIRELESS_SWITCH_CHANNEL_KEYS
+        for component_name in components
+    )
+
+
+def _is_wireless_switch_channel_component(component: Any | None) -> bool:
+    """Return true for documented wireless switch channel metadata."""
+    if component is None:
+        return False
+    values = (
+        component_text(component, ("component_id", "componentId", "id")),
+        component_text(component, ("name", "componentName", "component_name", "desc")),
+        component_text(component, ("category",)),
+    )
+    return any(component_name_key(value) in WIRELESS_SWITCH_CHANNEL_KEYS for value in values)
+
+
+def _iter_subdevices(value: Any) -> tuple[Mapping[str, Any], ...]:
+    """Yield OpenAPI sub-device mappings without trusting arbitrary payload shapes."""
+    if not isinstance(value, list):
+        return ()
+    return tuple(item for item in value if isinstance(item, Mapping))
+
+
+def _relay_event_component_has_power(
+    component: ComponentInstanceModel,
+    product_component: ComponentModel | None = None,
+) -> bool:
+    """Return true when an event-like relay component also owns power control."""
+    category = to_category(component.category)
+    if category != "relay_switch":
+        return False
+    prop_ids = {str(prop) for prop in component.state}
+    if product_component is not None:
+        prop_ids.update(prop.prop_id for prop in product_component.properties)
+    return "p" in prop_ids
 
 
 def _looks_like_indexed_switch_channel(

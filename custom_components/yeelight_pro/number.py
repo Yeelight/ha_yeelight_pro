@@ -215,7 +215,7 @@ class YeelightProDeviceNumber(CoordinatorEntity, NumberEntity):
             raise_service_error("number.set_device_property", err)
 
 
-class YeelightProGroupBrightness(NumberEntity):
+class YeelightProGroupBrightness(CoordinatorEntity, NumberEntity):
     """灯组亮度控制实体."""
 
     _attr_has_entity_name = True
@@ -233,22 +233,27 @@ class YeelightProGroupBrightness(NumberEntity):
         group_name: str,
     ) -> None:
         """初始化灯组亮度控制."""
-        super().__init__()
+        super().__init__(coordinator)
         self._coordinator = coordinator
-        self._group_id = group_id
+        self._group_id = str(group_id)
         self._attr_unique_id = entity_unique_id(
             coordinator,
             "group",
-            group_id,
+            self._group_id,
             "brightness",
         )
         self._attr_name = f"{group_name} 亮度"
-        self._attr_native_value: float | None = None
 
     @property
     def device_info(self) -> dict[str, Any]:
         """返回关联的家庭设备信息."""
         return house_device_info(self._coordinator, name_suffix="灯组")
+
+    @property
+    def native_value(self) -> float | None:
+        """返回灯组当前亮度百分比."""
+        value = _group_param(self._coordinator, self._group_id, "l")
+        return float(value) if isinstance(value, int | float) else None
 
     async def async_set_native_value(self, value: float) -> None:
         """设置灯组亮度."""
@@ -258,14 +263,12 @@ class YeelightProGroupBrightness(NumberEntity):
                 self._group_id,
                 {"l": brightness},
             )
-            self._attr_native_value = value
-            self.async_write_ha_state()
             _LOGGER.debug("灯组 %s 亮度已设置为 %s%%", self._group_id, brightness)
         except YeelightProError as err:
             raise_service_error("number.set_group_brightness", err)
 
 
-class YeelightProGroupColorTemp(NumberEntity):
+class YeelightProGroupColorTemp(CoordinatorEntity, NumberEntity):
     """灯组色温控制实体."""
 
     _attr_has_entity_name = True
@@ -283,22 +286,27 @@ class YeelightProGroupColorTemp(NumberEntity):
         group_name: str,
     ) -> None:
         """初始化灯组色温控制."""
-        super().__init__()
+        super().__init__(coordinator)
         self._coordinator = coordinator
-        self._group_id = group_id
+        self._group_id = str(group_id)
         self._attr_unique_id = entity_unique_id(
             coordinator,
             "group",
-            group_id,
+            self._group_id,
             "color_temp",
         )
         self._attr_name = f"{group_name} 色温"
-        self._attr_native_value: float | None = None
 
     @property
     def device_info(self) -> dict[str, Any]:
         """返回关联的家庭设备信息."""
         return house_device_info(self._coordinator, name_suffix="灯组")
+
+    @property
+    def native_value(self) -> float | None:
+        """返回灯组当前色温."""
+        value = _group_param(self._coordinator, self._group_id, "ct")
+        return float(value) if isinstance(value, int | float) else None
 
     async def async_set_native_value(self, value: float) -> None:
         """设置灯组色温."""
@@ -308,10 +316,25 @@ class YeelightProGroupColorTemp(NumberEntity):
                 self._group_id,
                 {"ct": color_temp},
             )
-            self._attr_native_value = value
-            self.async_write_ha_state()
             _LOGGER.debug(
                 "灯组 %s 色温已设置为 %sK", self._group_id, color_temp
             )
         except YeelightProError as err:
             raise_service_error("number.set_group_color_temp", err)
+
+
+def _group_param(
+    coordinator: YeelightProCoordinator,
+    group_id: str,
+    key: str,
+) -> Any:
+    """从最新灯组缓存读取指定参数."""
+    for group in coordinator.groups:
+        current_id = group.get("id") or group.get("groupId")
+        if str(current_id) != group_id:
+            continue
+        params = group.get("params")
+        if isinstance(params, dict):
+            return params.get(key)
+        return None
+    return None

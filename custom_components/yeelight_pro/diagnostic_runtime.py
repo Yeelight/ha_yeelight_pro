@@ -7,6 +7,7 @@ from typing import Any
 
 from .const import (
     CONF_CONNECTION_MODE,
+    CONF_DEVICE_IMPORT_FILTER,
     CONF_LIVE_UPDATES,
     CONNECTION_MODE_CLOUD,
     CONNECTION_MODE_LAN,
@@ -14,6 +15,8 @@ from .const import (
     DEFAULT_LIVE_UPDATES,
     get_enabled_platforms,
 )
+from .device_filter import normalize_device_import_filter
+from .diagnostic_push_flow import push_payload_flow, push_sync_status
 
 
 def client_capabilities(runtime: Mapping[str, Any]) -> dict[str, Any]:
@@ -116,7 +119,10 @@ def runtime_health(
             if polling_fallback_active
             else None
         ),
-        "push": push_manager_health(runtime.get("push_manager")),
+        "push": push_manager_health(
+            runtime.get("push_manager"),
+            import_filter_active=_import_filter_active(runtime),
+        ),
         "lan": manager_health(runtime.get("lan_runtime")),
     }
 
@@ -130,15 +136,42 @@ def manager_health(manager: Any) -> dict[str, Any] | None:
     return None
 
 
-def push_manager_health(manager: Any) -> dict[str, Any] | None:
+def push_manager_health(
+    manager: Any,
+    *,
+    import_filter_active: bool = False,
+) -> dict[str, Any] | None:
     """Return push manager and transport health without raw endpoint details."""
     health = manager_health(manager)
     if health is None:
         return None
+    result = dict(health)
     transport_health = getattr(manager, "transport_health", None)
     if isinstance(transport_health, Mapping):
-        return {**health, "transport": dict(transport_health)}
-    return health
+        transport = dict(transport_health)
+        sync_status = push_sync_status(result, transport)
+        return {
+            **result,
+            "push_sync_status": sync_status,
+            "payload_flow": push_payload_flow(
+                result,
+                transport,
+                sync_status=sync_status,
+                import_filter_active=import_filter_active,
+            ),
+            "transport": transport,
+        }
+    sync_status = push_sync_status(result, None)
+    return {
+        **result,
+        "push_sync_status": sync_status,
+        "payload_flow": push_payload_flow(
+            result,
+            None,
+            sync_status=sync_status,
+            import_filter_active=import_filter_active,
+        ),
+    }
 
 
 def push_runtime_available(manager: Any) -> bool:
@@ -191,6 +224,14 @@ def _runtime_entry_options(runtime: Mapping[str, Any]) -> Mapping[str, Any]:
     entry = runtime.get("entry")
     options = getattr(entry, "options", None)
     return options if isinstance(options, Mapping) else {}
+
+
+def _import_filter_active(runtime: Mapping[str, Any]) -> bool:
+    """Return whether the loaded entry has an active device-import filter."""
+    options = _runtime_entry_options(runtime)
+    return normalize_device_import_filter(
+        options.get(CONF_DEVICE_IMPORT_FILTER)
+    ).enabled
 
 
 def _live_updates_intended(runtime: Mapping[str, Any]) -> bool:

@@ -13,6 +13,7 @@ from custom_components.yeelight_pro.core.property_hydration import (
 )
 from custom_components.yeelight_pro.entity_candidates import iter_device_entity_candidates
 from custom_components.yeelight_pro.projector.light import project_lights
+from custom_components.yeelight_pro.projector.switch import project_switches
 
 
 @pytest.mark.asyncio
@@ -225,6 +226,93 @@ async def test_hydration_preserves_indexed_property_values_for_subdevice_project
         ("light", "light_1"),
         ("light", "light_2"),
     }
+
+
+@pytest.mark.asyncio
+async def test_hydration_reads_missing_indexed_subdevice_values() -> None:
+    """多路子设备批量读缺路时，应按 index 补读，避免后几路长期 unknown."""
+    client = AsyncMock()
+    client.read_nodes_properties.return_value = {
+        "code": "200",
+        "data": {
+            "50018395": {
+                "code": "200",
+                "data": [
+                    {"propId": "p", "index": 1, "value": True},
+                    {"propId": "sp", "index": 1, "value": True},
+                    {"propId": "p", "index": 2, "value": False},
+                    {"propId": "sp", "index": 2, "value": False},
+                ],
+            }
+        },
+    }
+    client.read_node_properties.side_effect = [
+        {
+            "code": "200",
+            "data": [
+                {"propId": "p", "value": True},
+                {"propId": "sp", "value": True},
+            ],
+        },
+        {
+            "code": "200",
+            "data": [
+                {"propId": "p", "value": False},
+                {"propId": "sp", "value": False},
+            ],
+        },
+    ]
+
+    [hydrated] = await async_hydrate_device_properties(
+        client,
+        house_id=429392,
+        devices=[
+            {
+                "id": 50018395,
+                "name": "四键",
+                "category": "relay_switch",
+                "subDeviceList": [
+                    {
+                        "index": index,
+                        "category": "relay_switch",
+                        "properties": [
+                            {"propId": "p", "operators": ["set", "toggle"]},
+                            {"propId": "sp", "operators": ["set", "toggle"]},
+                        ],
+                    }
+                    for index in range(1, 5)
+                ],
+            }
+        ],
+        product_schemas={},
+    )
+    data, _gateways = DevicePayloadBuilder().build_runtime_payloads(
+        devices=[hydrated],
+        gateways=[],
+        product_schemas={},
+        apply_runtime_overrides=lambda payload: payload,
+    )
+    device = data[50018395]
+    switches = project_switches(device, domain="yeelight_pro")
+
+    assert device["params"] == {
+        "1-p": True,
+        "1-sp": True,
+        "2-p": False,
+        "2-sp": False,
+        "3-p": True,
+        "3-sp": True,
+        "4-p": False,
+        "4-sp": False,
+    }
+    assert [switch.component_id for switch in switches] == [
+        "switch_1",
+        "switch_2",
+        "switch_3",
+        "switch_4",
+    ]
+    assert [switch.is_on for switch in switches] == [True, False, True, False]
+    assert [call.kwargs["index"] for call in client.read_node_properties.await_args_list] == [3, 4]
 
 
 @pytest.mark.asyncio

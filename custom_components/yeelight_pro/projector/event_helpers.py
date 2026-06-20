@@ -26,6 +26,11 @@ from .event_identity_helpers import (
     fallback_event_input_category as _fallback_event_input_category,
     has_known_registry_events as _has_known_registry_events,
     has_registry_supported_events as _has_registry_supported_events,
+    product_model_has_official_component_names as _product_model_has_official_component_names,
+)
+from .event_input import (
+    EVENT_INPUT_CATEGORIES,
+    event_input_component_category as _event_input_component_category,
 )
 from .sensor_helpers import device_payload_category, device_payload_id
 
@@ -150,14 +155,29 @@ def event_fallback_projection(
     domain: str,
 ) -> Any | None:
     """为缺少 schema events 的已知事件输入设备生成保守 event 投影。"""
+    projections = event_fallback_projections(
+        device_payload,
+        product_model,
+        instance,
+        domain=domain,
+    )
+    return projections[0] if projections else None
+
+
+def event_fallback_projections(
+    device_payload: Mapping[str, Any],
+    product_model: HAProductModel,
+    instance: Any,
+    *,
+    domain: str,
+) -> list[Any]:
+    """为缺少 schema events 的已知事件输入设备生成保守 event 投影列表。"""
     fallback_event_types = _fallback_event_types(device_payload, product_model)
     if not fallback_event_types:
-        return None
+        return []
 
     from .event import HAEventProjection
 
-    component_id = _fallback_component_id(device_payload, product_model)
-    is_safety = component_id == SAFETY_EVENT_COMPONENT_ID
     source_device_id = (
         instance.device_id
         if instance is not None
@@ -168,25 +188,32 @@ def event_fallback_projection(
         default=True,
     )
     unique_id_prefix = payload_entity_unique_id_prefix(device_payload, domain=domain)
-    return HAEventProjection(
-        component_id=component_id,
-        unique_id=f"{unique_id_prefix}_{source_device_id}_{component_id}_event",
-        name=_fallback_event_name(component_id, device_payload, product_model),
-        available=available,
-        event_types=list(fallback_event_types),
-        device_info=project_payload_device_info(device_payload, instance),
-        device_class=None if is_safety else EventDeviceClass.BUTTON,
-        icon="mdi:smoke-detector" if is_safety else "mdi:gesture-tap-button",
-    )
+    device_info = project_payload_device_info(device_payload, instance)
 
-
-def _should_project_event_component(
-    component: ComponentModel,
-    product_model: HAProductModel,
-    device_payload: Mapping[str, Any],
-) -> bool:
-    """判断组件是否应投影为 event 实体。"""
-    return _event_component_skip_reason(component, product_model, device_payload) is None
+    projections: list[Any] = []
+    for component_id in _fallback_component_ids(device_payload, product_model):
+        is_safety = component_id == SAFETY_EVENT_COMPONENT_ID
+        projections.append(
+            HAEventProjection(
+                component_id=component_id,
+                unique_id=f"{unique_id_prefix}_{source_device_id}_{component_id}_event",
+                name=_fallback_event_name(
+                    component_id,
+                    device_payload,
+                    product_model,
+                ),
+                available=available,
+                event_types=list(fallback_event_types),
+                device_info=device_info,
+                device_class=None if is_safety else EventDeviceClass.BUTTON,
+                icon=_fallback_event_icon(
+                    component_id,
+                    device_payload,
+                    product_model,
+                ),
+            )
+        )
+    return projections
 
 
 def _event_component_skip_reason(
@@ -254,24 +281,71 @@ def event_fallback_skip_reason(
     return "missing_event_input_identity"
 
 
-def _fallback_component_id(
+def _fallback_component_ids(
+    device_payload: Mapping[str, Any],
+    product_model: HAProductModel,
+) -> list[str]:
+    """Return stable component ids for fallback event entities."""
+    if is_safety_event_device(device_payload):
+        return [SAFETY_EVENT_COMPONENT_ID]
+
+    matched: list[str] = []
+    seen: set[str] = set()
+    for component in product_model.components:
+        category = _component_event_input_category(component, product_model)
+        if category not in {"knob_switch", "scene_panel"}:
+            continue
+        if component.component_id in seen:
+            continue
+        seen.add(component.component_id)
+        matched.append(component.component_id)
+    if matched:
+        return matched
+
+    category = _fallback_event_input_category(device_payload, product_model)
+    if category == "knob_switch":
+        return ["knob_switch"]
+    if category == "scene_panel":
+        return ["scene_panel"]
+    return []
+
+
+def _component_event_input_category(
+    component: ComponentModel,
+    product_model: HAProductModel,
+) -> str | None:
+    """Return event-input category from component-level identity only."""
+    category = _category_key(component.category)
+    if category in EVENT_INPUT_CATEGORIES:
+        return category
+
+    values: tuple[Any, ...] = (
+        component.category,
+        component.cid,
+        component.component_id,
+        *(
+            (component.name, component.desc)
+            if _product_model_has_official_component_names(product_model)
+            else ()
+        ),
+    )
+    for value in values:
+        if component_category := _event_input_component_category(value):
+            return component_category
+    return None
+
+
+def _fallback_event_icon(
+    component_id: str,
     device_payload: Mapping[str, Any],
     product_model: HAProductModel,
 ) -> str:
-    """Return a stable component id for fallback event entities."""
-    if is_safety_event_device(device_payload):
-        return SAFETY_EVENT_COMPONENT_ID
-
-    for component in product_model.components:
-        category = _event_input_category(component, product_model)
-        if category == "knob_switch":
-            return component.component_id
-        if category == "scene_panel":
-            return component.component_id
-    category = _fallback_event_input_category(device_payload, product_model)
-    if category == "knob_switch":
-        return "knob_switch"
-    return "scene_panel"
+    """Return fallback event icon for documented event-input categories."""
+    if component_id == SAFETY_EVENT_COMPONENT_ID:
+        return "mdi:smoke-detector"
+    if _fallback_event_input_category(device_payload, product_model) == "knob_switch":
+        return "mdi:knob"
+    return "mdi:gesture-tap-button"
 
 
 def _fallback_event_name(
@@ -281,7 +355,7 @@ def _fallback_event_name(
 ) -> str:
     """Return readable fallback event names instead of the generic 事件."""
     index = component_index(component_id)
-    channel = channel_name_label(index=index)
+    channel = channel_name_label(index=index, device_payload=device_payload)
     category = _fallback_event_input_category(device_payload, product_model)
     if component_id == SAFETY_EVENT_COMPONENT_ID:
         return "报警事件"

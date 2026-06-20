@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any, Mapping
 
+from ..canonical.models import ValueRangeModel
 from ..capabilities.registry import (
     component_platform_hint,
     is_projectable_global_component,
@@ -92,7 +93,7 @@ def should_include_runtime_component(
     if component_state:
         return True
     if _component_category(component) == "other":
-        return False
+        return has_writable_helper_property(component)
     if looks_like_sensor_component(component):
         return True
     return looks_like_stateless_actuator_component(component)
@@ -172,6 +173,14 @@ def looks_like_sensor_component(component: Any) -> bool:
     )
 
 
+def has_writable_helper_property(component: Any) -> bool:
+    """Return true when docs/iot proves this empty component has helper controls."""
+    return any(
+        _is_writable_helper_property(prop)
+        for prop in getattr(component, "properties", []) or []
+    )
+
+
 def _component_platform(component: Any) -> str | None:
     """返回 registry 支撑的 HA 平台，不读取用户可见名称。"""
     for value in (
@@ -190,6 +199,42 @@ def _component_platform(component: Any) -> str | None:
             if platform:
                 return platform
     return None
+
+
+def _is_writable_helper_property(prop: Any) -> bool:
+    prop_id = to_str(getattr(prop, "prop_id", None))
+    if not prop_id:
+        return False
+    spec = property_spec(prop_id)
+    if spec is None or not spec.writable:
+        return False
+    if to_str(getattr(prop, "format", None)) in {"jsonObj", "jsonArray"}:
+        return False
+    if not _property_access_allows_write(getattr(prop, "access", None)):
+        return False
+    return bool(
+        _has_value_range(prop)
+        or getattr(prop, "value_list", None)
+        or (to_str(getattr(prop, "format", None)) or "").lower() in {"bool", "boolean"}
+        or spec.data_type.lower() in {"bool", "boolean"}
+    )
+
+
+def _property_access_allows_write(value: Any) -> bool:
+    text = (to_str(value) or "").lower()
+    return "write" in text or "写" in text or text in {"rw", "read_write"}
+
+
+def _has_value_range(prop: Any) -> bool:
+    value_range = getattr(prop, "value_range", None)
+    if value_range is None:
+        return False
+    if isinstance(value_range, ValueRangeModel):
+        return any(
+            value is not None
+            for value in (value_range.min, value_range.max, value_range.step)
+        )
+    return bool(value_range)
 
 
 def _component_category(component: Any) -> str | None:

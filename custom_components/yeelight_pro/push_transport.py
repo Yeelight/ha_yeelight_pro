@@ -52,8 +52,6 @@ class YeelightPushWebSocketTransport(
         reconnect_policy: PushReconnectPolicy | None = None,
         auto_reconnect: bool = True,
         connect_timeout_seconds: float = DEFAULT_REQUEST_TIMEOUT,
-        proxy: str | None = None,
-        enable_ip_fallback: bool = False,
     ) -> None:
         """Initialize a transport without opening a network connection."""
         self._session = session
@@ -67,8 +65,6 @@ class YeelightPushWebSocketTransport(
         self._reconnect_policy = reconnect_policy or PushReconnectPolicy()
         self._auto_reconnect = auto_reconnect
         self._connect_timeout_seconds = connect_timeout_seconds
-        self._proxy = proxy.strip() if isinstance(proxy, str) and proxy.strip() else None
-        self._enable_ip_fallback = enable_ip_fallback
         self._websocket: PushWebSocket | None = None
         self._reader_task: asyncio.Task[None] | None = None
         self._heartbeat_task: asyncio.Task[None] | None = None
@@ -80,7 +76,6 @@ class YeelightPushWebSocketTransport(
         self._last_runtime_error_type: str | None = None
         self._last_failure_was_connect = False
         self._health = PushTransportHealth()
-        self._health.proxy_configured = self._proxy is not None
         self._connection_received_messages = 0
         self._connection_started_at: float | None = None
 
@@ -146,7 +141,6 @@ class YeelightPushWebSocketTransport(
         self._connection_started_at = time()
         self._health.first_frame_received = False
         self._health.reconnect_pending = False
-        self._health.reconnect_suspended = False
         self._health.next_reconnect_delay = None
         self._health.last_close_code = None
         self._health.last_close_exception_type = None
@@ -206,7 +200,6 @@ class YeelightPushWebSocketTransport(
         self._running = False
         self._health.running = False
         self._health.reconnect_pending = False
-        self._health.reconnect_suspended = False
         self._health.next_reconnect_delay = None
         self._callback = None
         reconnect_task = self._reconnect_task

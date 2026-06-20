@@ -234,6 +234,41 @@ async def test_push_transport_heartbeat_failure_closes_websocket() -> None:
 
 
 @pytest.mark.asyncio
+async def test_stable_connection_heartbeat_failure_resets_reconnect_backoff() -> None:
+    """稳定连接后 heartbeat 失败应从短退避恢复，避免沿用历史 60 秒等待."""
+    sleep = ControlledSleep()
+    reconnect_sleep = ControlledSleep()
+    websocket = FailingHeartbeatWebSocket()
+    reconnect_websocket = OpenFakeWebSocket()
+    session = FakeSession([websocket, reconnect_websocket])
+    transport = YeelightPushWebSocketTransport(
+        session=session,
+        token="fake-token",
+        sleep=sleep,
+        reconnect_sleep=reconnect_sleep,
+    )
+
+    await transport.async_start(AsyncMock())
+    await websocket.waiting_for_message.wait()
+    transport._next_reconnect_delay = 60.0
+    transport._connection_started_at -= 21
+
+    await wait_for_sleep_calls(sleep, 1)
+    sleep.release.set()
+    await wait_for_sleep_calls(reconnect_sleep, 1)
+    reconnect_sleep.release.set()
+    await reconnect_websocket.waiting_for_message.wait()
+
+    assert reconnect_sleep.delays == [1.0]
+    assert session.connected_urls == [
+        "wss://push.yeelight.com/ws/fake-token",
+        "wss://push.yeelight.com/ws/fake-token",
+    ]
+
+    await transport.async_stop()
+
+
+@pytest.mark.asyncio
 async def test_push_transport_reader_failure_closes_websocket() -> None:
     """reader 后台失败时应关闭 websocket、取消 heartbeat 并吞掉异常."""
     sleep = ControlledSleep()

@@ -14,7 +14,7 @@ from .const import (
     CONF_PRIVATE_DOMAIN,
     CONF_PRIVATE_PUSH_DOMAIN,
 )
-from .deployment_urls import deployment_push_base_url, deployment_root_url
+from .deployment_urls import deployment_private_push_base_url, deployment_root_url
 
 
 class _PrivateConfigFlowProtocol(Protocol):
@@ -55,7 +55,9 @@ class PrivateConfigFlowMixin:
                         user_input.get(CONF_PRIVATE_PUSH_DOMAIN, "")
                     ).strip()
                     flow._private_push_domain = (
-                        deployment_push_base_url(push_domain) if push_domain else ""
+                        deployment_private_push_base_url(flow._domain, push_domain)
+                        if push_domain
+                        else ""
                     )
                     return await flow.async_step_cloud_auth_method()
                 except Exception as err:

@@ -180,7 +180,7 @@ PUSH_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
         ),
         "secret-access-token": "push event token redaction coverage",
     },
-    "tests/test_push_events.py": {
+    "tests/test_push_event_routing.py": {
         "test_coordinator_deduplicates_replayed_push_event_message_id": (
             "push event replay dedupe coverage"
         ),

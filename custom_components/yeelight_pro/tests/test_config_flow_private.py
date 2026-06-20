@@ -109,13 +109,29 @@ async def test_private_config_accepts_separate_push_domain(config_flow) -> None:
 
     result = await config_flow.async_step_private_config({
         CONF_PRIVATE_DOMAIN: "api-dev.yeedev.com",
-        CONF_PRIVATE_PUSH_DOMAIN: "ws-dev.yeedev.com",
+        CONF_PRIVATE_PUSH_DOMAIN: "192.168.1.202:7779",
     })
 
     assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "cloud_auth_method"
     assert config_flow._domain == "https://api-dev.yeedev.com"
-    assert config_flow._private_push_domain == "wss://ws-dev.yeedev.com/ws"
+    assert config_flow._private_push_domain == "ws://192.168.1.202:7779/ws"
+
+
+@pytest.mark.asyncio
+async def test_private_config_repairs_known_push_cross_route(config_flow) -> None:
+    """api-dev 配置页误填 api-test push 时应自动纠正到 dev push."""
+    config_flow._connection_mode = CONNECTION_MODE_PRIVATE
+
+    result = await config_flow.async_step_private_config({
+        CONF_PRIVATE_DOMAIN: "api-dev.yeedev.com",
+        CONF_PRIVATE_PUSH_DOMAIN: "ws://192.168.0.89:7779/ws",
+    })
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "cloud_auth_method"
+    assert config_flow._domain == "https://api-dev.yeedev.com"
+    assert config_flow._private_push_domain == "ws://192.168.1.202:7779/ws"
 
 
 @pytest.mark.asyncio

@@ -134,6 +134,26 @@ DIAGNOSTICS_CONTRACT_TEST_TOKENS = {
         "lan_control": "live LAN control capability is explicit",
         "mqtt_subscription": "live MQTT subscription remains explicitly disabled",
     },
+    "tests/diagnostics_push_helpers.py": {
+        "push_sync_status": "push sync status fixture helper",
+        "payload_flow": "push payload-flow fixture helper",
+        "data_topology_check": "push data topology fixture helper",
+        "data_import_filter_check": "push data import-filter fixture helper",
+    },
+    "tests/test_diagnostics_push_flow_status.py": {
+        "push_sync_status": "push sync status diagnostics are covered",
+        "import_filter_active": "push flow import-filter status is covered",
+        "no_data_payload_received": "no business data frame status is covered",
+    },
+    "tests/test_diagnostics_push_data_status.py": {
+        "data_topology_check": "push data topology conclusion is covered",
+        "data_import_filter_check": "push data import-filter conclusion is covered",
+        "data_payload_empty_params": "empty push params status is covered",
+        "data_payload_routed_no_state_change": (
+            "routed unchanged payload status is covered"
+        ),
+        "data_payload_not_in_topology": "topology mismatch status is covered",
+    },
     "tests/test_diagnostic_options.py": {
         "option_status_diagnostics": "option status helper is directly covered",
         "test_option_status_normalizes_legacy_runtime_options": (

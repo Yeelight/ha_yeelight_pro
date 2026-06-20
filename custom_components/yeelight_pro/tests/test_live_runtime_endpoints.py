@@ -51,7 +51,7 @@ async def test_live_runtime_uses_region_push_endpoint_for_cloud_entries(
     websocket = OpenFakeWebSocket()
     session = FakeSession(websocket)
     monkeypatch.setattr(
-        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
+        "custom_components.yeelight_pro.live_runtime.async_create_clientsession",
         lambda _hass: session,
     )
 
@@ -72,18 +72,18 @@ async def test_live_runtime_uses_private_deployment_push_endpoint(
     entry = _make_live_entry()
     entry.data[CONF_CONNECTION_MODE] = CONNECTION_MODE_PRIVATE
     entry.data[CONF_PRIVATE_DOMAIN] = "https://api-dev.yeedev.com"
-    entry.data[CONF_PRIVATE_PUSH_DOMAIN] = "ws-dev.yeedev.com"
+    entry.data[CONF_PRIVATE_PUSH_DOMAIN] = "192.168.1.202:7779"
     websocket = OpenFakeWebSocket()
     session = FakeSession(websocket)
     monkeypatch.setattr(
-        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
+        "custom_components.yeelight_pro.live_runtime.async_create_clientsession",
         lambda _hass: session,
     )
 
     manager = await async_start_live_runtime(hass, entry, AsyncMock())
 
     assert manager is not None
-    assert session.connected_urls == ["wss://ws-dev.yeedev.com/ws/test_token"]
+    assert session.connected_urls == ["ws://192.168.1.202:7779/ws/test_token"]
 
     await manager.async_stop()
 
@@ -101,14 +101,14 @@ async def test_live_runtime_falls_back_to_private_api_host_for_legacy_entries(
     websocket = OpenFakeWebSocket()
     session = FakeSession(websocket)
     monkeypatch.setattr(
-        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
+        "custom_components.yeelight_pro.live_runtime.async_create_clientsession",
         lambda _hass: session,
     )
 
     manager = await async_start_live_runtime(hass, entry, AsyncMock())
 
     assert manager is not None
-    assert session.connected_urls == ["wss://api-dev.yeedev.com/ws/test_token"]
+    assert session.connected_urls == ["ws://192.168.1.202:7779/ws/test_token"]
 
     await manager.async_stop()
 
@@ -118,7 +118,7 @@ async def test_live_runtime_falls_back_to_private_test_push_host(
     hass: HomeAssistant,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """api-test.yeedev.com currently uses the separate ws-test push endpoint."""
+    """api-test.yeedev.com currently uses the direct private test push endpoint."""
     entry = _make_live_entry()
     entry.data[CONF_CONNECTION_MODE] = CONNECTION_MODE_PRIVATE
     entry.data[CONF_PRIVATE_DOMAIN] = "http://api-test.yeedev.com"
@@ -126,14 +126,39 @@ async def test_live_runtime_falls_back_to_private_test_push_host(
     websocket = OpenFakeWebSocket()
     session = FakeSession(websocket)
     monkeypatch.setattr(
-        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
+        "custom_components.yeelight_pro.live_runtime.async_create_clientsession",
         lambda _hass: session,
     )
 
     manager = await async_start_live_runtime(hass, entry, AsyncMock())
 
     assert manager is not None
-    assert session.connected_urls == ["ws://ws-test.yeedev.com/ws/test_token"]
+    assert session.connected_urls == ["ws://192.168.0.89:7779/ws/test_token"]
+
+    await manager.async_stop()
+
+
+@pytest.mark.asyncio
+async def test_live_runtime_repairs_known_private_push_cross_route(
+    hass: HomeAssistant,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """历史 entry 中 api-dev 误配 api-test push 时必须连接 dev push."""
+    entry = _make_live_entry()
+    entry.data[CONF_CONNECTION_MODE] = CONNECTION_MODE_PRIVATE
+    entry.data[CONF_PRIVATE_DOMAIN] = "http://api-dev.yeedev.com"
+    entry.data[CONF_PRIVATE_PUSH_DOMAIN] = "ws://192.168.0.89:7779/ws"
+    websocket = OpenFakeWebSocket()
+    session = FakeSession(websocket)
+    monkeypatch.setattr(
+        "custom_components.yeelight_pro.live_runtime.async_create_clientsession",
+        lambda _hass: session,
+    )
+
+    manager = await async_start_live_runtime(hass, entry, AsyncMock())
+
+    assert manager is not None
+    assert session.connected_urls == ["ws://192.168.1.202:7779/ws/test_token"]
 
     await manager.async_stop()
 
@@ -147,11 +172,11 @@ async def test_live_runtime_does_not_override_private_push_heartbeat(
     entry = _make_live_entry()
     entry.data[CONF_CONNECTION_MODE] = CONNECTION_MODE_PRIVATE
     entry.data[CONF_PRIVATE_DOMAIN] = "http://api-test.yeedev.com"
-    entry.data[CONF_PRIVATE_PUSH_DOMAIN] = "ws://ws-test.yeedev.com/ws"
+    entry.data[CONF_PRIVATE_PUSH_DOMAIN] = "ws://192.168.0.89:7779/ws"
     session = FakeSession(OpenFakeWebSocket())
     captured: dict[str, object] = {}
     monkeypatch.setattr(
-        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
+        "custom_components.yeelight_pro.live_runtime.async_create_clientsession",
         lambda _hass: session,
     )
     monkeypatch.setattr(
@@ -168,19 +193,19 @@ async def test_live_runtime_does_not_override_private_push_heartbeat(
 
 
 @pytest.mark.asyncio
-async def test_live_runtime_enables_private_fake_ip_detection_without_proxy(
+async def test_live_runtime_uses_direct_private_websocket_without_proxy_fallback(
     hass: HomeAssistant,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """私有部署可检测 fake-ip DNS，但不猜测宿主机代理端口。"""
+    """私有部署默认直连，不把代理或 DNS 排查路径带入生产运行时。"""
     entry = _make_live_entry()
     entry.data[CONF_CONNECTION_MODE] = CONNECTION_MODE_PRIVATE
     entry.data[CONF_PRIVATE_DOMAIN] = "http://api-test.yeedev.com"
-    entry.data[CONF_PRIVATE_PUSH_DOMAIN] = "ws://ws-test.yeedev.com/ws"
+    entry.data[CONF_PRIVATE_PUSH_DOMAIN] = "ws://192.168.0.89:7779/ws"
     session = FakeSession(OpenFakeWebSocket())
     captured: dict[str, object] = {}
     monkeypatch.setattr(
-        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
+        "custom_components.yeelight_pro.live_runtime.async_create_clientsession",
         lambda _hass: session,
     )
     monkeypatch.setattr(
@@ -191,9 +216,8 @@ async def test_live_runtime_enables_private_fake_ip_detection_without_proxy(
     manager = await async_start_live_runtime(hass, entry, AsyncMock())
 
     assert manager is not None
-    assert "proxy" not in captured or captured["proxy"] is None
-    assert "auto_proxy_candidates" not in captured
-    assert captured["enable_ip_fallback"] is True
+    assert "proxy" not in captured
+    assert "enable_ip_fallback" not in captured
 
     await manager.async_stop()
 
@@ -209,7 +233,7 @@ async def test_live_runtime_keeps_documented_cloud_push_heartbeat(
     session = FakeSession(OpenFakeWebSocket())
     captured: dict[str, object] = {}
     monkeypatch.setattr(
-        "custom_components.yeelight_pro.live_runtime.async_get_clientsession",
+        "custom_components.yeelight_pro.live_runtime.async_create_clientsession",
         lambda _hass: session,
     )
     monkeypatch.setattr(

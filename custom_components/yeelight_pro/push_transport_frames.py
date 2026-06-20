@@ -15,6 +15,22 @@ from .lan_methods import (
     METHOD_POST_PROP,
 )
 from .push_contract import PUSH_CONTROL_METHODS, PUSH_DATA_TYPES
+from .push_transport_frame_nodes import (
+    data_frame_node_candidate_hash_samples as _data_frame_node_candidate_hash_samples,
+    data_frame_node_hash_samples as _data_frame_node_hash_samples,
+    safe_node_id_hash,
+)
+from .push_transport_private_frames import (
+    is_private_status_ack,
+    is_private_status_frame,
+    is_private_subscribe_snapshot,
+    private_status_reason_label,
+    private_status_result_label,
+    private_subscribe_state_payload,
+    private_subscribe_devices,
+    snapshot_state_keys,
+    subscribe_snapshot_node_candidate_hash_samples,
+)
 
 
 class PushControlFrameError(Exception):
@@ -87,17 +103,107 @@ def is_control_frame(payload: Mapping[str, Any]) -> bool:
     return (
         payload.get("method") in PUSH_CONTROL_METHODS
         or is_result_control_payload(payload)
-        or _is_private_subscribe_snapshot(payload)
+        or is_private_status_frame(payload)
+        or is_private_status_ack(payload)
+        or is_private_subscribe_snapshot(payload)
     )
+
+
+def control_frame_method(payload: Mapping[str, Any]) -> str | None:
+    """Return a diagnostics-safe control-frame method label."""
+    method = payload.get("method")
+    if isinstance(method, str) and method in PUSH_CONTROL_METHODS:
+        return method
+    data = payload.get("data")
+    if is_private_status_ack(payload):
+        return "private_status_ack"
+    if is_private_status_frame(payload):
+        return "private_status"
+    if is_private_subscribe_snapshot(payload):
+        if isinstance(data, Mapping):
+            nested_method = data.get("method")
+            if isinstance(nested_method, str) and nested_method:
+                return nested_method
+        return "private_subscribe_snapshot"
+    if is_result_control_payload(payload):
+        return "result"
+    return None
+
+
+def control_frame_subscribe_device_count(payload: Mapping[str, Any]) -> int | None:
+    """Return aggregate subscribe snapshot device count without exposing ids."""
+    devices = private_subscribe_devices(payload)
+    if devices is None:
+        return None
+    return len(devices)
+
+
+def control_frame_subscribe_state_device_count(
+    payload: Mapping[str, Any],
+) -> int | None:
+    """Return count of subscribe snapshot devices carrying state-like fields."""
+    devices = private_subscribe_devices(payload)
+    if devices is None:
+        return None
+    return sum(1 for device in devices if snapshot_state_keys(device))
+
+
+def control_frame_subscribe_state_key_samples(
+    payload: Mapping[str, Any],
+) -> list[str]:
+    """Return state-like subscribe snapshot field names without values."""
+    devices = private_subscribe_devices(payload)
+    if devices is None:
+        return []
+    keys: list[str] = []
+    for device in devices:
+        for key in snapshot_state_keys(device):
+            if key not in keys:
+                keys.append(key)
+            if len(keys) >= 10:
+                return keys
+    return keys
+
+
+def control_frame_subscribe_node_hash_samples(
+    payload: Mapping[str, Any],
+) -> list[str]:
+    """Return redacted subscribe snapshot node-id hashes."""
+    return [
+        group[0]
+        for group in control_frame_subscribe_node_candidate_hash_samples(payload)
+        if group
+    ]
+
+
+def control_frame_subscribe_node_candidate_hash_samples(
+    payload: Mapping[str, Any],
+) -> list[list[str]]:
+    """Return redacted subscribe node-id alias hash groups."""
+    return subscribe_snapshot_node_candidate_hash_samples(payload)
+
+
+def data_frame_node_hash_samples(payload: Mapping[str, Any]) -> list[str]:
+    """Return redacted node-id hashes from a prop/event data frame."""
+    return _data_frame_node_hash_samples(_iter_payload_candidates(payload))
+
+
+def data_frame_node_candidate_hash_samples(
+    payload: Mapping[str, Any],
+) -> list[list[str]]:
+    """Return redacted data-frame node-id alias hash groups."""
+    return _data_frame_node_candidate_hash_samples(_iter_payload_candidates(payload))
 
 
 def raise_for_control_error_frame(payload: dict[str, Any]) -> None:
     """Reject control errors without exposing vendor text or payload values."""
+    if is_private_status_frame(payload):
+        return
     method = payload.get("method")
     if (
         method not in PUSH_CONTROL_METHODS
         and not is_result_control_payload(payload)
-        and not _is_private_subscribe_snapshot(payload)
+        and not is_private_subscribe_snapshot(payload)
     ):
         return
     if is_control_error_payload(payload):
@@ -160,21 +266,19 @@ def is_result_control_payload(payload: Mapping[str, Any]) -> bool:
     return isinstance(result, bool) or isinstance(result, Mapping)
 
 
+def _is_private_status_ack(payload: Mapping[str, Any]) -> bool:
+    """Return true for method-less private success ACKs with status text only."""
+    return is_private_status_ack(payload)
+
+
+def _is_private_status_frame(payload: Mapping[str, Any]) -> bool:
+    """Return true for method-less private status frames without data fields."""
+    return is_private_status_frame(payload)
+
+
 def _is_private_subscribe_snapshot(payload: Mapping[str, Any]) -> bool:
     """Return true for private deployments that echo subscribe metadata."""
-    if payload.get("method") not in (None, ""):
-        return False
-    if "type" in payload or "result" not in payload:
-        return False
-    result = payload.get("result")
-    if isinstance(result, str) and result.casefold() != "ok":
-        return False
-    if not isinstance(result, (str, bool)):
-        return False
-    data = payload.get("data")
-    if not isinstance(data, Mapping):
-        return isinstance(result, str)
-    return data.get("method") in PUSH_CONTROL_METHODS
+    return is_private_subscribe_snapshot(payload)
 
 
 def is_control_error_payload(payload: Mapping[str, Any]) -> bool:
@@ -197,11 +301,21 @@ def is_control_error_payload(payload: Mapping[str, Any]) -> bool:
 
 __all__ = [
     "PushControlFrameError",
+    "control_frame_method",
+    "control_frame_subscribe_device_count",
+    "control_frame_subscribe_node_candidate_hash_samples",
+    "control_frame_subscribe_node_hash_samples",
+    "data_frame_node_candidate_hash_samples",
+    "data_frame_node_hash_samples",
     "is_control_error_payload",
     "is_control_frame",
     "is_push_data_payload",
     "is_result_control_payload",
     "json_payload_from_message",
     "payload_type",
+    "private_status_reason_label",
+    "private_status_result_label",
+    "private_subscribe_state_payload",
     "raise_for_control_error_frame",
+    "safe_node_id_hash",
 ]

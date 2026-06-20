@@ -30,6 +30,13 @@ def test_verify_i18n_contracts_accepts_current_translation_boundary(
     ]
     assert metric["service_fields"] == {
         "cleanup_registry": ["audit_id", "confirm", "entry_id"],
+        "debug_emit_push_payload": [
+            "entity_id",
+            "node_type",
+            "params",
+            "payload_shape",
+            "source_device_id",
+        ],
         "refresh": ["refresh_product_schemas"],
     }
 

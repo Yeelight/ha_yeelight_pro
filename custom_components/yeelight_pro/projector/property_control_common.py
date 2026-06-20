@@ -28,6 +28,20 @@ from .common import (
 )
 from .property_control_ownership import is_main_entity_property
 BOOL_FORMATS = frozenset({"bool", "boolean"})
+NON_BOOL_FORMATS = frozenset({
+    "enum",
+    "float",
+    "int",
+    "int64",
+    "integer",
+    "jsonarray",
+    "jsonobj",
+    "str",
+    "string",
+    "uint8",
+    "uint16",
+    "uint32",
+})
 AUXILIARY_BOOL_CONFIG_PROPS = frozenset({
     "acrc",
     "blp",
@@ -47,12 +61,18 @@ GENERIC_COMPONENT_LABELS = frozenset({
     "custom",
     "component",
     "device",
+    "light",
+    "relay switch",
+    "relay_switch",
+    "switch",
     "temp control",
+    "开关",
     "其他",
     "其他组件",
     "自定义",
     "组件",
     "设备",
+    "继电器开关",
 })
 ASCII_WORD_RE = re.compile(r"[A-Za-z]{2,}")
 
@@ -135,9 +155,14 @@ def looks_bool(prop: PropertyModel) -> bool:
     """Return whether a property has boolean semantics."""
     if prop.prop_id in AUXILIARY_BOOL_CONFIG_PROPS:
         return True
-    values = {prop.kind, prop.property_type, prop.format}
-    if any((item or "").lower() in BOOL_FORMATS for item in values):
-        return True
+    for item in (prop.format, prop.property_type):
+        normalized = (item or "").lower()
+        if normalized in BOOL_FORMATS:
+            return True
+        if normalized in NON_BOOL_FORMATS:
+            return False
+    if prop.value_range is not None or prop.value_list:
+        return False
     spec = property_spec(prop.prop_id)
     return bool(spec is not None and spec.data_type.lower() in BOOL_FORMATS)
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 from custom_components.yeelight_pro.deployment_urls import (
     deployment_account_base_url,
     deployment_iot_base_url,
+    deployment_private_push_base_url,
     deployment_push_base_url,
     deployment_root_url,
 )
@@ -42,34 +43,95 @@ def test_deployment_api_base_urls_are_derived_from_root() -> None:
 def test_deployment_push_base_url_is_derived_from_root() -> None:
     """私有部署 WebSocket push endpoint 应规范化为 ws path."""
     assert (
+        deployment_push_base_url("private.example")
+        == "wss://private.example/ws"
+    )
+    assert (
+        deployment_push_base_url("https://push.private.example")
+        == "wss://push.private.example/ws"
+    )
+    assert (
+        deployment_push_base_url("wss://push.private.example/ws")
+        == "wss://push.private.example/ws"
+    )
+    assert (
+        deployment_push_base_url("http://push.private.example/apis/iot")
+        == "ws://push.private.example/ws"
+    )
+    assert (
+        deployment_push_base_url("192.168.8.9:7779")
+        == "ws://192.168.8.9:7779/ws"
+    )
+    assert (
+        deployment_push_base_url("localhost:7779")
+        == "ws://localhost:7779/ws"
+    )
+
+
+def test_deployment_push_base_url_uses_known_private_dev_host() -> None:
+    """Current private dev API host uses the direct dev push endpoint."""
+    assert (
+        deployment_push_base_url("api-dev.yeedev.com")
+        == "ws://192.168.1.202:7779/ws"
+    )
+    assert (
         deployment_push_base_url("ws-dev.yeedev.com")
-        == "wss://ws-dev.yeedev.com/ws"
+        == "ws://192.168.1.202:7779/ws"
     )
     assert (
-        deployment_push_base_url("https://ws-dev.yeedev.com")
-        == "wss://ws-dev.yeedev.com/ws"
+        deployment_push_base_url("https://api-dev.yeedev.com/apis/iot")
+        == "ws://192.168.1.202:7779/ws"
     )
     assert (
-        deployment_push_base_url("wss://ws-dev.yeedev.com/ws")
-        == "wss://ws-dev.yeedev.com/ws"
-    )
-    assert (
-        deployment_push_base_url("http://ws-dev.yeedev.com/apis/iot")
-        == "ws://ws-dev.yeedev.com/ws"
+        deployment_push_base_url("192.168.1.202:7779")
+        == "ws://192.168.1.202:7779/ws"
     )
 
 
 def test_deployment_push_base_url_uses_known_private_test_host() -> None:
-    """Current private test API host uses a separate ws-test push endpoint."""
+    """Current private test API host uses a direct private test push endpoint."""
     assert (
         deployment_push_base_url("api-test.yeedev.com")
-        == "ws://ws-test.yeedev.com/ws"
+        == "ws://192.168.0.89:7779/ws"
+    )
+    assert (
+        deployment_push_base_url("ws-test.yeedev.com")
+        == "ws://192.168.0.89:7779/ws"
     )
     assert (
         deployment_push_base_url("http://api-test.yeedev.com/apis/iot")
-        == "ws://ws-test.yeedev.com/ws"
+        == "ws://192.168.0.89:7779/ws"
     )
     assert (
-        deployment_push_base_url("wss://ws-test.yeedev.com/ws")
-        == "ws://ws-test.yeedev.com/ws"
+        deployment_push_base_url("ws://192.168.0.89:7779/ws")
+        == "ws://192.168.0.89:7779/ws"
+    )
+
+
+def test_deployment_private_push_base_url_repairs_known_cross_route() -> None:
+    """Known internal API hosts must not keep a push URL from another lab route."""
+    assert (
+        deployment_private_push_base_url(
+            "http://api-dev.yeedev.com",
+            "ws://192.168.0.89:7779/ws",
+        )
+        == "ws://192.168.1.202:7779/ws"
+    )
+    assert (
+        deployment_private_push_base_url(
+            "http://api-test.yeedev.com",
+            "ws://192.168.1.202:7779/ws",
+        )
+        == "ws://192.168.0.89:7779/ws"
+    )
+
+
+def test_deployment_private_push_base_url_preserves_custom_override() -> None:
+    """Custom private deployments keep the user-provided WebSocket endpoint."""
+    assert (
+        deployment_private_push_base_url(
+            "https://private.example",
+            "ws://192.168.8.9:7779",
+        )
+        == "ws://192.168.8.9:7779/ws"
     )

@@ -129,7 +129,7 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
     },
     "scripts/hacs_preflight_release_file_groups.py": {
         "RELEASE_COMPONENT_FILES": "component release file group registry",
-        "RELEASE_TEST_FILES": "test release file group registry",
+        "RELEASE_TEST_FILES": "test release file group facade import",
         "hacs_preflight_platform_mapping_data.py": (
             "platform mapping token registry required release file guard"
         ),
@@ -139,6 +139,9 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         "hacs_preflight_local_ha_protocol_contracts.py": (
             "protocol token registry required release file guard"
         ),
+    },
+    "scripts/hacs_preflight_release_test_files.py": {
+        "RELEASE_TEST_FILES": "test release file group registry",
         "test_config_flow_cloud.py": "config-flow cloud required release file guard",
         "test_config_flow_cloud_devices.py": (
             "config-flow cloud device picker required release file guard"

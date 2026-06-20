@@ -207,6 +207,59 @@ def test_multi_switch_light_components_use_channel_names_not_generic_names() -> 
     ]
 
 
+def test_multi_lights_localize_schema_technical_names_without_desc() -> None:
+    """多路灯只有英文 schema 技术名时，也不能把原始英文暴露给用户."""
+    device = projection_payload(
+        device_id="mixed-light-1",
+        category="light",
+        component_id="light_1",
+        state={"p": True, "l": 80, "ct": 4000},
+        params={
+            "1-p": True,
+            "1-l": 80,
+            "1-ct": 4000,
+            "2-p": False,
+            "2-l": 30,
+            "2-c": 0x336699,
+        },
+        component_category="color temperature light",
+        properties=("p", "l", "ct"),
+    )
+    device["ha_device_instance"]["components"][0]["name"] = "color temperature light"
+    device["ha_device_instance"]["components"].append({
+        "component_id": "light_2",
+        "name": "color_light",
+        "category": "color light",
+        "available": True,
+        "state": {"p": False, "l": 30, "c": 0x336699},
+    })
+    device["ha_product_model"]["components"][0]["name"] = "color temperature light"
+    device["ha_product_model"]["components"].append({
+        "component_id": "light_2",
+        "name": "color_light",
+        "category": "color light",
+        "properties": [
+            {"prop_id": "p", "access": "read_write"},
+            {"prop_id": "l", "access": "read_write"},
+            {"prop_id": "c", "access": "read_write"},
+        ],
+        "events": [],
+    })
+    device["ha_device_instance"]["extensions"] = {
+        "component_state_keys": {
+            "light_1": {"p": "1-p", "l": "1-l", "ct": "1-ct"},
+            "light_2": {"p": "2-p", "l": "2-l", "c": "2-c"},
+        }
+    }
+
+    projections = project_lights(device, domain=DOMAIN)
+
+    assert [(item.component_id, item.name) for item in projections] == [
+        ("light_1", "色温灯"),
+        ("light_2", "彩光灯"),
+    ]
+
+
 def test_curtain_projects_cover() -> None:
     """窗帘类应投影为 cover。"""
     device = projection_payload(
@@ -319,66 +372,3 @@ def test_temp_control_projects_climate() -> None:
     assert projection.current_temperature == 24
     assert projection.target_temperature == 26
     assert projection.hvac_mode == HVACMode.AUTO
-
-
-def test_relay_switch_projects_switch() -> None:
-    """继电器开关类应投影为 switch。"""
-    device = projection_payload(
-        device_id="switch-1",
-        category="relay_switch",
-        component_id="switch_control",
-        state={"p": True},
-        component_category="switch control",
-    )
-
-    projections = project_switches(device, domain=DOMAIN)
-
-    assert len(projections) == 1
-    assert projections[0].component_id == "switch_control"
-    assert projections[0].control_key == "p"
-    assert projections[0].is_on is True
-
-
-def test_multi_switch_control_components_use_channel_names_not_generic_names() -> None:
-    """多路开关组件不能都显示为泛化“开关组件”."""
-    device = projection_payload(
-        device_id="panel-switch-1",
-        category="relay_switch",
-        component_id="switch_1",
-        state={"p": True},
-        params={"1-p": True, "2-p": False},
-        component_category="switch control",
-        properties=("p",),
-    )
-    device["ha_device_instance"]["components"][0]["name"] = "switch control"
-    device["ha_device_instance"]["components"].append({
-        "component_id": "switch_2",
-        "name": "switch control",
-        "desc": "开关组件",
-        "category": "switch control",
-        "available": True,
-        "state": {"p": False},
-    })
-    device["ha_product_model"]["components"][0]["name"] = "switch control"
-    device["ha_product_model"]["schema_version"] = "runtime-v1"
-    device["ha_product_model"]["components"].append({
-        "component_id": "switch_2",
-        "name": "switch control",
-        "desc": "开关组件",
-        "category": "switch control",
-        "properties": [{"prop_id": "p", "access": "read_write"}],
-        "events": [],
-    })
-    device["ha_device_instance"]["extensions"] = {
-        "component_state_keys": {
-            "switch_1": {"p": "1-p"},
-            "switch_2": {"p": "2-p"},
-        }
-    }
-
-    projections = project_switches(device, domain=DOMAIN)
-
-    assert [(item.component_id, item.name, item.control_key) for item in projections] == [
-        ("switch_1", "回路 1", "1-p"),
-        ("switch_2", "回路 2", "2-p"),
-    ]

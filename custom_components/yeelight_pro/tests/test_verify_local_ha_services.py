@@ -31,6 +31,8 @@ def test_registered_service_names_resolves_constants_and_literals(tmp_path: Path
         "\n".join([
             "def register(hass, handler):",
             '    hass.services.async_register("yeelight_pro", "debug_emit_event", handler)',
+            '    hass.services.async_register("yeelight_pro", "debug_dump_push_health", handler)',
+            '    hass.services.async_register("yeelight_pro", "debug_emit_push_payload", handler)',
         ]),
         encoding="utf-8",
     )
@@ -41,7 +43,9 @@ def test_registered_service_names_resolves_constants_and_literals(tmp_path: Path
 
     assert registered_service_names(install_root) == {
         "assign_areas",
+        "debug_dump_push_health",
         "debug_emit_event",
+        "debug_emit_push_payload",
     }
 
 
@@ -70,6 +74,15 @@ def test_registered_service_schema_fields_resolves_imported_constants(tmp_path: 
     assert fields["assign_areas"] == {"devices": True, "area_id": True}
     assert fields["debug_emit_event"]["source_device_id"] is True
     assert fields["debug_emit_event"]["entry_id"] is False
+    assert fields["debug_dump_push_health"] == {"entry_id": False}
+    assert fields["debug_emit_push_payload"] == {
+        "entry_id": False,
+        "source_device_id": False,
+        "entity_id": False,
+        "node_type": False,
+        "payload_shape": False,
+        "params": True,
+    }
     assert fields["refresh"] == {"entry_id": False, "refresh_product_schemas": False}
     assert fields["cleanup_registry"] == {
         "entry_id": False,
@@ -206,6 +219,10 @@ def _write_runtime_services(
             'ATTR_DATE_CODE = "date_code"',
             'ATTR_START_DATE = "start_date"',
             'ATTR_END_DATE = "end_date"',
+            'ATTR_ENTITY_ID = "entity_id"',
+            'ATTR_NODE_TYPE = "node_type"',
+            'ATTR_PAYLOAD_SHAPE = "payload_shape"',
+            'ATTR_PARAMS = "params"',
             'from .const import ATTR_COMPONENT_ID, ATTR_EVENT_ATTRIBUTES',
             'from .const import ATTR_EVENT_TYPE, ATTR_SOURCE_DEVICE_ID',
             "SERVICE_ASSIGN_AREAS_SCHEMA = vol.Schema({",
@@ -222,6 +239,17 @@ def _write_runtime_services(
             "    vol.Required(ATTR_EVENT_TYPE): str,",
             "    vol.Optional(ATTR_EVENT_ATTRIBUTES): dict,",
             "})",
+            "SERVICE_DEBUG_DUMP_PUSH_HEALTH_SCHEMA = vol.Schema({",
+            "    vol.Optional(ATTR_ENTRY_ID): str,",
+            "})",
+            "SERVICE_DEBUG_EMIT_PUSH_PAYLOAD_SCHEMA = vol.Schema({",
+            "    vol.Optional(ATTR_ENTRY_ID): str,",
+            "    vol.Optional(ATTR_SOURCE_DEVICE_ID): str,",
+            "    vol.Optional(ATTR_ENTITY_ID): str,",
+            "    vol.Optional(ATTR_NODE_TYPE): int,",
+            "    vol.Optional(ATTR_PAYLOAD_SHAPE): str,",
+            "    vol.Required(ATTR_PARAMS): dict,",
+            "})",
             "SERVICE_REFRESH_SCHEMA = vol.Schema({",
             "    vol.Optional(ATTR_ENTRY_ID): str,",
             "    vol.Optional(ATTR_REFRESH_PRODUCT_SCHEMAS): bool,",
@@ -235,6 +263,8 @@ def _write_runtime_services(
             '    async_register_admin_service(hass, DOMAIN, "assign_areas", handler, schema=SERVICE_ASSIGN_AREAS_SCHEMA)',
             '    async_register_admin_service(hass, DOMAIN, "auto_assign_areas", handler, schema=SERVICE_AUTO_ASSIGN_AREAS_SCHEMA)',
             '    async_register_admin_service(hass, DOMAIN, "debug_emit_event", handler, schema=SERVICE_DEBUG_EMIT_EVENT_SCHEMA)',
+            '    async_register_admin_service(hass, DOMAIN, "debug_dump_push_health", handler, schema=SERVICE_DEBUG_DUMP_PUSH_HEALTH_SCHEMA)',
+            '    async_register_admin_service(hass, DOMAIN, "debug_emit_push_payload", handler, schema=SERVICE_DEBUG_EMIT_PUSH_PAYLOAD_SCHEMA)',
             '    async_register_admin_service(hass, DOMAIN, "refresh", handler, schema=SERVICE_REFRESH_SCHEMA)',
             '    hass.services.async_register(DOMAIN, "cleanup_registry", handler, schema=SERVICE_CLEANUP_REGISTRY_SCHEMA)',
         ]),
@@ -282,6 +312,38 @@ def _service_yaml_lines(devices_required: bool, devices_selector: str) -> list[s
         "        text:",
         "    event_attributes:",
         "      required: false",
+        "      selector:",
+        "        object:",
+        "debug_dump_push_health:",
+        "  fields:",
+        "    entry_id:",
+        "      required: false",
+        "      selector:",
+        "        text:",
+        "debug_emit_push_payload:",
+        "  fields:",
+        "    entry_id:",
+        "      required: false",
+        "      selector:",
+        "        text:",
+        "    source_device_id:",
+        "      required: false",
+        "      selector:",
+        "        text:",
+        "    entity_id:",
+        "      required: false",
+        "      selector:",
+        "        entity:",
+        "    node_type:",
+        "      required: false",
+        "      selector:",
+        "        number:",
+        "    payload_shape:",
+        "      required: false",
+        "      selector:",
+        "        select:",
+        "    params:",
+        "      required: true",
         "      selector:",
         "        object:",
         "refresh:",

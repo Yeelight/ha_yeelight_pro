@@ -122,6 +122,45 @@ def test_device_converter_component_labels_do_not_create_runtime_components() ->
     assert device.components == []
 
 
+def test_device_converter_keeps_documented_other_helper_controls_without_state() -> None:
+    """OpenAPI 已声明可写 other 配置属性时，应保留组件供 helper 实体投影."""
+    product = YeelightProductSchemaConverter().convert(
+        {
+            "pid": 1124352,
+            "name": "P20 panorama screen",
+            "category": "other",
+            "components": [
+                {
+                    "cid": 27,
+                    "name": "music control",
+                    "type": 0,
+                    "category": "other",
+                    "properties": [
+                        {"propId": "mppm", "operators": ["set"]},
+                        {"propId": "mpmp", "format": "bool", "operators": ["set"]},
+                        {"propId": "mpml", "format": "bool", "operators": ["set"]},
+                        {"propId": "mpmr", "operators": ["set"]},
+                    ],
+                },
+            ],
+        }
+    )
+
+    device = YeelightLanDeviceInstanceConverter().convert(
+        {
+            "id": "p20-music-screen",
+            "name": "P20 全景屏",
+            "category": "other",
+            "online": True,
+            "params": {},
+        },
+        product_model=product,
+    )
+
+    assert [component.component_id for component in device.components] == ["other"]
+    assert device.components[0].state == {}
+
+
 def test_device_converter_applies_schema_zoom_scale_to_runtime_state() -> None:
     """Schema-aware runtime state 应按物模型 zoom/scale 转成实际值."""
     product = YeelightProductSchemaConverter().convert(

@@ -98,6 +98,17 @@ class PropertyHydrationClient(Protocol):
     ) -> dict[str, Any]:
         """Read multiple properties for multiple Open API nodes."""
 
+    async def read_node_properties(
+        self,
+        *,
+        house_id: int,
+        node_kind: str,
+        resource_id: int | str,
+        properties: list[str],
+        index: int | None = None,
+    ) -> dict[str, Any]:
+        """Read multiple properties for one Open API node."""
+
 
 async def async_hydrate_device_properties(
     client: PropertyHydrationClient,
@@ -160,6 +171,13 @@ async def async_hydrate_device_properties(
             merged_values.setdefault(device_id, {}).update(values)
 
     values_by_device = merged_values
+    await _hydrate_indexed_subdevice_properties(
+        client,
+        house_id=house_id,
+        devices=normalized_devices,
+        values_by_device=values_by_device,
+        diagnostics=diagnostics,
+    )
     if diagnostics is not None:
         diagnostics.record_merge(values_by_device)
     if not values_by_device:
@@ -264,6 +282,117 @@ def _merge_property_values(
     if by_prop:
         merged["properties"] = list(by_prop.values())
     return merged
+
+
+async def _hydrate_indexed_subdevice_properties(
+    client: PropertyHydrationClient,
+    *,
+    house_id: int,
+    devices: Sequence[Mapping[str, Any]],
+    values_by_device: dict[str, dict[str, Any]],
+    diagnostics: PropertyHydrationDiagnostics | None,
+) -> None:
+    """Fill missing ``N-prop`` values for indexed OpenAPI sub-devices."""
+    for device in devices:
+        device_id = _device_id(device)
+        if device_id is None:
+            continue
+        device_key = str(device_id)
+        indexed_requests = _indexed_subdevice_missing_properties(
+            device,
+            values_by_device.get(device_key, {}),
+        )
+        if not indexed_requests:
+            continue
+        merged_values = values_by_device.setdefault(device_key, {})
+        for index, properties in indexed_requests.items():
+            try:
+                response = await client.read_node_properties(
+                    house_id=house_id,
+                    node_kind="device",
+                    resource_id=device_id,
+                    properties=properties,
+                    index=index,
+                )
+            except AuthenticationError:
+                raise
+            except Exception as err:
+                _LOGGER.warning(
+                    "Failed to hydrate Yeelight Pro indexed sub-device properties "
+                    "(resource=%s, index=%s, properties=%s): %s",
+                    device_id,
+                    index,
+                    len(properties),
+                    safe_error_summary(err),
+                )
+                if diagnostics is not None:
+                    diagnostics.record_failure()
+                continue
+            values = _parse_indexed_node_property_response(
+                response if isinstance(response, Mapping) else {},
+                index=index,
+            )
+            if values:
+                merged_values.update(values)
+            elif not merged_values:
+                values_by_device.pop(device_key, None)
+
+
+def _indexed_subdevice_missing_properties(
+    device: Mapping[str, Any],
+    merged_values: Mapping[str, Any],
+) -> dict[int, list[str]]:
+    """Return per-index property ids still missing live values."""
+    raw_params = device.get("params")
+    params = raw_params if isinstance(raw_params, Mapping) else {}
+    requests: dict[int, list[str]] = {}
+    for subdevice in _property_list(device.get("subDeviceList")):
+        index = to_int(subdevice.get("index"))
+        if index is None:
+            continue
+        missing: list[str] = []
+        for prop in _property_list(subdevice.get("properties")):
+            prop_id = _property_id(prop)
+            if prop_id is None:
+                continue
+            key = f"{index}-{prop_id}"
+            if key in merged_values or key in params or _property_has_value(prop):
+                continue
+            missing.append(prop_id)
+        if missing:
+            requests[index] = _ordered_properties(set(missing))
+    return requests
+
+
+def _parse_indexed_node_property_response(
+    response: Mapping[str, Any],
+    *,
+    index: int,
+) -> dict[str, Any]:
+    """Parse a single-node indexed read response into runtime ``N-prop`` values."""
+    result = _node_read_result(response)
+    if result is None:
+        return {}
+    code = to_str(result.get("code"))
+    if code not in {None, "", "200"}:
+        return {}
+    values = _property_values(result.get("data"))
+    return {
+        _ensure_indexed_property_key(prop, index): value
+        for prop, value in values.items()
+    }
+
+
+def _ensure_indexed_property_key(prop: str, index: int) -> str:
+    """Prefix a property id with the requested sub-device index when needed."""
+    if "-" in prop and prop.split("-", 1)[0].isdecimal():
+        return prop
+    return f"{index}-{prop}"
+
+
+def _property_has_value(item: Mapping[str, Any]) -> bool:
+    """Return true when an OpenAPI property row already carries a live value."""
+    return item.get("value") is not None or item.get("data") is not None
 
 
 def _parse_multi_node_property_response(response: Mapping[str, Any]) -> dict[str, dict[str, Any]]:

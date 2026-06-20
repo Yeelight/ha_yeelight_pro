@@ -18,7 +18,7 @@ from .event_helpers import component_available as _component_available
 from .event_helpers import event_components as _event_components
 from .event_helpers import event_device_class as _event_device_class
 from .event_helpers import event_fallback_skip_reason as _event_fallback_skip_reason
-from .event_helpers import event_fallback_projection as _event_fallback_projection
+from .event_helpers import event_fallback_projections as _event_fallback_projections
 from .event_helpers import event_icon as _event_icon
 from .event_helpers import event_name as _event_name
 from .event_helpers import event_types as _event_types
@@ -103,15 +103,13 @@ def project_events(device_payload: Mapping[str, Any], *, domain: str) -> list[HA
             )
         )
     if not projections:
-        fallback = _event_fallback_projection(
+        projections.extend(_event_fallback_projections(
             device_payload,
             product_model,
             instance,
             domain=domain,
-        )
-        if fallback is not None:
-            projections.append(fallback)
-        else:
+        ))
+        if not projections:
             _log_event_payload_skip(
                 device_payload,
                 reason=_event_fallback_skip_reason(device_payload, product_model)
@@ -139,13 +137,12 @@ def project_device_triggers(device_payload: Mapping[str, Any]) -> list[HADeviceT
     if triggers:
         return triggers
 
-    fallback = _event_fallback_projection(
+    for fallback in _event_fallback_projections(
         device_payload,
         product_model,
         _load_instance(device_payload),
         domain=DOMAIN,
-    )
-    if fallback is not None:
+    ):
         for event_type in fallback.event_types:
             triggers.append(
                 HADeviceTriggerProjection(

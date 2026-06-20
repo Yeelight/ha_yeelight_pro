@@ -1,6 +1,8 @@
 """P0 Home Assistant runtime auth/control regression tests."""
 from __future__ import annotations
 
+import asyncio
+from contextlib import suppress
 import importlib
 import traceback
 from types import SimpleNamespace
@@ -188,6 +190,78 @@ async def test_coordinator_control_methods_pass_configured_house_id(
 
 
 @pytest.mark.asyncio
+async def test_coordinator_control_device_updates_state_before_cloud_ack(
+    hass: HomeAssistant,
+) -> None:
+    """云端 ACK 慢时，HA 侧状态应先乐观刷新，避免等待轮询周期。"""
+    command_started = asyncio.Event()
+    allow_command_finish = asyncio.Event()
+
+    async def _slow_control_device(*_args: Any, **_kwargs: Any) -> bool:
+        command_started.set()
+        await allow_command_finish.wait()
+        return True
+
+    mock_client = AsyncMock(spec=YeelightProClient)
+    mock_client.control_device.side_effect = _slow_control_device
+    coordinator = YeelightProCoordinator(
+        hass=hass,
+        client=mock_client,
+        house_id=12345,
+    )
+    device = _device_with_switch_state(False)
+    coordinator.devices = {67890: device}
+    coordinator.async_update_listeners = MagicMock()
+
+    task = asyncio.create_task(
+        coordinator.async_control_device(
+            device_id=67890,
+            params={"p": True},
+            duration=250,
+        )
+    )
+    try:
+        await asyncio.wait_for(command_started.wait(), timeout=1)
+
+        assert device["params"]["p"] is True
+        assert device["ha_device_instance"]["components"][0]["state"]["p"] is True
+        coordinator.async_update_listeners.assert_called_once()
+    finally:
+        allow_command_finish.set()
+        with suppress(Exception):
+            await task
+
+
+@pytest.mark.asyncio
+async def test_coordinator_control_device_rolls_back_failed_cloud_update(
+    hass: HomeAssistant,
+) -> None:
+    """云端控制失败时，应撤销已乐观合并的本地状态。"""
+    mock_client = AsyncMock(spec=YeelightProClient)
+    mock_client.control_device.side_effect = CommandError("rejected")
+    coordinator = YeelightProCoordinator(
+        hass=hass,
+        client=mock_client,
+        house_id=12345,
+    )
+    device = _device_with_switch_state(False)
+    coordinator.devices = {67890: device}
+    coordinator.async_update_listeners = MagicMock()
+
+    with pytest.raises(CommandError):
+        await coordinator.async_control_device(
+            device_id=67890,
+            params={"p": True},
+            duration=250,
+        )
+
+    assert device["params"]["p"] is False
+    assert device["ha_device_instance"]["components"][0]["state"]["p"] is False
+    assert 67890 not in coordinator._runtime_state.overrides
+    assert coordinator.async_update_listeners.call_count == 2
+
+
+@pytest.mark.asyncio
 async def test_coordinator_control_device_uses_connected_lan_runtime(
     hass: HomeAssistant,
 ) -> None:
@@ -293,6 +367,24 @@ def _connected_lan_runtime(*, connected: bool = True) -> Any:
             )
         ),
     )
+
+
+def _device_with_switch_state(is_on: bool) -> dict[str, Any]:
+    """Return a minimal canonical switch payload for coordinator tests."""
+    return {
+        "id": 67890,
+        "params": {"p": is_on},
+        "ha_device_instance": {
+            "online": True,
+            "components": [
+                {
+                    "component_id": "switch_control",
+                    "available": True,
+                    "state": {"p": is_on},
+                }
+            ],
+        },
+    }
 
 
 @pytest.mark.parametrize("platform", PLATFORMS)

@@ -55,6 +55,8 @@ def test_release_zip_required_files_include_runtime_contracts() -> None:
         "custom_components/yeelight_pro/core/property_hydration_summary.py",
         "custom_components/yeelight_pro/core/scan_login.py",
         "custom_components/yeelight_pro/core/runtime_bridge.py",
+        "custom_components/yeelight_pro/debug_push_service.py",
+        "custom_components/yeelight_pro/debug_runtime.py",
         "custom_components/yeelight_pro/debug_service.py",
         "custom_components/yeelight_pro/deployment_urls.py",
         "custom_components/yeelight_pro/diagnostics.py",
@@ -76,13 +78,16 @@ def test_release_zip_required_files_include_runtime_contracts() -> None:
         "custom_components/yeelight_pro/projector/property_control_common.py",
         "custom_components/yeelight_pro/projector/sensor_helpers.py",
         "custom_components/yeelight_pro/projector/sensor_metadata.py",
+        "custom_components/yeelight_pro/diagnostic_push_flow.py",
         "custom_components/yeelight_pro/push_contract.py",
         "custom_components/yeelight_pro/push_manager.py",
         "custom_components/yeelight_pro/push_transport.py",
         "custom_components/yeelight_pro/push_transport_connection.py",
-        "custom_components/yeelight_pro/push_transport_dns.py",
+        "custom_components/yeelight_pro/push_transport_frames.py",
         "custom_components/yeelight_pro/push_transport_reconnect.py",
         "custom_components/yeelight_pro/push_transport_runtime.py",
+        "custom_components/yeelight_pro/push_transport_shapes.py",
+        "custom_components/yeelight_pro/push_transport_types.py",
     } <= check_release_zip.REQUIRED_FILES
 
 
@@ -127,6 +132,7 @@ def test_validate_existing_zip_rejects_unsupported_runtime_platform_files() -> N
         "custom_components/yeelight_pro/lock.py",
         "custom_components/yeelight_pro/scene.py",
         "custom_components/yeelight_pro/projector/vacuum.py",
+        "custom_components/yeelight_pro/push_transport_dns.py",
     }
 
     errors = check_release_zip._validate_names(names)
@@ -141,6 +147,10 @@ def test_validate_existing_zip_rejects_unsupported_runtime_platform_files() -> N
     )
     assert (
         "forbidden release file: custom_components/yeelight_pro/projector/vacuum.py"
+        in errors
+    )
+    assert (
+        "forbidden release file: custom_components/yeelight_pro/push_transport_dns.py"
         in errors
     )
 

@@ -113,7 +113,10 @@ def check_runtime_options_contract_tests(component_root: Path) -> list[str]:
         component_root / "tests" / "test_options_flow_private_push.py"
     )
     debug_service = component_root / "debug_service.py"
+    debug_runtime = component_root / "debug_runtime.py"
+    debug_push_service = component_root / "debug_push_service.py"
     debug_service_test = component_root / "tests" / "test_debug_service.py"
+    debug_push_service_test = component_root / "tests" / "test_debug_push_service.py"
     if not runtime_options.exists():
         errors.append("runtime_options.py is required for selective options reload")
         return errors
@@ -138,8 +141,17 @@ def check_runtime_options_contract_tests(component_root: Path) -> list[str]:
     if not debug_service.exists():
         errors.append("runtime options require debug_service.py")
         return errors
+    if not debug_runtime.exists():
+        errors.append("runtime options require debug_runtime.py")
+        return errors
+    if not debug_push_service.exists():
+        errors.append("runtime options require debug_push_service.py")
+        return errors
     if not debug_service_test.exists():
         errors.append("debug_service.py requires tests/test_debug_service.py")
+        return errors
+    if not debug_push_service_test.exists():
+        errors.append("debug_push_service.py requires tests/test_debug_push_service.py")
         return errors
 
     source = runtime_options.read_text(encoding="utf-8")
@@ -199,7 +211,7 @@ def check_runtime_options_contract_tests(component_root: Path) -> list[str]:
             ),
             "CONF_PRIVATE_PUSH_DOMAIN": "private push endpoint field is tested",
             "async_update_entry": "options flow updates config-entry data",
-            "ws://ws-test.yeedev.com": "test deployment WebSocket normalization",
+            "ws://192.168.0.89:7779": "test deployment WebSocket normalization",
         },
         "test_options_flow_private_push.py",
     ))
@@ -225,10 +237,30 @@ def check_runtime_options_contract_tests(component_root: Path) -> list[str]:
         debug_service.read_text(encoding="utf-8"),
         {
             "async_register_admin_service": "debug service remains admin-only",
-            "coordinator.debug_mode": "debug service is gated by debug_mode",
             "async_handle_runtime_event": "debug service uses runtime event bridge",
+            "async_register_debug_push_services": "debug service registers push debug services",
         },
         "debug_service.py",
+    ))
+    errors.extend(_missing_tokens(
+        debug_runtime.read_text(encoding="utf-8"),
+        {
+            "coordinator.debug_mode": "debug service is gated by debug_mode",
+            "debug_runtime_entry": "shared debug runtime entry helper",
+        },
+        "debug_runtime.py",
+    ))
+    errors.extend(_missing_tokens(
+        debug_push_service.read_text(encoding="utf-8"),
+        {
+            "async_register_admin_service": "debug push services remain admin-only",
+            "debug_coordinator": "debug push payload service is gated by debug_mode",
+            "async_handle_push_payload": "debug push payload service uses push bridge",
+            "debug_emit_push_payload": "debug push payload service",
+            "debug_dump_push_health": "push health debug dump service",
+            "push_manager_health": "push health dump uses aggregate diagnostics",
+        },
+        "debug_push_service.py",
     ))
     errors.extend(_missing_tokens(
         debug_service_test.read_text(encoding="utf-8"),
@@ -240,6 +272,26 @@ def check_runtime_options_contract_tests(component_root: Path) -> list[str]:
             "debug mode is disabled": "debug-mode disabled error contract",
         },
         "test_debug_service.py",
+    ))
+    errors.extend(_missing_tokens(
+        debug_push_service_test.read_text(encoding="utf-8"),
+        {
+            "test_debug_dump_push_health_service_rejects_disabled_debug_mode": (
+                "disabled push health dump service rejection coverage"
+            ),
+            "test_debug_emit_push_payload_service_rejects_disabled_debug_mode": (
+                "disabled debug push payload service rejection coverage"
+            ),
+            "test_debug_emit_push_payload_service_injects_synthetic_push": (
+                "debug push payload injection coverage"
+            ),
+            "test_debug_dump_push_health_logs_aggregate_payload_only": (
+                "push health dump redaction coverage"
+            ),
+            "assert_not_awaited": "disabled debug push service does not dispatch event",
+            "debug mode is disabled": "debug push-mode disabled error contract",
+        },
+        "test_debug_push_service.py",
     ))
     return errors
 
