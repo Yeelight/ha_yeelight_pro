@@ -4,6 +4,17 @@ All notable changes to the Yeelight Pro integration will be documented in this f
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-06-21
+
+### Fixed
+
+- Maximized private-deployment product schema coverage by merging v1 and v2
+  schema responses before projecting Home Assistant entities.
+- Added full-sample private-house audit coverage for controls, diagnostics,
+  sensors, events, topology nodes, and push payload matching.
+- Fixed Home Assistant hassfest translation validation by moving private URL
+  examples into config-flow description placeholders.
+
 ## [1.0.2] - 2026-06-15
 
 ### Fixed
