@@ -2,7 +2,8 @@
 
 ## 当前状态
 
-当前集成处于发布审查阶段。本地 Home Assistant single/repeat/soak/recovery 验证入口已具备；每个候选版本提交 HACS 前都必须重新运行这些入口并复核脱敏输出。
+当前集成已发布 `v1.0.4` GitHub release，release asset 为 `yeelight_pro.zip`。
+HACS 默认仓库 PR [#8516](https://github.com/hacs/default/pull/8516) 仍在审查中。本地 Home Assistant single/repeat/soak/recovery 验证入口已具备；每个候选版本提交或更新 HACS PR 前都必须重新运行这些入口并复核脱敏输出。
 
 ## 手动安装
 
@@ -15,12 +16,13 @@ python3 scripts/sync_local_ha_runtime.py --config-dir /path/to/homeassistant/con
 
 ## HACS
 
-当前仓库包含 HACS 元数据和 zip release 校验脚本。HACS 安装按正式发布流程使用。
+当前仓库包含 HACS 元数据、zip release 校验脚本和 `v1.0.4` release
+zip。PR 合并前，HACS 用户应把本仓库添加为 custom repository；PR 合并后可从 HACS 默认仓库搜索安装。
 
 ## 本地验证清单
 
-- 配置流：云端模式、私有部署模式、家庭选择、错误提示。
-- 选项流：轮询间隔、调试模式、实时更新、本地网关控制、未知能力隐藏。
+- 配置流：云端模式、私有部署模式、局域网网关模式、家庭选择、错误提示。
+- 选项流：轮询间隔、调试模式、实时更新、局域网网关控制、未知能力隐藏。
 - 设备发现：网关、子设备、房间和设备注册表拓扑。
 - 实体投影：灯、传感器、窗帘、温控、开关、场景面板等核心品类。
 - 控制命令：开关、亮度、色温、窗帘位置、温控目标值等已实现控制。
@@ -29,8 +31,8 @@ python3 scripts/sync_local_ha_runtime.py --config-dir /path/to/homeassistant/con
 - 设备 picker：云端配置流在选择家庭后只读加载真实设备列表，默认全选，取消勾选后保存为后续新增设备来源实体的导入过滤规则；云端 entry 的 options 也可重新打开真实设备 picker 调整选择。设备列表加载失败时，setup 可继续创建 entry 且过滤关闭，options 不覆盖现有过滤规则。
 - Registry cleanup：`cleanup_registry` 默认 dry-run；confirm 必须指定 entry 和 dry-run 返回的 audit_id，执行后只禁用 stale entities。
 - 异常：token 失效、网络错误、API 返回错误、设备离线。
-- WebSocket runtime：`live_updates` 显式启用后接入易来事件通知 WebSocket。
-- 本地网关 runtime：`local_gateway_control` 显式启用后接入 LAN TCP runtime，host 为空时按局域网协议执行一次 UDP discovery fallback。启用前确认 token、网关地址或发现范围，以及日志脱敏策略。
+- WebSocket runtime：云端/私有部署 entry 在 `live_updates` 显式启用后接入易来事件通知 WebSocket。
+- 本地网关 runtime：局域网 entry 在 `local_gateway_control` 显式启用后接入 LAN TCP runtime，host 为空时按局域网协议执行一次 UDP discovery fallback。启用前确认 token、网关地址或发现范围，以及日志脱敏策略。
 
 ## 发布前命令
 

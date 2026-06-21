@@ -23,12 +23,13 @@ python3 scripts/sync_local_ha_runtime.py --config-dir /path/to/homeassistant/con
 # 3. 重启 Home Assistant
 ```
 
-#### 方法 B: HACS 安装（发布后）
+#### 方法 B: HACS 安装
 
 1. 打开 HACS
-2. 搜索 "Yeelight Pro"
-3. 点击安装
-4. 重启 Home Assistant
+2. 在 HACS 默认仓库 PR 合并前，将 `https://github.com/Yeelight/ha_yeelight_pro` 添加为 custom repository，类别选择 Integration
+3. 搜索 "Yeelight Pro"
+4. 点击安装
+5. 重启 Home Assistant
 
 ### 2. 配置集成
 
@@ -38,6 +39,7 @@ python3 scripts/sync_local_ha_runtime.py --config-dir /path/to/homeassistant/con
 4. 选择连接模式：
    - **云端模式**: 选择 "Yeelight Pro 云端"
    - **私有部署**: 选择 "私有部署（Lucore）"
+   - **局域网控制**: 选择 "局域网控制"
 
 #### 云端模式配置
 
@@ -50,10 +52,19 @@ python3 scripts/sync_local_ha_runtime.py --config-dir /path/to/homeassistant/con
 
 #### 私有部署配置
 
-1. 输入服务器地址（例如：192.168.1.100:8080）
-2. 输入 Access Token
-3. 输入家庭 ID
-4. 点击提交
+1. 输入私有部署服务根 URL。
+2. 如 WebSocket 推送服务使用不同域名，可输入私有部署 WebSocket 推送 URL。
+3. 选择认证方式，完成扫码登录或 Access Token 认证。
+4. 选择家庭。
+5. 选择需要导入的真实设备。
+6. 完成配置。
+
+#### 局域网控制配置
+
+1. 选择自动发现到的 Yeelight Pro 网关，或进入手动输入。
+2. 手动模式输入网关 IP、端口和网关类型。
+3. 确认网关已在易来 APP 中开启局域网控制模式。
+4. 完成配置。
 
 ### 3. 功能测试清单
 
@@ -61,7 +72,7 @@ python3 scripts/sync_local_ha_runtime.py --config-dir /path/to/homeassistant/con
 
 - [ ] 自动发现所有设备
 - [ ] 设备信息正确显示
-- [ ] 设备状态按轮询刷新；可选开启 `live_updates` 验证 WebSocket runtime。
+- [ ] 设备状态按轮询刷新；云端/私有部署可选开启 `live_updates` 验证 WebSocket runtime。
 
 #### 3.2 灯光控制
 
@@ -119,6 +130,13 @@ python3 scripts/sync_local_ha_runtime.py --config-dir /path/to/homeassistant/con
 - [ ] `device_import_filter_preview` 只包含规则维度计数、忽略规则计数和候选维度去重数量，不包含原始规则值。
 - [ ] filter preview 不会实际隐藏、删除或禁用实体。
 - [ ] diagnostics JSON 不包含 token、house ID、device ID、MAC、私有域名、product model id、component/property/event/action 明细、原始设备 payload 或原始 filter rule。
+
+#### 3.11 服务
+
+- [ ] `assign_areas` 和 `auto_assign_areas` 只允许管理员调用。
+- [ ] `debug_emit_event`、`debug_dump_push_health` 和 `debug_emit_push_payload` 在 `debug_mode` 关闭时拒绝执行。
+- [ ] `refresh` 可刷新全部 entry 或指定 `entry_id`，可选刷新产品物模型。
+- [ ] `cleanup_registry` 先 dry-run 返回 `audit_id`，confirm 时必须提供同一个 `entry_id` 和 `audit_id`，且只禁用 stale entities。
 
 ### 4. 错误处理测试
 

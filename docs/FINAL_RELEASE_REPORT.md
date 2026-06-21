@@ -4,14 +4,14 @@
 
 ## 当前结论
 
-- 当前阶段：发布审查。
-- HACS 状态：仓库包含 HACS 元数据和本地 preflight。
+- 当前阶段：`v1.0.4` GitHub release 已发布，HACS 默认仓库 PR 审查中。
+- HACS 状态：仓库包含 HACS 元数据、本地 preflight 和 `yeelight_pro.zip` release asset。
 - 官方社区状态：按正式发布流程提交。
 - 更新模型：默认拓扑刷新和全量状态兜底使用轮询；`live_updates` 显式启用后，云端事件通知按 WebSocket runtime 实现。
 - Registry cleanup：提供 dry-run + audit-id 二次确认服务；确认后只禁用 stale entities。
 - 设备 picker：云端配置流选择家庭后会只读加载真实设备列表，并把勾选结果保存为导入过滤规则；云端 entry 的 options 可再次打开真实设备 picker 调整设备选择。设备列表加载失败时，setup 仍可继续创建 entry，options 不覆盖现有过滤规则。
 - 多账号：当前支持“一个云端账号/家庭一个 config entry”的隔离模型；手动 token fallback 使用脱敏 token 指纹避免同区域同家庭冲突。
-- 当前平台：12 个 Home Assistant 平台。
+- 当前平台：11 个 Home Assistant 平台。
 
 ## 发布前必须通过的门禁
 

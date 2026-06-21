@@ -2,26 +2,41 @@
 
 [English](README.md) | [中文](README_zh.md)
 
-Yeelight Pro integration for Home Assistant. It supports Yeelight cloud and private deployment modes through one config flow.
+Yeelight Pro integration for Home Assistant. It supports Yeelight cloud,
+private deployment, and LAN gateway connection modes through one config flow.
 
 ## Current Status
 
-- Integration status: pre-release hardening
+- Integration status: v1.0.4 release package is available
 - Verified tests: see [docs/TEST_REPORT.md](docs/TEST_REPORT.md)
-- Enabled Home Assistant platforms: 12
-- Update model: cloud polling, with configurable interval
-- HACS/community publication: release-review stage
+- Enabled Home Assistant platforms: 11
+- Runtime platforms: `binary_sensor`, `button`, `climate`, `cover`, `event`,
+  `fan`, `light`, `number`, `select`, `sensor`, and `switch`
+- Update model: polling remains the default full-state refresh path, with a
+  configurable interval
+- HACS/community publication: HACS default repository PR
+  [#8516](https://github.com/hacs/default/pull/8516) is under review
 
 ## Features
 
-- Cloud and private deployment setup
+- Cloud, private deployment, and LAN gateway setup
 - Reauthentication flow for expired or invalid tokens
 - Yeelight APP scan-login cloud setup through regional account APIs; QR-code login is the current primary cloud login UX
-- Configurable polling interval, debug mode, unknown capability filtering, manual non-destructive device import filtering, live updates, local gateway control, and topology Repairs notifications
+- Configurable polling interval, debug mode, unknown capability filtering,
+  manual non-destructive device import filtering, and topology Repairs
+  notifications
+- Cloud event notifications use the explicit `live_updates` WebSocket runtime;
+  private deployment entries use the same runtime with an optional private push
+  URL; polling remains the default full-state refresh path
+- LAN gateway runtime behind the LAN connection mode and `local_gateway_control`
+  option
 - Canonical -> adapter -> converter -> projector -> entity architecture
 - Lightweight Yeelight IoT spec registry for category, component, property, event, protocol, and `nodeType` facts
 - Persistent Home Assistant `.storage` product schema cache for stable schema-aware projections across restarts
 - Device registry topology for gateways and child devices
+- House-level analytics diagnostic sensors for alarm, energy, user-action, and
+  endpoint-health aggregates; optional analytics endpoint failures degrade to
+  unavailable diagnostic values instead of blocking setup
 - Home Assistant diagnostics export with allowlisted config, IoT registry health, spec-correction counts, canonical spec runtime inventory, entity-candidate counts, and aggregate runtime health
 - Non-destructive device/entity import filter preview in diagnostics, plus a conservative runtime gate that applies the selected import scope before new device-sourced entities are submitted
 - Optional Home Assistant Repairs issue with sanitized add/remove/metadata-change counts when Yeelight device topology changes after setup
@@ -68,7 +83,11 @@ See [docs/IOT_SPEC_REGISTRY.md](docs/IOT_SPEC_REGISTRY.md) for the registry boun
 
 ### HACS
 
-This repository has HACS metadata and release packaging checks. Submit through the normal release review flow.
+The GitHub release `v1.0.4` contains the HACS zip asset
+`yeelight_pro.zip`. HACS default repository PR
+[#8516](https://github.com/hacs/default/pull/8516) is still under review; until
+that PR is merged, install this repository as a custom HACS integration
+repository.
 
 ## Configuration
 
@@ -96,6 +115,9 @@ Open the integration options to configure:
 - Hide unknown entities: keeps unmapped or low-confidence capabilities from being exposed as generic entities
 - Device import filtering: edit conservative manual rules or, for cloud
   entries, reopen the real device picker to adjust selected devices after setup
+- Live updates: cloud/private entries can enable the WebSocket runtime
+- Private push URL: private entries can override the WebSocket push endpoint
+- Local gateway control: LAN entries can configure gateway host and port
 - Topology change Repairs: creates a Home Assistant Repairs issue with aggregate and sanitized diff counts when device/entity topology changes after setup; enabled by default
 
 ## Services
@@ -112,9 +134,28 @@ Assign areas based on room keywords in device names.
 
 Emit a normalized Yeelight Pro runtime event for development and troubleshooting. This service requires `debug_mode` to be enabled in integration options.
 
+### `yeelight_pro.debug_dump_push_health`
+
+Write aggregate WebSocket push health to the Home Assistant log for
+development and troubleshooting. This service requires `debug_mode` to be
+enabled.
+
+### `yeelight_pro.debug_emit_push_payload`
+
+Inject a synthetic property push payload into the runtime bridge. This service
+requires `debug_mode` to be enabled and does not control a real device.
+
 ### `yeelight_pro.refresh`
 
 Refresh loaded Yeelight Pro data immediately and run device/entity registry reconciliation. Optional `entry_id` limits the refresh to one config entry.
+Optional `refresh_product_schemas` refreshes product schemas and falls back to
+cached schemas if the refresh fails.
+
+### `yeelight_pro.cleanup_registry`
+
+Run a dry-run stale entity registry cleanup preview. Confirmation requires the
+same `entry_id` and returned `audit_id`; confirmed cleanup disables stale
+entities through Home Assistant's entity registry.
 
 ## Development
 
@@ -152,10 +193,12 @@ Do not commit tokens, Home Assistant credentials, personal house IDs, or raw dev
 - Region and account isolation is entry based: each cloud account, region, and
   house combination creates its own Home Assistant config entry.
 - Cloud event notifications use the explicit `live_updates` WebSocket runtime.
-  Polling remains the default full-state refresh path.
-- LAN gateway control uses the explicit `local_gateway_control` option. When it
-  is enabled and no host is configured, the runtime performs one documented UDP
-  discovery attempt before opening the TCP gateway session.
+  Private deployment entries use the same runtime with an optional private push
+  URL. Polling remains the default full-state refresh path.
+- LAN gateway control is available through LAN-mode entries. When
+  `local_gateway_control` is enabled and no host is configured, the runtime
+  performs one documented UDP discovery attempt before opening the TCP gateway
+  session.
 - Device import filtering combines diagnostics preview, manual option rules,
   setup/options real device picker selections, and a conservative gate before
   new device-sourced entities are submitted.

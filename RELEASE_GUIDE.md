@@ -1,6 +1,7 @@
 # Yeelight Pro Release Guide
 
-This repository is not yet published from the current workspace. Treat the steps below as the release checklist.
+This repository has a reviewed GitHub release flow. Treat the steps below as
+the release checklist for each new candidate.
 
 ## Required Checks
 
@@ -69,9 +70,10 @@ Use `python3 scripts/check_release_zip.py --write dist/yeelight_pro.zip` to crea
 
 ## Publication Status
 
-- HACS publication: pending
+- Current GitHub release: `v1.0.4`, with `yeelight_pro.zip` uploaded as the HACS release asset
+- HACS default repository publication: PR [#8516](https://github.com/hacs/default/pull/8516) is under review
 - Home Assistant brands/community publication: pending
-- GitHub release: create only after checks pass and docs are reviewed
+- GitHub release: create or update only after checks pass and docs are reviewed
 
 ## Before Publishing
 
@@ -80,6 +82,7 @@ Use `python3 scripts/check_release_zip.py --write dist/yeelight_pro.zip` to crea
 - Confirm the GitHub release tag, `manifest.json` version, and `CHANGELOG.md`
   release section all describe the same candidate.
 - Verify `hacs.json` points to the same release zip filename.
+- Confirm the release asset is named `yeelight_pro.zip`.
 - Confirm no real token, password, house ID, or raw device payload is committed.
 - Confirm README and changelog only describe implemented and tested behavior.
 - Confirm the release package contains only the current runtime platform modules and documented services.

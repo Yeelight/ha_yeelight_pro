@@ -42,6 +42,7 @@ Supported platforms:
 | `event` | Product-schema or OpenAPI/WebSocket event declarations |
 | `cover` | Curtain position properties such as `cp` and writable `tp` |
 | `climate` | Temperature-control properties such as `acp`, `acm`, `actt`, `acct`, `acf`, `rfh*` |
+| `fan` | Fresh-air components with `vmcp` / `vmcf` power and speed evidence |
 | `switch` | Relay-switch `p`/`sp` properties and indexed switch components |
 | `button` | Documented cloud scene execution only |
 | `select` / `number` | House topology selectors and group `l`/`ct` helpers |

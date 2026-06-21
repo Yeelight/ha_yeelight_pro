@@ -2,7 +2,8 @@
 
 ## 状态
 
-当前状态为发布审查阶段。
+当前状态为 `v1.0.4` GitHub release 已发布，HACS 默认仓库 PR
+[#8516](https://github.com/hacs/default/pull/8516) 审查中。
 
 ## 已具备的发布前材料
 
@@ -39,6 +40,13 @@ python3 scripts/verify_local_ha_recovery.py
 
 `python3 hacs_publish.py --check` 会按同一顺序运行本地发布门禁。GitHub Actions 还应通过 hassfest、HACS action 和 release workflow 中的完整本地发布门禁。
 
+当前公开候选版本必须满足：
+
+- `custom_components/yeelight_pro/manifest.json` version、Git tag 和
+  `CHANGELOG.md` release section 一致。
+- GitHub release 包含名为 `yeelight_pro.zip` 的 zip asset。
+- HACS PR links 指向当前 release 和最新成功的 HACS/hassfest action run。
+
 ## 发布阻断条件
 
 - 本地 Home Assistant 验证或完整发布门禁在当前候选版本上失败。
@@ -53,4 +61,4 @@ python3 scripts/verify_local_ha_recovery.py
 1. 复跑完整本地发布门禁和本地 Home Assistant 验证。
 2. 修复验证发现的问题。
 3. 审查 GitHub issue templates、support workflow、CHANGELOG 和 manifest version。
-4. 经过发布审查后再提交 HACS。
+4. 确认 HACS PR links 指向当前 release 和最新成功的 action run；若 PR 已存在，更新原 PR，不重复提交。

@@ -81,9 +81,9 @@ pytest --cov --cov-report=term --cov-report=json:coverage.json -q
   `scripts/verify_local_ha.py` 输出为准。
 - 本地安装态关键模块存在检查通过：`refresh_service`、`schema_cache`、`client`、`client_request`、`coordinator_runtime`、`diagnostics`、`diagnostic_options`、`device_trigger`、`repair_issues`、`debug_service`；真实运行时导入结果以 HA 日志无 `ImportError` / `ModuleNotFoundError` 和 setup completion 为准。
 - 当前本地 HA 事实以 `python3 scripts/verify_local_ha.py` 的脱敏聚合输出为准。
-- 本地 HA verifier 已确认服务定义、运行态注册和字段/schema 合同一致：`assign_areas`、`auto_assign_areas`、`debug_emit_event`、`refresh`、`cleanup_registry`。
+- 本地 HA verifier 已确认服务定义、运行态注册和字段/schema 合同一致：`assign_areas`、`auto_assign_areas`、`debug_emit_event`、`debug_dump_push_health`、`debug_emit_push_payload`、`refresh`、`cleanup_registry`。
 - 本地 HA 前端实测已确认 Yeelight Pro 可在“添加集成”中搜索到，配置流 `user` 步骤可打开，cloud 分支可进入“云端认证方式”和 Access Token 表单，private 分支可进入私有部署表单；验证过程中未提交真实 token。
-- 本地 HA verifier 已确认安装态服务集合包含 5 个服务：`assign_areas`、`auto_assign_areas`、`debug_emit_event`、`refresh`、`cleanup_registry`。
+- 本地 HA verifier 已确认安装态服务集合包含当前 7 个服务：`assign_areas`、`auto_assign_areas`、`debug_emit_event`、`debug_dump_push_health`、`debug_emit_push_payload`、`refresh`、`cleanup_registry`。
 - 本地 HA verifier 已确认安装态 i18n 合同：`strings.json`、`translations/en.json`、`translations/zh-Hans.json` 叶子 key 对齐，关键 config/options/services/Repairs 路径存在，服务翻译和当前 `services.yaml` 服务集合一致，Repairs 翻译占位符与运行态 `translation_placeholders` 对齐。
 - 本地 HA verifier 已确认 diagnostics capability flags 边界：扫码登录、多区域、push/LAN contract 和显式 opt-in runtime flags 均通过安装态校验。
 - 本地 HA verifier 已确认 config entry options 边界：必需 option keys、`scan_interval` 范围、布尔类型和 device import filter 聚合状态均通过安装态校验。

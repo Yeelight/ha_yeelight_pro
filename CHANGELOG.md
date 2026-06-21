@@ -4,6 +4,12 @@ All notable changes to the Yeelight Pro integration will be documented in this f
 
 ## [Unreleased]
 
+### Documentation
+
+- Updated README, release, installation, and verification docs to match the
+  current v1.0.4 package, HACS PR status, enabled platform set, runtime
+  boundaries, and registered services.
+
 ## [1.0.4] - 2026-06-21
 
 ### Fixed
