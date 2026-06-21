@@ -123,8 +123,11 @@ def node_id_hash_group(payload: Mapping[str, Any]) -> list[str]:
 def topology_node_id_keys(payload: Mapping[str, Any]) -> tuple[str, ...]:
     """Return relation-id fields only when node_type declares a topology node."""
     for key in ("nt", "nodeType", "node_type"):
+        value = payload.get(key)
+        if value is None:
+            continue
         try:
-            node_type = int(payload.get(key)) # pyright: ignore[reportArgumentType]
+            node_type = int(value)
         except (TypeError, ValueError):
             continue
         return TOPOLOGY_NODE_ID_FIELDS_BY_TYPE.get(node_type, ())

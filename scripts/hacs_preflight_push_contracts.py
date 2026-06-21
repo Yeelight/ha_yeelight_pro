@@ -195,6 +195,8 @@ PUSH_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
         "async_handle_lan_payload": "LAN coordinator bridge coverage",
         "gateway_post.prop": "LAN property update bridge coverage",
         "2-p": "indexed runtime state bridge coverage",
+    },
+    "tests/test_runtime_bridge_scaling.py": {
         "test_runtime_event_dedupe_key_is_bounded_and_identifier_safe": (
             "runtime event dedupe key privacy coverage"
         ),

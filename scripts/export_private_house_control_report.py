@@ -16,10 +16,14 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.private_house_audit.classification import classify_report  # noqa: E402
+from scripts.private_house_audit.control_coverage import (  # noqa: E402
+    STRICT_CONTROL_PLATFORMS,
+    control_absence_reason,
+    strict_control_platforms,
+)
 
 
-CONTROL_ROLE = "primary_control_or_state"
-CONTROL_PLATFORMS = ("climate", "cover", "fan", "light", "switch")
+CONTROL_PLATFORMS = STRICT_CONTROL_PLATFORMS
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -64,6 +68,10 @@ def render_control_report(classified: Mapping[str, Any]) -> str:
         "## Control Findings",
         "",
         *_control_findings_lines(devices),
+        "",
+        "## Devices Without Strict Controls",
+        "",
+        *_no_strict_control_lines(devices),
         "",
         "## Source Data Limited Devices",
         "",
@@ -120,9 +128,18 @@ def _control_findings_lines(devices: Sequence[Mapping[str, Any]]) -> list[str]:
     source_limited = [
         item for item in devices if _conclusion_status(item) == "source_data_limited"
     ]
+    no_strict_controls = [item for item in devices if _control_actual(item) <= 0]
+    no_strict_needs_review = [
+        item
+        for item in no_strict_controls
+        if control_absence_reason(item)
+        == "writable_model_properties_without_strict_control"
+    ]
     lines = [
         f"- Control missing devices: {len(missing)}",
         f"- Devices with expected controls but zero actual controls: {len(expected_but_absent)}",
+        f"- Devices with zero strict actionable controls: {len(no_strict_controls)}",
+        f"- Zero-control devices needing source/model review: {len(no_strict_needs_review)}",
         f"- Source-data-limited devices needing upstream/product-model evidence: {len(source_limited)}",
     ]
     if missing:
@@ -136,6 +153,32 @@ def _control_findings_lines(devices: Sequence[Mapping[str, Any]]) -> list[str]:
             )
     else:
         lines.append("- Missing-control device list: None")
+    return lines
+
+
+def _no_strict_control_lines(devices: Sequence[Mapping[str, Any]]) -> list[str]:
+    """Return a device-by-device explanation for empty HA control sections."""
+    items = [item for item in devices if _control_actual(item) <= 0]
+    if not items:
+        return ["- None"]
+    reason_counts = Counter(control_absence_reason(item) for item in items)
+    lines = [
+        "- Reasons: " + _inline_mapping(reason_counts),
+        "",
+        "| # | Device | Category | Status | Writable | Events | Strict Control | Reason | Evidence |",
+        "|---:|---|---|---|---:|---:|---:|---|---|",
+    ]
+    for index, item in enumerate(items, start=1):
+        lines.append(
+            "| "
+            f"{index} | {_md(_text(item.get('name')))} | {_md(_text(item.get('category')))} | "
+            f"{_md(_conclusion_status(item))} | "
+            f"{_int_value(item.get('model_writable_properties_count'))} | "
+            f"{_int_value(item.get('model_events_count'))} | "
+            f"{_control_actual(item)}/{_control_expected(item)} | "
+            f"{_md(control_absence_reason(item))} | "
+            f"{_source_evidence_text(item)} |"
+        )
     return lines
 
 
@@ -229,6 +272,13 @@ def _not_expected_note(item: Mapping[str, Any]) -> str:
         return "event-input device; button actions are event entities, not switch controls"
     if category == "gateway":
         return "gateway/topology context; no primary control projected"
+    if control_absence_reason(item) == "writable_model_properties_without_strict_control":
+        return "writable model properties exist, but no strict HA control is projected"
+    if (
+        control_absence_reason(item)
+        == "writable_properties_projected_as_state_or_event_entities"
+    ):
+        return "writable telemetry is already represented by state or event entities"
     if category == "other":
         return "config-only writable properties; no HA primary control role expected"
     return _text(_mapping(item.get("coverage_view")).get("summary")) or "no primary control expected"
@@ -251,12 +301,7 @@ def _control_missing(item: Mapping[str, Any]) -> int:
 
 
 def _control_platforms(item: Mapping[str, Any]) -> str:
-    platforms = _mapping(item.get("actual_platforms"))
-    return _inline_mapping({
-        name: platforms[name]
-        for name in CONTROL_PLATFORMS
-        if _int_value(platforms.get(name)) > 0
-    })
+    return _inline_mapping(strict_control_platforms(_mapping(item.get("actual_platforms"))))
 
 
 def _source_evidence_text(item: Mapping[str, Any]) -> str:

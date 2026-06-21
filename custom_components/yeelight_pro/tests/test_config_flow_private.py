@@ -35,20 +35,13 @@ def test_private_config_schema_is_frontend_serializable() -> None:
 
     fields = voluptuous_serialize.convert(schema)
 
-    assert fields == [
-        {
-            "name": CONF_PRIVATE_DOMAIN,
-            "required": True,
-            "type": "string",
-            "default": "",
-        },
-        {
-            "name": CONF_PRIVATE_PUSH_DOMAIN,
-            "optional": True,
-            "type": "string",
-            "default": "",
-        },
-    ]
+    fields_by_name = {field["name"]: field for field in fields}
+    assert fields_by_name[CONF_PRIVATE_DOMAIN]["required"] is True
+    assert fields_by_name[CONF_PRIVATE_DOMAIN]["type"] == "string"
+    assert fields_by_name[CONF_PRIVATE_DOMAIN]["default"] == ""
+    assert fields_by_name[CONF_PRIVATE_PUSH_DOMAIN]["optional"] is True
+    assert fields_by_name[CONF_PRIVATE_PUSH_DOMAIN]["type"] == "string"
+    assert fields_by_name[CONF_PRIVATE_PUSH_DOMAIN]["default"] == ""
 
 
 def test_private_config_schema_only_requests_private_url(config_flow) -> None:

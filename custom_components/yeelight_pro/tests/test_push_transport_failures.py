@@ -251,6 +251,7 @@ async def test_stable_connection_heartbeat_failure_resets_reconnect_backoff() ->
     await transport.async_start(AsyncMock())
     await websocket.waiting_for_message.wait()
     transport._next_reconnect_delay = 60.0
+    assert transport._connection_started_at is not None
     transport._connection_started_at -= 21
 
     await wait_for_sleep_calls(sleep, 1)

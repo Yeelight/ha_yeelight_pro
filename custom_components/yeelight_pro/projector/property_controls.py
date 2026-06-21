@@ -19,12 +19,12 @@ from .device import project_payload_device_info
 from .property_control_common import (
     auxiliary_bool_property_skip_reason,
     auxiliary_property_skip_reason,
+    complete_control_value_range,
     control_available,
     control_key,
     control_name,
     control_unit,
     control_value_list,
-    control_value_range,
     entity_category_for_property,
     is_writable_auxiliary_bool_property,
     is_writable_auxiliary_property,
@@ -174,14 +174,14 @@ def _project_number(
             auxiliary_property_skip_reason(prop, component),
         )
         return None
-    value_range = control_value_range(prop)
+    value_range = complete_control_value_range(prop)
     if value_range is None or control_value_list(prop):
         _log_property_control_skip(
             "number",
             instance,
             component,
             prop,
-            "missing_numeric_range_or_is_enum",
+            "missing_complete_numeric_range_or_is_enum",
         )
         return None
 
@@ -191,10 +191,11 @@ def _project_number(
         step=value_range.step,
     )
     unique_id_prefix = payload_entity_unique_id_prefix(device_payload, domain=domain)
+    public_component_id = _public_helper_component_id(component)
     return HANumberControlProjection(
-        component_id=f"{component.component_id}_{prop.prop_id}_number",
+        component_id=f"{public_component_id}_{prop.prop_id}_number",
         prop_id=prop.prop_id,
-        unique_id=f"{unique_id_prefix}_{instance.device_id}_{component.component_id}_{prop.prop_id}_number",
+        unique_id=f"{unique_id_prefix}_{instance.device_id}_{public_component_id}_{prop.prop_id}_number",
         name=control_name(component, prop, device_payload=device_payload),
         available=control_available(device_payload, instance, component),
         value=to_float(
@@ -253,10 +254,11 @@ def _project_select(
         return None
 
     unique_id_prefix = payload_entity_unique_id_prefix(device_payload, domain=domain)
+    public_component_id = _public_helper_component_id(component)
     return HASelectControlProjection(
-        component_id=f"{component.component_id}_{prop.prop_id}_select",
+        component_id=f"{public_component_id}_{prop.prop_id}_select",
         prop_id=prop.prop_id,
-        unique_id=f"{unique_id_prefix}_{instance.device_id}_{component.component_id}_{prop.prop_id}_select",
+        unique_id=f"{unique_id_prefix}_{instance.device_id}_{public_component_id}_{prop.prop_id}_select",
         name=control_name(component, prop, device_payload=device_payload),
         available=control_available(device_payload, instance, component),
         value=component_property_value(
@@ -299,10 +301,11 @@ def _project_switch(
         prop.prop_id,
     )
     unique_id_prefix = payload_entity_unique_id_prefix(device_payload, domain=domain)
+    public_component_id = _public_helper_component_id(component)
     return HASwitchControlProjection(
-        component_id=f"{component.component_id}_{prop.prop_id}_switch",
+        component_id=f"{public_component_id}_{prop.prop_id}_switch",
         prop_id=prop.prop_id,
-        unique_id=f"{unique_id_prefix}_{instance.device_id}_{component.component_id}_{prop.prop_id}_switch",
+        unique_id=f"{unique_id_prefix}_{instance.device_id}_{public_component_id}_{prop.prop_id}_switch",
         name=control_name(component, prop, device_payload=device_payload),
         available=control_available(device_payload, instance, component),
         is_on=_switch_state(raw_value, prop),
@@ -320,6 +323,13 @@ def _switch_state(value: Any, prop: PropertyModel) -> bool | None:
     if value is None and prop.default is None:
         return None
     return to_bool(value, default=to_bool(prop.default, default=False))
+
+
+def _public_helper_component_id(component: ComponentInstanceModel) -> str:
+    """Keep helper entity identities stable when official schemas mark globals."""
+    if component.component_type == "global" and component.component_id.endswith("_global"):
+        return component.component_id.removesuffix("_global")
+    return component.component_id
 
 
 def _log_property_control_skip(

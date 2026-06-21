@@ -28,6 +28,11 @@ def _client() -> YeelightProClient:
     )
 
 
+async def _soft_refresh(coordinator: YeelightProAnalyticsCoordinator) -> None:
+    """Run analytics refresh without requiring HA config-entry setup state."""
+    await coordinator.async_soft_initial_refresh()
+
+
 @pytest.mark.asyncio
 async def test_client_analytics_methods_use_post_query_contracts() -> None:
     """数据分析接口应使用文档定义的 POST + query 参数。"""
@@ -97,7 +102,7 @@ async def test_analytics_coordinator_collects_snapshot(hass) -> None:
         "custom_components.yeelight_pro.core.analytics_coordinator.dt_util.now",
         return_value=datetime(2024, 8, 9, 12, 0, 0),
     ):
-        await coordinator.async_config_entry_first_refresh()
+        await _soft_refresh(coordinator)
 
     assert coordinator.data is not None
     assert coordinator.data.date_code == "2024-08"
@@ -141,7 +146,7 @@ async def test_analytics_coordinator_accepts_wrapped_and_direct_data(hass) -> No
         "custom_components.yeelight_pro.core.analytics_coordinator.dt_util.now",
         return_value=datetime(2024, 8, 9, 12, 0, 0),
     ):
-        await coordinator.async_config_entry_first_refresh()
+        await _soft_refresh(coordinator)
 
     assert coordinator.data is not None
     assert coordinator.data.endpoint_errors == {}
@@ -166,7 +171,7 @@ async def test_analytics_coordinator_first_refresh_reports_unavailable(hass) -> 
     client.get_alarm_analysis.side_effect = ConnectionError("HTTP 404 request failed")
     coordinator = YeelightProAnalyticsCoordinator(hass, client, 12345)
 
-    await coordinator.async_config_entry_first_refresh()
+    await _soft_refresh(coordinator)
 
     assert coordinator.data is not None
     assert coordinator.data.has_values is False
@@ -202,7 +207,7 @@ async def test_analytics_coordinator_keeps_partial_snapshot_when_endpoint_fails(
     client.get_yearly_user_actions.return_value = {"data": {}}
     coordinator = YeelightProAnalyticsCoordinator(hass, client, 12345)
 
-    await coordinator.async_config_entry_first_refresh()
+    await _soft_refresh(coordinator)
 
     assert coordinator.data is not None
     assert coordinator.data.alarm_analysis["statInfo"]["alarmNum"] == "3"
@@ -220,7 +225,7 @@ async def test_analytics_endpoint_auth_errors_are_endpoint_diagnostics(hass) -> 
     client.get_alarm_analysis.side_effect = AuthenticationError("HTTP 403")
     coordinator = YeelightProAnalyticsCoordinator(hass, client, 12345)
 
-    await coordinator.async_config_entry_first_refresh()
+    await _soft_refresh(coordinator)
 
     assert coordinator.data is not None
     assert coordinator.data.has_values is False
@@ -240,7 +245,7 @@ async def test_analytics_endpoint_errors_preserve_safe_error_code(hass) -> None:
     )
     coordinator = YeelightProAnalyticsCoordinator(hass, client, 12345)
 
-    await coordinator.async_config_entry_first_refresh()
+    await _soft_refresh(coordinator)
 
     assert coordinator.data is not None
     assert coordinator.data.endpoint_errors["alarm_analysis"] == (
@@ -286,7 +291,7 @@ async def test_analytics_coordinator_keeps_last_snapshot_on_soft_failure(hass) -
     client.get_yearly_user_actions.return_value = {"data": {}}
     coordinator = YeelightProAnalyticsCoordinator(hass, client, 12345)
 
-    await coordinator.async_config_entry_first_refresh()
+    await _soft_refresh(coordinator)
     first_snapshot = coordinator.data
     for method_name in (
         "get_alarm_analysis",

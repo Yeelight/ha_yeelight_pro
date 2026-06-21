@@ -59,6 +59,8 @@ EXPECTED_SCRIPT_FILES = {
     "scripts/private_house_audit/__init__.py",
     "scripts/private_house_audit/classification.py",
     "scripts/private_house_audit/classification_rows.py",
+    "scripts/private_house_audit/control_coverage.py",
+    "scripts/private_house_audit/coverage_matrix_rows.py",
     "scripts/private_house_audit/coverage_model.py",
     "scripts/private_house_audit/inventory.py",
     "scripts/private_house_audit/io_helpers.py",

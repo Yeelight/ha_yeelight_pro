@@ -1,16 +1,14 @@
-"""Shared control-review rules for private-house coverage classification."""
+"""Backward-compatible control-review facade for private-house classification."""
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 
-
-PRIMARY_CONTROL_ROLE = "primary_control_or_state"
-_EVENT_INPUT_CATEGORIES = frozenset({"knob_switch", "scene_panel"})
-_TOPOLOGY_CONTEXT_CATEGORIES = frozenset({"gateway"})
-_CONFIG_ONLY_CATEGORIES = frozenset({"other"})
-_CONFIG_ONLY_ROLES = frozenset({"config", "diagnostic"})
+from scripts.private_house_audit.control_coverage import (
+    PRIMARY_CONTROL_ROLE,
+    needs_missing_strict_control_review,
+)
 
 
 def needs_missing_primary_control_review(
@@ -18,55 +16,23 @@ def needs_missing_primary_control_review(
     category: Any,
     expected_roles: Mapping[str, Any],
     actual_roles: Mapping[str, Any],
+    expected_platforms: Mapping[str, Any] | None = None,
+    actual_platforms: Mapping[str, Any] | None = None,
+    source_evidence: Mapping[str, Any] | None = None,
+    unprojected_writable_properties: Sequence[Any] | None = None,
     model_writable_properties_count: int,
 ) -> bool:
-    """Return whether writable model properties need a missing-control review."""
-    if model_writable_properties_count <= 0:
-        return False
-    if _role_count(expected_roles, PRIMARY_CONTROL_ROLE) > 0:
-        return False
-    if _role_count(actual_roles, PRIMARY_CONTROL_ROLE) > 0:
-        return False
-
-    category_key = str(category or "").strip()
-    if category_key in _EVENT_INPUT_CATEGORIES | _TOPOLOGY_CONTEXT_CATEGORIES:
-        return False
-    if category_key in _CONFIG_ONLY_CATEGORIES and _roles_covered(
-        expected_roles,
-        actual_roles,
-        allowed_roles=_CONFIG_ONLY_ROLES,
-    ):
-        return False
-    return True
-
-
-def _roles_covered(
-    expected_roles: Mapping[str, Any],
-    actual_roles: Mapping[str, Any],
-    *,
-    allowed_roles: frozenset[str],
-) -> bool:
-    """Return true when all expected non-primary roles are already covered."""
-    expected = {
-        str(role): _int_value(count)
-        for role, count in expected_roles.items()
-        if _int_value(count) > 0
-    }
-    if not expected:
-        return False
-    if any(role not in allowed_roles for role in expected):
-        return False
-    return all(_role_count(actual_roles, role) >= count for role, count in expected.items())
-
-
-def _role_count(roles: Mapping[str, Any], role: str) -> int:
-    """Return one integer role count from diagnostics data."""
-    return _int_value(roles.get(role))
-
-
-def _int_value(value: Any) -> int:
-    """Return an int diagnostics value without treating bools as integers."""
-    return value if isinstance(value, int) and not isinstance(value, bool) else 0
+    """Return whether writable model properties need missing-control review."""
+    return needs_missing_strict_control_review(
+        category=category,
+        expected_roles=expected_roles,
+        actual_roles=actual_roles,
+        expected_platforms=expected_platforms or {},
+        actual_platforms=actual_platforms or {},
+        source_evidence=source_evidence,
+        unprojected_writable_properties=unprojected_writable_properties,
+        model_writable_properties_count=model_writable_properties_count,
+    )
 
 
 __all__ = ["PRIMARY_CONTROL_ROLE", "needs_missing_primary_control_review"]

@@ -169,6 +169,12 @@ def test_export_private_house_coverage_matrix_writes_csv(tmp_path: Path) -> None
     assert row["source_raw_property_keys"] == "o"
     assert row["source_product_model_available"] == "true"
     assert row["control_status"] == "not_expected"
+    assert row["strict_control_expected"] == "0"
+    assert row["strict_control_actual"] == "0"
+    assert row["strict_control_missing"] == "0"
+    assert row["strict_control_absence_reason"] == (
+        "event_input_device_events_are_not_controls"
+    )
     assert row["sensor_status"] == "covered"
     assert row["sensor_expected"] == "1"
     assert row["sensor_actual"] == "1"

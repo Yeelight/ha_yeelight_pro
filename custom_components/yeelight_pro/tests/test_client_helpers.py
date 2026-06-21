@@ -31,13 +31,12 @@ from custom_components.yeelight_pro.core.client_paths import (
 )
 from custom_components.yeelight_pro.core.client_helpers import (
     control_properties_body,
-    get_product_schemas,
     list_result,
     read_nodes_properties_body,
     read_nodes_property_body,
     read_properties_body,
 )
-from custom_components.yeelight_pro.core.exceptions import CommandError, TokenExpiredError
+from custom_components.yeelight_pro.core.exceptions import CommandError
 
 
 def test_control_properties_body_builds_set_params() -> None:
@@ -168,6 +167,9 @@ def test_client_paths_match_open_api_contract() -> None:
     assert product_schema_path([100, 101]) == (
         "/v1/thing/schema/product/r/info?pids=100&pids=101"
     )
+    assert product_schema_path([100], version="v2") == (
+        "/v2/thing/schema/product/r/info?pids=100"
+    )
 
 
 def test_node_properties_control_path_uses_registry_node_type() -> None:
@@ -230,50 +232,3 @@ def test_node_properties_control_path_uses_registry_node_type() -> None:
             node_kind="scene",
             resource_id="scene_1",
         )
-
-
-@pytest.mark.asyncio
-async def test_get_product_schemas_uses_public_request_first() -> None:
-    """公开产品 schema 端点默认不携带用户 token."""
-    calls: list[dict[str, object]] = []
-
-    async def request(method: str, path: str, **kwargs: object) -> dict:
-        calls.append({"method": method, "path": path, **kwargs})
-        return {"data": {"schemas": [{"pid": 100, "name": "Lamp"}]}}
-
-    schemas = await get_product_schemas(request, [100])
-
-    assert schemas == {100: {"pid": 100, "name": "Lamp"}}
-    assert calls == [{
-        "method": "GET",
-        "path": "/v1/thing/schema/product/r/info?pids=100",
-        "with_auth": False,
-    }]
-
-
-@pytest.mark.asyncio
-async def test_get_product_schemas_retries_with_auth_for_private_endpoint() -> None:
-    """私有部署 schema 端点若要求认证，应带当前 token 重试一次."""
-    calls: list[dict[str, object]] = []
-
-    async def request(method: str, path: str, **kwargs: object) -> dict:
-        calls.append({"method": method, "path": path, **kwargs})
-        if len(calls) == 1:
-            raise TokenExpiredError("private schema endpoint requires auth")
-        return {"data": {"schemas": [{"productId": "101", "name": "Panel"}]}}
-
-    schemas = await get_product_schemas(request, [101])
-
-    assert schemas == {101: {"productId": "101", "name": "Panel"}}
-    assert calls == [
-        {
-            "method": "GET",
-            "path": "/v1/thing/schema/product/r/info?pids=101",
-            "with_auth": False,
-        },
-        {
-            "method": "GET",
-            "path": "/v1/thing/schema/product/r/info?pids=101",
-            "with_auth": True,
-        },
-    ]

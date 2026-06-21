@@ -56,6 +56,23 @@ def test_device_number_suggests_friendly_object_id(mock_coordinator) -> None:
     assert number.suggested_object_id == "厨房双键开关 左键 旋转档位"
 
 
+def test_device_number_uses_safe_range_when_projection_is_missing(
+    mock_coordinator,
+) -> None:
+    """历史 number 实体失去投影时仍不能向 HA 暴露 None 范围."""
+    mock_coordinator.get_device.return_value = None
+
+    number = YeelightProDeviceNumber(
+        mock_coordinator,
+        "missing-device",
+        component_id="other_mppm_number",
+    )
+
+    assert number.available is False
+    assert number.native_min_value == 0
+    assert number.native_max_value == 100
+
+
 def test_device_select_suggests_friendly_object_id(mock_coordinator) -> None:
     """设备级 select 配置实体也应使用设备名和属性名生成 entity_id."""
     payload = _official_two_key_property_control_payload()

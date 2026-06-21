@@ -185,6 +185,7 @@ def test_local_ha_verification_contract_requires_safety_tokens(
     assert any("matches Yeelight Pro runtime event bus payload" in error for error in errors)
     assert any("config-flow scan-login split test guard" in error for error in errors)
     assert any("P0 client helper split test guard" in error for error in errors)
+    assert any("product schema client split test guard" in error for error in errors)
     assert any("push payload split test guard" in error for error in errors)
     assert any("config-entry unload split test guard" in error for error in errors)
     assert any("explicit cleanup B confirm guard" in error for error in errors)

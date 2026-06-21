@@ -89,6 +89,13 @@ async def test_push_manager_applies_business_prop_payload_immediately(
             changed_payloads=1,
             property_updates=1,
             applied_property_updates=1,
+            affected_context_count=1,
+            affected_context_samples=[
+                {
+                    "kind": "device",
+                    "node_id_hash": "5fecf32fca76146d",
+                }
+            ],
             routed_property_updates=1,
             last_applied_node_samples=[
                 {

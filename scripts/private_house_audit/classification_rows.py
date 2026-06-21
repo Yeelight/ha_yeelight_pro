@@ -5,8 +5,11 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from scripts.private_house_audit.control_coverage import (
+    control_absence_reason,
+    strict_control_counts,
+)
 from scripts.private_house_audit.control_review import (
-    PRIMARY_CONTROL_ROLE,
     needs_missing_primary_control_review,
 )
 
@@ -22,6 +25,11 @@ def classified_device_row(
     expected_platforms = _sorted_mapping(device.get("expected_platforms"))
     actual_platforms = _sorted_mapping(device.get("actual_platforms"))
     missing_platforms = _sorted_mapping(device.get("missing_platforms"))
+    strict_controls = strict_control_counts(
+        expected_platforms=expected_platforms,
+        actual_platforms=actual_platforms,
+        missing_platforms=missing_platforms,
+    )
     expected_total = _int_value(device.get("expected_total"))
     actual_total = _int_value(device.get("actual_total"))
     missing_total = _int_value(device.get("missing_total"))
@@ -61,6 +69,9 @@ def classified_device_row(
             expected_platforms=expected_platforms,
             actual_platforms=actual_platforms,
             missing_platforms=missing_platforms,
+            strict_controls=strict_controls,
+            source_evidence=_mapping_value(device.get("source_evidence")),
+            unprojected_writable_properties=device.get("unprojected_writable_properties"),
             category=category,
             expected_total=expected_total,
             actual_total=actual_total,
@@ -88,6 +99,15 @@ def classified_device_row(
         "instance_state_keys_count": instance_state_keys_count,
         "projected_component_count": _int_value(device.get("projected_component_count")),
         "projected_component_ids": list(_sequence_value(device.get("projected_component_ids"))),
+        "unprojected_writable_properties": [
+            dict(sample)
+            for sample in _sequence_value(device.get("unprojected_writable_properties"))
+            if isinstance(sample, Mapping)
+        ],
+        "strict_control": {
+            **strict_controls,
+            "absence_reason": control_absence_reason(device),
+        },
         "expected_samples": [
             dict(sample)
             for sample in _sequence_value(device.get("expected_samples"))
@@ -119,6 +139,9 @@ def _coverage_view(
     expected_platforms: Mapping[str, Any],
     actual_platforms: Mapping[str, Any],
     missing_platforms: Mapping[str, Any],
+    strict_controls: Mapping[str, int],
+    source_evidence: Mapping[str, Any],
+    unprojected_writable_properties: Any,
     category: str,
     expected_total: int,
     actual_total: int,
@@ -138,14 +161,18 @@ def _coverage_view(
         category=category,
         expected_roles=expected_roles,
         actual_roles=actual_roles,
+        expected_platforms=expected_platforms,
+        actual_platforms=actual_platforms,
+        source_evidence=source_evidence,
+        unprojected_writable_properties=unprojected_writable_properties,
         model_writable_properties_count=model_writable_properties_count,
         source_limited=source_limited,
     )
     return {
         "control": _bucket_state(
-            expected=_role_count(expected_roles, PRIMARY_CONTROL_ROLE),
-            actual=_role_count(actual_roles, PRIMARY_CONTROL_ROLE),
-            missing=_role_count(missing_roles, PRIMARY_CONTROL_ROLE),
+            expected=_int_value(strict_controls.get("expected")),
+            actual=_int_value(strict_controls.get("actual")),
+            missing=_int_value(strict_controls.get("missing")),
             source_limited=source_limited,
             attention=control_attention,
         ),
@@ -232,6 +259,10 @@ def _control_attention(
     category: str,
     expected_roles: Mapping[str, Any],
     actual_roles: Mapping[str, Any],
+    expected_platforms: Mapping[str, Any],
+    actual_platforms: Mapping[str, Any],
+    source_evidence: Mapping[str, Any],
+    unprojected_writable_properties: Any,
     model_writable_properties_count: int,
     source_limited: bool,
 ) -> str:
@@ -242,10 +273,14 @@ def _control_attention(
         category=category,
         expected_roles=expected_roles,
         actual_roles=actual_roles,
+        expected_platforms=expected_platforms,
+        actual_platforms=actual_platforms,
+        source_evidence=source_evidence,
+        unprojected_writable_properties=unprojected_writable_properties,
         model_writable_properties_count=model_writable_properties_count,
     ):
         return ""
-    return "model_has_writable_properties_but_no_primary_control"
+    return "model_has_writable_properties_but_no_strict_control"
 
 
 def _state_evidence(

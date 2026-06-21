@@ -89,7 +89,9 @@ def should_include_runtime_component(
     if to_str(getattr(component, "component_type", None)) == "global":
         if _component_identity(component) in METADATA_GLOBAL_COMPONENTS:
             return False
-        return is_projectable_global_component(component)
+        return is_projectable_global_component(component) or has_writable_helper_property(
+            component
+        )
     if component_state:
         return True
     if _component_category(component) == "other":
@@ -106,7 +108,9 @@ def should_expose_component_state(component: Any) -> bool:
         return True
     if _component_identity(component) in METADATA_GLOBAL_COMPONENTS:
         return False
-    return is_projectable_global_component(component)
+    return is_projectable_global_component(component) or has_writable_helper_property(
+        component
+    )
 
 
 def should_expose_runtime_property(component: Any, prop: Any) -> bool:

@@ -59,7 +59,8 @@ def entity_registry_by_unique_id(
 def installed_runtime_status(config_dir: Path) -> dict[str, Any]:
     """Return source-vs-installed runtime drift facts for the local HA config."""
     install_root = config_dir / "custom_components" / "yeelight_pro"
-    diff = runtime_diff(SOURCE_COMPONENT_ROOT, install_root)
+    source_root = _runtime_source_root(install_root)
+    diff = runtime_diff(source_root, install_root)
     return {
         "matched_source": diff.ok,
         "missing_files": len(diff.missing),
@@ -69,6 +70,13 @@ def installed_runtime_status(config_dir: Path) -> dict[str, Any]:
         "extra_samples": list(diff.extra[:12]),
         "changed_samples": list(diff.changed[:12]),
     }
+
+
+def _runtime_source_root(install_root: Path) -> Path:
+    """Return the component source root used for install drift checks."""
+    if SOURCE_COMPONENT_ROOT.exists():
+        return SOURCE_COMPONENT_ROOT
+    return install_root
 
 
 def print_summary(report: Mapping[str, Any], *, top: int) -> None:

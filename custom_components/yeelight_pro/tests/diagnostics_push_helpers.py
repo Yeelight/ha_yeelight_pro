@@ -16,6 +16,8 @@ def _push_health(**overrides: object) -> dict[str, object]:
         "empty_param_updates": 0,
         "applied_property_updates": 0,
         "unknown_property_updates": 0,
+        "affected_context_count": 0,
+        "affected_context_samples": [],
         "group_updates": 0,
         "topology_node_updates": 0,
         "routed_property_updates": 0,

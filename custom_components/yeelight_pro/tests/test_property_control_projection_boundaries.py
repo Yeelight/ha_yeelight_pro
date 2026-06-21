@@ -89,3 +89,26 @@ def test_component_labels_do_not_hide_documented_auxiliary_controls() -> None:
     switches = project_switch_controls(payload, domain=DOMAIN)
 
     assert [item.component_id for item in switches] == ["vendor_controls_blp_switch"]
+
+
+def test_incomplete_number_range_does_not_project_auxiliary_control() -> None:
+    """缺少 min/max 的数值范围不能生成 HA number，避免运行时 capability 崩溃."""
+    payload = projection_payload(
+        device_id="partial-range-1",
+        category="other",
+        component_id="other",
+        component_category="other",
+        state={"mppm": 1},
+        params={"mppm": 1},
+    )
+    payload["ha_product_model"]["components"][0]["properties"] = [
+        {
+            "prop_id": "mppm",
+            "name": "音乐播放器播放模式",
+            "access": "read_write",
+            "property_type": "int",
+            "value_range": {"step": 1},
+        }
+    ]
+
+    assert project_number_controls(payload, domain=DOMAIN) == []

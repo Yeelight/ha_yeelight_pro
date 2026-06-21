@@ -130,7 +130,7 @@ def test_sync_script_dry_run_is_directly_executable(tmp_path: Path) -> None:
 def test_sync_script_fails_when_install_target_still_contains_tests(
     tmp_path: Path,
 ) -> None:
-    """同步脚本发现安装态残留 tests 时必须失败而不是静默通过."""
+    """同步脚本应清理安装态残留 tests，而不是把源码测试装入 HA."""
     config_dir = tmp_path / "config"
     install_root = config_dir / "custom_components" / "yeelight_pro"
     tests_root = install_root / "tests"
@@ -149,5 +149,6 @@ def test_sync_script_fails_when_install_target_still_contains_tests(
         text=True,
     )
 
-    assert result.returncode == 1
-    assert "forbidden local HA install files remain" in result.stderr
+    assert result.returncode == 0
+    assert "Synced" in result.stdout
+    assert not tests_root.exists()

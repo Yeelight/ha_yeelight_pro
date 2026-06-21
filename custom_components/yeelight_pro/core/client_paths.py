@@ -258,10 +258,10 @@ def nodes_properties_read_path(
     return f"/v1/open/control/house/{house_id}/control/{node_type_id}/r/properties"
 
 
-def product_schema_path(product_ids: list[int]) -> str:
+def product_schema_path(product_ids: list[int], *, version: str = "v1") -> str:
     """产品规格批量读取路径。"""
     pids_param = "&".join(f"pids={pid}" for pid in product_ids)
-    return f"/v1/thing/schema/product/r/info?{pids_param}"
+    return f"/{version}/thing/schema/product/r/info?{pids_param}"
 
 
 def paginated_path(path_prefix: str, *, page: int, page_size: int) -> str:

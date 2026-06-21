@@ -69,7 +69,7 @@ def test_control_schema_projects_available_entity_without_runtime_value() -> Non
     climate = project_climate(climate_device, domain=DOMAIN)
 
     assert switch.available is True
-    assert switch.is_on is False
+    assert switch.is_on is None
     assert cover is not None
     assert cover.available is True
     assert cover.current_cover_position is None

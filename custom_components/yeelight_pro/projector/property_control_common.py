@@ -182,6 +182,14 @@ def control_value_range(prop: PropertyModel) -> ValueRangeModel | None:
     )
 
 
+def complete_control_value_range(prop: PropertyModel) -> ValueRangeModel | None:
+    """Return numeric range metadata only when HA can safely expose a number."""
+    value_range = control_value_range(prop)
+    if value_range is None or value_range.min is None or value_range.max is None:
+        return None
+    return value_range
+
+
 def control_value_list(prop: PropertyModel) -> list[ValueItemModel]:
     """Return schema or registry-backed enum metadata."""
     if prop.value_list:
@@ -375,6 +383,7 @@ __all__ = (
     "entity_category_for_property",
     "auxiliary_bool_property_skip_reason",
     "auxiliary_property_skip_reason",
+    "complete_control_value_range",
     "is_writable_auxiliary_bool_property",
     "is_writable_auxiliary_property",
     "number_icon",

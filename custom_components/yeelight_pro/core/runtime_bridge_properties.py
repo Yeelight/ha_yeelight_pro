@@ -7,12 +7,7 @@ import logging
 from typing import Any
 
 from .lan_sensor_values import normalize_lan_device_params
-from .lan_topology_specs import (
-    NODE_TYPE_AREA,
-    NODE_TYPE_GROUP,
-    NODE_TYPE_HOUSE,
-    NODE_TYPE_ROOM,
-)
+from .lan_topology_specs import NODE_TYPE_AREA, NODE_TYPE_GROUP, NODE_TYPE_HOUSE, NODE_TYPE_ROOM
 from .runtime_bridge_nodes import (
     candidate_matches_node_type,
     collection_contains_node,
@@ -29,17 +24,24 @@ from .runtime_bridge_types import (
     RuntimePropertyUpdateSummary,
     RuntimeUpdateContext,
 )
-from .runtime_state import (
-    merge_runtime_state_into_group_payloads,
-    merge_runtime_state_into_node_payloads,
-    online_from_params,
-)
+from .runtime_state import CanonicalRebuilder, RuntimeStateStore, merge_runtime_state_into_group_payloads, merge_runtime_state_into_node_payloads, online_from_params
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class RuntimePropertyApplyMixin:
     """Apply property updates to devices, groups, and topology nodes."""
+
+    _runtime_state: RuntimeStateStore
+    _devices: Mapping[int, dict[str, Any]]
+    _gateways: Mapping[int, dict[str, Any]]
+    _data: Mapping[int, Any]
+    _groups: list[dict[str, Any]] | None
+    _rooms: list[dict[str, Any]] | None
+    _areas: list[dict[str, Any]] | None
+    _houses: list[dict[str, Any]] | None
+    _device_import_filter_enabled: bool
+    _rebuild_canonical: CanonicalRebuilder
 
     def apply_property_updates(
         self,
@@ -373,7 +375,6 @@ def _is_group_update(
     if update.node_type == NODE_TYPE_GROUP:
         return True
     return loaded_payload is None and matched_collections == ["groups"]
-
 
 def _topology_update_context(
     node_type: int | None,

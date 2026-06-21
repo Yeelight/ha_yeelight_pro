@@ -136,6 +136,7 @@ def test_push_contract_check_requires_coverage_tokens(
     _write_test_file(tests_root / "test_push_payload_events.py", "")
     _write_test_file(tests_root / "push_manager_helpers.py", "FakeTransport")
     _write_test_file(tests_root / "test_push_manager.py", "push_manager_helpers")
+    _write_test_file(tests_root / "test_push_manager_errors.py", "")
     _write_test_file(tests_root / "test_push_manager_health.py", "push_manager_helpers")
     _write_test_file(tests_root / "push_transport_helpers.py", "FakeSession")
     _write_test_file(tests_root / "test_push_transport.py", "push_transport_helpers")
@@ -153,6 +154,7 @@ def test_push_contract_check_requires_coverage_tokens(
     _write_test_file(scripts_root / "verify_push_websocket.py", "")
     _write_test_file(tests_root / "test_runtime_bridge.py", "")
     _write_test_file(tests_root / "test_runtime_bridge_lan_events.py", "")
+    _write_test_file(tests_root / "test_runtime_bridge_scaling.py", "")
 
     errors = hacs_preflight._check_push_contract_tests()
 

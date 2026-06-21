@@ -112,7 +112,7 @@ def test_topology_classifier_resolves_loaded_device_id_alias() -> None:
     assert result["sample"]["valid_candidate_count"] == 1
     assert result["sample"]["candidate_hashes"] == [
         {
-            "field": "deviceId",
+            "field_label": "identity_device",
             "hash": "ae7ac0cc1cbc2b02",
             "collections": ["data"],
         }
@@ -341,7 +341,7 @@ def test_push_probe_records_event_payload_topology_alias_match() -> None:
             "loaded_candidate_count": 1,
             "candidate_hashes": [
                 {
-                    "field": "deviceId",
+                    "field_label": "identity_device",
                     "hash": "ae7ac0cc1cbc2b02",
                     "collections": ["data"],
                 }

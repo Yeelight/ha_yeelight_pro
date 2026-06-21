@@ -21,7 +21,7 @@ from .const import (
     CONNECTION_MODE_PRIVATE,
     DEFAULT_LIVE_UPDATES,
 )
-from .deployment_urls import deployment_private_push_base_url, deployment_push_base_url
+from .deployment_urls import deployment_private_push_base_url
 from .entry_migration import normalize_entry_data
 from .push_manager import PushManager
 from .push_transport import YeelightPushWebSocketTransport

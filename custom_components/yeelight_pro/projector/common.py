@@ -15,6 +15,7 @@ from ..canonical.models import (
 )
 from ..capabilities.registry import format_component_property_key
 from ..core.device_structural_models import structural_component_label
+from ..device_channel_catalog import payload_product_spec, product_channel_count
 from ..utils import to_bool, to_int
 
 COMPONENT_INDEX_RE = re.compile(r"_(?P<index>\d+)$")
@@ -213,6 +214,35 @@ def _component_label_payload(component: ComponentInstanceModel) -> dict[str, Any
 def _display_text(value: Any) -> str | None:
     text = str(value).strip() if value is not None else ""
     return text or None
+
+
+def public_switch_component_id(
+    device_payload: Mapping[str, Any],
+    component_id: str,
+) -> str:
+    """Return the stable HA identity for catalog-backed switch channels."""
+    index = component_index(component_id)
+    if index is None:
+        return component_id
+    if component_id.startswith("switch_"):
+        return component_id
+    if not component_id.startswith("relay_switch_"):
+        return component_id
+    if not _catalog_switch_channel_allows_legacy_identity(device_payload, index):
+        return component_id
+    return f"switch_{index}"
+
+
+def _catalog_switch_channel_allows_legacy_identity(
+    device_payload: Mapping[str, Any],
+    index: int,
+) -> bool:
+    """Return true when product catalog already exposes channels as switch_N."""
+    spec = payload_product_spec(device_payload)
+    if spec is None:
+        return False
+    count = product_channel_count(spec)
+    return count is not None and 0 < index <= count
 
 
 def schema_backed_component_available(

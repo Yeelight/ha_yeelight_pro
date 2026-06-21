@@ -196,6 +196,7 @@ def test_split_contract_check_requires_coverage_tokens(
     _write_test_file(tests_root / "test_config_flow_reauth_identity.py", "")
     _write_test_file(tests_root / "p0_client_helpers.py", "")
     _write_test_file(tests_root / "test_client_helpers.py", "")
+    _write_test_file(tests_root / "test_client_product_schemas.py", "")
     _write_test_file(tests_root / "test_client_control_contracts.py", "")
     _write_test_file(tests_root / "test_client_pagination.py", "")
     _write_test_file(tests_root / "test_p0_client_contracts.py", "")
@@ -256,6 +257,8 @@ def test_split_contract_check_requires_coverage_tokens(
     assert any("documented single-property read path coverage" in error for error in errors)
     assert any("documented multi-node single-property path coverage" in error for error in errors)
     assert any("documented multi-node multi-property path coverage" in error for error in errors)
+    assert any("product schema v1/v2 merge coverage" in error for error in errors)
+    assert any("product schema v2 failure fallback coverage" in error for error in errors)
     assert any("documented single-property control body coverage" in error for error in errors)
     assert any(
         "documented multi-node single-property control body coverage" in error

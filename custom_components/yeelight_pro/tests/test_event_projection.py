@@ -47,6 +47,34 @@ def test_switch_control_with_declared_panel_events_projects_switch_and_events() 
     ]
 
 
+def test_catalog_relay_switch_events_keep_legacy_event_unique_id() -> None:
+    """official relay_switch_N 事件实体应沿用旧 switch_N_event 身份."""
+    device = projection_payload(
+        device_id="smart-screen-relay-event-1",
+        category="gateway",
+        component_id="relay_switch_1",
+        state={"p": True},
+        params={"1-p": True},
+        component_category="relay_switch",
+        product_events=[
+            {"event_id": 1, "name": "panel.click"},
+            {"event_id": 2, "name": "panel.hold"},
+        ],
+    )
+    device["pid"] = 17000007
+    device["ha_product_model"]["components"][0]["cid"] = 20
+    device["ha_product_model"]["components"][0]["name"] = "switch control"
+
+    [event] = project_events(device, domain=DOMAIN)
+
+    assert event.component_id == "relay_switch_1"
+    assert event.unique_id == "yeelight_pro_smart-screen-relay-event-1_switch_1_event"
+    assert [(trigger.type, trigger.subtype) for trigger in project_device_triggers(device)] == [
+        ("relay_switch_1", "click"),
+        ("relay_switch_1", "hold"),
+    ]
+
+
 def test_wireless_switch_channel_with_declared_panel_events_projects_both() -> None:
     """无线开关通道声明 click/hold 时也应生成事件入口。"""
     device = projection_payload(

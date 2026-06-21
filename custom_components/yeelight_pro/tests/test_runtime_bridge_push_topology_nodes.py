@@ -70,6 +70,13 @@ async def test_push_update_resolves_loaded_group_id_alias(
             "routed_updates": 1,
             "changed": True,
             "device_import_filter_enabled": False,
+            "affected_context_count": 1,
+            "affected_context_samples": [
+                {
+                    "kind": "group",
+                    "node_id_hash": "a3a5e11b6c78b858",
+                }
+            ],
             "applied_node_samples": [
                 {
                     "node_id_hash": "a3a5e11b6c78b858",
@@ -132,6 +139,13 @@ async def test_push_update_prefers_node_type_alias_over_colliding_id(
         "routed_updates": 1,
         "changed": True,
         "device_import_filter_enabled": False,
+        "affected_context_count": 1,
+        "affected_context_samples": [
+            {
+                "kind": "group",
+                "node_id_hash": "628ba186a44ea4f1",
+            }
+        ],
         "applied_node_samples": [
             {
                 "node_id_hash": "628ba186a44ea4f1",
@@ -200,6 +214,21 @@ async def test_push_updates_room_area_house_node_light_state(
             "routed_updates": 3,
             "changed": True,
             "device_import_filter_enabled": False,
+            "affected_context_count": 3,
+            "affected_context_samples": [
+                {
+                    "kind": "area",
+                    "node_id_hash": "866761928584c395",
+                },
+                {
+                    "kind": "house",
+                    "node_id_hash": "af3ef8742514e404",
+                },
+                {
+                    "kind": "room",
+                    "node_id_hash": "8d31226932892e43",
+                },
+            ],
             "applied_node_samples": [
                 {
                     "node_id_hash": "8d31226932892e43",

@@ -36,7 +36,7 @@ from .device_filter_options import (
     build_filter_config,
     filter_dimension_schema,
 )
-from .deployment_urls import deployment_private_push_base_url
+from .deployment_urls import deployment_private_push_base_url, deployment_push_base_url
 from .entry_migration import normalize_entry_options
 
 _BASE_OPTION_FORM_KEYS = (
@@ -271,7 +271,8 @@ def _normalize_optional_private_push(value: Any, entry: object | None) -> str:
         if isinstance(data, Mapping)
         else ""
     )
-    return deployment_private_push_base_url(private_domain, text)
+    normalized_push = deployment_push_base_url(text)
+    return deployment_private_push_base_url(private_domain, normalized_push)
 
 
 def _option_form_keys_for_entry(entry: object | None) -> tuple[str, ...]:

@@ -40,6 +40,9 @@ COLOR_TEMP_MIN = 2700   # 暖白
 COLOR_TEMP_MAX = 6500   # 冷白
 COLOR_TEMP_STEP = 100
 
+DEVICE_NUMBER_FALLBACK_MIN = 0
+DEVICE_NUMBER_FALLBACK_MAX = 100
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -175,13 +178,17 @@ class YeelightProDeviceNumber(CoordinatorEntity, NumberEntity):
     def native_min_value(self) -> float | None:
         """返回最小值."""
         projection = self._projection
-        return projection.native_range.min if projection is not None else None
+        if projection is None or projection.native_range.min is None:
+            return DEVICE_NUMBER_FALLBACK_MIN
+        return projection.native_range.min
 
     @property
     def native_max_value(self) -> float | None:
         """返回最大值."""
         projection = self._projection
-        return projection.native_range.max if projection is not None else None
+        if projection is None or projection.native_range.max is None:
+            return DEVICE_NUMBER_FALLBACK_MAX
+        return projection.native_range.max
 
     @property
     def native_step(self) -> float | None:

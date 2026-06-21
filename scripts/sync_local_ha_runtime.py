@@ -16,6 +16,7 @@ from scripts.local_ha_verification.constants import (  # noqa: E402
     DOMAIN,
     EXCLUDED_COMPARE_PARTS,
     EXCLUDED_COMPARE_SUFFIXES,
+    FORBIDDEN_INSTALL_PARTS,
     FORBIDDEN_INSTALL_NAMES,
     SOURCE_COMPONENT_ROOT,
 )
@@ -49,6 +50,7 @@ def sync_runtime_files(config_dir: Path) -> tuple[int, Path]:
         path.relative_to(SOURCE_COMPONENT_ROOT).as_posix()
         for path in source_files
     }
+    _remove_forbidden_install_artifacts(install_root)
     _remove_stale_runtime_files(install_root, expected_files)
     _remove_generated_runtime_caches(install_root)
 
@@ -127,6 +129,25 @@ def _remove_stale_runtime_files(
             path.rmdir()
 
 
+def _remove_forbidden_install_artifacts(install_root: Path) -> None:
+    """Remove release-excluded artifacts from the local HA install mirror."""
+    if not install_root.exists():
+        return
+    for path in sorted(install_root.rglob("*"), reverse=True):
+        relative_path = path.relative_to(install_root)
+        if any(part in FORBIDDEN_INSTALL_PARTS for part in relative_path.parts):
+            if path.is_file():
+                path.unlink()
+            elif path.is_dir():
+                shutil.rmtree(path)
+            continue
+        if path.is_file() and path.name in FORBIDDEN_INSTALL_NAMES:
+            path.unlink()
+    for path in sorted(install_root.rglob("*"), reverse=True):
+        if path.is_dir() and not any(path.iterdir()):
+            path.rmdir()
+
+
 def _remove_generated_runtime_caches(install_root: Path) -> None:
     """Remove Python caches from the installed runtime mirror."""
     for path in sorted(install_root.rglob("*"), reverse=True):
@@ -179,8 +200,11 @@ def _generated_runtime_cache_count(install_root: Path) -> int:
 
 def _default_config_dir() -> Path:
     """Return the local HA config dir used by this workspace."""
-    candidate = ROOT.parents[3] / "config" / "homeassistant-verify"
-    return candidate if candidate.exists() else Path.cwd()
+    if len(ROOT.parents) > 3:
+        candidate = ROOT.parents[3] / "config" / "homeassistant-verify"
+        if candidate.exists():
+            return candidate
+    return Path.cwd()
 
 
 def main() -> int:
@@ -216,13 +240,28 @@ class _RuntimeSyncPlan:
     """Typed view of the dry-run sync plan for CLI output."""
 
     def __init__(self, payload: dict[str, object]) -> None:
-        self.install_root = payload["install_root"]
-        self.source_file_count = int(payload["source_file_count"])
-        self.stale_files = list(payload["stale_files"])  # type: ignore[arg-type]
-        self.changed_or_missing_files = list(
-            payload["changed_or_missing_files"]  # type: ignore[arg-type]
+        self.install_root = str(payload["install_root"])
+        self.source_file_count = _int_payload_value(payload, "source_file_count")
+        self.stale_files = _list_payload_value(payload, "stale_files")
+        self.changed_or_missing_files = _list_payload_value(
+            payload,
+            "changed_or_missing_files",
         )
-        self.cache_artifact_count = int(payload["cache_artifact_count"])
+        self.cache_artifact_count = _int_payload_value(payload, "cache_artifact_count")
+
+
+def _int_payload_value(payload: dict[str, object], key: str) -> int:
+    """Return an integer value from a dry-run plan payload."""
+    value = payload.get(key)
+    return int(value) if isinstance(value, (int, str)) else 0
+
+
+def _list_payload_value(payload: dict[str, object], key: str) -> list[str]:
+    """Return a string list from a dry-run plan payload."""
+    value = payload.get(key)
+    if not isinstance(value, list):
+        return []
+    return [str(item) for item in value]
 
 
 def _runtime_sync_plan_for_output(config_dir: Path) -> _RuntimeSyncPlan:

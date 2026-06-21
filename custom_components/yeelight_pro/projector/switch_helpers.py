@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any, Mapping
 
 from ..canonical.models import ComponentInstanceModel, ComponentModel, HADeviceInstanceModel
@@ -12,19 +11,31 @@ from ..capabilities.registry import (
 )
 from ..device_channel_catalog import payload_product_spec, product_channel_count
 from ..device_channel_semantics import component_name_key, component_text
-from ..device_display import channel_name_label, switch_channel_count_hint
+from ..device_display import switch_channel_count_hint
 from ..utils import to_category, to_int
 from .common import component_index, component_state_key_map
 from .common import load_product_model, product_component
 from .event_input import is_event_input_category, is_event_input_component
 from .platform_evidence import component_has_switch_evidence
 
-RAW_SWITCH_KEY_RE = re.compile(r"^(?P<index>\d+)-(?P<prop>p|sp)$")
+from .switch_helper_constants import RAW_SWITCH_KEY_RE
+from .switch_name_helpers import (
+    _build_switch_name,
+    _params,
+    _raw_switch_sort_key,
+)
+
 DIRECT_SWITCH_PROPS = ("p", "sp")
 WIRELESS_SWITCH_CHANNEL_KEYS = {
     "wireless switch channel",
     "wireless_switch_channel",
     "无线开关通道",
+}
+RELAY_SWITCH_COMPONENT_KEYS = {
+    "switch",
+    "switch control",
+    "switch_control",
+    "开关",
 }
 SWITCH_PARENT_CATEGORIES = {"relay_switch", "switch"}
 NON_SWITCH_PARENT_CATEGORIES = {
@@ -212,10 +223,39 @@ def _relay_event_component_has_power(
     category = to_category(component.category)
     if category != "relay_switch":
         return False
+    if not _has_relay_switch_identity(component, product_component):
+        return False
     prop_ids = {str(prop) for prop in component.state}
     if product_component is not None:
         prop_ids.update(prop.prop_id for prop in product_component.properties)
     return "p" in prop_ids
+
+
+def _has_relay_switch_identity(
+    component: ComponentInstanceModel,
+    product_component: ComponentModel | None = None,
+) -> bool:
+    """Return true for documented relay switch components, not broad categories."""
+    if component_has_switch_evidence(component, product_component):
+        return True
+    if _is_relay_switch_component(component):
+        return True
+    if _looks_like_indexed_switch_channel(component, to_category(component.category)):
+        return True
+    if _is_wireless_switch_channel_component(component):
+        return True
+    return _is_wireless_switch_channel_component(product_component)
+
+
+def _is_relay_switch_component(component: Any | None) -> bool:
+    """Return true for documented relay switch component identities."""
+    if component is None:
+        return False
+    values = (
+        component_text(component, ("component_id", "componentId", "id")),
+        component_text(component, ("name", "componentName", "component_name", "desc")),
+    )
+    return any(component_name_key(value) in RELAY_SWITCH_COMPONENT_KEYS for value in values)
 
 
 def _looks_like_indexed_switch_channel(
@@ -294,109 +334,18 @@ def _index_from_raw_key(raw_key: str) -> int | None:
     return to_int(match.group("index"))
 
 
-def _build_switch_name(
-    base_name: str | None,
-    component_id: str,
-    control_key: str,
-    component: ComponentInstanceModel | None = None,
-    *,
-    device_payload: Mapping[str, Any] | None = None,
-) -> str | None:
-    """构建 switch 显示名称，避免裸数字通道名."""
-    index = component_index(component_id)
-    if index is None:
-        match = RAW_SWITCH_KEY_RE.match(control_key)
-        if match:
-            index = to_int(match.group("index"))
-    label_component = _label_component_from_subdevice(
-        device_payload,
-        index=index,
-    ) or component
-    if label_component is None or _raw_params_are_indexed_switch_power(
-        control_key,
-        device_payload=device_payload,
-    ):
-        label_component = _synthetic_component_for_raw_key(
-            control_key,
-            device_payload=device_payload,
-        ) or label_component
-    return channel_name_label(
-        index=index,
-        component=label_component,
-        device_payload=device_payload,
-    )
-
-
-def _synthetic_component_for_raw_key(
-    raw_key: str,
-    *,
-    device_payload: Mapping[str, Any] | None,
-) -> Mapping[str, Any] | None:
-    """Return label-only component evidence for raw indexed switch keys."""
-    match = RAW_SWITCH_KEY_RE.match(raw_key)
-    if match is None or match.group("prop") != "sp":
-        return None
-    if _has_indexed_power_key(device_payload):
-        return None
-    return {
-        "component_id": f"wireless_switch_channel_{match.group('index')}",
-        "io_type": "input",
-    }
-
-
-def _label_component_from_subdevice(
-    device_payload: Mapping[str, Any] | None,
-    *,
-    index: int | None,
-) -> Mapping[str, Any] | None:
-    """Return OpenAPI sub-device metadata for channel naming."""
-    if device_payload is None or index is None:
-        return None
-    subdevices = device_payload.get("subDeviceList")
-    if not isinstance(subdevices, list):
-        return None
-    for item in subdevices:
-        if not isinstance(item, Mapping):
-            continue
-        if to_int(item.get("index")) == index:
-            return item
-    return None
-
-
-def _has_indexed_power_key(device_payload: Mapping[str, Any] | None) -> bool:
-    """Return true when raw params contain indexed N-p output switch keys."""
-    if device_payload is None:
-        return False
-    for raw_key in _params(device_payload):
-        match = RAW_SWITCH_KEY_RE.match(str(raw_key))
-        if match is not None and match.group("prop") == "p":
-            return True
-    return False
-
-
-def _raw_params_are_indexed_switch_power(
-    raw_key: str,
-    *,
-    device_payload: Mapping[str, Any] | None,
-) -> bool:
-    """Return true when raw params prove this component is controlled by N-sp."""
-    match = RAW_SWITCH_KEY_RE.match(raw_key)
-    return (
-        match is not None
-        and match.group("prop") == "sp"
-        and not _has_indexed_power_key(device_payload)
-    )
-
-
-def _params(device_payload: Mapping[str, Any]) -> dict[str, Any]:
-    """从 payload 中提取 params 字典."""
-    params = device_payload.get("params")
-    return dict(params) if isinstance(params, Mapping) else {}
-
-
-def _raw_switch_sort_key(raw_key: str) -> tuple[int, str]:
-    """索引开关键的排序键：按数字索引升序."""
-    match = RAW_SWITCH_KEY_RE.match(raw_key)
-    if not match:
-        return (9999, raw_key)
-    return (to_int(match.group("index")) or 9999, raw_key)
+__all__ = [
+    "_allows_component_switch_projection",
+    "_allows_raw_switch_fallback",
+    "_build_switch_name",
+    "_component_id_from_raw_key",
+    "_component_state_key_map",
+    "_direct_switch_prop",
+    "_extract_indexed_switch_keys",
+    "_index_from_raw_key",
+    "_looks_like_switch_component",
+    "_params",
+    "_prefers_switch_power_prop",
+    "_resolve_component_control_key",
+    "_switch_channel_allowed",
+]

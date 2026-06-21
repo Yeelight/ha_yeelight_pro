@@ -28,6 +28,22 @@ SPLIT_CLIENT_CONTRACT_TEST_TOKENS = {
             "documented multi-node multi-property path coverage"
         ),
     },
+    "tests/test_client_product_schemas.py": {
+        "test_get_product_schemas_merges_public_v1_and_authenticated_v2": (
+            "product schema v1/v2 merge coverage"
+        ),
+        "customComponents": "product schema custom component merge coverage",
+        "supportActions": "product schema action merge coverage",
+        "test_get_product_schemas_keeps_v1_when_v2_endpoint_fails": (
+            "product schema v2 failure fallback coverage"
+        ),
+        "/v1/thing/schema/product/r/info?pids=100": (
+            "product schema v1 endpoint coverage"
+        ),
+        "/v2/thing/schema/product/r/info?pids=100": (
+            "product schema v2 endpoint coverage"
+        ),
+    },
     "tests/test_client_control_contracts.py": {
         "control_property_body": "documented single-property control body coverage",
         "control_properties_body": (

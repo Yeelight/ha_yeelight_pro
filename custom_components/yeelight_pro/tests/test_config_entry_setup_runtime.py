@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 
@@ -42,7 +42,8 @@ async def test_setup_entry_keeps_cloud_runtime_when_lan_start_fails(
     """本地网关启动失败时，云端轮询和控制 fallback 仍应可用."""
     hass.data.setdefault(DOMAIN, {})
     entry = make_config_entry()
-    register_config_entry(hass, entry)
+    registered_entry = register_config_entry(hass, entry)
+    registered_entry.mock_state(hass, ConfigEntryState.SETUP_IN_PROGRESS)
     entry.options = {
         CONF_LIVE_UPDATES: True,
         CONF_LOCAL_GATEWAY_CONTROL: True,
@@ -99,7 +100,8 @@ async def test_setup_entry_keeps_polling_when_live_runtime_initial_connect_fails
     """WebSocket 初始网络失败不能阻断集成回退到轮询运行."""
     hass.data.setdefault(DOMAIN, {})
     entry = make_config_entry()
-    register_config_entry(hass, entry)
+    registered_entry = register_config_entry(hass, entry)
+    registered_entry.mock_state(hass, ConfigEntryState.SETUP_IN_PROGRESS)
     entry.options = {CONF_LIVE_UPDATES: True}
     push_manager = MagicMock()
     push_manager.health.as_dict.return_value = {
@@ -149,7 +151,8 @@ async def test_lan_entry_waits_for_property_ready_without_fixed_sleep(
     entry.options = {}
     entry.async_on_unload = MagicMock()
     entry.add_update_listener = MagicMock(return_value=MagicMock())
-    register_config_entry(hass, entry)
+    registered_entry = register_config_entry(hass, entry)
+    registered_entry.mock_state(hass, ConfigEntryState.SETUP_IN_PROGRESS)
     runtime_holder: dict[str, Any] = {}
 
     class FakeRuntime:
@@ -232,7 +235,8 @@ async def test_lan_entry_start_failure_raises_not_ready_and_cleans_runtime(
     entry.options = {}
     entry.async_on_unload = MagicMock()
     entry.add_update_listener = MagicMock(return_value=MagicMock())
-    register_config_entry(hass, entry)
+    registered_entry = register_config_entry(hass, entry)
+    registered_entry.mock_state(hass, ConfigEntryState.SETUP_IN_PROGRESS)
 
     class FailingRuntime:
         def __init__(self, *, host: str, port: int, endpoint_kind: str) -> None:
@@ -277,7 +281,8 @@ async def test_lan_entry_uses_saved_wifi_panel_endpoint_kind(
     entry.options = {}
     entry.async_on_unload = MagicMock()
     entry.add_update_listener = MagicMock(return_value=MagicMock())
-    register_config_entry(hass, entry)
+    registered_entry = register_config_entry(hass, entry)
+    registered_entry.mock_state(hass, ConfigEntryState.SETUP_IN_PROGRESS)
     runtime_holder: dict[str, Any] = {}
 
     class FakeRuntime:
@@ -340,7 +345,8 @@ async def test_lan_entry_cleans_runtime_when_platform_forward_fails(
     entry.options = {}
     entry.async_on_unload = MagicMock()
     entry.add_update_listener = MagicMock(return_value=MagicMock())
-    register_config_entry(hass, entry)
+    registered_entry = register_config_entry(hass, entry)
+    registered_entry.mock_state(hass, ConfigEntryState.SETUP_IN_PROGRESS)
     runtime_holder: dict[str, Any] = {}
 
     class FakeRuntime:

@@ -215,7 +215,7 @@ def topology_payload_coverage(topology: TopologySnapshot) -> dict[str, Any]:
             "by_collection": {},
         }
 
-    result = {
+    result: dict[str, Any] = {
         "available": True,
         "total_nodes": len(rows),
         "matched_nodes": 0,
@@ -268,24 +268,24 @@ def topology_payload_coverage(topology: TopologySnapshot) -> dict[str, Any]:
 
 def iter_topology_rows(topology: TopologySnapshot) -> Iterable[tuple[str, int, int]]:
     """Yield loaded topology rows as collection, node id, and documented node type."""
-    for collection_name, items in (
+    for collection_name, node_map in (
         ("data", topology.data),
         ("gateways", topology.gateways),
     ):
         node_type = COLLECTION_NODE_TYPES[collection_name]
-        for node_id in items:
+        for node_id in node_map:
             yield collection_name, int(node_id), node_type
-    for collection_name, items in (
+    for collection_name, node_rows in (
         ("groups", topology.groups),
         ("rooms", topology.rooms),
         ("areas", topology.areas),
         ("houses", topology.houses),
     ):
         node_type = COLLECTION_NODE_TYPES[collection_name]
-        for item in items:
-            if not isinstance(item, Mapping):
+        for row in node_rows:
+            if not isinstance(row, Mapping):
                 continue
-            node_id = to_int(item.get("id"))
-            if node_id is None:
+            topology_node_id = to_int(row.get("id"))
+            if topology_node_id is None:
                 continue
-            yield collection_name, node_id, node_type
+            yield collection_name, topology_node_id, node_type

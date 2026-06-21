@@ -11,7 +11,6 @@ import logging
 from typing import Any, Mapping
 
 from ..canonical.models import ComponentInstanceModel, HADeviceInstanceModel
-from ..device_channel_catalog import payload_product_spec, product_channel_count
 from ..entity_category import entity_category_for_property
 from ..identity import payload_entity_unique_id_prefix
 from ..utils import to_bool, to_str
@@ -20,6 +19,7 @@ from .common import (
     component_property_value,
     payload_available,
     product_component,
+    public_switch_component_id,
     schema_backed_component_available,
 )
 from .common import load_instance as _load_instance
@@ -108,7 +108,8 @@ def _project_instance_switches(
     key_map = _component_state_key_map(instance)
     projections: list[HASwitchProjection] = []
 
-    for component_position, component in enumerate(instance.components, start=1):
+    switch_component_position = 0
+    for component in instance.components:
         schema_component = product_component(product_model, component.component_id)
         if not _looks_like_switch_component(component, schema_component):
             _log_switch_component_skip(
@@ -158,6 +159,7 @@ def _project_instance_switches(
             )
             continue
 
+        switch_component_position += 1
         control_key = _resolve_component_control_key(
             component.component_id,
             prop,
@@ -167,10 +169,14 @@ def _project_instance_switches(
         control_key = _resolve_schema_component_control_key(
             control_key,
             prop,
-            component_index=component_index(component.component_id) or component_position,
+            component_index=component_index(component.component_id)
+            or switch_component_position,
             params=params,
         )
-        public_component_id = _public_switch_component_id(device_payload, component)
+        public_component_id = public_switch_component_id(
+            device_payload,
+            component.component_id,
+        )
         projections.append(
             HASwitchProjection(
                 component_id=public_component_id,
@@ -198,35 +204,6 @@ def _project_instance_switches(
         )
 
     return projections
-
-
-def _public_switch_component_id(
-    device_payload: Mapping[str, Any],
-    component: ComponentInstanceModel,
-) -> str:
-    """Return the stable HA identity for catalog-backed switch channels."""
-    index = component_index(component.component_id)
-    if index is None:
-        return component.component_id
-    if component.component_id.startswith("switch_"):
-        return component.component_id
-    if not component.component_id.startswith("relay_switch_"):
-        return component.component_id
-    if not _catalog_switch_channel_allows_legacy_identity(device_payload, index):
-        return component.component_id
-    return f"switch_{index}"
-
-
-def _catalog_switch_channel_allows_legacy_identity(
-    device_payload: Mapping[str, Any],
-    index: int,
-) -> bool:
-    """Return true when product catalog already exposes channels as switch_N."""
-    spec = payload_product_spec(device_payload)
-    if spec is None:
-        return False
-    count = product_channel_count(spec)
-    return count is not None and 0 < index <= count
 
 
 def _schema_switch_prop(product_model: Any | None, component_id: str) -> str | None:

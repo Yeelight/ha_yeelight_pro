@@ -13,6 +13,7 @@ from ..identity import payload_entity_unique_id_prefix
 from ..utils import to_bool
 from .common import load_instance as _load_instance
 from .common import load_product_model as _load_product_model
+from .common import public_switch_component_id
 from .device import project_payload_device_info
 from .event_helpers import component_available as _component_available
 from .event_helpers import event_components as _event_components
@@ -82,10 +83,14 @@ def project_events(device_payload: Mapping[str, Any], *, domain: str) -> list[HA
     total = len(event_components)
     for component in event_components:
         component_instance = instance_components.get(component.component_id)
+        public_component_id = public_switch_component_id(
+            device_payload,
+            component.component_id,
+        )
         projections.append(
             HAEventProjection(
                 component_id=component.component_id,
-                unique_id=f"{unique_id_prefix}_{source_device_id}_{component.component_id}_event",
+                unique_id=f"{unique_id_prefix}_{source_device_id}_{public_component_id}_event",
                 name=_event_name(
                     component,
                     total=total,

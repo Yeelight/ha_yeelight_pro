@@ -82,7 +82,10 @@ def channel_name_label(
         has_positional_context = count is not None
     else:
         count = None
-    if inferred_index is None and count == 1 and _is_documented_channel_component(component):
+    if inferred_index is None and count == 1 and (
+        _is_documented_channel_component(component)
+        or _payload_has_single_documented_channel(device_payload)
+    ):
         inferred_index = 1
     if inferred_index is None and explicit:
         inferred_index = generated_channel_name_index(explicit)
@@ -192,6 +195,21 @@ def _is_documented_channel_component(component: Any | None) -> bool:
         component_text(component, ("category",)),
     )
     return any(is_channel_component_name(value) for value in values if value)
+
+
+def _payload_has_single_documented_channel(
+    payload: Mapping[str, Any] | None,
+) -> bool:
+    """Return true when the product catalog proves a single channel component."""
+    if payload is None:
+        return False
+    spec = payload_product_spec(payload)
+    if spec is None or product_channel_count(spec) != 1:
+        return False
+    components = tuple(spec.normal_components) + tuple(
+        name for name, _count in spec.normal_component_counts
+    )
+    return any(is_channel_component_name(component) for component in components)
 
 
 def _runtime_switch_channel_count(payload: Mapping[str, Any]) -> int | None:

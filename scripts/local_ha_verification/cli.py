@@ -270,5 +270,8 @@ def _positive_float(value: str) -> float:
 
 def _default_config_dir() -> Path:
     """Return the local HA config dir used by this workspace."""
-    candidate = ROOT.parents[3] / "config" / "homeassistant-verify"
-    return candidate if candidate.exists() else Path.cwd()
+    if len(ROOT.parents) > 3:
+        candidate = ROOT.parents[3] / "config" / "homeassistant-verify"
+        if candidate.exists():
+            return candidate
+    return Path.cwd()

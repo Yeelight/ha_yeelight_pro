@@ -227,3 +227,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+__all__ = [
+    "_projected_property_keys",
+    "_unprojected_property_samples",
+    "async_main",
+    "build_parser",
+    "main",
+]

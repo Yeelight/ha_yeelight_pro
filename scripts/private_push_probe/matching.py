@@ -72,6 +72,25 @@ RELATION_FIELDS = {
     "projectId": (NODE_TYPE_HOUSE, "houses"),
     "project_id": (NODE_TYPE_HOUSE, "houses"),
 }
+SENSITIVE_FIELD_LABELS = {
+    "id": "identity_primary",
+    "nodeId": "identity_node",
+    "node_id": "identity_node",
+    "resId": "identity_resource",
+    "res_id": "identity_resource",
+    "deviceId": "identity_device",
+    "device_id": "identity_device",
+    "groupId": "relation_group",
+    "group_id": "relation_group",
+    "roomId": "relation_room",
+    "room_id": "relation_room",
+    "areaId": "relation_area",
+    "area_id": "relation_area",
+    "houseId": "relation_house",
+    "house_id": "relation_house",
+    "projectId": "relation_house",
+    "project_id": "relation_house",
+}
 
 
 def classify_node_candidates(
@@ -102,7 +121,11 @@ def classify_node_candidates(
         "valid_candidate_count": len(valid),
         "loaded_candidate_count": len(loaded),
         "candidate_hashes": [
-            {"field": field, "hash": digest(candidate_id), "collections": collections}
+            {
+                "field_label": safe_field_label(field),
+                "hash": digest(candidate_id),
+                "collections": collections,
+            }
             for field, candidate_id, collections in loaded[:MAX_SAMPLES]
         ],
         "maybe_filtered": any(is_filtered_device(topology, item[1]) for item in loaded),
@@ -157,6 +180,8 @@ def candidate_matches_node_type(
     if not matched_collections:
         return False
     if field_name is None or field_name in NODE_IDENTITY_FIELDS:
+        if node_type is None:
+            return True
         expected = NODE_TYPE_COLLECTIONS.get(node_type)
         return bool(set(matched_collections) & expected) if expected else True
     relation = RELATION_FIELDS.get(str(field_name))
@@ -172,6 +197,13 @@ def is_filtered_device(topology: TopologySnapshot, node_id: int) -> bool:
     if not isinstance(payload, Mapping):
         return False
     return not matches_device_import_filter(payload, topology.filter_config)
+
+
+def safe_field_label(field_name: str | None) -> str:
+    """Return a diagnostics-safe alias label without exposing raw id field names."""
+    if field_name is None:
+        return "unknown"
+    return SENSITIVE_FIELD_LABELS.get(field_name, "other")
 
 
 def loaded_topology_hashes(topology: TopologySnapshot) -> set[str]:
@@ -207,4 +239,5 @@ __all__ = [
     "classify_node_candidates",
     "loaded_topology_hashes",
     "record_hash_group_match",
+    "safe_field_label",
 ]

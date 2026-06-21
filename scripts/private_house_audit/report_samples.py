@@ -83,14 +83,15 @@ def registry_samples(
         if not isinstance(row, Mapping):
             continue
         unique_id = to_str(row.get("unique_id"))
+        unique_id_text = unique_id or ""
         samples.append({
             "platform": entity_domain(row),
-            "component_id": _component_id_from_unique_id(unique_id),
+            "component_id": _component_id_from_unique_id(unique_id_text),
             "name": to_str(row.get("original_name"))
             or to_str(row.get("object_id_base")),
             "entity_category": to_str(row.get("entity_category")) or "primary",
             "role": actual_row_role(row),
-            "unique_id_hash": stable_digest(unique_id),
+            "unique_id_hash": stable_digest(unique_id_text),
         })
         if len(samples) >= limit:
             break

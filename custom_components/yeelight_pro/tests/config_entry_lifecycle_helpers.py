@@ -37,14 +37,16 @@ def make_config_entry() -> MagicMock:
     return entry
 
 
-def register_config_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+def register_config_entry(hass: HomeAssistant, entry: ConfigEntry) -> MockConfigEntry:
     """Register a matching HA config entry for registry-backed setup paths."""
-    MockConfigEntry(
+    mock_entry = MockConfigEntry(
         domain=DOMAIN,
         entry_id=entry.entry_id,
         data=dict(entry.data),
         options=dict(entry.options),
-    ).add_to_hass(hass)
+    )
+    mock_entry.add_to_hass(hass)
+    return mock_entry
 
 
 def make_client() -> AsyncMock:

@@ -178,8 +178,15 @@ PUSH_TRANSPORT_CONTRACT_REQUIRED_FILES: dict[str, dict[str, str]] = {
         "test_push_manager_preserves_start_time_payload_error_type": (
             "start-time payload error coverage"
         ),
-        "ignores_payload_after_stop": "stopped manager guard coverage",
         "last_error_type": "safe health aggregation coverage",
+    },
+    "tests/test_push_manager_errors.py": {
+        "test_push_manager_ignores_payload_after_stop": (
+            "stopped manager guard coverage"
+        ),
+        "test_push_manager_records_error_type_without_payload_details": (
+            "payload error redaction coverage"
+        ),
     },
     "tests/push_manager_helpers.py": {
         "FakeTransport": "shared push manager transport double",

@@ -117,6 +117,54 @@ def test_render_control_report_summarizes_missing_controls_and_source_limits() -
                     "reason": "open_api_payload_has_only_online_or_unknown_capability_evidence",
                 },
             },
+            {
+                "name": "人在传感器",
+                "category": "light_sensor",
+                "actual_total": 4,
+                "expected_total": 4,
+                "params_count": 1,
+                "model_writable_properties_count": 1,
+                "model_events_count": 1,
+                "actual_platforms": {"binary_sensor": 1, "event": 1, "sensor": 2},
+                "expected_platforms": {"binary_sensor": 1, "event": 1, "sensor": 2},
+                "coverage_view": {
+                    "control": {
+                        "expected": 0,
+                        "actual": 0,
+                        "missing": 0,
+                        "status": "needs_review",
+                        "attention": "model_has_writable_properties_but_no_strict_control",
+                    },
+                    "diagnostic": {
+                        "expected": 1,
+                        "actual": 1,
+                        "missing": 0,
+                        "status": "covered",
+                    },
+                    "sensor": {
+                        "expected": 3,
+                        "actual": 3,
+                        "missing": 0,
+                        "status": "covered",
+                    },
+                    "config": {
+                        "expected": 0,
+                        "actual": 0,
+                        "missing": 0,
+                        "status": "not_expected",
+                    },
+                    "event": {
+                        "expected": 1,
+                        "actual": 1,
+                        "missing": 0,
+                        "status": "covered",
+                    },
+                },
+                "conclusion": {
+                    "status": "source_data_limited",
+                    "reason": "writable_model_properties_without_strict_control_projection",
+                },
+            },
         ],
         "topology_entities": [
             {
@@ -130,10 +178,14 @@ def test_render_control_report_summarizes_missing_controls_and_source_limits() -
         ],
     })
 
-    assert "Devices reviewed: 2" in report
+    assert "Devices reviewed: 3" in report
     assert "Control missing devices: 0" in report
     assert "Missing-control device list: None" in report
-    assert "Source-data-limited devices needing upstream/product-model evidence: 1" in report
+    assert "Devices with zero strict actionable controls: 2" in report
+    assert "Zero-control devices needing source/model review: 1" in report
+    assert "Source-data-limited devices needing upstream/product-model evidence: 2" in report
+    assert "Devices Without Strict Controls" in report
+    assert "writable_model_properties_without_strict_control" in report
     assert "| 1 | 未知灯具 | unknown | 123 | 1/1 |" in report
     assert "智能开关-四键" in report
     assert "4/4 covered" in report

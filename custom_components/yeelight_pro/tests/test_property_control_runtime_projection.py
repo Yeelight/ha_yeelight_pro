@@ -80,6 +80,56 @@ def test_runtime_other_music_bool_controls_preserve_unknown_state() -> None:
     ]
 
 
+def test_runtime_other_global_music_controls_keep_public_other_identity() -> None:
+    """official other_global 组件应投影为旧 other_* helper 身份."""
+    payload = projection_payload(
+        device_id="screen-global-music-1",
+        category="gateway",
+        component_id="other_global",
+        component_category="other",
+        state={},
+        params={},
+    )
+    payload["name"] = "6.9 寸智慧屏"
+    payload["ha_device_instance"]["components"][0]["component_type"] = "global"
+    payload["ha_product_model"]["components"][0]["component_type"] = "global"
+    payload["ha_product_model"]["components"][0]["properties"] = [
+        {
+            "prop_id": "mpmp",
+            "name": "music player play pause,音乐播放器播放/暂停",
+            "access": "read_write",
+            "property_type": "config",
+            "format": "boolean",
+        },
+        {
+            "prop_id": "mppm",
+            "name": "music player play mode,音乐播放器播放模式",
+            "access": "read_write",
+            "property_type": "config",
+            "format": "uint16",
+            "value_range": {"min": 0, "max": 10, "step": 1},
+        },
+    ]
+
+    switches = project_switch_controls(payload, domain=DOMAIN)
+    numbers = project_number_controls(payload, domain=DOMAIN)
+
+    assert [(item.component_id, item.unique_id, item.control_key) for item in switches] == [
+        (
+            "other_mpmp_switch",
+            "yeelight_pro_screen-global-music-1_other_mpmp_switch",
+            "mpmp",
+        )
+    ]
+    assert [(item.component_id, item.unique_id, item.control_key) for item in numbers] == [
+        (
+            "other_mppm_number",
+            "yeelight_pro_screen-global-music-1_other_mppm_number",
+            "mppm",
+        )
+    ]
+
+
 def test_runtime_other_music_schema_type_overrides_registry_bool() -> None:
     """P20 音乐组件 schema 明确非 bool 时，不应被 registry 旧类型误投影为 switch."""
     payload = projection_payload(

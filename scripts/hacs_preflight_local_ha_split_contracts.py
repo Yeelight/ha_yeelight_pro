@@ -62,11 +62,15 @@ LOCAL_HA_SPLIT_CONTRACT_TOKENS = {
         "SPLIT_CLIENT_CONTRACT_TEST_TOKENS": "split client token registry",
         "p0_client_helpers.py": "P0 client helper split test guard",
         "test_p0_client_contracts.py": "P0 client contract split test guard",
+        "test_client_product_schemas.py": "product schema client split test guard",
         "test_push_payloads.py": "push payload split test guard",
         "test_push_payload_events.py": "push event payload split test guard",
         "config_entry_lifecycle_helpers.py": "config-entry helper split test guard",
         "test_config_entry_unload.py": "config-entry unload split test guard",
         "shared scan-login client fake coverage": "scan-login fake helper coverage reason",
+        "product schema v1/v2 merge coverage": (
+            "product schema v1/v2 merge coverage reason"
+        ),
         "push property payload normalization coverage": (
             "push payload adapter coverage reason"
         ),
