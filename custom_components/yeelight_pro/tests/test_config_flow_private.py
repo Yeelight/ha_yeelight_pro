@@ -79,6 +79,21 @@ async def test_private_config_rejects_blank_url(config_flow) -> None:
 
 
 @pytest.mark.asyncio
+async def test_private_config_uses_url_description_placeholders(config_flow) -> None:
+    """私有部署 URL 示例必须通过 description placeholders 注入。"""
+    config_flow._connection_mode = CONNECTION_MODE_PRIVATE
+
+    result = await config_flow.async_step_private_config()
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "private_config"
+    assert result["description_placeholders"] == {
+        "private_domain_example": "https://private.example.com",
+        "private_push_domain_example": "wss://ws-private.example/ws",
+    }
+
+
+@pytest.mark.asyncio
 async def test_private_config_routes_to_same_auth_method_flow(config_flow) -> None:
     """私有部署 URL 提交后应进入与云端一致的认证方式选择。"""
     config_flow._connection_mode = CONNECTION_MODE_PRIVATE

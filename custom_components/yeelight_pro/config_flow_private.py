@@ -20,6 +20,9 @@ from .deployment_urls import (
     deployment_root_url,
 )
 
+_PRIVATE_DOMAIN_EXAMPLE = "https://private.example.com"
+_PRIVATE_PUSH_DOMAIN_EXAMPLE = "wss://ws-private.example/ws"
+
 
 class _PrivateConfigFlowProtocol(Protocol):
     """Config-flow attributes and methods required by private helpers."""
@@ -74,6 +77,10 @@ class PrivateConfigFlowMixin:
             step_id="private_config",
             data_schema=private_config_schema(),
             errors=errors,
+            description_placeholders={
+                "private_domain_example": _PRIVATE_DOMAIN_EXAMPLE,
+                "private_push_domain_example": _PRIVATE_PUSH_DOMAIN_EXAMPLE,
+            },
         )
 
 
