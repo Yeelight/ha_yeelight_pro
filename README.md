@@ -17,6 +17,24 @@ private deployment, and LAN gateway connection modes through one config flow.
 - HACS/community publication: HACS default repository PR
   [#8516](https://github.com/hacs/default/pull/8516) is under review
 
+## Works with Home Assistant and Core Readiness
+
+Yeelight is preparing selected Yeelight Pro devices or hubs for Works with Home
+Assistant review. This repository is not a certification claim: HACS review,
+Home Assistant Core upstreaming, Integration Quality Scale Gold, and Works with
+Home Assistant approval are separate gates.
+
+Planning and handover documents:
+
+- [WWHA handover](docs/WORKS_WITH_HOME_ASSISTANT_HANDOVER.md)
+- [WWHA application guide](docs/WORKS_WITH_HOME_ASSISTANT_APPLICATION_GUIDE.md)
+- [Core and HACS migration strategy](docs/CORE_MIGRATION_STRATEGY.md)
+- [Gold quality scale gap analysis](docs/QUALITY_SCALE_GOLD_GAP_ANALYSIS.md)
+- [Local control model](docs/LOCAL_CONTROL.md)
+- [Supported devices template](docs/SUPPORTED_DEVICES.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Automation examples](docs/AUTOMATION_EXAMPLES.md)
+
 ## Features
 
 - Cloud, private deployment, and LAN gateway setup

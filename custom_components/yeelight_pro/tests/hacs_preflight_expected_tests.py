@@ -113,6 +113,7 @@ EXPECTED_TEST_FILES = {
     "test_hacs_preflight_local_ha_probes.py",
     "test_hacs_preflight_protocol_contracts.py",
     "test_hacs_preflight_release_claims.py",
+    "test_hacs_preflight_release_claims_certification.py",
     "test_hacs_preflight_release_claims_picker.py",
     "test_hacs_preflight_release_claims_progress.py",
     "test_hacs_preflight_release_guards.py",

@@ -126,6 +126,7 @@ RELEASE_TEST_FILES = {
     "custom_components/yeelight_pro/tests/test_hacs_preflight_local_ha_probes.py",
     "custom_components/yeelight_pro/tests/test_hacs_preflight_protocol_contracts.py",
     "custom_components/yeelight_pro/tests/test_hacs_preflight_release_claims.py",
+    "custom_components/yeelight_pro/tests/test_hacs_preflight_release_claims_certification.py",
     "custom_components/yeelight_pro/tests/test_hacs_preflight_release_claims_picker.py",
     "custom_components/yeelight_pro/tests/test_hacs_preflight_release_claims_progress.py",
     "custom_components/yeelight_pro/tests/test_hacs_preflight_release_guards.py",
