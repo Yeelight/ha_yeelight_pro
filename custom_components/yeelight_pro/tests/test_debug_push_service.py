@@ -193,7 +193,7 @@ async def test_debug_emit_push_payload_service_injects_synthetic_push(
     hass.data[DOMAIN] = {"entry-1": {"coordinator": coordinator}}
 
     async_register_debug_push_services(hass)
-    with caplog.at_level("INFO"):
+    with caplog.at_level("DEBUG"):
         await hass.services.async_call(
             DOMAIN,
             SERVICE_DEBUG_EMIT_PUSH_PAYLOAD,
@@ -218,7 +218,11 @@ async def test_debug_emit_push_payload_service_injects_synthetic_push(
             ],
         }
     )
-    message = "\n".join(record.getMessage() for record in caplog.records)
+    message = "\n".join(
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "custom_components.yeelight_pro.debug_push_service"
+    )
     assert "Emitted debug Yeelight Pro push payload" in message
     assert '"changed":true' in message
     assert '"node_id_hash":"ddabe06356586fa8"' in message
@@ -332,7 +336,7 @@ async def test_debug_dump_push_health_logs_aggregate_payload_only(
     }
 
     async_register_debug_push_services(hass)
-    with caplog.at_level("INFO"):
+    with caplog.at_level("DEBUG"):
         await hass.services.async_call(
             DOMAIN,
             SERVICE_DEBUG_DUMP_PUSH_HEALTH,
@@ -340,7 +344,11 @@ async def test_debug_dump_push_health_logs_aggregate_payload_only(
             blocking=True,
         )
 
-    message = "\n".join(record.getMessage() for record in caplog.records)
+    message = "\n".join(
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "custom_components.yeelight_pro.debug_push_service"
+    )
     assert "Yeelight Pro push health debug dump" in message
     assert '"status":"data_payload_applied"' in message
     assert '"data_topology_check":"matched_loaded_topology"' in message

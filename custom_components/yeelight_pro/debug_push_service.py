@@ -68,7 +68,7 @@ def async_register_debug_push_services(hass: HomeAssistant) -> None:
             import_filter_active=_debug_import_filter_active(runtime),
         )
         payload = push_health_log_payload(health)
-        _LOGGER.info(
+        _LOGGER.debug(
             "Yeelight Pro push health debug dump: %s",
             json.dumps(payload, sort_keys=True, separators=(",", ":")),
         )
@@ -87,7 +87,7 @@ def async_register_debug_push_services(hass: HomeAssistant) -> None:
             if summary is not None and callable(getattr(summary, "as_dict", None))
             else {}
         )
-        _LOGGER.info(
+        _LOGGER.debug(
             "Emitted debug Yeelight Pro push payload: %s",
             json.dumps(
                 debug_push_emit_log_payload(summary_dict),

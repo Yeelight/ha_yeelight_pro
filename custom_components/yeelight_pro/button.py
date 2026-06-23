@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
@@ -55,27 +54,6 @@ def _iter_button_entities(coordinator: YeelightProCoordinator) -> list[ButtonEnt
     return buttons
 
 
-def _build_gateway_device_info(
-    coordinator: YeelightProCoordinator,
-    fallback_name: str,
-) -> dict[str, Any] | None:
-    """从第一个网关构建设备关联信息."""
-    gateways = coordinator.get_gateway_devices()
-    if not gateways:
-        return house_device_info(coordinator, name_suffix=fallback_name)
-    first_gateway = next(iter(gateways.values()))
-    ha_device = first_gateway.get("ha_device_instance", {})
-    device_info = ha_device.get("device_info", {})
-    identifiers = device_info.get("identifiers")
-    if not identifiers:
-        return house_device_info(coordinator, name_suffix=fallback_name)
-    normalized = dict(device_info) if isinstance(device_info, dict) else {}
-    normalized["identifiers"] = (
-        {tuple(i) for i in identifiers} if isinstance(identifiers, list) else identifiers
-    )
-    return normalized
-
-
 class YeelightProSceneButton(CoordinatorEntity, ButtonEntity):
     """Yeelight Pro 场景快速执行按钮."""
 
@@ -101,7 +79,7 @@ class YeelightProSceneButton(CoordinatorEntity, ButtonEntity):
     @property
     def device_info(self) -> dict[str, Any] | None:
         """返回关联的家庭设备信息."""
-        return _build_gateway_device_info(self._coordinator, "场景")
+        return house_device_info(self._coordinator, name_suffix="场景")
 
     async def async_press(self) -> None:
         """执行场景."""

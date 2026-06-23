@@ -138,3 +138,34 @@ async def test_debug_emit_event_service_rejects_disabled_debug_mode(
         )
 
     coordinator.async_handle_runtime_event.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_debug_emit_event_service_is_quiet_at_info_level(
+    hass: HomeAssistant,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """调试事件注入成功后默认不写 INFO 日志。"""
+    event = MagicMock()
+    event.event_type = "click"
+    coordinator = MagicMock()
+    coordinator.debug_mode = True
+    coordinator.async_handle_runtime_event = AsyncMock(return_value=event)
+    hass.data[DOMAIN] = {"entry-1": {"coordinator": coordinator}}
+
+    async_register_debug_event_service(hass)
+    with caplog.at_level("INFO"):
+        await hass.services.async_call(
+            DOMAIN,
+            "debug_emit_event",
+            {
+                ATTR_ENTRY_ID: "entry-1",
+                ATTR_SOURCE_DEVICE_ID: 12345,
+                ATTR_COMPONENT_ID: "button",
+                ATTR_EVENT_TYPE: "click",
+            },
+            blocking=True,
+        )
+
+    message = "\n".join(record.getMessage() for record in caplog.records)
+    assert "Emitted debug Yeelight Pro event" not in message

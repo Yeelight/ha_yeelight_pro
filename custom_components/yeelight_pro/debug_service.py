@@ -42,7 +42,7 @@ def async_register_debug_event_service(hass: HomeAssistant) -> None:
         if coordinator is None:
             raise HomeAssistantError("Yeelight Pro debug mode is disabled or entry_id is invalid")
         event = await coordinator.async_handle_runtime_event(call.data)
-        _LOGGER.info(
+        _LOGGER.debug(
             "Emitted debug Yeelight Pro event: event_type=%s",
             event.event_type,
         )
