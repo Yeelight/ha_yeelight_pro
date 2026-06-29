@@ -1,14 +1,16 @@
-# Supported Devices and Certification Scope
+# Supported Device Categories and Capability Scope
 
-更新时间：2026-06-22
+更新时间：2026-06-29
 
 ## 说明
 
-本文是支持设备和 WWHA 申请范围模板。当前仓库尚未冻结首批认证 SKU，因此本文不得被解读为全部 Yeelight Pro 设备已完成官方认证。
+本文说明 `ha_yeelight_pro` 当前按 Yeelight IoT category 和 capability evidence 投影 Home Assistant 实体的范围。它不是 SKU 白名单，也不表示每个设备都会暴露厂商 App 中的全部能力。
 
 ## 当前集成支持边界
 
-`ha_yeelight_pro` 当前按 Yeelight IoT category 和 capability evidence 投影 Home Assistant 实体。稳定品类边界见 `README.md` 和 `docs/IOT_SPEC_REGISTRY.md`：
+`ha_yeelight_pro` 不把 Yeelight IoT category 直接等同于 Home Assistant platform。实体投影优先使用 product schema、component identity、runtime state 和 registry-known property 证据。
+
+稳定品类边界：
 
 - `light`
 - `contact_sensor`
@@ -22,50 +24,43 @@
 - `knob_switch`
 - `other` 的保守只读传感器 fallback
 
-上述品类支持不等于所有 SKU 均已通过 WWHA，也不等于每个 SKU 的所有功能都在 Home Assistant 中可控。
+上述品类支持表示当前集成有对应投影策略；实际实体数量和控制能力仍取决于设备返回的 schema、属性、事件、hydration 状态和用户的导入过滤设置。
 
-## WWHA 候选设备清单
+## 能力矩阵模板
 
-PM 应在申请前冻结首批设备，并为每个设备补齐以下字段。
-
-| SKU/型号 | 区域 | 固件版本 | 连接方式 | HA 关键功能 | 本地可用证据 | 固件更新/提醒 | 状态 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 待填写 | 待填写 | 待填写 | 待填写 | 待填写 | 待填写 | 待填写 | candidate |
+| 能力 | HA 表达 | 证据来源 | 测试方法 | 结果 |
+| --- | --- | --- | --- | --- |
+| 开关 | `light` / `switch` | writable power property 或明确组件身份 | 待填写 | 待填写 |
+| 亮度 | `light.brightness` / `number` | schema range / known property | 待填写 | 待填写 |
+| 色温 | `light.color_temp` / `number` | schema range / known property | 待填写 | 待填写 |
+| 窗帘位置 | `cover` | curtain component / position property | 待填写 | 待填写 |
+| 温控 | `climate` | temp-control component / target state | 待填写 | 待填写 |
+| 传感器状态 | `binary_sensor` / `sensor` | readable telemetry / known binary state | 待填写 | 待填写 |
+| 面板/旋钮事件 | `event` / device trigger | product schema event / registry event | 待填写 | 待填写 |
+| 场景执行 | `button` / `select` | cloud scene list | 待填写 | 待填写 |
+| 固件版本 | device info / diagnostic sensor | firmware metadata / known property | 待填写 | 待填写 |
 
 ## 不支持或需确认的范围
 
 | 范围 | 当前状态 | 说明 |
 | --- | --- | --- |
-| 全 Yeelight 生态一次性认证 | 不建议 | WWHA 更适合按设备或 Hub 分批申请 |
-| 仅云端可控设备 | 认证风险高 | WWHA 要求本地可用，云端只能作为额外能力 |
-| 无固件更新提醒的设备 | 认证风险高 | 需要 HA 内 OTA 或提醒路径 |
-| 未公开销售设备 | 需确认 | 官方通常要求设备公众可购买 |
-| 未提供 FCC/CE 或等效证书设备 | 需补齐 | 证书由产品/法务提供 |
-| Zigbee/Matter/Z-Wave 设备 | 需额外证书 | 需满足对应联盟认证 |
-
-## 设备能力矩阵模板
-
-| 能力 | HA 表达 | 是否关键功能 | 测试方法 | 结果 |
-| --- | --- | --- | --- | --- |
-| 开关 | `light` / `switch` | 待填写 | 待填写 | 待填写 |
-| 亮度 | `light.brightness` / `number` | 待填写 | 待填写 | 待填写 |
-| 色温 | `light.color_temp` / `number` | 待填写 | 待填写 | 待填写 |
-| 窗帘位置 | `cover` | 待填写 | 待填写 | 待填写 |
-| 温控 | `climate` | 待填写 | 待填写 | 待填写 |
-| 传感器状态 | `binary_sensor` / `sensor` | 待填写 | 待填写 | 待填写 |
-| 面板/旋钮事件 | `event` / device trigger | 待填写 | 待填写 | 待填写 |
-| 场景执行 | `button` / `select` | 待填写 | 待填写 | 待填写 |
-| 固件版本 | device info / diagnostics | 待填写 | 待填写 | 待填写 |
+| 未知可写属性泛化控制 | 不支持 | 没有官方写入语义时，不生成 switch/select/number/text/button |
+| 未知 no-parameter action button | 不支持 | 缺少官方 action 执行 API、payload 和错误语义 |
+| House transfer | 不支持 | 该操作具有所有权和拓扑破坏性，不暴露 helper、service 或实体 |
+| 设备导入过滤清理既有实体 | 不支持 | 过滤只 gate 新设备来源实体，不修改既有 registry |
+| 自动删除 registry 条目 | 不支持 | stale cleanup 只通过显式 dry-run + audit-id confirm 禁用 stale entities |
+| mDNS/SSDP/DHCP 自动发现 | 未声明 | 当前 manifest 未声明这些 discovery matcher |
 
 ## 发布口径
 
 可以说：
 
-- 当前集成按 Yeelight IoT category 支持多类设备投影。
-- Yeelight 正在选择首批设备或 Hub 准备 WWHA 申请。
+- 当前集成按 Yeelight IoT category 和 capability evidence 支持多类设备投影。
+- 实体覆盖取决于设备 schema、运行时属性、事件证据和用户导入过滤设置。
+- 未知能力默认采用保守策略，避免暴露不可验证的控制项。
 
 不要说：
 
-- 全部 Yeelight Pro 设备均 Works with Home Assistant。
-- 该清单中的候选设备已经可以使用 WWHA 标识。
-- 某个 SKU 支持的所有厂商 App 功能都已在 Home Assistant 暴露。
+- 所有 Yeelight Pro 设备都完整支持。
+- 某个 SKU 的所有厂商 App 功能都已在 Home Assistant 暴露。
+- 未知 writable 属性会自动生成可控实体。

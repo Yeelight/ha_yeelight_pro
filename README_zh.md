@@ -2,102 +2,109 @@
 
 [English](README.md) | [中文](README_zh.md)
 
-Yeelight Pro Home Assistant 集成，支持通过同一个配置流程接入易来云端、私有部署和局域网网关模式。
+Yeelight Pro 是面向 Home Assistant 的易来 Pro 自定义集成，用于接入易来
+Pro 家庭、设备、网关、情景和运行时诊断。它通过同一个配置流程支持易来云端、
+私有部署和局域网网关三种连接模式。
 
 ## 当前状态
 
-- 集成状态：`v1.0.4` 发布包已可用
-- 已验证测试：见 [docs/TEST_REPORT.md](docs/TEST_REPORT.md)
+- 当前版本：`v1.0.4`，已提供 HACS zip 资产 `yeelight_pro.zip`
+- HACS 默认仓库 PR：
+  [#8516](https://github.com/hacs/default/pull/8516)，审查中
+- 提前体验方式：在 HACS 中把本仓库添加为自定义集成仓库
+- HACS 元数据目标：HACS `2.0.0`，Home Assistant `2024.1.0`
+- 已验证测试和发布门禁：见 [docs/TEST_REPORT.md](docs/TEST_REPORT.md)
 - 启用的 Home Assistant 平台：11 个
 - 运行时平台：`binary_sensor`、`button`、`climate`、`cover`、`event`、
   `fan`、`light`、`number`、`select`、`sensor`、`switch`
-- 更新方式：轮询仍是默认全量状态刷新路径，轮询间隔可配置
-- HACS/官方社区：HACS 默认仓库 PR
-  [#8516](https://github.com/hacs/default/pull/8516) 审查中
-
-## Works with Home Assistant 和 Core 准备状态
-
-Yeelight 正在准备选择部分 Yeelight Pro 设备或 Hub 申请 Works with Home
-Assistant。本文档不代表已经获得认证：HACS 审核、Home Assistant Core 上游、
-Integration Quality Scale Gold 和 Works with Home Assistant 审批是相互独立的门槛。
-
-规划和交底材料：
-
-- [WWHA 交底文档](docs/WORKS_WITH_HOME_ASSISTANT_HANDOVER.md)
-- [WWHA 申请指南](docs/WORKS_WITH_HOME_ASSISTANT_APPLICATION_GUIDE.md)
-- [Core 和 HACS 迁移策略](docs/CORE_MIGRATION_STRATEGY.md)
-- [Gold 质量等级差距分析](docs/QUALITY_SCALE_GOLD_GAP_ANALYSIS.md)
-- [本地控制模型](docs/LOCAL_CONTROL.md)
-- [支持设备模板](docs/SUPPORTED_DEVICES.md)
-- [故障排查](docs/TROUBLESHOOTING.md)
-- [自动化示例](docs/AUTOMATION_EXAMPLES.md)
+- 更新方式：轮询仍作为默认全量状态刷新路径，轮询间隔可配置。云端和私有部署事件通知使用显式 `live_updates` WebSocket runtime。
 
 ## 功能
 
-- 云端、私有部署和局域网网关配置流程
-- Token 失效时触发 Home Assistant 标准重新认证
+- 云端、私有部署和局域网网关三种配置流程
 - 通过多区域账号 API 接入易来 APP 扫码登录；二维码登录是当前云端登录主路径
-- 可配置轮询间隔、调试模式、未知能力隐藏策略、手动非破坏性设备导入过滤和拓扑 Repairs 提示
-- 云端事件通知使用显式 `live_updates` WebSocket runtime；私有部署 entry 使用同一 runtime，并可配置私有推送 URL；轮询仍是默认全量状态刷新路径
-- 局域网网关 runtime 位于局域网连接模式和 `local_gateway_control` 选项边界内
+- 为既有易来 Pro 部署保留高级手动 Access Token 配置
+- Token 失效时触发 Home Assistant 标准重新认证
+- 可配置轮询间隔、调试模式、未知能力隐藏策略、非破坏性设备导入过滤、实时更新、本地网关控制和拓扑 Repairs 提示
+- 同时读取 v1 和 v2 产品 schema，并用保守合并策略最大化能力覆盖
+- 持久化 Home Assistant `.storage` 产品 schema 缓存，重启后仍保持稳定的 schema-aware 投影
 - canonical -> adapter -> converter -> projector -> entity 分层架构
 - 轻量 Yeelight IoT 物模型注册表，集中表达品类、组件、属性、事件、协议和 `nodeType`
-- 持久化 Home Assistant `.storage` 产品 schema 缓存，重启后仍保持稳定的 schema-aware 投影
-- 网关和子设备拓扑同步到 Home Assistant 设备注册表
+- 网关、子设备、情景、分组、房间、区域和家庭级辅助实体同步到 Home Assistant 设备注册表
 - 房屋级数据分析诊断传感器，暴露报警、能耗、用户操作和端点健康聚合；可选分析端点失败时降级为 unavailable 诊断值，不阻断集成加载
-- Home Assistant 诊断导出，配置使用白名单输出，并包含 IoT registry 健康、spec correction 计数、canonical spec runtime inventory、实体候选计数和运行时健康聚合
-- 非破坏性设备/实体导入过滤诊断预览，以及保守的运行时新增 gate：在提交新的设备来源实体前应用用户选择的导入范围
-- 设备拓扑在启动后变化时可选创建 Home Assistant Repairs 提示，包含脱敏的新增/移除/元数据变化计数
-- `debug_mode` 控制的调试事件服务
-- 只读手动刷新服务，可立即刷新已加载 coordinator 并同步 HA 设备/实体注册表
-- 云端配置期和后续 options 真实设备 picker：选择家庭后可只读拉取该家庭设备列表，并把用户勾选的设备 ID 保存为后续设备来源实体的导入过滤规则；若设备列表加载失败，仍可继续创建 entry 或保持现有过滤规则不变
-- 注册表清理服务：先 dry-run 返回 audit_id，二次确认后通过 Home Assistant registry 禁用 stale entities
+- Home Assistant 诊断导出，配置使用白名单输出，并包含 IoT registry 健康、spec correction 计数、canonical spec runtime inventory、实体候选计数、设备导入预览和运行时健康聚合
+- 非破坏性设备/实体导入过滤：用户选择的设备或手动规则只限制新的设备来源实体提交，不会删除、隐藏、迁移或禁用既有 registry 条目
+- 云端配置期和后续 options 真实设备 picker：若设备列表加载失败，setup 可继续创建 entry 且不启用过滤，options 会保留既有过滤规则
+- 注册表清理服务：先 dry-run 返回 audit_id，二次确认后通过 Home Assistant entity registry 禁用 stale entities
+- `debug_mode` 控制的调试服务
+- 只读手动刷新服务，可立即刷新已加载 coordinator 并同步 Home Assistant 设备/实体注册表
 - 英文和简体中文翻译
-
-## 支持的易来 IoT 品类
-
-下表列出易来 IoT 品类和当前 Home Assistant 投影方式。
-
-| 易来品类 | 默认 HA 投影 | 状态 |
-| --- | --- | --- |
-| `light` | `light` | 稳定 |
-| `contact_sensor` | `binary_sensor` | 稳定 |
-| `human_sensor` | `binary_sensor` | 稳定 |
-| `light_sensor` | `sensor` | 稳定 |
-| `curtain` | `cover` | 稳定 |
-| `temp_control` | `climate` | 稳定 |
-| `relay_switch` | `switch` | 稳定 |
-| `scene_panel` | `event` + device trigger | 稳定 |
-| `gateway` | 设备注册表拓扑 | 稳定 |
-| `knob_switch` | `event` + device trigger | 稳定 |
-| `other` | 仅明确属性降级为传感器 | 保守支持 |
-
-云端情景通过 `button` 实体执行易来情景接口。
-
-物模型注册表边界和发布映射合同见 [docs/IOT_SPEC_REGISTRY.md](docs/IOT_SPEC_REGISTRY.md)。
 
 ## 安装
 
-### 手动安装
+### HACS 自定义仓库
 
-1. 运行 `python3 scripts/sync_local_ha_runtime.py --config-dir /path/to/homeassistant/config`，只把运行时文件同步到 Home Assistant 的 `custom_components` 目录，不复制测试或生成产物。
-2. 重启 Home Assistant。
-3. 进入 设置 -> 设备与服务 -> 添加集成 -> Yeelight Pro。
+HACS 默认仓库 PR
+[#8516](https://github.com/hacs/default/pull/8516) 仍在审查中。在 PR 合并前，极客用户可以通过 HACS 自定义仓库提前体验。该流程遵循 HACS 的自定义仓库模型：添加仓库 URL、选择正确仓库类型，再从 HACS 下载集成。
 
-### HACS
+要求：
 
-GitHub `v1.0.4` release 已包含 HACS zip 资产 `yeelight_pro.zip`。HACS 默认仓库 PR
-[#8516](https://github.com/hacs/default/pull/8516) 仍在审查中；该 PR 合并前，请在
-HACS 中把本仓库作为自定义集成仓库安装。
+- Home Assistant `2024.1.0` 或以上
+- HACS `2.0.0` 或以上
+- 安装任何自定义集成前，先备份 Home Assistant
+
+步骤：
+
+1. 打开 Home Assistant。
+2. 进入 **HACS**。
+3. 点击右上角三个点菜单。
+4. 选择 **Custom repositories**。
+5. 在 **Repository** 中填写：
+
+   ```text
+   https://github.com/Yeelight/ha_yeelight_pro
+   ```
+
+6. 在 **Type** 中选择 **Integration**。
+7. 点击 **Add**。
+8. 在 HACS 中搜索 **Yeelight Pro**。
+9. 打开仓库页面并点击 **Download**。如果 HACS 要求选择版本，选择最新 release。
+10. 重启 Home Assistant。
+11. 进入 **设置 -> 设备与服务 -> 添加集成**。
+12. 搜索 **Yeelight Pro** 并开始配置。
+
+如果重启后仍找不到集成，刷新浏览器缓存，并确认 HACS 已把它安装到 Home
+Assistant 配置目录下的 `custom_components/yeelight_pro/`。
+
+参考：
+
+- HACS 自定义仓库：
+  <https://www.hacs.xyz/docs/faq/custom_repositories/>
+- HACS 集成仓库类型：
+  <https://www.hacs.xyz/docs/use/repositories/type/integration/>
+
+### 手动开发安装
+
+该路径用于本地开发或 QA，不建议普通 HACS 用户使用。
+
+```bash
+python3 scripts/sync_local_ha_runtime.py --config-dir /path/to/homeassistant/config
+```
+
+然后重启 Home Assistant，进入
+**设置 -> 设备与服务 -> 添加集成 -> Yeelight Pro**。
+
+不要把整个源码目录复制进 Home Assistant。同步脚本只复制运行时文件，并排除测试、缓存和生成产物。
 
 ## 配置
 
 ### 云端模式
 
 1. 选择 Yeelight Pro 云端模式。
-2. 选择易来账号所在区域。
+2. 选择易来账号所在区域：CN、SG、US 或 DE。
 3. 使用易来 APP 1.5.0 或以上版本扫描 Home Assistant 展示的二维码。Home Assistant 会持续轮询，直到 APP 授权返回 token 或 5 分钟二维码过期。
 4. 选择 API 返回的家庭。
+5. 可选：在完成配置前调整设备 picker。
 
 手动 Access Token 配置仍作为高级兜底路径保留。
 
@@ -106,16 +113,45 @@ HACS 中把本仓库作为自定义集成仓库安装。
 1. 选择私有部署模式。
 2. 输入私有服务器地址。
 3. 输入 Access Token 和家庭 ID。
+4. 可选：在 options 中配置私有 WebSocket 推送 URL。
+
+### 局域网网关模式
+
+1. 选择局域网网关模式。
+2. 已知网关地址时，输入 host、port 和 product id。
+3. 后续启用 `local_gateway_control` 且未配置 host 时，runtime 会按局域网协议执行一次 UDP discovery，再建立 TCP 网关会话。
+
+## 支持的易来 IoT 品类
+
+下表列出易来 IoT 品类和当前 Home Assistant 投影方式。某个品类存在投影策略，不代表每个 SKU 都会在 Home Assistant 中暴露厂商 App 的全部功能。
+
+| 易来品类 | 默认 HA 投影 | 状态 |
+| --- | --- | --- |
+| `light` | `light` | 稳定 |
+| `contact_sensor` | `binary_sensor`，schema 声明事件时增加 event/device trigger | 稳定 |
+| `human_sensor` | `binary_sensor`，schema 声明事件时增加 event/device trigger | 稳定 |
+| `light_sensor` | `sensor` | 稳定 |
+| `curtain` | `cover` | 稳定 |
+| `temp_control` | `climate` | 稳定 |
+| `relay_switch` | `switch` | 稳定 |
+| `scene_panel` | `event` + device trigger | 稳定 |
+| `gateway` | 设备注册表拓扑和诊断 | 稳定 |
+| `knob_switch` | `event` + device trigger | 稳定 |
+| `other` | 仅明确只读属性降级为传感器 | 保守支持 |
+
+云端情景通过 `button` 实体执行易来情景接口。
+
+物模型注册表边界和发布映射合同见 [docs/IOT_SPEC_REGISTRY.md](docs/IOT_SPEC_REGISTRY.md)。
 
 ## 选项
 
 在集成选项中可配置：
 
 - 轮询间隔：10-300 秒，默认 30 秒
-- 调试模式：启用 `yeelight_pro.debug_emit_event`
+- 调试模式：启用受保护的调试服务
 - 隐藏未知能力实体：避免把不确定能力泛化成普通实体
 - 设备导入过滤：可编辑保守的手动规则；云端 entry 可重新打开真实设备 picker，在配置后继续调整选中设备
-- 实时更新：云端/私有部署 entry 可启用 WebSocket runtime
+- 实时更新：云端/私有部署 entry 使用显式 `live_updates` WebSocket runtime。轮询仍作为默认全量状态刷新路径
 - 私有推送 URL：私有部署 entry 可覆盖 WebSocket 推送端点
 - 本地网关控制：局域网 entry 可配置网关 host 和端口
 - 拓扑变化 Repairs 提示：设备/实体拓扑在启动后变化时创建 Home Assistant Repairs issue，并包含聚合数量和脱敏 diff 计数，默认启用
@@ -136,7 +172,7 @@ HACS 中把本仓库作为自定义集成仓库安装。
 
 ### `yeelight_pro.debug_dump_push_health`
 
-向 Home Assistant 日志写入聚合后的 WebSocket 推送健康信息，用于开发和排障。该服务需要启用 `debug_mode`。
+向 Home Assistant debug 日志写入聚合后的 WebSocket 推送健康信息，用于开发和排障。该服务需要启用 `debug_mode`。
 
 ### `yeelight_pro.debug_emit_push_payload`
 
@@ -149,6 +185,23 @@ HACS 中把本仓库作为自定义集成仓库安装。
 ### `yeelight_pro.cleanup_registry`
 
 执行 stale entity registry cleanup dry-run 预览。确认执行时必须提供同一个 `entry_id` 和 dry-run 返回的 `audit_id`；确认后通过 Home Assistant entity registry 禁用 stale entities。
+
+## 运行时模型
+
+- 区域和账号隔离基于 config entry：每个云端账号、区域和家庭组合对应一个 Home Assistant 配置条目。
+- 产品 schema 完整性优先：可用时同时读取并合并 v1 和 v2 schema 响应。
+- 云端事件通知使用显式 `live_updates` WebSocket runtime；私有部署 entry 使用同一 runtime，并可配置私有推送 URL。轮询仍作为默认全量状态刷新路径。
+- 本地网关控制通过局域网模式 entry 暴露，并由 `local_gateway_control` 选项控制。
+- 设备导入过滤结合 diagnostics 预览、手动 options 规则、setup/options 真实设备 picker 选择，以及提交新设备来源实体前的保守 gate。
+- Registry 清理通过显式 dry-run 加 audit_id 二次确认服务执行，并通过 Home Assistant registry 禁用 stale entities。
+
+## 已知边界
+
+- 该集成不会把未支持或未知的可写能力泛化为普通 switch、select、number、text 或 button。
+- 未知标量属性只有在相关选项允许时，才可能成为保守的只读 sensor。
+- 设备导入过滤只作用于新的设备来源实体提交路径。
+- 调试服务只有在启用 `debug_mode` 后才可用。
+- 受控生产探针需要显式确认 flag；没有确认 flag 时必须保持 fail-closed。
 
 ## 开发
 
@@ -178,14 +231,6 @@ python3 scripts/verify_lan_gateway.py
 CI/release 入口保留在 `.github/workflows/test.yaml`、`.github/workflows/validate.yaml` 和 `.github/workflows/release.yaml`。
 
 不要提交 token、Home Assistant 账号密码、真实家庭 ID 或原始设备数据。测试样本必须脱敏。
-
-## 运行时模型
-
-- 区域和账号隔离基于 config entry：每个云端账号、区域和家庭组合对应一个 Home Assistant 配置条目。
-- 云端事件通知使用显式 `live_updates` WebSocket runtime；私有部署 entry 使用同一 runtime，并可配置私有推送 URL；轮询仍作为默认全量状态刷新路径。
-- 本地网关控制通过局域网模式 entry 暴露；启用 `local_gateway_control` 且未配置 host 时，runtime 会按局域网协议执行一次 UDP 发现，再建立 TCP 网关会话。
-- 设备导入过滤结合 diagnostics 预览、手动 options 规则、setup/options 真实设备 picker 选择，以及提交新设备来源实体前的保守 gate。
-- 既有 registry 清理通过显式 dry-run 加 audit_id 二次确认服务执行，并通过 Home Assistant registry 禁用 stale entities。
 
 ## 许可证
 

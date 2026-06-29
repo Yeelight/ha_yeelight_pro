@@ -1,10 +1,10 @@
 # Troubleshooting
 
-更新时间：2026-06-22
+更新时间：2026-06-29
 
 ## 基本原则
 
-- 先确认 Home Assistant 实际加载的是 HACS/custom 版本还是未来的 Core 内置版本。
+- 先确认 Home Assistant 实际加载的是当前 custom integration 安装路径。
 - 排障材料不得包含 token、refresh token、house id、device id/name、room、MAC、host、port、私有 endpoint 或原始 payload。
 - 生产探针只能在授权环境和显式确认参数下运行。
 
@@ -46,23 +46,25 @@ python3 scripts/verify_lan_gateway.py
 python3 scripts/verify_push_websocket.py
 ```
 
-## Core/HACS 覆盖排查
+## 安装路径排查
 
-未来如果 `yeelight_pro` 进入 Home Assistant Core，同时用户仍保留 HACS/custom 安装，custom integration 会覆盖 Core 内置集成。
+如果 Home Assistant 中看不到 Yeelight Pro，或日志显示加载的版本不是预期版本，优先确认实际安装路径。
 
 排查时应确认：
 
 - 是否存在 `custom_components/yeelight_pro`。
-- Home Assistant 日志中加载路径来自 custom 还是 Core。
-- 用户是否按迁移指南删除 custom integration 并重启。
+- 该目录是否由 HACS 或 `scripts/sync_local_ha_runtime.py` 安装。
+- `custom_components/yeelight_pro/manifest.json` 中的 `version` 是否为预期版本。
+- HACS 自定义仓库 URL 是否为 `https://github.com/Yeelight/ha_yeelight_pro`，类型是否为 `Integration`。
+- 安装或更新后是否已经重启 Home Assistant。
 
 ## 提交 issue 前
 
 请提供：
 
 - Home Assistant 版本。
-- `ha_yeelight_pro` 版本或 Core 版本。
-- 安装方式：HACS custom repository、HACS default、手动安装或 Core。
+- `ha_yeelight_pro` 版本。
+- 安装方式：HACS custom repository、HACS default 或手动安装。
 - 连接模式：cloud、private、LAN。
 - 只包含脱敏聚合信息的 diagnostics。
 - 重现步骤和预期结果。

@@ -2,15 +2,11 @@
 from __future__ import annotations
 EXPECTED_SCRIPT_FILES = {
     "docs/AUTOMATION_EXAMPLES.md",
-    "docs/CORE_MIGRATION_STRATEGY.md",
     "docs/GOAL_COMPLETION_AUDIT.md",
     "docs/IOT_SPEC_REGISTRY.md",
     "docs/LOCAL_CONTROL.md",
-    "docs/QUALITY_SCALE_GOLD_GAP_ANALYSIS.md",
     "docs/SUPPORTED_DEVICES.md",
     "docs/TROUBLESHOOTING.md",
-    "docs/WORKS_WITH_HOME_ASSISTANT_APPLICATION_GUIDE.md",
-    "docs/WORKS_WITH_HOME_ASSISTANT_HANDOVER.md",
     "manual_ha_test_checks.py",
     "manual_ha_test_config_checks.py",
     "manual_ha_test_core_checks.py",
