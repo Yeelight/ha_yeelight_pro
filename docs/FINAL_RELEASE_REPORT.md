@@ -4,7 +4,7 @@
 
 ## 当前结论
 
-- 当前阶段：`v1.0.4` GitHub release 已发布，HACS 默认仓库 PR 审查中。
+- 当前阶段：`v1.0.5` GitHub release 已发布，HACS 默认仓库 PR 审查中。
 - HACS 状态：仓库包含 HACS 元数据、本地 preflight 和 `yeelight_pro.zip` release asset。
 - 官方社区状态：按正式发布流程提交。
 - 更新模型：默认拓扑刷新和全量状态兜底使用轮询；`live_updates` 显式启用后，云端事件通知按 WebSocket runtime 实现。

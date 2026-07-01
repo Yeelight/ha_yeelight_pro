@@ -178,6 +178,8 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         "FORBIDDEN_SUFFIXES": "release zip generated suffix guard",
         "REQUIRED_FILES": "release zip required runtime file guard",
         "RELEASE_COMPONENT_FILES": "shared release component file registry",
+        "_source_name_to_zip_name": "source component path to zip root mapping",
+        "unexpected nested integration path": "nested integration zip path guard",
         "name.endswith(\"/\")": "release zip directory entry guard",
         "\"..\" in path.parts": "release zip ZipSlip guard",
         "path.is_absolute()": "release zip absolute path guard",
@@ -339,8 +341,11 @@ LOCAL_HA_RELEASE_CONTRACT_TOKENS = {
         "test_validate_existing_zip_rejects_unsafe_paths": (
             "release zip unsafe path coverage"
         ),
-        "RELEASE_COMPONENT_FILES <= check_release_zip.REQUIRED_FILES": (
-            "release zip required files mirror shared component registry"
+        "_source_names_to_zip_names(RELEASE_COMPONENT_FILES) <=": (
+            "release zip required files mirror mapped component registry"
+        ),
+        "test_validate_existing_zip_rejects_nested_integration_paths": (
+            "release zip nested integration path regression coverage"
         ),
         "core/lan_topology_specs.py": "LAN topology specs zip required file guard",
         "projector/event_input.py": "event-input identity helper zip required file guard",

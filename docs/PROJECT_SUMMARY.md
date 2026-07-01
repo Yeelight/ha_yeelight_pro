@@ -5,7 +5,7 @@
 ## 当前状态
 
 - 当前目标：提供可审查、可测试、可通过 HACS release zip 安装的 Yeelight Pro Home Assistant 自定义集成。
-- 发布状态：`v1.0.4` GitHub release 已发布；HACS 默认仓库 PR
+- 发布状态：`v1.0.5` GitHub release 已发布；HACS 默认仓库 PR
   [#8516](https://github.com/hacs/default/pull/8516) 审查中。
 - 验证状态：以当前 `pytest -q`、`validate_hacs.py` 和 `scripts/check_release_zip.py` 输出为准。
 

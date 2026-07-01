@@ -1,8 +1,8 @@
 # Goal Completion Audit
 
-更新时间：2026-06-21
+更新时间：2026-07-01
 
-本文按用户目标记录 `ha_yeelight_pro` 当前实现和验证入口。当前公开候选版本为 `v1.0.4` GitHub release，HACS 默认仓库 PR
+本文按用户目标记录 `ha_yeelight_pro` 当前实现和验证入口。当前公开候选版本为 `v1.0.5` GitHub release，HACS 默认仓库 PR
 [#8516](https://github.com/hacs/default/pull/8516) 审查中；发布审查以当前命令输出和本地 HA 安装态为准。
 
 ## 审计结论

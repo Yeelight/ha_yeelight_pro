@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-当前集成已发布 `v1.0.4` GitHub release，release asset 为
+当前集成已发布 `v1.0.5` GitHub release，release asset 为
 `yeelight_pro.zip`。HACS 默认仓库 PR
 [#8516](https://github.com/hacs/default/pull/8516) 仍在审查中。本地 Home
 Assistant single/repeat/soak/recovery 验证入口已具备；每个候选版本提交或更新
@@ -69,7 +69,10 @@ python3 scripts/verify_local_ha_recovery.py
 python3 scripts/check_release_zip.py --write yeelight_pro.zip
 ```
 
-发布包必须只包含 `custom_components/yeelight_pro/` 下的运行时文件，不包含测试、缓存、coverage 或 pyc 文件。
+发布包的 zip 根目录就是集成运行时目录，必须直接包含 `manifest.json`、
+`config_flow.py`、`translations/` 等运行时文件；不能再包含
+`custom_components/yeelight_pro/` 这一层，也不能包含测试、缓存、coverage 或
+pyc 文件。
 
 `scripts/verify_local_ha.py` 只读检查本地 Docker Home Assistant 安装目录、
 `.storage` 聚合计数、服务定义、容器健康和日志，不打印 token、house ID、

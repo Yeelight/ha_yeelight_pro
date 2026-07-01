@@ -2,7 +2,7 @@
 
 ## 状态
 
-当前状态为 `v1.0.4` GitHub release 已发布，HACS 默认仓库 PR
+当前状态为 `v1.0.5` GitHub release 已发布，HACS 默认仓库 PR
 [#8516](https://github.com/hacs/default/pull/8516) 审查中。
 
 ## 已具备的发布前材料

@@ -48,12 +48,17 @@ GitHub workflow entrypoints:
 The HACS release zip must contain:
 
 ```text
-custom_components/yeelight_pro/manifest.json
-custom_components/yeelight_pro/__init__.py
-custom_components/yeelight_pro/config_flow.py
-custom_components/yeelight_pro/translations/en.json
-custom_components/yeelight_pro/translations/zh-Hans.json
+manifest.json
+__init__.py
+config_flow.py
+translations/en.json
+translations/zh-Hans.json
 ```
+
+HACS extracts the release asset into
+`/config/custom_components/yeelight_pro/`. The zip root is therefore the
+integration root and must not include another `custom_components/yeelight_pro/`
+directory.
 
 It must not contain:
 
@@ -63,14 +68,15 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
-custom_components/yeelight_pro/tests/
+tests/
+custom_components/
 ```
 
 Use `python3 scripts/check_release_zip.py --write dist/yeelight_pro.zip` to create and verify the package. Use `python3 scripts/sync_local_ha_runtime.py` before `python3 scripts/verify_local_ha.py` so the local Home Assistant install receives runtime files without tests or generated artifacts.
 
 ## Publication Status
 
-- Current GitHub release: `v1.0.4`, with `yeelight_pro.zip` uploaded as the HACS release asset
+- Current GitHub release: `v1.0.5`, with `yeelight_pro.zip` uploaded as the HACS release asset
 - HACS default repository publication: PR [#8516](https://github.com/hacs/default/pull/8516) is under review
 - Home Assistant brands/community publication: pending
 - GitHub release: create or update only after checks pass and docs are reviewed

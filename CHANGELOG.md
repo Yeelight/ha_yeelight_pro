@@ -4,11 +4,18 @@ All notable changes to the Yeelight Pro integration will be documented in this f
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-07-01
+
+### Fixed
+
+- Fixed the HACS release zip layout so `yeelight_pro.zip` extracts directly
+  into `/config/custom_components/yeelight_pro/` with `manifest.json` at the
+  integration root.
+
 ### Documentation
 
-- Updated README, release, installation, and verification docs to match the
-  current v1.0.4 package, HACS PR status, enabled platform set, runtime
-  boundaries, and registered services.
+- Added the My Home Assistant HACS repository shortcut to both English and
+  Simplified Chinese README files.
 
 ## [1.0.4] - 2026-06-21
 

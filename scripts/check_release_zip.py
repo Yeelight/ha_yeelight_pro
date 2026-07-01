@@ -9,12 +9,22 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPONENT_ROOT = ROOT / "custom_components" / "yeelight_pro"
+SOURCE_PREFIX = "custom_components/yeelight_pro/"
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.hacs_preflight_release_file_groups import RELEASE_COMPONENT_FILES  # noqa: E402
 
-REQUIRED_FILES = set(RELEASE_COMPONENT_FILES)
+
+def _source_name_to_zip_name(name: str) -> str:
+    """Map a repository component path to the HACS release zip root path."""
+    if not name.startswith(SOURCE_PREFIX):
+        msg = f"release component file is outside {SOURCE_PREFIX}: {name}"
+        raise ValueError(msg)
+    return name.removeprefix(SOURCE_PREFIX)
+
+
+REQUIRED_FILES = {_source_name_to_zip_name(name) for name in RELEASE_COMPONENT_FILES}
 
 FORBIDDEN_PARTS = {
     "__pycache__",
@@ -49,15 +59,20 @@ def _iter_release_files() -> list[Path]:
     """Return component files that should be included in the release zip."""
     files: list[Path] = []
     for path in COMPONENT_ROOT.rglob("*"):
-        rel = path.relative_to(ROOT)
         if path.is_dir():
             continue
+        rel = path.relative_to(COMPONENT_ROOT)
         if any(part in FORBIDDEN_PARTS for part in rel.parts):
             continue
         if path.suffix in FORBIDDEN_SUFFIXES or path.name in FORBIDDEN_NAMES:
             continue
         files.append(path)
     return sorted(files)
+
+
+def _zip_name_for_source(path: Path) -> str:
+    """Return the release zip name for a component source file."""
+    return path.relative_to(COMPONENT_ROOT).as_posix()
 
 
 def _validate_names(names: set[str]) -> list[str]:
@@ -73,8 +88,8 @@ def _validate_names(names: set[str]) -> list[str]:
             errors.append(f"directory entry is not allowed: {name}")
         if path.is_absolute() or ".." in path.parts:
             errors.append(f"unsafe zip path: {name}")
-        if not name.startswith("custom_components/yeelight_pro/"):
-            errors.append(f"unexpected root path: {name}")
+        if "custom_components" in path.parts or path.parts[:1] == ("yeelight_pro",):
+            errors.append(f"unexpected nested integration path: {name}")
         if any(part in FORBIDDEN_PARTS for part in path.parts):
             errors.append(f"forbidden generated/test path: {name}")
         if path.suffix in FORBIDDEN_SUFFIXES:
@@ -89,7 +104,7 @@ def _write_zip(path: Path) -> set[str]:
     path.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for file_path in _iter_release_files():
-            arcname = file_path.relative_to(ROOT).as_posix()
+            arcname = _zip_name_for_source(file_path)
             archive.write(file_path, arcname)
     return _read_zip(path)
 
@@ -115,7 +130,7 @@ def main() -> int:
     elif args.zip:
         names = _read_zip(args.zip)
     else:
-        names = {path.relative_to(ROOT).as_posix() for path in _iter_release_files()}
+        names = {_zip_name_for_source(path) for path in _iter_release_files()}
 
     errors = _validate_names(names)
     if errors:

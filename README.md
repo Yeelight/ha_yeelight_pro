@@ -8,7 +8,7 @@ private deployment, and LAN gateway connection modes through one config flow.
 
 ## Current Status
 
-- Current release: `v1.0.4`, with the HACS zip asset `yeelight_pro.zip`
+- Current release: `v1.0.5`, with the HACS zip asset `yeelight_pro.zip`
 - HACS default repository PR:
   [#8516](https://github.com/hacs/default/pull/8516), under review
 - Early access path: add this repository to HACS as a custom integration
@@ -63,7 +63,9 @@ private deployment, and LAN gateway connection modes through one config flow.
 
 ## Installation
 
-### HACS Custom Repository
+### HACS Installation
+
+[![Open your Home Assistant instance and add this repository to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Yeelight&repository=ha_yeelight_pro&category=integration)
 
 Use this path while HACS default repository PR
 [#8516](https://github.com/hacs/default/pull/8516) is still under review.
@@ -76,7 +78,18 @@ Requirements:
 - HACS `2.0.0` or later
 - A Home Assistant backup before installing any custom integration
 
-Steps:
+Quick path:
+
+1. Click the **Open your Home Assistant instance and add this repository to
+   HACS** button above.
+2. Confirm the repository in Home Assistant.
+3. Make sure the category is **Integration**.
+4. Install **Yeelight Pro** from HACS.
+5. Restart Home Assistant.
+6. Go to **Settings -> Devices & services -> Add integration**.
+7. Search for **Yeelight Pro** and start configuration.
+
+Manual custom repository path:
 
 1. Open Home Assistant.
 2. Go to **HACS**.
