@@ -230,14 +230,7 @@ async def _async_refresh_runtime_token(
     client: YeelightProClient,
 ) -> None:
     """Refresh an expired runtime token or preserve auth failure semantics."""
-    try:
-        await async_refresh_entry_token(hass, entry, client, force=True)
-    except AuthenticationError:
-        raise ConfigEntryAuthFailed("Yeelight Pro authentication failed") from None
-    except ConnectionError as err:
-        raise ConfigEntryNotReady(
-            f"Connection failed: {safe_error_summary(err)}"
-        ) from None
+    await async_refresh_entry_token(hass, entry, client, force=True)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

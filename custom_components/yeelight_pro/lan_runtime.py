@@ -187,9 +187,9 @@ class LanGatewayRuntime:
             return None
 
         future: asyncio.Future[dict[str, Any]] = asyncio.get_event_loop().create_future()
-        self._pending_acks[message_id] = future
         try:
             await self.async_send(message)
+            self._pending_acks[message_id] = future
             return await asyncio.wait_for(future, timeout=timeout)
         except asyncio.TimeoutError:
             self._health.ack_timeout_count += 1
@@ -198,6 +198,7 @@ class LanGatewayRuntime:
                 message_id,
                 message.get("method", "?"),
             )
+            self._reader_task.cancel() if self._reader_task else None
             return None
         finally:
             self._pending_acks.pop(message_id, None)
@@ -224,16 +225,17 @@ class LanGatewayRuntime:
         self._health.connected = False
         if writer is None:
             return
-        writer.close()
-        wait_closed = getattr(writer, "wait_closed", None)
-        if callable(wait_closed):
-            await wait_closed() # pyright: ignore[reportGeneralTypeIssues]
+        with suppress(OSError):
+            writer.close()
+            wait_closed = getattr(writer, "wait_closed", None)
+            if callable(wait_closed):
+                await wait_closed() # pyright: ignore[reportGeneralTypeIssues]
 
     def _flush_pending_acks(self, reason: str) -> None:
         """Cancel all pending ACK futures on disconnect."""
         for msg_id, future in self._pending_acks.items():
             if not future.done():
-                future.cancel()
+                future.set_exception(HomeAssistantError("Yeelight Pro LAN gateway is not connected"))
                 _LOGGER.debug("Flushed pending ACK %d: %s", msg_id, reason)
         self._pending_acks.clear()
 
@@ -330,8 +332,8 @@ class LanGatewayRuntime:
                 await asyncio.sleep(delay)
                 if not self._health.running:
                     return
-                await self._close_writer()
                 try:
+                    await self._close_writer()
                     await self._connect()
                     await self.async_get_topology()
                     _LOGGER.info("LAN gateway reconnected successfully")

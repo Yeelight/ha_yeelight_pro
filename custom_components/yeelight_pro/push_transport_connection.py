@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 
 from aiohttp import WSServerHandshakeError
@@ -37,8 +38,11 @@ class PushTransportConnectionMixin:
     async def _ws_connect_direct(self, url: str) -> PushWebSocket:
         """Open websocket directly with a bounded setup timeout."""
         try:
-            websocket = await self._session.ws_connect(
-                url,
+            websocket = await asyncio.wait_for(
+                self._session.ws_connect(
+                    url,
+                    timeout=self._connect_timeout_seconds,
+                ),
                 timeout=self._connect_timeout_seconds,
             )
             self._health.last_handshake_status = None
@@ -55,7 +59,10 @@ class PushTransportConnectionMixin:
     async def _ws_connect_legacy(self, url: str) -> PushWebSocket:
         """Fallback for lightweight sessions that do not accept kwargs."""
         try:
-            websocket = await self._session.ws_connect(url)
+            websocket = await asyncio.wait_for(
+                self._session.ws_connect(url),
+                timeout=self._connect_timeout_seconds,
+            )
         except WSServerHandshakeError as err:
             self._record_handshake_failure(err)
             raise
