@@ -204,6 +204,8 @@ async def async_try_lan_simulate_event(
         raise CommandError(
             f"Failed to simulate event over LAN: {safe_error_summary(err)}"
         ) from None
+    if ack is None:
+        raise CommandError("LAN simulate event timed out waiting for ACK")
     if isinstance(ack, Mapping) and ack.get("result") == "error":
         error_data = ack.get("data", {})
         raise CommandError(f"LAN simulate event rejected: {error_data}")
@@ -235,6 +237,8 @@ async def _async_try_send_lan_properties(
             f"Failed to {action} over LAN: {safe_error_summary(err)}"
         ) from None
     # 检查 ACK 结果
+    if ack is None:
+        raise CommandError(f"LAN {action} timed out waiting for ACK")
     if isinstance(ack, Mapping) and ack.get("result") == "error":
         error_data = ack.get("data", {})
         raise CommandError(

@@ -4,6 +4,19 @@ All notable changes to the Yeelight Pro integration will be documented in this f
 
 ## [Unreleased]
 
+### Fixed
+
+- Buffer LAN messages as bytes until a complete frame arrives, so TCP reads
+  splitting a UTF-8 character do not disconnect the gateway.
+- Request topology again after reconnecting to a LAN gateway or Wi-Fi panel,
+  restoring discovery when the initial topology response was lost.
+- Prevent `StreamWriter.wait_closed()` socket reset errors from aborting the
+  LAN reconnect loop, and fail pending or timed-out LAN ACKs cleanly while
+  triggering reconnection on half-open sockets.
+- Honor updated LAN gateway host/port options on reload, clean up partially
+  started LAN runtimes on setup failure, preserve cloud-entry devices on
+  optional LAN topology pushes, and bound WebSocket connect handshakes.
+
 ## [1.0.5] - 2026-07-01
 
 ### Fixed
