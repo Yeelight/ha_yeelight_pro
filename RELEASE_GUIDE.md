@@ -76,8 +76,8 @@ Use `python3 scripts/check_release_zip.py --write dist/yeelight_pro.zip` to crea
 
 ## Publication Status
 
-- Current GitHub release: `v1.0.5`, with `yeelight_pro.zip` uploaded as the HACS release asset
-- HACS default repository publication: PR [#8516](https://github.com/hacs/default/pull/8516) is under review
+- Current GitHub release: `v1.0.6`, with `yeelight_pro.zip` uploaded as the HACS release asset
+- HACS default repository publication: listed in the HACS default repository (tracking PR [#8516](https://github.com/hacs/default/pull/8516))
 - Home Assistant brands/community publication: pending
 - GitHub release: create or update only after checks pass and docs are reviewed
 

@@ -2,8 +2,8 @@
 
 ## 状态
 
-当前状态为 `v1.0.5` GitHub release 已发布，HACS 默认仓库 PR
-[#8516](https://github.com/hacs/default/pull/8516) 审查中。
+当前状态为 `v1.0.6` GitHub release 已发布，已收录 HACS 默认仓库
+（PR [#8516](https://github.com/hacs/default/pull/8516) 于 2026-07-31 合入）。
 
 ## 已具备的发布前材料
 

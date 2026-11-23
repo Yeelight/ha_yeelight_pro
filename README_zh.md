@@ -8,10 +8,10 @@ Pro 家庭、设备、网关、情景和运行时诊断。它通过同一个配�
 
 ## 当前状态
 
-- 当前版本：`v1.0.5`，已提供 HACS zip 资产 `yeelight_pro.zip`
-- HACS 默认仓库 PR：
-  [#8516](https://github.com/hacs/default/pull/8516)，审查中
-- 提前体验方式：在 HACS 中把本仓库添加为自定义集成仓库
+- 当前版本：`v1.0.6`，已提供 HACS zip 资产 `yeelight_pro.zip`
+- 已收录 HACS 默认仓库（HACS PR
+  [#8516](https://github.com/hacs/default/pull/8516)，2026-07-31 合入）
+- 仍可在 HACS 中把本仓库添加为自定义集成仓库，提前体验未发布构建
 - HACS 元数据目标：HACS `2.0.0`，Home Assistant `2024.1.0`
 - 已验证测试和发布门禁：见 [docs/TEST_REPORT.md](docs/TEST_REPORT.md)
 - 启用的 Home Assistant 平台：11 个
@@ -46,8 +46,7 @@ Pro 家庭、设备、网关、情景和运行时诊断。它通过同一个配�
 
 [![打开 Home Assistant 并把本仓库添加到 HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Yeelight&repository=ha_yeelight_pro&category=integration)
 
-HACS 默认仓库 PR
-[#8516](https://github.com/hacs/default/pull/8516) 仍在审查中。在 PR 合并前，极客用户可以通过 HACS 自定义仓库提前体验。该流程遵循 HACS 的自定义仓库模型：添加仓库 URL、选择正确仓库类型，再从 HACS 下载集成。
+Yeelight Pro 已收录 HACS 默认仓库：打开 HACS，搜索 **Yeelight Pro** 即可安装。如希望直接跟踪本仓库，也可通过 HACS 自定义仓库方式安装：添加仓库 URL、选择正确仓库类型，再从 HACS 下载集成。
 
 要求：
 
@@ -57,13 +56,10 @@ HACS 默认仓库 PR
 
 快捷方式：
 
-1. 点击上方 **打开 Home Assistant 并把本仓库添加到 HACS** 按钮。
-2. 在 Home Assistant 中确认添加仓库。
-3. 确认分类为 **Integration**。
-4. 在 HACS 中安装 **Yeelight Pro**。
-5. 重启 Home Assistant。
-6. 进入 **设置 -> 设备与服务 -> 添加集成**。
-7. 搜索 **Yeelight Pro** 并开始配置。
+1. 打开 **HACS**，搜索 **Yeelight Pro** 并安装。如改用自定义仓库方式，点击上方 **打开 Home Assistant 并把本仓库添加到 HACS** 按钮并在 Home Assistant 中确认，分类选择 **Integration**。
+2. 重启 Home Assistant。
+3. 进入 **设置 -> 设备与服务 -> 添加集成**。
+4. 搜索 **Yeelight Pro** 并开始配置。
 
 手动添加自定义仓库：
 

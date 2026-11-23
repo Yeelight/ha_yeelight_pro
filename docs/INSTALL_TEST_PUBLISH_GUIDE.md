@@ -2,11 +2,11 @@
 
 ## 当前状态
 
-当前集成已发布 `v1.0.5` GitHub release，release asset 为
-`yeelight_pro.zip`。HACS 默认仓库 PR
-[#8516](https://github.com/hacs/default/pull/8516) 仍在审查中。本地 Home
-Assistant single/repeat/soak/recovery 验证入口已具备；每个候选版本提交或更新
-HACS PR 前都必须重新运行这些入口并复核脱敏输出。
+当前集成已发布 `v1.0.6` GitHub release，release asset 为
+`yeelight_pro.zip`。集成已收录 HACS 默认仓库（PR
+[#8516](https://github.com/hacs/default/pull/8516) 于 2026-07-31 合入）。本地
+Home Assistant single/repeat/soak/recovery 验证入口已具备；每个候选版本提交
+或更新 HACS PR 前都必须重新运行这些入口并复核脱敏输出。
 
 ## HACS 自定义仓库安装
 

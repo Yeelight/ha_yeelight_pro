@@ -8,11 +8,11 @@ private deployment, and LAN gateway connection modes through one config flow.
 
 ## Current Status
 
-- Current release: `v1.0.5`, with the HACS zip asset `yeelight_pro.zip`
-- HACS default repository PR:
-  [#8516](https://github.com/hacs/default/pull/8516), under review
-- Early access path: add this repository to HACS as a custom integration
-  repository
+- Current release: `v1.0.6`, with the HACS zip asset `yeelight_pro.zip`
+- Available in the HACS default repository — search **Yeelight Pro** in HACS
+  (tracking PR [#8516](https://github.com/hacs/default/pull/8516))
+- Custom repository path remains available for early access to unreleased
+  builds
 - Minimum HACS metadata target: HACS `2.0.0`, Home Assistant `2024.1.0`
 - Verified tests and release gates: see
   [docs/TEST_REPORT.md](docs/TEST_REPORT.md)
@@ -67,10 +67,11 @@ private deployment, and LAN gateway connection modes through one config flow.
 
 [![Open your Home Assistant instance and add this repository to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Yeelight&repository=ha_yeelight_pro&category=integration)
 
-Use this path while HACS default repository PR
-[#8516](https://github.com/hacs/default/pull/8516) is still under review.
-The flow follows HACS' custom repository model: add a repository URL, choose
-the correct repository type, then download the integration from HACS.
+Yeelight Pro is listed in the HACS default repository: open HACS, search for
+**Yeelight Pro**, and install it. If you prefer to track this repository
+directly, the same flow also works through HACS' custom repository model: add
+a repository URL, choose the correct repository type, then download the
+integration from HACS.
 
 Requirements:
 
@@ -80,14 +81,13 @@ Requirements:
 
 Quick path:
 
-1. Click the **Open your Home Assistant instance and add this repository to
-   HACS** button above.
-2. Confirm the repository in Home Assistant.
-3. Make sure the category is **Integration**.
-4. Install **Yeelight Pro** from HACS.
-5. Restart Home Assistant.
-6. Go to **Settings -> Devices & services -> Add integration**.
-7. Search for **Yeelight Pro** and start configuration.
+1. Open **HACS**, search for **Yeelight Pro**, and install it. To add this
+   repository as a custom repository instead, click the **Open your Home
+   Assistant instance and add this repository to HACS** button above and
+   confirm the category **Integration**.
+2. Restart Home Assistant.
+3. Go to **Settings -> Devices & services -> Add integration**.
+4. Search for **Yeelight Pro** and start configuration.
 
 Manual custom repository path:
 

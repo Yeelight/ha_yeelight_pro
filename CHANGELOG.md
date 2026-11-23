@@ -4,6 +4,8 @@ All notable changes to the Yeelight Pro integration will be documented in this f
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-11-23
+
 ### Fixed
 
 - Buffer LAN messages as bytes until a complete frame arrives, so TCP reads
@@ -16,6 +18,11 @@ All notable changes to the Yeelight Pro integration will be documented in this f
 - Honor updated LAN gateway host/port options on reload, clean up partially
   started LAN runtimes on setup failure, preserve cloud-entry devices on
   optional LAN topology pushes, and bound WebSocket connect handshakes.
+
+### CI
+
+- Pin the ruff rule set and install the `tzdata` test dependency so the
+  workflows stay deterministic across ruff releases and runner images.
 
 ## [1.0.5] - 2026-07-01
 
