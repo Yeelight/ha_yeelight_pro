@@ -107,6 +107,9 @@ class CoordinatorRuntimeMixin:
                 "LAN topology push received (%d nodes), updating coordinator state",
                 topology.node_count,
             )
+            if getattr(self, "client", None) is not None:
+                self.hass.async_create_task(self.async_refresh_from_lan_topology())
+                return []
             # 直接从拓扑消息提取设备和场景数据更新 coordinator
             _apply_lan_topology_to_coordinator(self, payload)
             self.async_update_listeners()

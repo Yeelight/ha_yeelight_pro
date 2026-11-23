@@ -17,6 +17,7 @@ from .const import (
     CONF_LAN_GATEWAY_IP,
     CONF_LAN_GATEWAY_PORT,
     CONF_LAN_GATEWAY_PRODUCT_ID,
+    CONF_LOCAL_GATEWAY_PORT,
     CONF_LOCAL_GATEWAY_PRODUCT_ID,
     DOMAIN,
     get_enabled_platforms,
@@ -88,12 +89,14 @@ async def async_setup_lan_entry(
     }
     hass.data[DOMAIN][entry.entry_id] = runtime_data
 
-    lan_ip = str(entry_data.get(CONF_LAN_GATEWAY_IP, "")).strip()
-    lan_port = int(entry_data.get(CONF_LAN_GATEWAY_PORT, 65443))
-    if not lan_ip:
-        _, host, port = lan_runtime_options(entry)
-        lan_ip = host
-        lan_port = port
+    options = entry_options(entry)
+    _, host, port = lan_runtime_options(entry)
+    lan_ip = host or str(entry_data.get(CONF_LAN_GATEWAY_IP, "")).strip()
+    lan_port = (
+        port
+        if CONF_LOCAL_GATEWAY_PORT in options
+        else int(entry_data.get(CONF_LAN_GATEWAY_PORT, port))
+    )
 
     if lan_ip:
         try:
@@ -129,6 +132,7 @@ async def async_setup_lan_entry(
                 ),
             )
             await runtime.async_start(_lan_handler_with_topology_wait)
+            runtime_data["lan_runtime"] = runtime
             await runtime.async_get_topology()
 
             # 等待拓扑推送到达（最多 10 秒）
@@ -165,14 +169,17 @@ async def async_setup_lan_entry(
             runtime_data["lan_runtime"] = runtime
             coordinator.set_lan_runtime(runtime)
             _LOGGER.info("Yeelight Pro LAN runtime started: %s:%s", lan_ip, lan_port)
+        except asyncio.CancelledError:
+            await async_cleanup_failed_setup(hass, entry, runtime_data)
+            raise
         except Exception as err:
-            runtime_data["lan_runtime"] = OptionalRuntimeStartupFailure(err)
             coordinator.set_lan_runtime(None)
             _LOGGER.warning(
                 "Yeelight Pro LAN runtime failed to start: %s",
                 safe_error_summary(err),
             )
             await async_cleanup_failed_setup(hass, entry, runtime_data)
+            runtime_data["lan_runtime"] = OptionalRuntimeStartupFailure(err)
             raise ConfigEntryNotReady(
                 f"Yeelight Pro LAN gateway unavailable: {safe_error_summary(err)}"
             ) from err
