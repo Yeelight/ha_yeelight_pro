@@ -200,7 +200,12 @@ async def test_ack_timeout_marks_half_open_socket_disconnected_and_raises_comman
                 device_id=312356039,
                 params={"p": False},
             )
-        await asyncio.sleep(0)
+        # Python 3.11 的 wait_for 取消路径需要多个事件循环周期才能传播到
+        # _read_loop 的 finally；用有界轮询代替定步断言，保证跨版本确定性。
+        for _ in range(100):
+            if runtime.health.connected is False:
+                break
+            await asyncio.sleep(0.01)
         assert runtime.health.connected is False
         assert runtime.health.ack_timeout_count == 1
     finally:
