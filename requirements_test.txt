@@ -5,3 +5,6 @@ pytest-cov>=4.0.0
 pytest-homeassistant-custom-component>=0.13.0
 ruff>=0.5.0
 mypy>=1.10.0
+# HA 测试夹具使用 US/Pacific 等 tzdata 旧别名；新版 CI runner 镜像的
+# 系统时区库不再包含 backward 链接，用 PyPI tzdata 补齐完整 IANA 库。
+tzdata

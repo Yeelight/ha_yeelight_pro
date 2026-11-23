@@ -4,6 +4,11 @@ version = "1.0.2"
 description = "Yeelight Pro integration for Home Assistant"
 requires-python = ">=3.11"
 
+[tool.ruff.lint]
+# 显式锁定规则集：ruff 0.17+ 扩张了默认规则（BLE/ASYNC/S 等），
+# 在 requirements 未锁 ruff 版本时会让既有代码零改动变红。
+select = ["E4", "E7", "E9", "F"]
+
 [tool.pytest.ini_options]
 testpaths = ["custom_components/yeelight_pro/tests"]
 pythonpath = ["."]
